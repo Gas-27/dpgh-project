@@ -9,6 +9,8 @@ import {
   toHubtelService,
   verifyHubtelMsisdn,
   getHubtelDataCatalog,
+  getHubtelBillCatalog,
+  type HubtelService,
 } from "@/services/hubtelService";
 import { Button } from "@/components/ui/button";
 import {
@@ -188,6 +190,12 @@ export default function HubtelPurchasePanel({
   const [verificationError, setVerificationError] = useState<string | null>(
     null,
   );
+  const [billAccountName, setBillAccountName] = useState<string | null>(null);
+  const [billAccountDetail, setBillAccountDetail] = useState<string | null>(
+    null,
+  );
+  const [billSessionId, setBillSessionId] = useState<string | null>(null);
+  const [billLookupLoading, setBillLookupLoading] = useState(false);
 
   const normalizedPhone = phone.replace(/\D/g, "");
   const detectedNetwork = normalizedPhone.startsWith("0")
@@ -285,6 +293,62 @@ export default function HubtelPurchasePanel({
     };
   }, [mode, normalizedPhone]);
 
+  // ECG (meter/registered mobile) and TV (decoder/smart card) accounts can be
+  // verified so the customer sees the registered name before paying. The lookup
+  // is informational and never blocks the payment.
+  const billService = toHubtelBillService(service);
+  const supportsAccountLookup =
+    mode !== "instant" &&
+    !!billService &&
+    ["ecg", "dstv", "gotv", "startimes", "ghana_water"].includes(billService);
+  const trimmedAccount = account.trim();
+
+  useEffect(() => {
+    let cancelled = false;
+    setBillAccountName(null);
+    setBillAccountDetail(null);
+    setBillSessionId(null);
+    if (!supportsAccountLookup || trimmedAccount.replace(/\D/g, "").length < 5) {
+      setBillLookupLoading(false);
+      return;
+    }
+    setBillLookupLoading(true);
+    const handle = setTimeout(() => {
+      getHubtelBillCatalog({
+        service: billService as HubtelService,
+        accountNumber: trimmedAccount,
+      })
+        .then((response) => {
+          if (cancelled) return;
+          const payload = response as {
+            name?: string | null;
+            bouquet?: string | null;
+            sessionId?: string | null;
+            accounts?: Array<{ label?: string }>;
+          };
+          const firstAccount = payload.accounts?.[0]?.label || null;
+          setBillAccountName(payload.name || firstAccount || null);
+          setBillAccountDetail(payload.bouquet || null);
+          setBillSessionId(payload.sessionId || null);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setBillAccountName(null);
+            setBillAccountDetail(null);
+            setBillSessionId(null);
+          }
+        })
+        .finally(() => {
+          if (!cancelled) setBillLookupLoading(false);
+        });
+    }, 600);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, service, trimmedAccount, supportsAccountLookup]);
+
   function chooseServiceCategory(category: ServiceCategory) {
     setServiceCategory(category);
     setService(services[category][0]);
@@ -375,6 +439,7 @@ export default function HubtelPurchasePanel({
                 destination: customer,
                 amount: Number(amount),
                 bundle: selectedInstantItem?.value || selectedInstantItem?.label,
+                bundleName: selectedInstantItem?.label,
                 packageCode: selectedInstantItem?.value || selectedInstantItem?.label,
                 ...wallet,
               })
@@ -722,6 +787,24 @@ export default function HubtelPurchasePanel({
               />
             </div>
           </div>
+          {supportsAccountLookup && billLookupLoading && (
+            <p className="text-xs text-muted-foreground">
+              Verifying account…
+            </p>
+          )}
+          {supportsAccountLookup && !billLookupLoading && billAccountName && (
+            <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
+              <p>
+                Registered to{" "}
+                <span className="font-semibold">{billAccountName}</span>
+              </p>
+              {billAccountDetail && (
+                <p className="mt-1 text-muted-foreground">
+                  {billAccountDetail}
+                </p>
+              )}
+            </div>
+          )}
           {walletOnly && (
             <p className="rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
               This dashboard payment uses your wallet only. Available: GHC{" "}

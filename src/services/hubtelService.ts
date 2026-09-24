@@ -21,12 +21,19 @@ export interface HubtelRequest {
   accountNumber?: string;
   amount?: number;
   bundle?: string;
+  bundleName?: string;
   packageCode?: string;
   clientReference?: string;
   callbackUrl?: string;
   walletOnly?: boolean;
   walletOwnerType?: string;
   walletOwnerId?: string;
+  // Utility bill fields (ECG / Ghana Water / TV).
+  phoneNumber?: string;
+  mobile?: string;
+  meterNumber?: string;
+  email?: string;
+  sessionId?: string;
 }
 
 export interface HubtelResponse<T = unknown> {

@@ -17,7 +17,7 @@ const serviceIds: Record<string, string> = {
   mtn_data: "b230733cd56b4a0fad820e39f66bc27c",
   telecel_data: "fa27127ba039455da04a2ac8a1613e00",
   airteltigo_data: "06abd92da459428496967612463575ca",
-  dstv: "297a96656b5846ad8b00d5d41b256ea",
+  dstv: "297a96656b5846ad8b00d5d41b256ea7",
   gotv: "e6ceac7f3880435cb30b048e9617eb41",
   telecel_postpaid: "a3ab78c84c6b4976b78a6f393e247a72",
   ghana_water: "6c1e8a82d2e84feeb8bfd6be2790d71d",
@@ -261,27 +261,70 @@ Deno.serve(async (request) => {
     }
 
     if (operation === "bill_catalog") {
-      if (
-        !serviceId ||
-        ![
-          "ecg",
-          "ghana_water",
-          "telecel_broadband",
-          "telecel_postpaid",
-        ].includes(service)
-      )
+      const lookupServices = [
+        "ecg",
+        "ghana_water",
+        "dstv",
+        "gotv",
+        "startimes",
+        "telecel_broadband",
+        "telecel_postpaid",
+      ];
+      if (!serviceId || !lookupServices.includes(service))
         throw new Error("This service does not support account lookup");
-      const destination = String(
-        body.accountNumber || body.destination || "",
+      const raw = String(
+        body.accountNumber || body.destination || body.phoneNumber || "",
       ).trim();
-      if (!destination) throw new Error("accountNumber is required");
+      if (!raw) throw new Error("accountNumber is required");
+      // ECG links meters to a registered mobile number, so its lookup takes a
+      // Ghana phone number rather than the meter/account number.
+      const lookupTarget = service === "ecg" ? phone(raw) : raw;
+      let query = `destination=${encodeURIComponent(lookupTarget)}`;
+      if (service === "ghana_water") {
+        const mobile = String(body.mobile || body.phoneNumber || "").trim();
+        if (mobile) query += `&mobile=${encodeURIComponent(phone(mobile))}`;
+      }
+      const data = await requestHubtel(
+        `/commissionservices/{account}/${serviceId}?${query}`,
+      );
+      const items = Array.isArray((data as { Data?: unknown }).Data)
+        ? (data as {
+            Data: Array<{ Display?: string; Value?: string; Amount?: number }>;
+          }).Data
+        : [];
+      const findByKey = (re: RegExp) =>
+        items.find((item) => re.test(String(item.Display || "")));
+      const name = String(findByKey(/name/i)?.Value || "").trim() || null;
+      const amountDue =
+        String(findByKey(/amount\s*due|amountdue/i)?.Value || "").trim() ||
+        null;
+      const sessionId =
+        String(findByKey(/session/i)?.Value || "").trim() || null;
+      const bouquet =
+        String(findByKey(/bouquet/i)?.Value || "").trim() || null;
+      // ECG returns one row per linked meter with the owner name embedded in the
+      // Display text and the meter number in Value.
+      const accounts =
+        service === "ecg"
+          ? items
+              .map((item) => ({
+                label: String(item.Display || "").trim(),
+                value: String(item.Value || "").trim(),
+                amountDue:
+                  typeof item.Amount === "number" ? item.Amount : null,
+              }))
+              .filter((account) => account.value)
+          : [];
       return json({
         success: true,
         operation,
         service,
-        data: await requestHubtel(
-          `/commissionservices/{account}/${serviceId}?destination=${encodeURIComponent(destination)}`,
-        ),
+        name,
+        amountDue,
+        sessionId,
+        bouquet,
+        accounts,
+        data,
       });
     }
 
@@ -328,46 +371,86 @@ Deno.serve(async (request) => {
         ClientReference: reference,
       };
       if (operation === "data") {
-        const requestedBundle = String(
+        const requestedValue = String(
           body.bundle || body.packageCode || "",
         ).trim();
-        if (!requestedBundle)
+        const requestedName = String(body.bundleName || "").trim();
+        if (!requestedValue && !requestedName)
           throw new Error("bundle is required; query data_catalog first");
         const catalog = (await requestHubtel(
           `/commissionservices/{account}/${serviceId}?destination=${encodeURIComponent(destination)}`,
         )) as {
           Data?: Array<{ Display?: string; Value?: string; Amount?: number }>;
         };
-        const match = (catalog.Data || []).find(
-          (item) =>
-            String(item.Display || "")
-              .trim()
-              .toLowerCase() === requestedBundle.toLowerCase() ||
-            String(item.Value || "")
-              .trim()
-              .toLowerCase() === requestedBundle.toLowerCase(),
-        );
-        if (!match?.Value)
+        const items = catalog.Data || [];
+        const norm = (value: unknown) =>
+          String(value || "")
+            .trim()
+            .toLowerCase();
+        // Bundles like MTN "flexi_data_bundle" repeat the same Value at several
+        // price points, so the amount is what disambiguates them. Match on the
+        // exact display + price first, then value + price, before falling back
+        // to a name/value-only match.
+        const amountMatches = (value: unknown) =>
+          typeof value === "number" && Math.abs(value - purchaseAmount) <= 0.01;
+        const match =
+          (requestedName &&
+            items.find(
+              (item) =>
+                norm(item.Display) === norm(requestedName) &&
+                amountMatches(item.Amount),
+            )) ||
+          (requestedValue &&
+            items.find(
+              (item) =>
+                norm(item.Value) === norm(requestedValue) &&
+                amountMatches(item.Amount),
+            )) ||
+          (requestedName &&
+            items.find((item) => norm(item.Display) === norm(requestedName))) ||
+          (requestedValue &&
+            items.find((item) => norm(item.Value) === norm(requestedValue))) ||
+          null;
+        if (!match || !match.Value)
           throw new Error(
             "This data bundle is no longer available. Please refresh the bundle list and try again.",
-          );
-        if (
-          typeof match.Amount === "number" &&
-          Math.abs(match.Amount - purchaseAmount) > 0.01
-        )
-          throw new Error(
-            "The selected bundle price changed. Please select the bundle again.",
           );
         payload.Amount =
           typeof match.Amount === "number" ? match.Amount : purchaseAmount;
         payload.Extradata = { bundle: match.Value };
       }
       if (operation === "bill") {
-        const accountNumber = String(body.accountNumber || "").trim();
+        const accountNumber = String(
+          body.accountNumber || body.meterNumber || "",
+        ).trim();
         if (!accountNumber) throw new Error("accountNumber is required");
-        payload.Destination = accountNumber;
-        if (body.packageCode)
-          payload.Extradata = { package: String(body.packageCode) };
+        if (service === "ecg") {
+          // ECG top-up debits a registered mobile number and applies the value
+          // to the linked meter passed in Extradata.bundle.
+          payload.Destination = phone(
+            body.phoneNumber || body.mobile || body.destination,
+          );
+          payload.Extradata = { bundle: accountNumber };
+        } else if (service === "ghana_water") {
+          const sessionId = String(body.sessionId || "").trim();
+          if (!sessionId)
+            throw new Error(
+              "Query the Ghana Water meter first to obtain a session id",
+            );
+          payload.Destination = accountNumber;
+          payload.Extradata = {
+            bundle: accountNumber,
+            Email: String(body.email || "").trim() || "support@dataplug.store",
+            SessionId: sessionId,
+          };
+        } else if (service === "telecel_broadband") {
+          payload.Destination = accountNumber;
+          payload.Extradata = { bundle: accountNumber };
+        } else {
+          // DSTV, GOtv, StarTimes and Telecel postpaid are paid directly to the
+          // account/decoder number with no Extradata.
+          payload.Destination = accountNumber;
+        }
       }
       walletDebit = await debitWallet(body, Number(payload.Amount));
       const providerResponse = providerAccepted(
@@ -387,18 +470,41 @@ Deno.serve(async (request) => {
     }
 
     if (operation === "transaction_status") {
-      const reference = String(
-        body.clientReference || body.transactionId || "",
+      const reference = String(body.clientReference || "").trim();
+      const hubtelTransactionId = String(
+        body.transactionId || body.hubtelTransactionId || "",
       ).trim();
-      if (!reference)
+      if (!reference && !hubtelTransactionId)
         throw new Error("clientReference or transactionId is required");
-      return json({
-        success: true,
-        operation,
-        data: await requestHubtel(
-          `/commissionservices/{account}/status/${encodeURIComponent(reference)}`,
-        ),
-      });
+      // The Status Check API lives on a separate host and uses the Collection
+      // Account Number, not the disbursement account or the commission host.
+      const collectionAccount =
+        Deno.env.get("HUBTEL_COLLECTION_ACCOUNT_NUMBER") ||
+        env("HUBTEL_DISBURSEMENT_ACCOUNT_NUMBER");
+      const apiId =
+        Deno.env.get("HUBTEL_API_ID") || Deno.env.get("HUBTEL_CLIENT_ID");
+      const apiKey =
+        Deno.env.get("HUBTEL_API_KEY") || Deno.env.get("HUBTEL_CLIENT_SECRET");
+      const params = reference
+        ? `clientReference=${encodeURIComponent(reference)}`
+        : `hubtelTransactionId=${encodeURIComponent(hubtelTransactionId)}`;
+      const statusResponse = await fetch(
+        `https://api-txnstatus.hubtel.com/transactions/${collectionAccount}/status?${params}`,
+        {
+          headers: {
+            Authorization: `Basic ${btoa(`${apiId}:${apiKey}`)}`,
+            Accept: "application/json",
+          },
+        },
+      );
+      const statusText = await statusResponse.text();
+      let statusData: unknown;
+      try {
+        statusData = statusText ? JSON.parse(statusText) : null;
+      } catch {
+        statusData = { raw: statusText };
+      }
+      return json({ success: true, operation, data: statusData });
     }
     throw new Error(
       "Unsupported operation: data_catalog, bill_catalog, airtime, data, bill, callback, transaction_status",
