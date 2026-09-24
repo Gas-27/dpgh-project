@@ -52,11 +52,40 @@ const fallbackBundles: Record<
   ],
 };
 
-const json = (body: unknown, status = 200) =>
-  new Response(JSON.stringify(body), {
+const json = (body: unknown, status = 200, requestId?: string) =>
+  new Response(JSON.stringify({ ...(body as Record<string, unknown>), requestId }), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: {
+      ...corsHeaders,
+      "Content-Type": "application/json",
+      "X-Hubtel-Request-Id": requestId || "unknown",
+    },
   });
+const redact = (value: unknown): unknown => {
+  if (typeof value === "string") {
+    if (/^233\d{9}$/.test(value)) return `${value.slice(0, 6)}***${value.slice(-2)}`;
+    if (value.length > 120) return `${value.slice(0, 117)}...`;
+    return value;
+  }
+  if (Array.isArray(value)) return value.map(redact);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+        /authorization|api.?key|secret|password|token/i.test(key) ? [key, "[redacted]"] : [key, redact(item)],
+      ]),
+    );
+  }
+  return value;
+};
+const logEvent = (requestId: string, event: string, details: Record<string, unknown> = {}) => {
+  console.log(JSON.stringify({
+    source: "hubtel-gateway",
+    requestId,
+    event,
+    timestamp: new Date().toISOString(),
+    ...(redact(details) as Record<string, unknown>),
+  }));
+};
 const env = (name: string) => {
   const value = Deno.env.get(name);
   if (!value) throw new Error(`Missing ${name}`);
@@ -141,6 +170,7 @@ const requestHubtel = async (
   path: string,
   init: RequestInit = {},
   accountName: "disbursement" | "collection" = "disbursement",
+  requestId = "unknown",
 ) => {
   const account =
     accountName === "collection"
@@ -154,9 +184,15 @@ const requestHubtel = async (
   if (!apiId) throw new Error("Missing HUBTEL_API_ID");
   if (!apiKey) throw new Error("Missing HUBTEL_API_KEY");
   const auth = btoa(`${apiId}:${apiKey}`);
-  const response = await fetch(
-    `${baseUrl.replace(/\/$/, "")}${path.replace("{account}", account)}`,
-    {
+  const url = `${baseUrl.replace(/\/$/, "")}${path.replace("{account}", account)}`;
+  logEvent(requestId, "hubtel_request", {
+    method: init.method || "GET",
+    url,
+    accountName,
+    body: init.body ? JSON.parse(String(init.body)) : undefined,
+  });
+  const startedAt = Date.now();
+  const response = await fetch(url, {
       ...init,
       headers: {
         Authorization: `Basic ${auth}`,
@@ -173,13 +209,19 @@ const requestHubtel = async (
   } catch {
     data = { raw: text };
   }
+  logEvent(requestId, "hubtel_response", {
+    status: response.status,
+    ok: response.ok,
+    durationMs: Date.now() - startedAt,
+    response: data,
+  });
   if (!response.ok) {
     const detail =
       typeof data === "object" && data !== null
         ? JSON.stringify(data)
         : String(data || "");
     throw new Error(
-      `Hubtel request failed (${response.status})${detail ? `: ${detail.slice(0, 300)}` : ""}`,
+      `Hubtel request failed (${response.status})${detail ? `: ${detail.slice(0, 500)}` : ""}`,
     );
   }
   return data;
@@ -190,6 +232,7 @@ Deno.serve(async (request) => {
     return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST" && request.method !== "GET")
     return json({ error: "Only GET and POST are supported" }, 405);
+  const requestId = crypto.randomUUID();
   let walletDebit: {
     ownerType: string;
     ownerId: string;
@@ -206,6 +249,13 @@ Deno.serve(async (request) => {
     ).toLowerCase();
     const serviceId =
       serviceIds[service] || (service.match(/^[a-f0-9]{32}$/) ? service : "");
+    logEvent(requestId, "request_received", {
+      method: request.method,
+      operation,
+      service,
+      serviceId,
+      body,
+    });
 
     if (operation === "verify_msisdn") {
       const destination = phone(
@@ -454,10 +504,15 @@ Deno.serve(async (request) => {
       }
       walletDebit = await debitWallet(body, Number(payload.Amount));
       const providerResponse = providerAccepted(
-        await requestHubtel(`/commissionservices/{account}/${serviceId}`, {
-          method: "POST",
-          body: JSON.stringify(payload),
-        }),
+        await requestHubtel(
+          `/commissionservices/{account}/${serviceId}`,
+          {
+            method: "POST",
+            body: JSON.stringify(payload),
+          },
+          "disbursement",
+          requestId,
+        ),
       );
 
       return json({
@@ -511,14 +566,19 @@ Deno.serve(async (request) => {
     );
   } catch (error) {
     await refundWallet(walletDebit);
-    console.error("[hubtel-gateway]", error);
+    const message = error instanceof Error ? error.message : "Hubtel request failed";
+    logEvent(requestId, "request_failed", {
+      error: message,
+      walletRefunded: Boolean(walletDebit),
+    });
     return json(
       {
         success: false,
-        error: error instanceof Error ? error.message : "Hubtel request failed",
+        error: message,
         wallet_refunded: Boolean(walletDebit),
       },
       200,
+      requestId,
     );
   }
 });
