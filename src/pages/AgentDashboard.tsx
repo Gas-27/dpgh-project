@@ -1403,15 +1403,7 @@ const AgentDashboard = () => {
       message: subagentNotificationMsg.trim(),
       is_active: true,
     });
-    const { error: sharedError } = legacyError ? { error: legacyError } : await supabase.from("notifications").insert({
-      title: "Message from your agent",
-      message: subagentNotificationMsg.trim(),
-      target_role: "subagent",
-      target_surfaces: ["subagent-dashboard", "subagent-storefront"],
-      display_limit: 1,
-      is_active: true,
-    });
-    const error = sharedError || legacyError;
+    const error = legacyError;
     if (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } else {

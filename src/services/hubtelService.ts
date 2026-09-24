@@ -56,11 +56,15 @@ const invokeHubtel = async <T>(body: Record<string, unknown>) => {
   return response;
 };
 
-export const verifyHubtelMsisdn = (destination: string) =>
-  invokeHubtel<{ name: string | null; destination: string }>({
-    operation: "verify_msisdn",
-    destination,
+export const verifyHubtelMsisdn = async (destination: string) => {
+  const { data, error } = await supabase.functions.invoke("hubtel-msisdn-lookup", {
+    body: { destination },
   });
+  if (error) throw new Error(error.message || "Registered-number lookup failed");
+  const response = data as HubtelResponse<{ name: string | null; destination: string }>;
+  if (!response?.success) throw new Error(response?.error || "Registered-number lookup failed");
+  return response;
+};
 
 export const getHubtelDataCatalog = (
   request: Pick<HubtelRequest, "service" | "destination">,

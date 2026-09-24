@@ -326,9 +326,9 @@ Deno.serve(async (request) => {
         body.accountNumber || body.destination || body.phoneNumber || "",
       ).trim();
       if (!raw) throw new Error("accountNumber is required");
-      // ECG links meters to a registered mobile number, so its lookup takes a
-      // Ghana phone number rather than the meter/account number.
-      const lookupTarget = service === "ecg" ? phone(raw) : raw;
+      // ECG accepts either the registered mobile number or the linked meter
+      // number. Keep the entered identifier intact so Hubtel can resolve it.
+      const lookupTarget = raw;
       let query = `destination=${encodeURIComponent(lookupTarget)}`;
       if (service === "ghana_water") {
         const mobile = String(body.mobile || body.phoneNumber || "").trim();
