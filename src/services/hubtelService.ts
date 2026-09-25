@@ -71,7 +71,10 @@ export const getHubtelDataCatalog = (
 ) => invokeHubtel({ operation: "data_catalog", ...request });
 
 export const getHubtelBillCatalog = (
-  request: Pick<HubtelRequest, "service" | "accountNumber" | "destination">,
+  request: Pick<
+    HubtelRequest,
+    "service" | "accountNumber" | "destination" | "phoneNumber" | "mobile"
+  >,
 ) => invokeHubtel({ operation: "bill_catalog", ...request });
 
 export const buyHubtelAirtime = (request: HubtelRequest) =>

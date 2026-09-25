@@ -349,8 +349,7 @@ export default function HubtelPurchasePanel({
       cancelled = true;
       clearTimeout(handle);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, service, trimmedAccount, supportsAccountLookup]);
+  }, [mode, service, trimmedAccount, trimmedEcgPhone, supportsAccountLookup, billService]);
 
   function chooseServiceCategory(category: ServiceCategory) {
     setServiceCategory(category);

@@ -344,7 +344,11 @@ Deno.serve(async (request) => {
         : [];
       const findByKey = (re: RegExp) =>
         items.find((item) => re.test(String(item.Display || "")));
-      const name = String(findByKey(/name/i)?.Value || "").trim() || null;
+      const nameItem = findByKey(/name|customer|subscriber|recipient/i);
+      const name = String(nameItem?.Value || "").trim() ||
+        (service === "ecg"
+          ? String(items[0]?.Display || "").match(/:\s*(.+)$/)?.[1]?.trim() || null
+          : null);
       const amountDue =
         String(findByKey(/amount\s*due|amountdue/i)?.Value || "").trim() ||
         null;
