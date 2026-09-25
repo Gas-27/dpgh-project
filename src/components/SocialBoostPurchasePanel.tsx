@@ -57,6 +57,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const [searchOrder, setSearchOrder] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
   const [trackedOrder, setTrackedOrder] = useState<any | null>(null);
+  const [history, setHistory] = useState<any[]>([]);
   const [buying, setBuying] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [resellerPrices, setResellerPrices] = useState<Record<number, number>>({});
@@ -88,6 +89,26 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   useEffect(() => {
     if (!serviceTypes.includes(serviceType)) setServiceType(serviceTypes[0] ?? fallbackServices[0].name);
   }, [serviceTypes, serviceType]);
+
+  const loadHistory = async () => {
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id;
+    if (!userId) {
+      setHistory([]);
+      return;
+    }
+    const { data } = await (supabase as any)
+      .from("social_boost_orders")
+      .select("order_number,created_at,target_link,quantity,service,provider_status,start_count,remains")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(50);
+    setHistory(data ?? []);
+  };
+
+  useEffect(() => {
+    void loadHistory();
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -155,14 +176,19 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     setBuying(false);
     if (error) return toast({ title: "Wallet purchase failed", description: error.message, variant: "destructive" });
     setOrderId(String(data?.order_number ?? data?.id ?? ""));
-    toast({ title: "Social Boost order placed", description: `Order #${data?.order_number ?? data?.id} sent to the provider. GHC ${Number(data?.amount ?? total).toFixed(2)} was deducted from your wallet.` });
+    await loadHistory();
+    toast({ title: "Social Boost order placed", description: `Order #${data?.order_number ?? data?.id} sent to the provider. Your wallet was charged.` });
   };
 
   const trackOrder = async () => {
     if (!searchOrder.trim()) return;
+    const { data: authData } = await supabase.auth.getUser();
+    const userId = authData.user?.id;
+    if (!userId) return setOrderStatus("Sign in to track your order");
     const { data: local, error: localError } = await (supabase as any)
       .from("social_boost_orders")
-      .select("order_number,created_at,target_link,amount,quantity,service,provider_order_id,provider_status,start_count,remains")
+      .select("order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains")
+      .eq("user_id", userId)
       .eq("order_number", Number(searchOrder.trim()))
       .maybeSingle();
     if (localError || !local) return setOrderStatus(localError?.message ?? "Order not found");
@@ -273,25 +299,21 @@ const noteLines = String(service.notes || service.note || "No additional note ha
         {orderStatus && <p className="mt-3 text-sm text-cyan-200">{orderStatus}</p>}
         {trackedOrder && (
           <div className="mt-3 overflow-x-auto rounded-xl bg-white text-slate-950">
-            <table className="min-w-[900px] w-full text-left text-sm">
+            <table className="min-w-[760px] w-full text-left text-sm">
               <thead className="bg-[#dddff5] font-semibold">
-                <tr>{["Date", "Link", "Charge", "Start count", "Quantity", "Service", "Status", "Remains"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr>
+                <tr>{["Date", "Link", "Start count", "Quantity", "Service", "Status", "Remains"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr>
               </thead>
-              <tbody>
-                <tr className="border-t">
-                  <td className="px-3 py-3">{new Date(trackedOrder.created_at).toLocaleString()}</td>
-                  <td className="max-w-[240px] break-all px-3 py-3 text-blue-700">{trackedOrder.target_link}</td>
-                  <td className="px-3 py-3">{Number(trackedOrder.amount ?? trackedOrder.charge ?? 0).toFixed(2)}</td>
-                  <td className="px-3 py-3">{trackedOrder.start_count ?? "—"}</td>
-                  <td className="px-3 py-3">{trackedOrder.quantity}</td>
-                  <td className="px-3 py-3">{trackedOrder.service}</td>
-                  <td className="px-3 py-3">{trackedOrder.status ?? trackedOrder.provider_status ?? "Processing"}</td>
-                  <td className="px-3 py-3">{trackedOrder.remains ?? trackedOrder.remaining ?? trackedOrder.quantity}</td>
-                </tr>
-              </tbody>
+              <tbody><tr className="border-t"><td className="px-3 py-3">{new Date(trackedOrder.created_at).toLocaleString()}</td><td className="max-w-[240px] break-all px-3 py-3 text-blue-700">{trackedOrder.target_link}</td><td className="px-3 py-3">{trackedOrder.start_count ?? "—"}</td><td className="px-3 py-3">{trackedOrder.quantity}</td><td className="px-3 py-3">{trackedOrder.service}</td><td className="px-3 py-3">{trackedOrder.status ?? trackedOrder.provider_status ?? "Processing"}</td><td className="px-3 py-3">{trackedOrder.remains ?? trackedOrder.remaining ?? trackedOrder.quantity}</td></tr></tbody>
             </table>
           </div>
         )}
+        <div className="mt-5 overflow-x-auto rounded-xl bg-white text-slate-950">
+          <div className="border-b bg-[#dddff5] px-3 py-3 font-semibold">My Social Boost History</div>
+          <table className="min-w-[760px] w-full text-left text-sm">
+            <thead className="font-semibold"><tr>{["Order", "Date", "Link", "Quantity", "Service", "Status", "Remains"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead>
+            <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t"><td className="px-3 py-3">#{item.order_number}</td><td className="px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="max-w-[220px] break-all px-3 py-3 text-blue-700">{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td></tr>) : <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
+          </table>
+        </div>
       </div>
 
       {/* Select Platform */}
