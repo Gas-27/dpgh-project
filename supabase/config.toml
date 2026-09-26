@@ -3,6 +3,11 @@ project_id = "uloaiqmknsrknqikbmtb"
 [functions.initialize-payment]
 verify_jwt = false
 
+[functions.hubtel-gateway]
+# Hubtel callbacks do not carry a Supabase JWT. The gateway must validate
+# purchase authorization inside the handler and accept only trusted callbacks.
+verify_jwt = false
+
 [functions.initialize-wallet-topup]
 verify_jwt = false
 
