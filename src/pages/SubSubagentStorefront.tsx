@@ -35,7 +35,7 @@ import HubtelPurchasePanel from "@/components/HubtelPurchasePanel";
 import PublicProductsSection from "@/components/PublicProductsSection";
   import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
 import ChatBot from "@/components/ChatBot";
-import { normalizeOrderStatus, orderStatusLabel, orderStatusMessage } from "@/utils/orderStatus";
+import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
