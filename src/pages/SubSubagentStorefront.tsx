@@ -248,8 +248,8 @@ const SubSubagentOrderTrackingCard = ({
       statusMessage = "Your order is in the queue.";
       extraNote = `Your ${formatNetworkName(order.network)} order has been received and is currently queued for processing. It will be picked up and sent to the network shortly. No action is needed on your part — please check back in a few minutes.`;
     } else {
-      statusMessage = "Your number is being added to our beneficiary list.";
-      extraNote = "MTN's new rule requires your number to be part of our beneficiary list before you can make purchases through our MTN portal. Your number is now being added and we're submitting your contact to MTN for approval. This is a one-time process. Once MTN approves and adds your contact to their list, your order will start processing immediately. Every new order from your contact will then go smoothly straight to processing.";
+statusMessage = "Your number is new on our portal.";
+  extraNote = "Due to MTN’s new rules, new numbers must be submitted to MTN for approval before orders can be delivered. We have submitted your number to MTN. This is a one-time process and can take 3–10 days. The approval is handled by MTN, so the timing is not in our hands. MTN must approve your number and the batch of numbers before the order can be delivered. Once MTN approves your number, your order will be processed and delivered shortly.";
     }
   } else if (orderStatus === "processing") {
     currentStep = 3;
