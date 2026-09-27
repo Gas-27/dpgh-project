@@ -8,9 +8,8 @@ declare
   v_amount numeric := greatest(coalesce(new.amount, 0), 0);
   v_refunded boolean := false;
 begin
-  if lower(coalesce(new.order_status, '')) not in ('failed', 'failure')
-     and lower(coalesce(new.fulfillment_status, '')) not in ('failed', 'failure')
-     and lower(coalesce(new.status, '')) not in ('failed', 'failure') then
+  if lower(coalesce(new.order_status, '')) not in ('failed', 'failure', 'refunded', 'refund')
+     and lower(coalesce(new.status, '')) not in ('failed', 'failure', 'refunded', 'refund') then
     return new;
   end if;
 
