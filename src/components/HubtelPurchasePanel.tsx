@@ -182,8 +182,10 @@ export default function HubtelPurchasePanel({
     value?: string;
   } | null>(null);
   const [liveBundles, setLiveBundles] = useState<
-    Record<string, { name: string; price: string; value?: string }[]>
+    Record<string, { name: string; price: string; value: string }[]>
   >({});
+  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
   const [customAirtimeAmount, setCustomAirtimeAmount] = useState("");
   const [phone, setPhone] = useState("");
   const [account, setAccount] = useState("");
@@ -222,14 +224,12 @@ export default function HubtelPurchasePanel({
 
   useEffect(() => {
     let cancelled = false;
-    if (
-      mode !== "instant" ||
-      instantProduct !== "data" ||
-      normalizedPhone.length !== 10 ||
-      !/^0\d{9}$/.test(normalizedPhone)
-    ) {
+    if (mode !== "instant" || instantProduct !== "data") {
       return;
     }
+    setCatalogLoading(true);
+    setCatalogError(null);
+    setLiveBundles((current) => ({ ...current, [network]: [] }));
     getHubtelDataCatalog({
       service: toHubtelService(network, "data"),
     })
@@ -245,25 +245,31 @@ export default function HubtelPurchasePanel({
               }
             ).Data
           : [];
-        if (!cancelled && items.length) {
-          setLiveBundles((current) => ({
-            ...current,
-            [network]: items
-              .filter(
-                (item) => item.Display && Number.isFinite(Number(item.Amount)),
-              )
-              .map((item) => ({
-                name: String(item.Display),
-                price: `₵${Number(item.Amount).toFixed(2)}`,
-                value: String(item.Value || item.Display),
-              })),
+        const bundles = items
+          .filter(
+            (item) =>
+              item.Display &&
+              item.Value &&
+              Number.isFinite(Number(item.Amount)),
+          )
+          .map((item) => ({
+            name: String(item.Display),
+            price: `₵${Number(item.Amount).toFixed(2)}`,
+            value: String(item.Value),
           }));
+        if (!cancelled) {
+          setCatalogLoading(false);
+          if (!bundles.length) {
+            setCatalogError("Couldn’t load bundles, try again.");
+            return;
+          }
+          setLiveBundles((current) => ({ ...current, [network]: bundles }));
         }
       })
-      .catch((error: Error) => {
+      .catch(() => {
         if (!cancelled) {
-          setLiveBundles((current) => ({ ...current, [network]: [] }));
-          toast({ title: "Data bundles unavailable", description: error.message, variant: "destructive" });
+          setCatalogLoading(false);
+          setCatalogError("Couldn’t load bundles, try again.");
         }
       });
     return () => {
@@ -555,7 +561,11 @@ export default function HubtelPurchasePanel({
                 <button
                   key={item.value}
                   type="button"
-                  onClick={() => setNetwork(item.value)}
+                  onClick={() => {
+                    setNetwork(item.value);
+                    setSelectedInstantItem(null);
+                    setAmount("");
+                  }}
                   className={`rounded-xl px-3 py-3 text-sm font-bold ring-offset-background transition ${network === item.value ? `ring-2 ring-primary ring-offset-2 ${item.tone}` : "border bg-card text-foreground"}`}
                 >
                   {item.label}
@@ -564,6 +574,15 @@ export default function HubtelPurchasePanel({
             </div>
             {instantProduct === "data" ? (
               <div className="grid gap-2 sm:grid-cols-2">
+                {catalogLoading ? (
+                  <p className="col-span-full rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center text-sm text-muted-foreground">
+                    Loading bundles…
+                  </p>
+                ) : catalogError ? (
+                  <p className="col-span-full rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center text-sm text-destructive">
+                    {catalogError}
+                  </p>
+                ) : null}
                 {(liveBundles[network] || []).map(
                   (bundle) => (
                     <button
@@ -578,7 +597,7 @@ export default function HubtelPurchasePanel({
                         setSelectedInstantItem({
                           label: bundle.name,
                           amount: selectedAmount,
-                          value: bundle.value || bundle.name,
+                          value: bundle.value,
                         });
                       }}
                       className="flex min-h-12 items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm transition hover:border-primary hover:bg-muted"
