@@ -16,6 +16,7 @@ export type HubtelService =
   | "telecel_postpaid";
 
 export interface HubtelRequest {
+  operation?: "airtime" | "data" | "bill" | "data_catalog" | "bill_catalog" | "verify_msisdn";
   service: HubtelService;
   destination?: string;
   accountNumber?: string;
@@ -43,6 +44,7 @@ export interface HubtelResponse<T = unknown> {
   clientReference?: string;
   data?: T;
   error?: string;
+  pending?: boolean;
 }
 
 const invokeHubtel = async <T>(body: Record<string, unknown>) => {
@@ -67,14 +69,11 @@ export const verifyHubtelMsisdn = async (destination: string) => {
 };
 
 export const getHubtelDataCatalog = (
-  request: Pick<HubtelRequest, "service" | "destination">,
+  request: Pick<HubtelRequest, "service">,
 ) => invokeHubtel({ operation: "data_catalog", ...request });
 
 export const getHubtelBillCatalog = (
-  request: Pick<
-    HubtelRequest,
-    "service" | "accountNumber" | "destination" | "phoneNumber" | "mobile"
-  >,
+  request: Pick<HubtelRequest, "service" | "accountNumber" | "phoneNumber">,
 ) => invokeHubtel({ operation: "bill_catalog", ...request });
 
 export const buyHubtelAirtime = (request: HubtelRequest) =>

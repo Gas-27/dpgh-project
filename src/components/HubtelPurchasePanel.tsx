@@ -42,7 +42,9 @@ const networks = [
   { value: "AIRTELTIGO", label: "AirtelTigo", tone: "bg-blue-700 text-white" },
 ];
 
-const networkBundles: Record<string, { name: string; price: string }[]> = {
+const networkBundles: Record<string, { name: string; price: string; value?: string }[]> = {};
+/* Live Normal Data bundles are loaded from Hubtel data_catalog. */
+/*
   MTN: [
     ["Midnight 2.01GB", "₵1.00"],
     ["Video 158.05MB", "₵1.00"],
@@ -145,10 +147,11 @@ const networkBundles: Record<string, { name: string; price: string }[]> = {
     ["253.3GB", "₵400.00"],
   ].map(([name, price]) => ({ name, price })),
 };
+*/
 const services = {
-  electricity: ["ECG Prepaid", "ECG Postpaid", "NEDCo"],
-  water: ["Ghana Water Company"],
-  tv: ["DStv", "GOtv", "StarTimes", "KweseTV", "GBC TV"],
+  electricity: ["ECG"],
+  water: ["Ghana Water"],
+  tv: ["DStv", "GOtv", "StarTimes", "Telecel Postpaid"],
 };
 
 export default function HubtelPurchasePanel({
@@ -229,7 +232,6 @@ export default function HubtelPurchasePanel({
     }
     getHubtelDataCatalog({
       service: toHubtelService(network, "data"),
-      destination: normalizedPhone,
     })
       .then((response) => {
         const items = Array.isArray((response.data as { Data?: unknown })?.Data)
@@ -258,7 +260,12 @@ export default function HubtelPurchasePanel({
           }));
         }
       })
-      .catch(() => undefined);
+      .catch((error: Error) => {
+        if (!cancelled) {
+          setLiveBundles((current) => ({ ...current, [network]: [] }));
+          toast({ title: "Data bundles unavailable", description: error.message, variant: "destructive" });
+        }
+      });
     return () => {
       cancelled = true;
     };
@@ -319,20 +326,22 @@ export default function HubtelPurchasePanel({
       getHubtelBillCatalog({
         service: billService as HubtelService,
         accountNumber: trimmedAccount,
-        phoneNumber: isEcg ? trimmedEcgPhone : undefined,
+        phoneNumber: isEcg || billService === "ghana_water" ? trimmedEcgPhone : undefined,
       })
         .then((response) => {
           if (cancelled) return;
-          const payload = response as {
-            name?: string | null;
-            bouquet?: string | null;
+          const data = response.data as {
+            Name?: string | null;
+            Display?: string | null;
+            Bouquet?: string | null;
+            SessionId?: string | null;
             sessionId?: string | null;
-            accounts?: Array<{ label?: string }>;
-          };
-          const firstAccount = payload.accounts?.[0]?.label || null;
-          setBillAccountName(payload.name || firstAccount || null);
-          setBillAccountDetail(payload.bouquet || null);
-          setBillSessionId(payload.sessionId || null);
+            Data?: Array<{ Display?: string; Value?: string }>;
+          } | undefined;
+          const first = data?.Data?.[0];
+          setBillAccountName(data?.Name || first?.Display || null);
+          setBillAccountDetail(data?.Bouquet || data?.Display || null);
+          setBillSessionId(data?.SessionId || data?.sessionId || first?.Value || null);
         })
         .catch(() => {
           if (!cancelled) {
@@ -398,12 +407,16 @@ export default function HubtelPurchasePanel({
       });
       return;
     }
-    if (billService === "ecg" && !phone.trim()) {
+    if ((billService === "ecg" || billService === "ghana_water") && !phone.trim()) {
       toast({
         title: "Registered mobile number required",
         description: "Enter the mobile number linked to the ECG meter before paying.",
         variant: "destructive",
       });
+      return;
+    }
+    if (billService === "ghana_water" && !billSessionId) {
+      toast({ title: "Verify water account first", description: "Complete the Ghana Water account lookup before paying.", variant: "destructive" });
       return;
     }
     if (!amount || Number(amount) <= 0 || !customer) {
@@ -434,11 +447,13 @@ export default function HubtelPurchasePanel({
     }
     setBusy(true);
     try {
-      const wallet = {
-        walletOnly,
-        walletOwnerType: ownerType,
-        walletOwnerId: ownerId,
-      };
+      const wallet = walletOnly
+        ? {
+            walletOnly: true,
+            ...(ownerType ? { walletOwnerType: ownerType } : {}),
+            ...(ownerId ? { walletOwnerId: ownerId } : {}),
+          }
+        : {};
       let response;
       if (mode === "instant") {
         const service = toHubtelService(network, instantProduct);
@@ -446,16 +461,14 @@ export default function HubtelPurchasePanel({
           instantProduct === "data"
             ? await buyHubtelData({
                 service,
-                destination: customer,
+                phoneNumber: customer,
                 amount: Number(amount),
-                bundle: selectedInstantItem?.value || selectedInstantItem?.label,
-                bundleName: selectedInstantItem?.label,
-                packageCode: selectedInstantItem?.value || selectedInstantItem?.label,
+                bundle: selectedInstantItem?.value,
                 ...wallet,
               })
             : await buyHubtelAirtime({
                 service,
-                destination: customer,
+                phoneNumber: customer,
                 amount: Number(customAirtimeAmount),
                 ...wallet,
               });
@@ -468,9 +481,9 @@ export default function HubtelPurchasePanel({
         response = await payHubtelBill({
           service: billService,
           accountNumber: customer,
-          destination: customer,
-          phoneNumber: billService === "ecg" ? phone : undefined,
-          mobile: billService === "ecg" ? phone : undefined,
+          phoneNumber: billService === "ecg" || billService === "ghana_water" ? phone : undefined,
+          sessionId: billService === "ghana_water" ? billSessionId || undefined : undefined,
+          email: undefined,
           amount: Number(amount),
           ...wallet,
         });
@@ -551,7 +564,7 @@ export default function HubtelPurchasePanel({
             </div>
             {instantProduct === "data" ? (
               <div className="grid gap-2 sm:grid-cols-2">
-                {(liveBundles[network] || networkBundles[network]).map(
+                {(liveBundles[network] || []).map(
                   (bundle) => (
                     <button
                       key={`${network}-${bundle.name}`}
