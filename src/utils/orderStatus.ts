@@ -40,3 +40,24 @@ export function orderStatusLabel(order: OrderStatusSource): string {
     ? "Number Verifying"
     : status.charAt(0).toUpperCase() + status.slice(1);
 }
+
+export function orderStatusMessage(order: OrderStatusSource): string {
+  switch (normalizeOrderStatus(order)) {
+    case "pending":
+      return "Your order has been received and is waiting for payment confirmation.";
+    case "processing":
+      return "Your payment was successful. We are processing your order now.";
+    case "in-queue":
+      return "Your order has been received and your phone number is being verified.";
+    case "waiting":
+      return "Your order is waiting to be processed. Please check again shortly.";
+    case "delivered":
+      return "Your order was completed successfully. The bundle or service has been sent to your number.";
+    case "failed":
+      return "Your order could not be completed. If payment was deducted, the amount will be refunded to your wallet.";
+    case "refunded":
+      return "Your order was refunded successfully. The refunded amount has been returned to your wallet.";
+    default:
+      return "Your order has been received and is being processed.";
+  }
+}

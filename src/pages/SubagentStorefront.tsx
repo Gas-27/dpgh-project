@@ -39,7 +39,7 @@ import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 import AFARegistrationFormStandalone from "@/components/AFARegistrationFormStandalone";
-import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
+import { normalizeOrderStatus, orderStatusLabel, orderStatusMessage } from "@/utils/orderStatus";
 import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
 
 // Utility function to update page metadata dynamically

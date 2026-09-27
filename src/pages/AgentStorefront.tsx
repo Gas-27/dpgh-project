@@ -37,7 +37,7 @@ import { SpinToWinCard } from "@/components/SpinToWinCard";
 import NotificationPopup from "@/components/NotificationPopup";
 import SmsComposer from "@/components/SmsComposer";
 import ChatBot from "@/components/ChatBot";
-import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
+import { normalizeOrderStatus, orderStatusLabel, orderStatusMessage } from "@/utils/orderStatus";
 import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
 
 // Utility function to update page metadata dynamically
@@ -192,7 +192,7 @@ const getInternationalDigits = (phone: string): string => {
  */
 const stripSpaces = (s: string): string => s.replace(/\s+/g, "");
 
-// ──────�����───��──────────────────��──────────────────────────────────────────────
+// ──────�����───��──────────────���───��──────────────────────────────────────────────
 // ORDER TRACKING CARD
 // Delivery (step 4) only appears after 200 minutes.
 // ───�����────────────────���────────�����─────���─────��──����───────────���────────────────────
@@ -1294,7 +1294,7 @@ const searchOrders = useCallback(async (input?: string) => {
                                       >
                                         {displayStatus === "delivered" ? "Delivered" : orderStatusLabel(order)}
                                       </Badge>
-                                      {checkingOrderIds.has(order.id) && <span className="text-[11px] text-muted-foreground whitespace-nowrap">checking latest status…</span>}
+                                      <p className="mt-3 rounded-md border border-border/50 bg-muted/30 px-3 py-2 text-xs leading-relaxed text-muted-foreground">{orderStatusMessage(order)}</p>{checkingOrderIds.has(order.id) && <span className="text-[11px] text-muted-foreground whitespace-nowrap">checking latest status…</span>}
                                     </>
                                   );
                                 })()}
