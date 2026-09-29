@@ -99,7 +99,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     }
     const { data } = await (supabase as any)
       .from("social_boost_orders")
-      .select("order_number,created_at,target_link,quantity,service,provider_status,start_count,remains")
+      .select("order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -146,10 +146,23 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
 
   useEffect(() => {
     if (!canSetPrices) return;
-    (supabase as any).from("social_boost_reseller_pricing").select("service_id,price_per_1000").then(({ data }: any) => {
-      if (Array.isArray(data)) setResellerPrices(Object.fromEntries(data.map((row: any) => [row.service_id, Number(row.price_per_1000)])));
-    });
+    let mounted = true;
+    (async () => {
+      const { data: authData } = await supabase.auth.getUser();
+      if (!authData.user || !mounted) return;
+      const { data } = await (supabase as any)
+        .from("social_boost_reseller_pricing")
+        .select("service_id,price_per_1000")
+        .eq("user_id", authData.user.id);
+      if (mounted && Array.isArray(data)) setResellerPrices(Object.fromEntries(data.map((row: any) => [row.service_id, Number(row.price_per_1000)])));
+    })();
+    return () => { mounted = false; };
   }, [canSetPrices]);
+
+  useEffect(() => {
+    const customPrice = resellerPrices[service.service];
+    if (canSetPrices && customPrice > 0) setPrice(customPrice);
+  }, [canSetPrices, resellerPrices, service.service]);
 
   const min = Number(service.min) || 10;
   const max = Number(service.max) || 50000;
