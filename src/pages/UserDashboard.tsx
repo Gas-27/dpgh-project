@@ -284,12 +284,13 @@ const UserDashboard = () => {
         // `orders.customer_id` stores the AUTH USER ID (verified: all 2833
         // linked orders match auth.users, none match customers.id). Never
         // resolve through the customers table here.
-        const { data: ordersData, error: ordersError } = await supabase
-          .from("orders")
-          .select("*")
-          .or(`customer_id.eq.${effectiveUserId},user_id.eq.${effectiveUserId}`)
-          .order("created_at", { ascending: false })
-          .range(0, 99999999);
+  // Orders guardrail: keep columns explicit and bound every read; never use select('*') or an unbounded full-table query here.
+  const { data: ordersData, error: ordersError } = await supabase
+  .from("orders")
+.select("id, customer_id, user_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at")
+  .or(`customer_id.eq.${effectiveUserId},user_id.eq.${effectiveUserId}`)
+  .order("created_at", { ascending: false })
+  .limit(500);
 
         console.log("[v0] Orders fetch result - Error:", ordersError, "Data:", ordersData);
 
@@ -575,10 +576,11 @@ const UserDashboard = () => {
 
       // Step 2: fetch orders where api_user = api_users.id
       const { data, error } = await supabase
-        .from("orders")
-        .select("*")
-        .eq("api_user", apiUserRow.id)
-        .order("created_at", { ascending: false });
+.from("orders")
+  .select("id, customer_id, user_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at")
+  .eq("api_user", apiUserRow.id)
+  .order("created_at", { ascending: false })
+  .limit(500);
 
       if (error) {
         console.log("[v0] Error fetching API orders:", error);

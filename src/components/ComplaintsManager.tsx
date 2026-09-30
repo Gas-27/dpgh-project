@@ -779,23 +779,28 @@ function ComplaintsTable({
 }: ComplaintsTableProps) {
   const [includeScreenshotsInBulkShare, setIncludeScreenshotsInBulkShare] = useState(false);
 
+  const paginated = complaints.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+  const selectableOnPage = paginated.filter(c => c.status !== "resolved");
+  const pageSelectionComplete = selectableOnPage.length > 0 && selectableOnPage.every(c => selectedComplaints.has(c.id));
+
   const handleSelectAll = (checked: boolean) => {
-    setSelectAll(checked);
+    const next = new Set(selectedComplaints);
     if (checked) {
-      setSelectedComplaints(new Set(complaints.filter(c => c.status !== "resolved").map(c => c.id)));
+      selectableOnPage.forEach((c) => next.add(c.id));
     } else {
-      setSelectedComplaints(new Set());
+      paginated.forEach((c) => next.delete(c.id));
     }
+    setSelectedComplaints(next);
+    setSelectAll(checked);
   };
 
   const handleSelect = (id: string, checked: boolean) => {
     const next = new Set(selectedComplaints);
     if (checked) next.add(id); else next.delete(id);
     setSelectedComplaints(next);
-    setSelectAll(next.size === complaints.filter(c => c.status !== "resolved").length && next.size > 0);
+    setSelectAll(selectableOnPage.length > 0 && selectableOnPage.every(c => next.has(c.id)));
   };
 
-  const paginated = complaints.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
   const totalPages = Math.ceil(complaints.length / PAGE_SIZE);
 
   const typeLabel = (c: Complaint) => {
@@ -928,7 +933,7 @@ function ComplaintsTable({
                 <TableRow className="bg-muted/50">
                   {!readOnly && (
                     <TableHead className="w-10">
-                      <input type="checkbox" checked={selectAll} onChange={e => handleSelectAll(e.target.checked)} className="rounded border" />
+                      <input type="checkbox" checked={pageSelectionComplete} onChange={e => handleSelectAll(e.target.checked)} aria-label="Select complaints on this page" className="rounded border" />
                     </TableHead>
                   )}
                   <TableHead className="w-24">Type</TableHead>
