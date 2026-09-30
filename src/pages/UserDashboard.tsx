@@ -1061,7 +1061,7 @@ const UserDashboard = () => {
         <CardContent className="p-6 flex items-center justify-between">
           <div>
 <p className="font-semibold text-foreground">Sign up as an Agent to get your own USSD</p>
-  <p className="text-sm text-muted-foreground mt-1">Create your own store USSD and let customers buy offline from your store.</p>
+  <p className="text-sm text-muted-foreground mt-1">Create your own agent store, let customers buy offline from your store, add subagents and sub-subagents, set your own selling price, and make profit.</p>
           </div>
           <button
             onClick={() => setActiveMenu("become-agent")}
@@ -1206,14 +1206,14 @@ const UserDashboard = () => {
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="text-center md:text-left">
-              <p className="text-sm text-muted-foreground mb-1">Check your balance via USSD</p>
+              <p className="text-sm text-muted-foreground mb-1">Buy with USSD when you do not have data online</p>
               <div className="flex items-center justify-center md:justify-start gap-3">
                 <div className="p-3 bg-primary/20 rounded-lg">
-                  <p className="text-2xl font-bold font-mono text-primary">*380*455#</p>
+                  <p className="text-2xl font-bold font-mono text-primary">*380*455*1#</p>
                 </div>
                 <div className="text-left">
                   <p className="text-xs text-muted-foreground">Access Code</p>
-                  <p className="text-3xl font-bold font-mono text-foreground">0</p>
+                  <p className="text-3xl font-bold font-mono text-foreground">1</p>
                 </div>
               </div>
             </div>
@@ -2591,7 +2591,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   <Users className="h-6 w-6" />
   Sign up as an Agent
           </CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">Sign up as an Agent to get your own USSD for your store, accept offline purchases, set your selling prices, and earn commissions.</p>
+          <p className="text-sm text-muted-foreground mt-2">Create your own agent store, get your own store dedicated USSD, let customers buy offline from your store, add subagents and sub-subagents, set your own selling price, and make profit.</p>
         </CardHeader>
       </Card>
 
