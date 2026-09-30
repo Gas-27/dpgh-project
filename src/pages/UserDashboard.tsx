@@ -1060,8 +1060,8 @@ const UserDashboard = () => {
       <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
         <CardContent className="p-6 flex items-center justify-between">
           <div>
-<p className="font-semibold text-foreground">Sign up as an Agent</p>
-  <p className="text-sm text-muted-foreground mt-1">Get your own USSD for your store and let customers buy offline using your code.</p>
+<p className="font-semibold text-foreground">Sign up as an Agent to get your own USSD</p>
+  <p className="text-sm text-muted-foreground mt-1">Create your own store USSD and let customers buy offline from your store.</p>
           </div>
           <button
             onClick={() => setActiveMenu("become-agent")}
@@ -2587,9 +2587,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
     <div className="space-y-6">
       <Card className="border-primary/50 bg-gradient-to-r from-primary/10 to-primary/5">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-2xl">
-            <Users className="h-6 w-6" />
-            Become an Agent
+<CardTitle className="flex items-center gap-2 text-2xl">
+  <Users className="h-6 w-6" />
+  Sign up as an Agent
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2">Sign up as an Agent to get your own USSD for your store, accept offline purchases, set your selling prices, and earn commissions.</p>
         </CardHeader>
