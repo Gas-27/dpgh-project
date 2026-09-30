@@ -28,6 +28,8 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { ComplaintsManager } from "@/components/ComplaintsManager";
 import SubscriptionPaymentsPanel from "@/components/SubscriptionPaymentsPanel";
+import ReportCenter from "@/components/ReportCenter";
+import AdminDigitalServicesManager from "@/components/AdminDigitalServicesManager";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -293,10 +295,10 @@ export default function SubAdminDashboard() {
         </div>
       </header>
 
-      {/* Read-only notice */}
-      <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center">
-        <p className="text-xs text-amber-400">
-          View-only access. You cannot process refunds, change order status, or modify any records.
+      {/* Sub-admin access notice */}
+      <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 text-center">
+        <p className="text-xs text-primary">
+          Sub-admin access: manage subscriptions, orders, agent networks, complaints, reports, and digital services.
         </p>
       </div>
 
@@ -322,10 +324,16 @@ export default function SubAdminDashboard() {
             <TabsTrigger value="complaints" className="flex items-center gap-1.5 text-xs">
               <MessageCircle className="h-3.5 w-3.5" /> Complaints
             </TabsTrigger>
+            <TabsTrigger value="reports" className="flex items-center gap-1.5 text-xs">
+              <MessageCircle className="h-3.5 w-3.5" /> Reports
+            </TabsTrigger>
+            <TabsTrigger value="digital-services" className="flex items-center gap-1.5 text-xs">
+              <Package className="h-3.5 w-3.5" /> Digital Services
+            </TabsTrigger>
           </TabsList>
 
           {/* ---------------------------------------------------------------- */}
-          <TabsContent value="subscriptions" className="space-y-4 pt-4"><SubscriptionPaymentsPanel /></TabsContent>
+          <TabsContent value="subscriptions" className="space-y-4 pt-4"><SubscriptionPaymentsPanel admin /></TabsContent>
 
           {/* ORDERS TAB — search-only, no data until searched                 */}
           {/* ---------------------------------------------------------------- */}
@@ -403,7 +411,6 @@ export default function SubAdminDashboard() {
           {/* AGENTS TAB                                                        */}
           {/* ---------------------------------------------------------------- */}
           <TabsContent value="agents" className="space-y-4 pt-4">
-            <ReadOnlyNotice />
             <div className="flex gap-2">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -478,7 +485,6 @@ export default function SubAdminDashboard() {
           {/* SUBAGENTS TAB                                                     */}
           {/* ---------------------------------------------------------------- */}
           <TabsContent value="subagents" className="space-y-4 pt-4">
-            <ReadOnlyNotice />
             <div className="flex gap-2">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -539,7 +545,6 @@ export default function SubAdminDashboard() {
           {/* SUB-SUBAGENTS TAB                                                 */}
           {/* ---------------------------------------------------------------- */}
           <TabsContent value="sub-subagents" className="space-y-4 pt-4">
-            <ReadOnlyNotice />
             <div className="flex gap-2">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -592,7 +597,6 @@ export default function SubAdminDashboard() {
           {/* CUSTOMERS TAB                                                     */}
           {/* ---------------------------------------------------------------- */}
           <TabsContent value="customers" className="space-y-4 pt-4">
-            <ReadOnlyNotice />
             <div className="flex gap-2">
               <div className="relative flex-1 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -645,9 +649,15 @@ export default function SubAdminDashboard() {
           {/* COMPLAINTS TAB                                                    */}
           {/* ---------------------------------------------------------------- */}
           <TabsContent value="complaints" className="pt-4">
-            <ReadOnlyNotice />
-            {/* ComplaintsManager in sub-admin mode: no bulk resolve, no status change */}
-            <SubAdminComplaintsView />
+            <ComplaintsManager />
+          </TabsContent>
+
+          <TabsContent value="reports" className="space-y-4 pt-4">
+            <ReportCenter admin reporterRole="admin" />
+          </TabsContent>
+
+          <TabsContent value="digital-services" className="space-y-4 pt-4">
+            <AdminDigitalServicesManager />
           </TabsContent>
         </Tabs>
       </main>
@@ -670,16 +680,4 @@ function ReadOnlyNotice() {
 // ---------------------------------------------------------------------------
 // Sub-admin complaints view — read-only list with notes thread (admin can add notes)
 // ---------------------------------------------------------------------------
-function SubAdminComplaintsView() {
-  return (
-    <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 p-4 text-sm text-amber-300">
-      <p className="font-medium mb-1">Complaints — View Only</p>
-      <p className="text-xs text-amber-300/70">
-        You can view complaints and add notes/questions to customers, but you cannot change complaint status or resolve them.
-      </p>
-      <div className="mt-4">
-        <ComplaintsManager readOnly={true} />
-      </div>
-    </div>
-  );
-}
+
