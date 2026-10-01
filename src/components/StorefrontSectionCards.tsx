@@ -43,6 +43,10 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
           const control = [id, ...(aliases[id] ?? [])].map((key) => tabControls[key]).find(Boolean);
           const unavailable = isTabUnavailable(control);
           const handleClick = () => {
+            if (id === "gamehub" && !unavailable) {
+              window.location.assign("https://gamehubgh.com");
+              return;
+            }
             // Select the normal tab first so its real page remains visible beneath the modal.
             if (isAgent) {
               onBecomeAgent?.();
