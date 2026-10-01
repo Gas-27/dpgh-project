@@ -59,6 +59,7 @@ import ComplaintsManager from "@/components/ComplaintsManager";
 import DomainDashboardPanel from "@/components/DomainDashboardPanel";
 import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
+import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose,
@@ -573,6 +574,7 @@ const AgentDashboard = () => {
   const [loadingApiOrders, setLoadingApiOrders] = useState(false);
   const [apiOrdersSearch, setApiOrdersSearch] = useState("");
   const [apiOrdersStatusFilter, setApiOrdersStatusFilter] = useState("");
+  const [apiReportOrder, setApiReportOrder] = useState<any | null>(null);
 
   const hasPendingWithdrawal = withdrawals.some(w => w.status === "pending");
   const pendingWithdrawalAmount = withdrawals.filter(w => w.status === "pending").reduce((s, w) => s + Number(w.amount), 0);
@@ -4343,6 +4345,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                           <TableHead className="text-xs">Payment</TableHead>
                           <TableHead className="text-xs">Amount</TableHead>
                           <TableHead className="text-xs">Order Status</TableHead>
+                          <TableHead className="text-xs">Action</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -4366,6 +4369,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                                 <span className="block text-xs text-amber-400 mt-0.5">GHC {Number(order.refunded_amount).toFixed(2)} refunded</span>
                               )}
                             </TableCell>
+                            <TableCell className="text-xs">
+                              {fs === "delivered" ? <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button> : <span className="text-muted-foreground">—</span>}
+                            </TableCell>
                           </TableRow>
                           );
                         })}
@@ -4375,6 +4381,15 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                 )}
               </CardContent>
             </Card>
+            {apiReportOrder && (
+              <ReportComplaintDialog
+                open={Boolean(apiReportOrder)}
+                onOpenChange={(open) => { if (!open) setApiReportOrder(null); }}
+                order={{ id: apiReportOrder.id, customer_number: apiReportOrder.customer_number, network: apiReportOrder.network, size_gb: Number(apiReportOrder.size_gb || 0), amount: Number(apiReportOrder.selling_price || apiReportOrder.amount || 0), created_at: apiReportOrder.created_at, fulfillment_status: apiReportOrder.fulfillment_status || "delivered", status: apiReportOrder.status || "delivered" }}
+                complaintType="agent"
+                agentStoreId={store?.id}
+              />
+            )}
           </TabsContent>
 
           {/* ============================= API KEY ============================= */}

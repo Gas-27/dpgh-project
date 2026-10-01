@@ -27,6 +27,7 @@ import ChangePasswordForm from "@/components/ChangePasswordForm";
 import { UserComplaintsView } from "@/components/UserComplaintsView";
 import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
+import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
@@ -180,6 +181,7 @@ const UserDashboard = () => {
   const [loadingApiOrders, setLoadingApiOrders] = useState(false);
   const [apiOrdersSearch, setApiOrdersSearch] = useState("");
   const [apiOrdersStatusFilter, setApiOrdersStatusFilter] = useState("");
+  const [apiReportOrder, setApiReportOrder] = useState<any | null>(null);
 
   // Flyer generation state
   const [generatingFlyer, setGeneratingFlyer] = useState(false);
@@ -2425,8 +2427,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                         <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Network</th>
                         <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Data</th>
                         <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Amount</th>
-                        <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Order Status</th>
-                      </tr>
+<th className="px-3 py-2 text-xs font-medium text-muted-foreground">Order Status</th>
+  <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Action</th>
+  </tr>
                     </thead>
                     <tbody>
                       {filteredApiOrders.map(order => {
@@ -2450,10 +2453,13 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                                 <span className="block text-xs text-amber-400 mt-0.5">GHC {Number(order.refunded_amount).toFixed(2)} refunded</span>
                               )}
                             </td>
-                            <td className="px-3 py-2 text-xs">
-                              <OrderStatusBadge status={fs} />
-                            </td>
-                          </tr>
+<td className="px-3 py-2 text-xs">
+  <OrderStatusBadge status={fs} />
+  </td>
+  <td className="px-3 py-2 text-xs">
+  {fs === "delivered" ? <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button> : <span className="text-muted-foreground">—</span>}
+  </td>
+  </tr>
                         );
                       })}
                     </tbody>
@@ -2464,6 +2470,14 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           )}
         </CardContent>
       </Card>
+      {apiReportOrder && (
+        <ReportComplaintDialog
+          open={Boolean(apiReportOrder)}
+          onOpenChange={(open) => { if (!open) setApiReportOrder(null); }}
+          order={{ id: apiReportOrder.id, customer_number: apiReportOrder.customer_number, network: apiReportOrder.network, size_gb: Number(apiReportOrder.size_gb || 0), amount: Number(apiReportOrder.selling_price || apiReportOrder.amount || 0), created_at: apiReportOrder.created_at, fulfillment_status: apiReportOrder.fulfillment_status || "delivered", status: apiReportOrder.status || "delivered" }}
+          complaintType="storefront"
+        />
+      )}
     </div>
   );
 
