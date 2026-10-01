@@ -2244,7 +2244,7 @@ const handleSaveStore = async () => {
   }, 0);
   
   // Calculate profit from ALL completed orders (customer pays, subagent earns profit)
-  const allCompletedOrders = dateFilteredOrders.filter(o => o.status === "completed" || o.status === "paid");
+  const allCompletedOrders = customerOrders.filter(o => o.status === "completed" || o.status === "paid");
   const totalProfit = allCompletedOrders.reduce((sum, order) => {
     return sum + getSubagentOrderFigures(order).profit;
   }, 0);
@@ -2535,19 +2535,6 @@ return (
                     {dateFilter !== "all" ? `Revenue (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Revenue"}
                   </p>
                   <p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {totalRevenue.toFixed(2)}</p>
-                </CardContent>
-              </Card>
-              <Card className="border-border">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <p className="text-muted-foreground text-sm">
-                        {dateFilter !== "all" ? `Profit (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Profit"}
-                      </p>
-                      <p className="font-display text-2xl font-bold mt-1 text-yellow-400">GHC {totalProfit.toFixed(2)}</p>
-                      <details className="mt-2 cursor-pointer group"><summary className="text-xs text-yellow-300 font-semibold hover:text-yellow-200 transition-colors flex items-center gap-1 p-1 rounded hover:bg-yellow-500/20"><span>What is this?</span><ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" /></summary><div className="mt-2 p-2 bg-yellow-500/10 border border-yellow-500/30 rounded text-xs space-y-1"><div className="text-muted-foreground text-xs leading-relaxed"><p>This is a display of your profit from store sales and profit from subagent</p><p className="mt-1">This money is already part of your wallet balance and you can spend or withdraw it anytime</p></div></div></details>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </div>
@@ -4188,7 +4175,7 @@ return (
               </Card>
               <Card className="border-border">
                 <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground mb-2">Total Profit from Subagents</p>
+                  <p className="text-sm text-muted-foreground mb-2">Profit from Subagents</p>
                   <p className="text-3xl font-bold text-green-400">GHC {subSubagentProfitForSubagent?.toFixed(2) || "0.00"}</p>
                 </CardContent>
               </Card>

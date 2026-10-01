@@ -1805,7 +1805,7 @@ const handleSaveStore = async () => {
   const totalRevenue = customerOrders.reduce((sum, order) => sum + ((order.status === "completed" || order.status === "paid") ? Number(order.selling_price || order.amount) : 0), 0);
   
   // Calculate profit from ALL completed orders (customer pays, subagent earns profit)
-  const allCompletedOrders = dateFilteredOrders.filter(o => o.status === "completed" || o.status === "paid");
+  const allCompletedOrders = customerOrders.filter(o => o.status === "completed" || o.status === "paid");
   const totalProfit = allCompletedOrders.reduce((sum, order) => {
     // Use stored profit if available, otherwise calculate from stored prices or fallback
     if (order.profit !== null && order.profit !== undefined && order.profit !== 0) {
@@ -2113,14 +2113,7 @@ return (
                   <p className="font-display text-2xl font-bold mt-1 text-green-400">GHC{totalRevenue.toFixed(2)}</p>
                 </CardContent>
               </Card>
-              <Card className="border-border">
-                <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground text-sm">
-                    {dateFilter !== "all" ? `Profit (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Profit"}
-                  </p>
-                  <p className="font-display text-2xl font-bold mt-1 text-yellow-400">GHC{totalProfit.toFixed(2)}</p>
-                </CardContent>
-              </Card>
+
             </div>
 
             {/* My Wallet Card */}

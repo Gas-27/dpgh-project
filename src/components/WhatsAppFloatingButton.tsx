@@ -24,7 +24,7 @@ export const WhatsAppFloatingButton = () => {
   }, []);
 
   const handleClick = () => {
-    window.open("https://whatsapp.com/channel/0029VbCBiBmCsU9XSl2ozc3R", "_blank");
+    window.open("https://whatsapp.com/channel/0029Vb7ogJx9MF91sU2npr10", "_blank");
   };
 
   if (chatbotOpen) return null;

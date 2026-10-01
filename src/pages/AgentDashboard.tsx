@@ -150,7 +150,7 @@ const MANUAL_SECTIONS = [
 • Total Orders – every order ever placed through your store.
 • Pending Orders – orders still being processed.
 �� Revenue – total money collected from customers.
-• Total Profit – earnings after subtracting the base (cost) price.
+• Profit – earnings after subtracting the base (cost) price.
 • My Wallet – your wallet balance you can cash out.
 
 The Recent Orders table loads 100 orders at a time. Click "Load More" to see the next 100. Use the search box to filter by phone number or order ID.` },
@@ -2314,7 +2314,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
   
   // Calculate filtered profit stats based on date filter (no useMemo to avoid hook issues)
   const filteredProfitStats = (() => {
-    const completedOrders = dateFilteredOrders.filter(o => o.status === "completed" || o.status === "paid");
+    const completedOrders = dateFilteredOrders.filter(o => (o.status === "completed" || o.status === "paid") && o.payment_method !== "wallet" && o.status !== "refunded");
     let revenue = 0;
     let profit = 0;
     
@@ -2344,7 +2344,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     
     // Storefront profit (from orders)
     let storefrontProfit = 0;
-    const completedOrders = dateFilteredOrders.filter(o => o.status === "completed" || o.status === "paid");
+    const completedOrders = dateFilteredOrders.filter(o => (o.status === "completed" || o.status === "paid") && o.payment_method !== "wallet" && o.status !== "refunded");
     for (const order of completedOrders) {
       const orderRevenue = order.selling_price && order.selling_price > 0 
         ? Number(order.selling_price) 
@@ -2526,9 +2526,7 @@ return (
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Store Status</p><Badge className="mt-2 bg-green-600/20 text-green-400 border-green-600/30">Active</Badge></CardContent></Card>
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p></CardContent></Card>
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {filteredProfitStats.totalRevenue.toFixed(2)}</p></CardContent></Card>
-            </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div className="flex-1"><p className="text-sm text-muted-foreground">{dateFilter !== "all" ? "Profit (Filtered)" : "Total Profit"}</p><p className="font-display text-2xl font-bold text-green-400 mt-1">GHC {(dateFilter === "all" ? allTimeProfit : filteredProfitStats.totalProfit).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p><details className="mt-2 cursor-pointer group"><summary className="text-xs text-green-300 font-semibold hover:text-green-200 transition-colors flex items-center gap-1 p-1 rounded hover:bg-green-500/20"><span>What is this?</span><ChevronDown className="h-3 w-3 group-open:rotate-180 transition-transform" /></summary><div className="mt-2 p-2 bg-green-500/10 border border-green-500/30 rounded text-xs space-y-1"><div className="text-muted-foreground text-xs leading-relaxed"><p><strong>Total Profit</strong></p><p className="mt-1">This is a display of your profit from store sales and PROFIT FROM subagent. This money is already part of your wallet balance and you can spend or withdraw it anytime.</p></div></div></details></div><TrendingUp className="h-8 w-8 text-green-400 opacity-50" /></div></CardContent></Card>
               <Card className="border-yellow-500/30 bg-yellow-500/5">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -2721,6 +2719,7 @@ return (
 
             {/* API USER ORDERS SECTION */}
 
+            </div>
           </TabsContent>
 
           {/* ============================= BUY DATA ============================= */}
@@ -4679,7 +4678,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </Card>
               <Card className="border-border">
                 <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground mb-2">Total Profit from Subagents</p>
+                  <p className="text-sm text-muted-foreground mb-2">Profit from Subagents</p>
                   <p className="text-3xl font-bold text-green-400">GHC{subagentProfitForAgent.toFixed(2)}</p>
                 </CardContent>
               </Card>
