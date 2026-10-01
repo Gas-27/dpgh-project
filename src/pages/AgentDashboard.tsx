@@ -491,7 +491,63 @@ const AgentDashboard = () => {
   const [dateFilter, setDateFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
+  const [databaseFinancialTotals, setDatabaseFinancialTotals] = useState({
+    totalOrders: 0,
+    totalRevenue: 0,
+    totalProfit: 0,
+  });
 
+  useEffect(() => {
+    if (!store?.id) return;
+
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let start: string | null = null;
+    let end: string | null = null;
+
+    if (dateFilter === "today") {
+      start = startOfToday.toISOString();
+      end = new Date(startOfToday.getTime() + 24 * 60 * 60 * 1000).toISOString();
+    } else if (dateFilter === "yesterday") {
+      const yesterday = new Date(startOfToday);
+      yesterday.setDate(yesterday.getDate() - 1);
+      start = yesterday.toISOString();
+      end = startOfToday.toISOString();
+    } else if (dateFilter === "week") {
+      const weekStart = new Date(startOfToday);
+      weekStart.setDate(weekStart.getDate() - 7);
+      start = weekStart.toISOString();
+    } else if (dateFilter === "month") {
+      const monthStart = new Date(startOfToday);
+      monthStart.setMonth(monthStart.getMonth() - 1);
+      start = monthStart.toISOString();
+    } else if (dateFilter === "custom") {
+      start = customStartDate ? new Date(`${customStartDate}T00:00:00`).toISOString() : null;
+      end = customEndDate ? new Date(`${customEndDate}T00:00:00`).getTime() + 24 * 60 * 60 * 1000 : null;
+      end = typeof end === "number" ? new Date(end).toISOString() : null;
+    }
+
+    let cancelled = false;
+    supabase.rpc("get_agent_financial_totals", {
+      p_agent_store_id: store.id,
+      p_start: start,
+      p_end: end,
+    }).maybeSingle().then(({ data, error }) => {
+      if (cancelled) return;
+      if (error) {
+        console.error("[v0] Failed to load database financial totals:", error);
+        return;
+      }
+      setDatabaseFinancialTotals({
+        totalOrders: Number(data?.total_orders ?? 0),
+        totalRevenue: Number(data?.total_revenue ?? 0),
+        totalProfit: Number(data?.total_profit ?? 0),
+      });
+    });
+
+    return () => { cancelled = true; };
+  }, [store?.id, dateFilter, customStartDate, customEndDate]);
+  
   // Flyer
   const flyerRef = useRef<HTMLDivElement>(null);
   const flyerContainerRef = useRef<HTMLDivElement>(null);
@@ -2523,9 +2579,9 @@ return (
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p></CardContent></Card>
-              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {filteredProfitStats.totalRevenue.toFixed(2)}</p></CardContent></Card>
-              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Profit</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {filteredProfitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p></CardContent></Card>
+              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{databaseFinancialTotals.totalOrders}</p></CardContent></Card>
+              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {databaseFinancialTotals.totalRevenue.toFixed(2)}</p></CardContent></Card>
+              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Profit</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {databaseFinancialTotals.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p></CardContent></Card>
               <Card className="border-yellow-500/30 bg-yellow-500/5">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
