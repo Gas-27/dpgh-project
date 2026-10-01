@@ -1213,10 +1213,7 @@ const UserDashboard = () => {
                 <div className="p-3 bg-primary/20 rounded-lg">
                   <p className="text-2xl font-bold font-mono text-primary">*380*455*1#</p>
                 </div>
-                <div className="text-left">
-                  <p className="text-xs text-muted-foreground">Access Code</p>
-                  <p className="text-3xl font-bold font-mono text-foreground">1</p>
-                </div>
+
               </div>
             </div>
             <Button 

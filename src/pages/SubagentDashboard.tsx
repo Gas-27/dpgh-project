@@ -2503,14 +2503,7 @@ return (
 
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="border-border">
-                <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground text-sm">Store Status</p>
-                  <Badge className="mt-2 bg-green-600/20 text-green-400 border-green-600/30">
-                    {subagentStore.approved ? "Active" : "Pending"}
-                  </Badge>
-                </CardContent>
-              </Card>
+
               {/* Refunds Received Card — total from DB */}
               {allRefundedOrders.length > 0 && (
                 <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-400/50 transition-all" onClick={() => setActiveTab("refunds")}>
