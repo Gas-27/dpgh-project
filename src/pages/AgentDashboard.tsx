@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { supabase } from "@/integrations/supabase/client";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
+import DashboardMiniBar from "@/components/DashboardMiniBar";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { verifyHubtelMsisdn } from "@/services/hubtelService";
 import { useAuth } from "@/hooks/useAuth";
@@ -2531,6 +2532,7 @@ return (
           {/* ============================= OVERVIEW ============================= */}
           <TabsContent value="approvals" className="space-y-6 mt-0"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="agent-dashboard" storeId={store?.id} /></CardContent></Card></TabsContent>
   <TabsContent value="overview" className="space-y-6 mt-0">
+  <DashboardMiniBar onSelect={setActiveTab} />
   <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="agent" /><Button type="button" size="sm" className="rounded-full border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setActiveTab("withdraw")}>Withdraw</Button></div>
   <WeeklyOrderTargetMeter storeId={store?.id} storeType="agent" />
   <Card className="hidden border-primary/30 bg-primary/5">
