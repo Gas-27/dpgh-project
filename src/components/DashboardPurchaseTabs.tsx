@@ -49,12 +49,12 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
     );
   }
 
-  const maintenanceKey = initialTab === "services" ? "services" : initialTab === "subscription" ? "subscription" : "instant";
+  const maintenanceKey = initialTab === "services" ? "services" : initialTab === "subscription" ? "subscription" : initialTab === "social-boost" ? "social-boost" : "instant";
 
   return (
   <section className="relative space-y-4">
   <WalletBanner balance={wallet} label="Wallet-only dashboard payments" />
-  <ActiveTabMaintenance active={maintenanceKey} label={maintenanceKey === "instant" ? "Data and Airtime" : maintenanceKey} onReturn={onMaintenanceReturn} />
+  <ActiveTabMaintenance active={maintenanceKey} label={maintenanceKey === "instant" ? "Data and Airtime" : maintenanceKey === "social-boost" ? "Social Boost" : maintenanceKey} onReturn={onMaintenanceReturn} />
       <HubtelPurchasePanel
         mode={initialTab === "services" ? "services" : "instant"}
         walletOnly
