@@ -35,7 +35,7 @@ const Navbar = () => {
         <Link to="/" className="flex items-center gap-2">
           <Zap className="h-6 w-6 text-primary" />
           <span className="font-display text-lg font-bold text-foreground">
-            DATA PLUG <span className="text-primary">.STORE</span>
+            JUSTBUY <span className="text-primary">.COM</span>
           </span>
         </Link>
 
@@ -50,7 +50,7 @@ const Navbar = () => {
             type="button"
             onClick={() => setSearchOpen(true)}
             className="flex items-center gap-1.5 rounded-lg border border-border bg-secondary/40 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:border-primary/40 transition-colors"
-            aria-label="Search DataPlug"
+            aria-label="Search JustBuy"
           >
             <Search className="h-3.5 w-3.5" aria-hidden="true" />
             <span>Search</span>
@@ -107,7 +107,7 @@ const Navbar = () => {
             type="button"
             onClick={() => { setMobileOpen(false); setSearchOpen(true); }}
             className="w-full flex items-center gap-3 px-4 py-3 rounded-lg bg-secondary/40 border border-border text-muted-foreground hover:text-foreground hover:border-primary/40 transition-all"
-            aria-label="Search DataPlug"
+            aria-label="Search JustBuy"
           >
             <Search className="h-5 w-5" />
             <span className="font-medium">Search DataPlug</span>
