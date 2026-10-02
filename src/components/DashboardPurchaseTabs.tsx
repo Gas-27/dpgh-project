@@ -25,14 +25,17 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
   const wallet = Number(walletBalance || 0);
 
   if (initialTab === "social-boost") {
-    return <Tabs defaultValue="purchase" className="space-y-4">
+    return <section className="relative space-y-4">
+      <ActiveTabMaintenance active="social-boost" label="Social Boost" onReturn={onMaintenanceReturn} />
+      <Tabs defaultValue="purchase" className="space-y-4">
       <TabsList className="grid w-full grid-cols-2">
         {canSetPrices && <TabsTrigger value="pricing">Set prices</TabsTrigger>}
         <TabsTrigger value="purchase">Purchase Social Boost</TabsTrigger>
       </TabsList>
       {canSetPrices && <TabsContent value="pricing"><SocialBoostPricingManager /></TabsContent>}
       <TabsContent value="purchase"><SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} canSetPrices={false} checkoutMode="wallet" /></TabsContent>
-    </Tabs>;
+      </Tabs>
+    </section>;
   }
 
   if (initialTab === "subscription-price") {

@@ -332,12 +332,14 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             </table>
           </div>
         )}
-        <div className="mt-5 overflow-x-auto rounded-xl bg-white text-slate-950">
-          <div className="border-b bg-[#dddff5] px-3 py-3 font-semibold">My Social Boost History</div>
-          <table className="min-w-[760px] w-full text-left text-sm">
+  <div className="mt-5 overflow-hidden rounded-xl bg-white text-slate-950">
+  <div className="border-b bg-[#dddff5] px-3 py-3 font-semibold">My Social Boost History</div>
+  <div className="max-h-80 overflow-auto">
+  <table className="min-w-[760px] w-full text-left text-sm">
             <thead className="font-semibold"><tr>{["Order", "Date", "Link", "Quantity", "Service", "Status", "Remains"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead>
             <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t"><td className="px-3 py-3">#{item.order_number}</td><td className="px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="max-w-[220px] break-all px-3 py-3 text-blue-700">{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td></tr>) : <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
-          </table>
+            </table>
+          </div>
         </div>
       </div>
 

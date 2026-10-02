@@ -327,6 +327,7 @@ return (
                   <Route path="/" element={<Index />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
+                  <Route path="/become-agent" element={<Signup />} />
                   <Route path="/only-admin/log.in" element={<AdminLogin />} />
                   <Route path="/packages" element={<Packages />} />
                   <Route path="/products" element={<Packages />} />
