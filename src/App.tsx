@@ -237,13 +237,20 @@ const CustomDomainResolver = () => {
 };
 
 const App = () => {
+  const hostname = window.location.hostname.toLowerCase();
+
+  useEffect(() => {
+    if (hostname === "justbuygh.com" || hostname === "www.justbuygh.com") {
+      window.location.replace("https://dataplug.store/");
+    }
+  }, [hostname]);
+
   // Determine if we are on a subdomain of datastores.shop or agentsstore.shop
-  const hostname = window.location.hostname;
   const isAgentSubdomain = hostname.endsWith(`.${DOMAINS.AGENT_STORE}`) && hostname !== DOMAINS.AGENT_STORE;
   const isSubagentDomain = hostname === DOMAINS.SUBAGENT_STORE || 
                            hostname === `www.${DOMAINS.SUBAGENT_STORE}` ||
                            hostname.endsWith(`.${DOMAINS.SUBAGENT_STORE}`);
-  const isKnownAppHost = hostname === "dataplug.store" || hostname === "www.dataplug.store" || hostname === DOMAINS.AGENT_STORE || hostname === `www.${DOMAINS.AGENT_STORE}` || hostname === DOMAINS.SUBAGENT_STORE || hostname === `www.${DOMAINS.SUBAGENT_STORE}` || hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".vercel.app") || hostname.endsWith(".vercel.sh") || hostname.endsWith(".vercel.run") || hostname.endsWith(".vusercontent.net") || hostname.endsWith(".lite.vusercontent.net");
+  const isKnownAppHost = hostname === "dataplug.store" || hostname === "www.dataplug.store" || hostname === "justbuygh.com" || hostname === "www.justbuygh.com" || hostname === DOMAINS.AGENT_STORE || hostname === `www.${DOMAINS.AGENT_STORE}` || hostname === DOMAINS.SUBAGENT_STORE || hostname === `www.${DOMAINS.SUBAGENT_STORE}` || hostname === "localhost" || hostname === "127.0.0.1" || hostname.endsWith(".vercel.app") || hostname.endsWith(".vercel.sh") || hostname.endsWith(".vercel.run") || hostname.endsWith(".vusercontent.net") || hostname.endsWith(".lite.vusercontent.net");
   const isCustomDomain = !isKnownAppHost && !isAgentSubdomain && !isSubagentDomain;
 
 return (

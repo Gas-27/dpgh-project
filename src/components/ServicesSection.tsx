@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { Smartphone, Radio, Phone, UserPlus, Zap, Shield, TrendingDown, Clock, Users, HeadphonesIcon } from "lucide-react";
+import { Smartphone, Radio, Phone, UserPlus, Zap, Shield, TrendingDown, Clock, Users, HeadphonesIcon, Sparkles, WalletCards, Tv, Lightbulb } from "lucide-react";
 
 const services = [
   {
@@ -22,6 +22,34 @@ const services = [
     description: "Top up any Telecel Ghana line with affordable data bundles in seconds. Buy cheap Telecel internet packages online.",
     accent: "text-telecel border-telecel/30 bg-telecel/10",
     href: "/telecel-data-bundles",
+  },
+  {
+    icon: Sparkles,
+    title: "Social Boost",
+    description: "Grow your social presence with affordable engagement services for popular social platforms.",
+    accent: "text-fuchsia-400 border-fuchsia-400/30 bg-fuchsia-400/10",
+    href: "/social-boost",
+  },
+  {
+    icon: WalletCards,
+    title: "Subscriptions & Airtime",
+    description: "Purchase subscriptions, airtime top-ups and regular data bundles from one trusted Ghanaian platform.",
+    accent: "text-amber-400 border-amber-400/30 bg-amber-400/10",
+    href: "/packages",
+  },
+  {
+    icon: Tv,
+    title: "TV Subscriptions",
+    description: "Pay for DStv, GOtv and StarTimes subscriptions quickly and conveniently.",
+    accent: "text-cyan-400 border-cyan-400/30 bg-cyan-400/10",
+    href: "/packages",
+  },
+  {
+    icon: Lightbulb,
+    title: "ECG & Digital Bills",
+    description: "Pay ECG and other everyday digital services securely without switching between platforms.",
+    accent: "text-emerald-400 border-emerald-400/30 bg-emerald-400/10",
+    href: "/packages",
   },
   {
     icon: UserPlus,
@@ -49,10 +77,10 @@ const ServicesSection = () => {
         <div className="space-y-10">
           <div className="text-center space-y-3">
             <h2 id="services-heading" className="font-display text-3xl font-bold sm:text-4xl">
-              Buy Data Bundles in Ghana
+              One Trusted Platform for Data, Airtime, Bills & Digital Services
             </h2>
             <p className="text-muted-foreground max-w-xl mx-auto">
-              MTN, AirtelTigo and Telecel data bundles — all networks, instant delivery, best prices in Ghana.
+              Buy data bundles, airtime, subscriptions, social boosts, ECG payments and TV subscriptions including DStv, GOtv and StarTimes—all in one convenient Ghanaian marketplace.
             </p>
           </div>
 

@@ -287,7 +287,7 @@ Example:
 
 Examples:
 • "Special promo: 20% off AirtelTigo this weekend!"
-��� "New Telecel packages added!"
+����� "New Telecel packages added!"
 • "Temporarily offline for maintenance."
 
 How to create:
@@ -2518,8 +2518,20 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
-  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "api-key", label: "API Key" }, { id: "api-orders", label: "API Orders" }, { id: "api-docs", label: "API Docs" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
+  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "api-info", label: "API Info" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
   
+  {/* ============================= API INFO ============================= */}
+  <TabsContent value="api-info" className="mt-0 space-y-4">
+    <Tabs defaultValue="api-key" className="w-full">
+      <TabsList className="grid w-full grid-cols-3">
+        <TabsTrigger value="api-key" onClick={() => setActiveTab("api-key")}>API Key</TabsTrigger>
+        <TabsTrigger value="api-orders" onClick={() => setActiveTab("api-orders")}>API Orders</TabsTrigger>
+        <TabsTrigger value="api-docs" onClick={() => setActiveTab("api-docs")}>API Docs</TabsTrigger>
+      </TabsList>
+    </Tabs>
+    <p className="text-sm text-muted-foreground">Choose API Key, API Orders, or API Docs above.</p>
+  </TabsContent>
+
   {/* ============================= DOMAINS ============================= */}
           <TabsContent value="domains" className="space-y-6 mt-0">
             <DomainDashboardPanel walletBalance={Number(store?.wallet_balance ?? 0)} walletLabel="Wallet" agentStoreId={store?.id ?? null} storeKind="agent" />
