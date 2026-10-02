@@ -998,7 +998,7 @@ const UserDashboard = () => {
   case "services":
   return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="services" onMaintenanceReturn={() => setActiveMenu("overview")} />;
   case "social-boost":
-  return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="social-boost" />;
+  return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="social-boost" onMaintenanceReturn={() => setActiveMenu("overview")} />;
   case "subscription":
   return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="subscription" />;
       case "sms":

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { supabase } from "@/integrations/supabase/client";
+  import { supabase } from "@/integrations/supabase/client";
+  import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { verifyHubtelMsisdn } from "@/services/hubtelService";
 import { useAuth } from "@/hooks/useAuth";
@@ -26,7 +27,7 @@ import {
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
 import {
-  Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save,
+  Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save, Gift,
   LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
   TrendingUp, Search, Palette, RotateCcw, Bell, Plus, Trash2, Calendar,
   LayoutGrid, Minus, Plus as PlusIcon, Coins, Menu, Image, Download, Share2,
@@ -122,6 +123,7 @@ const menuItems = [
   { id: "instant-data", label: "Instant Data", icon: Zap },
   { id: "services", label: "Services", icon: BriefcaseBusiness },
   { id: "social-boost", label: "Social Boost", icon: Sparkles },
+  { id: "promo", label: "Promo Codes", icon: Gift },
   { id: "subscription", label: "Subscription", icon: CreditCard },
   { id: "subscription-price", label: "Subscription (Price Set)", icon: Save },
   { id: "store", label: "Store Prices", icon: CreditCard },
@@ -2784,7 +2786,8 @@ return (
           <TabsContent value="instant-data" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="instant" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
   <TabsContent value="subscription" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription" /></TabsContent>
   <TabsContent value="subscription-price" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription-price" /></TabsContent>
-  <TabsContent value="social-boost" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="social-boost" /></TabsContent>
+  <TabsContent value="promo" className="mt-0"><PromoCodesPanel walletBalance={Number(store?.wallet_balance ?? 0)} /></TabsContent>
+  <TabsContent value="social-boost" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="social-boost" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
   <TabsContent value="buy" className="space-y-4 mt-0">
             {store && (<Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GHC {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>

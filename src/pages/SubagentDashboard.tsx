@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/integrations/supabase/client";
+  import { supabase } from "@/integrations/supabase/client";
+  import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
@@ -20,7 +21,7 @@ import {
   Store, Settings, LogOut, BarChart3, ShoppingCart, ArrowDownToLine, Copy,
   ExternalLink, Wallet, Loader2, Edit2, Save, Phone, Menu, Image, Bell, Palette, Percent, AlertTriangle, ShieldAlert,
   ChevronUp, ChevronDown, BookOpen, Search, TrendingUp, Plus, Minus, LayoutGrid, RotateCcw, Layers, FileSpreadsheet, Upload, Zap,
-  Users, DollarSign, Send, Trash2, Clock, UserCheck, RefreshCw, ClipboardList, Package, Globe2, CreditCard
+  Users, DollarSign, Send, Trash2, Clock, UserCheck, RefreshCw, ClipboardList, Package, Globe2, CreditCard, Gift
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
@@ -2158,6 +2159,7 @@ const handleSaveStore = async () => {
   { id: "subscription-price", label: "Subscription (Price Set)", icon: Save },
     { id: "domains", label: "Custom Branding (Domain)", icon: Globe2 },
     { id: "bulk", label: "Bulk Orders", icon: Layers },
+  { id: "promo", label: "Promo Codes", icon: Gift },
     { id: "store", label: "Store Prices", icon: Store },
     { id: "products", label: "Products", icon: Package },
     { id: "orders", label: "Orders", icon: ShoppingCart },
@@ -2432,7 +2434,8 @@ return (
   <TabsContent value="subscription" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subagent" ownerId={subagentStore?.id} canSetPrices initialTab="subscription" /></TabsContent>
   <TabsContent value="subscription-price" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subagent" ownerId={subagentStore?.id} canSetPrices initialTab="subscription-price" /></TabsContent>
   <TabsContent value="services" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subagent" ownerId={subagentStore?.id} initialTab="services" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
-  <TabsContent value="social-boost" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subagent" ownerId={subagentStore?.id} initialTab="social-boost" /></TabsContent>
+  <TabsContent value="promo" className="mt-0"><PromoCodesPanel walletBalance={Number(subagentStore?.wallet_balance ?? 0)} /></TabsContent>
+  <TabsContent value="social-boost" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subagent" ownerId={subagentStore?.id} initialTab="social-boost" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
           <TabsContent value="store" className="mt-0">{/* Store Prices */}</TabsContent>
 
           <TabsContent value="sms" className="mt-0 space-y-6">
