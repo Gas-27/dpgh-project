@@ -21,7 +21,7 @@ import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 
 interface Complaint {
   id: string;
-  complaint_type: "storefront" | "agent" | "subagent" | "sub-subagent";
+  complaint_type: "storefront" | "agent" | "subagent" | "sub-subagent" | "api_order";
   order_id: string;
   agent_store_id: string;
   subagent_store_id: string;
@@ -73,7 +73,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [networkFilter, setNetworkFilter] = useState<string>("all");
-  const [activeTab, setActiveTab] = useState<"all" | "storefront" | "agent" | "subagent">(isAgent ? "agent" : "all");
+  const [activeTab, setActiveTab] = useState<"all" | "storefront" | "agent" | "subagent" | "sub-subagent" | "api_order">(isAgent ? "agent" : "all");
   const [tableError, setTableError] = useState(false);
   const [columnsMissing, setColumnsMissing] = useState(false);
   const [selectedComplaints, setSelectedComplaints] = useState<Set<string>>(new Set());
@@ -375,6 +375,7 @@ ALTER TYPE public.app_role ADD VALUE IF NOT EXISTS 'sub_admin';`}
                 <TabsTrigger value="agent">Agent ({complaints.filter(c => c.complaint_type === "agent").length})</TabsTrigger>
                 <TabsTrigger value="subagent">Subagent ({complaints.filter(c => c.complaint_type === "subagent").length})</TabsTrigger>
                 <TabsTrigger value="sub-subagent">Sub-Subagent ({complaints.filter(c => c.complaint_type === "sub-subagent").length})</TabsTrigger>
+              <TabsTrigger value="api_order">API Orders ({complaints.filter(c => c.complaint_type === "api_order").length})</TabsTrigger>
 
               </TabsList>
 

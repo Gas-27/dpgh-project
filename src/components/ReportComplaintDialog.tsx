@@ -20,7 +20,7 @@ interface ReportComplaintDialogProps {
     fulfillment_status: string;
     status: string;
   };
-  complaintType: "storefront" | "agent" | "subagent";
+  complaintType: "storefront" | "agent" | "subagent" | "api_order";
   agentStoreId?: string;
   subagentStoreId?: string;
   subSubagentStoreId?: string;
@@ -62,7 +62,8 @@ export default function ReportComplaintDialog({
   const smsFileInputRef = useRef<HTMLInputElement>(null);
   const [smsScreenshotFile, setSmsScreenshotFile] = useState<File | null>(null);
   const [smsScreenshotPreview, setSmsScreenshotPreview] = useState<string | null>(null);
-  const requiresTwoScreenshots = isMTN(network);
+  const isApiOrderComplaint = complaintType === "api_order";
+  const requiresTwoScreenshots = !isApiOrderComplaint && isMTN(network);
   const canProceedChecklist = owingAirtime !== null && owingBundle !== null && owingMomo !== null;
 
   const getScreenshotInstructions = () => {
@@ -155,8 +156,8 @@ export default function ReportComplaintDialog({
       setSending(true);
       setStep("sending");
 
-      // Both screenshots required for MTN, one for others
-      if (!screenshotFile) {
+      // API order complaints only need the owing-status answers; no screenshot is requested.
+      if (!isApiOrderComplaint && !screenshotFile) {
         throw new Error("A data balance screenshot is required to submit a complaint.");
       }
       if (requiresTwoScreenshots && !smsScreenshotFile) {
@@ -182,8 +183,10 @@ export default function ReportComplaintDialog({
         return data.publicUrl as string;
       };
 
-      // Upload screenshot 1: data balance
-      const screenshotUrl = await uploadViaApi(screenshotFile, "complaint");
+      // Upload screenshot 1 only for non-API complaints.
+      const screenshotUrl = !isApiOrderComplaint && screenshotFile
+        ? await uploadViaApi(screenshotFile, "complaint")
+        : "";
 
       // Upload screenshot 2: SMS confirmation (MTN only)
       let smsScreenshotUrl = "";
@@ -469,18 +472,18 @@ Please investigate and assist. Thank You.`;
                 Cancel
               </Button>
               <Button
-                onClick={() => setStep("screenshot")}
-                disabled={!canProceedChecklist}
+                onClick={() => (isApiOrderComplaint ? handleSendComplaint() : setStep("screenshot"))}
+                disabled={!canProceedChecklist || sending}
                 className="flex-1"
               >
-                Next: Add Screenshot
+                {isApiOrderComplaint ? "Send Complaint" : "Next: Add Screenshot"}
               </Button>
             </div>
           </>
         )}
 
         {/* ── STEP 2: SCREENSHOT ── */}
-        {!isRefunded && step === "screenshot" && (
+        {!isRefunded && !isApiOrderComplaint && step === "screenshot" && (
           <>
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">

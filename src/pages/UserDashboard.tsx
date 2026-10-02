@@ -2475,7 +2475,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           open={Boolean(apiReportOrder)}
           onOpenChange={(open) => { if (!open) setApiReportOrder(null); }}
           order={{ id: apiReportOrder.id, customer_number: apiReportOrder.customer_number, network: apiReportOrder.network, size_gb: Number(apiReportOrder.size_gb || 0), amount: Number(apiReportOrder.selling_price || apiReportOrder.amount || 0), created_at: apiReportOrder.created_at, fulfillment_status: apiReportOrder.fulfillment_status || "delivered", status: apiReportOrder.status || "delivered" }}
-          complaintType="storefront"
+          complaintType="api_order"
         />
       )}
     </div>
