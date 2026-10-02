@@ -12,10 +12,8 @@ type PromoCode = { code: string; size: number; network: string; used: boolean };
 type PromoCodesPanelProps = { walletBalance: number; adminMode?: boolean };
 
 const networkLabels = ["MTN", "Telecel", "AirtelTigo"];
-const expiryOptions = ["1 hour", "6 hours", "24 hours", "7 days"];
-
-function makeCode(prefix: string, size: number) {
-  return `${prefix || "JBG"}-${size}GB-${crypto.randomUUID().replaceAll("-", "").slice(0, 8).toUpperCase()}`;
+function makeCode() {
+return crypto.randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase();
 }
 
 export default function PromoCodesPanel({ walletBalance, adminMode = false }: PromoCodesPanelProps) {
@@ -23,10 +21,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false }: Pr
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [network, setNetwork] = useState("MTN");
   const [selectedId, setSelectedId] = useState("");
-  const [quantity, setQuantity] = useState(10);
-  const [expiry, setExpiry] = useState("1 hour");
-  const [prefix, setPrefix] = useState("");
-  const [payFrom, setPayFrom] = useState<"wallet" | "profit">("wallet");
+  const [quantity, setQuantity] = useState<number | "">("");
   const [claimVisible, setClaimVisible] = useState(false);
   const [codes, setCodes] = useState<PromoCode[]>([]);
 
@@ -45,7 +40,8 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false }: Pr
   const networkPackages = useMemo(() => packages.filter((item) => item.network.toLowerCase() === network.toLowerCase()), [network, packages]);
   const selected = packages.find((item) => item.id === selectedId) ?? networkPackages[0];
   const pricePerCode = adminMode ? 0 : Number(selected?.agent_price ?? selected?.price ?? 0);
-  const total = pricePerCode * quantity;
+  const codeQuantity = typeof quantity === "number" ? quantity : 0;
+  const total = pricePerCode * codeQuantity;
   const activeCodes = codes.filter((code) => !code.used);
 
   const chooseNetwork = (value: string) => {
@@ -62,9 +58,10 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false }: Pr
   const generate = () => {
     if (!selected) return toast({ title: "Choose a data package", variant: "destructive" });
     if (!adminMode && total > walletBalance) return toast({ title: "Insufficient wallet balance", description: "Top up your wallet before generating codes.", variant: "destructive" });
-    const created = Array.from({ length: quantity }, () => ({ code: makeCode(prefix, selected.size_gb), size: selected.size_gb, network: selected.network, used: false }));
+    if (!codeQuantity) return toast({ title: "Enter the number of codes", variant: "destructive" });
+    const created = Array.from({ length: codeQuantity }, () => ({ code: makeCode(), size: selected.size_gb, network: selected.network, used: false }));
     setCodes((current) => [...created, ...current]);
-    toast({ title: "Codes generated", description: `${quantity} ${selected.size_gb}GB ${selected.network} codes created.` });
+    toast({ title: "Codes generated", description: `${codeQuantity} claim codes created.` });
   };
 
   return <div className="flex flex-col gap-6">
@@ -74,11 +71,10 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false }: Pr
     <Card><CardHeader><CardTitle>Generate New Promo Codes</CardTitle></CardHeader><CardContent className="flex flex-col gap-5">
       <div className="flex flex-col gap-2"><span className="text-sm text-muted-foreground">Network</span><div className="grid gap-2 sm:grid-cols-3">{networkLabels.map((item) => <Button key={item} type="button" variant={network.toLowerCase() === item.toLowerCase() ? "default" : "secondary"} onClick={() => chooseNetwork(item)}>{item}</Button>)}</div></div>
       <div className="flex flex-col gap-2"><span className="text-sm text-muted-foreground">Data Package (GB) — agent price</span><div className="flex flex-wrap gap-2">{networkPackages.map((item) => <Button key={item.id} type="button" variant={selected?.id === item.id ? "default" : "secondary"} onClick={() => setSelectedId(item.id)}>{item.size_gb}GB (GH₵{Number(item.agent_price ?? item.price).toFixed(2)})</Button>)}</div></div>
-      <div className="grid gap-4 sm:grid-cols-2"><label className="flex flex-col gap-2 text-sm">Number of Codes<Input type="number" min={1} max={100} value={quantity} onChange={(event) => setQuantity(Math.min(100, Math.max(1, Number(event.target.value) || 1)))} /></label><label className="flex flex-col gap-2 text-sm">Expires After<select className="h-10 rounded-md border bg-background px-3" value={expiry} onChange={(event) => setExpiry(event.target.value)}>{expiryOptions.map((item) => <option key={item}>{item}</option>)}</select></label></div>
-      <div className="flex flex-col gap-2"><span className="text-sm text-muted-foreground">Pay From</span><div className="grid gap-2 sm:grid-cols-2"><Button type="button" variant={payFrom === "wallet" ? "default" : "secondary"} onClick={() => setPayFrom("wallet")}>Account Balance</Button><Button type="button" variant={payFrom === "profit" ? "default" : "secondary"} onClick={() => setPayFrom("profit")}>Profit Balance</Button></div></div>
-      <label className="flex flex-col gap-2 text-sm">Custom Prefix (optional)<Input value={prefix} onChange={(event) => setPrefix(event.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8))} placeholder="e.g. FREE, XMAS" /></label>
-      <div className="rounded-lg border border-primary/40 p-4 text-sm"><div className="flex justify-between"><span>Cost per code:</span><strong>GH₵{pricePerCode.toFixed(2)}</strong></div><div className="flex justify-between"><span>Number of codes:</span><strong>{quantity}</strong></div><div className="mt-3 flex justify-between border-t pt-3 text-base"><strong>Total Cost:</strong><strong className="text-primary">GH₵{total.toFixed(2)}</strong></div></div>
-      <Button type="button" onClick={generate} disabled={!selected || (!adminMode && total > walletBalance)} variant="secondary">Generate {quantity} Codes for GH₵{total.toFixed(2)}</Button>
+      <label className="flex flex-col gap-2 text-sm">Number of Codes<Input type="number" min={1} max={100} value={quantity} onChange={(event) => setQuantity(event.target.value === "" ? "" : Math.min(100, Math.max(1, Number(event.target.value))))} /></label>
+      <p className="text-sm text-muted-foreground">Payment is taken automatically from the wallet. Codes do not expire; each code can be claimed only once.</p>
+      <div className="rounded-lg border border-primary/40 p-4 text-sm"><div className="flex justify-between"><span>Cost per code:</span><strong>GH₵{pricePerCode.toFixed(2)}</strong></div><div className="flex justify-between"><span>Number of codes:</span><strong>{codeQuantity}</strong></div><div className="mt-3 flex justify-between border-t pt-3 text-base"><strong>Total Cost:</strong><strong className="text-primary">GH₵{total.toFixed(2)}</strong></div></div>
+      <Button type="button" onClick={generate} disabled={!selected || (!adminMode && total > walletBalance)} variant="secondary">Generate {codeQuantity} Codes for GH₵{total.toFixed(2)}</Button>
     </CardContent></Card>
     <Card><CardHeader><CardTitle className="flex items-center justify-between">Your Codes<Button variant="outline" size="sm" onClick={() => copy(activeCodes.map((code) => code.code).join("\n"))} disabled={!activeCodes.length}><Copy data-icon="inline-start" /> Copy Active Codes</Button></CardTitle></CardHeader><CardContent className="flex flex-col gap-2">{codes.length === 0 ? <p className="py-8 text-center text-muted-foreground">No promo codes generated yet.</p> : codes.map((item) => <div key={item.code} className="flex items-center justify-between gap-3 rounded-lg border p-3"><span className={item.used ? "font-mono text-muted-foreground line-through" : "font-mono text-primary"}>{item.code}</span><div className="flex items-center gap-2"><span className="text-sm text-muted-foreground">{item.network} · {item.size}GB · {item.used ? "CLAIMED" : "ACTIVE"}</span><Button variant="ghost" size="icon" onClick={() => copy(item.code)} aria-label={`Copy ${item.code}`}><Copy /></Button></div></div>)}</CardContent></Card>
   </div>;

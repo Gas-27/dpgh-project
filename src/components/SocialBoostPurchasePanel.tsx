@@ -52,7 +52,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const [service, setService] = useState(fallbackServices[0]);
   const [serviceType, setServiceType] = useState(fallbackServices[0].name);
   const [targetLink, setTargetLink] = useState("");
-  const [quantity, setQuantity] = useState(50);
+  const [quantity, setQuantity] = useState<number | "">("");
   const [price, setPrice] = useState(49);
   const [searchOrder, setSearchOrder] = useState("");
   const [orderStatus, setOrderStatus] = useState("");
@@ -166,11 +166,12 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
 
   const min = Number(service.min) || 10;
   const max = Number(service.max) || 50000;
-  const total = useMemo(() => Math.round((quantity / 1000) * price * 100) / 100, [quantity, price]);
+  const numericQuantity = typeof quantity === "number" ? quantity : 0;
+  const total = useMemo(() => Math.round((numericQuantity / 1000) * price * 100) / 100, [numericQuantity, price]);
 
   const buy = async () => {
     if (!targetLink.trim()) return toast({ title: "Account link required", description: "Enter the social profile or post link to boost.", variant: "destructive" });
-    if (quantity < min || quantity > max) return toast({ title: "Invalid quantity", description: `This service accepts ${min.toLocaleString()} to ${max.toLocaleString()}.`, variant: "destructive" });
+    if (!numericQuantity || numericQuantity < min || numericQuantity > max) return toast({ title: "Invalid quantity", description: `This service accepts ${min.toLocaleString()} to ${max.toLocaleString()}.`, variant: "destructive" });
     setBuying(true);
     if (checkoutMode === "paystack") {
       const { data, error } = await supabase.functions.invoke("initialize-payment", {
@@ -178,7 +179,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
           email: `social_boost_${Date.now()}@datapluggh.com`,
           amount: total,
           callback_url: `${window.location.origin}/social-boost?payment=success`,
-          metadata: { kind: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity },
+          metadata: { kind: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity },
         },
       });
       setBuying(false);
@@ -186,7 +187,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       window.location.assign(data.authorization_url);
       return;
     }
-    const { data: provider, error: providerError } = await supabase.functions.invoke("social-boost", { body: { action: "add", service: service.service, link: targetLink.trim(), quantity } });
+    const { data: provider, error: providerError } = await supabase.functions.invoke("social-boost", { body: { action: "add", service: service.service, link: targetLink.trim(), quantity: numericQuantity } });
     if (providerError || !provider?.order) {
       setBuying(false);
       return toast({ title: "Social Boost provider rejected the order", description: providerError?.message ?? provider?.error ?? "The provider did not return an order ID.", variant: "destructive" });
@@ -195,7 +196,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       p_platform: platform,
       p_service: `${service.service}:${service.name}`,
       p_target_link: targetLink.trim(),
-      p_quantity: quantity,
+      p_quantity: numericQuantity,
       p_provider_order_id: String(provider.order),
     });
     setBuying(false);
@@ -465,8 +466,8 @@ const noteLines = String(service.notes || service.note || "No additional note ha
                   type="number"
                   min={min}
                   max={max}
-                  value={quantity}
-                  onChange={(e) => setQuantity(Number(e.target.value))}
+value={quantity}
+  onChange={(e) => setQuantity(e.target.value === "" ? "" : Number(e.target.value))}
                   placeholder="Enter quantity"
                 />
                 <p className="mt-1 text-xs text-blue-100/60">
