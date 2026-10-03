@@ -14,7 +14,7 @@ import {
   Zap, Phone, Wifi, Clock, Search, Package,
   CheckCircle, XCircle, X, Loader2, Copy, Bell, Megaphone, Rocket,
   MessageCircle, Users, AlertTriangle, Check, Gift,
-  Layers, FileSpreadsheet, RotateCcw, LinkIcon, Share2, ChevronDown,
+  FileSpreadsheet, RotateCcw, LinkIcon, Share2, ChevronDown,
   } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
@@ -1108,44 +1108,7 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
               {formatNetworkName(net)}
             </Button>
           ))}
-          <div className="h-6 w-px bg-border flex-shrink-0"></div>
-          <Button
-            variant={activeSection === "afa" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveSection(activeSection === "afa" ? "data" : "afa")}
-            style={activeSection === "afa" ? { background: primaryColor, color: primaryForeground } : {}}
-            className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
-          >
-            <Package className="h-4 w-4 mr-1" />
-            AFA Bundles
-          </Button>
-          <div className="h-6 w-px bg-border flex-shrink-0"></div>
-          <Button
-            variant={activeSection === "bulk" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveSection(activeSection === "bulk" ? "data" : "bulk")}
-            style={activeSection === "bulk" ? { background: primaryColor, color: primaryForeground } : {}}
-            className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm"
-          >
-            <Layers className="h-4 w-4 mr-1" />
-            Bulk Orders
-          </Button>
-          <div className="h-6 w-px bg-border flex-shrink-0"></div>
-          <Button variant={activeSection === "sms" ? "default" : "outline"} size="sm" onClick={() => setActiveSection(activeSection === "sms" ? "data" : "sms")} style={activeSection === "sms" ? { background: primaryColor, color: primaryForeground } : {}} className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"><MessageCircle className="h-4 w-4 mr-1" />SMS</Button>
-          {store?.allow_sub_subagent_registration !== false && (
-            <>
-              <div className="h-6 w-px bg-border flex-shrink-0"></div>
-              <Button
-                variant={showSubSubagentForm ? "default" : "outline"}
-                size="sm"
-                onClick={() => setShowSubSubagentForm(!showSubSubagentForm)}
-                style={showSubSubagentForm ? { background: primaryColor, color: primaryForeground } : {}}
-                className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
-              >
-                Become Agent
-              </Button>
-            </>
-          )}
+
         </div>
         </>}
 

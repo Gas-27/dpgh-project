@@ -1114,19 +1114,7 @@ const searchOrders = useCallback(async (input?: string) => {
               {formatNetworkName(net)}
             </Button>
           ))}
-          <div className="h-6 w-px bg-border flex-shrink-0"></div>
-          <Button
-            variant={activeSection === "afa" ? "default" : "outline"}
-            size="sm"
-            onClick={() => setActiveSection(activeSection === "afa" ? "data" : "afa")}
-            style={activeSection === "afa" ? { background: primaryColor, color: primaryForeground } : {}}
-            className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"
-          >
-            <Package className="h-4 w-4 mr-1" />
-            AFA Bundles
-  </Button>
-  <div className="h-6 w-px bg-border flex-shrink-0"></div>
-  <Button variant={activeSection === "sms" ? "default" : "outline"} size="sm" onClick={() => setActiveSection(activeSection === "sms" ? "data" : "sms")} style={activeSection === "sms" ? { background: primaryColor, color: primaryForeground } : {}} className="whitespace-nowrap flex-shrink-0 text-xs sm:text-sm font-semibold"><MessageCircle className="h-4 w-4 mr-1" />SMS</Button>
+
   </div>
   </>}
   
