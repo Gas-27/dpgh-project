@@ -1264,6 +1264,7 @@ case "api-key":
                     <TableHead className="text-xs">Method</TableHead>
                     <TableHead className="text-xs">Status</TableHead>
                     <TableHead className="text-xs">Next Step</TableHead>
+                    <TableHead className="text-xs">Report</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1295,6 +1296,11 @@ case "api-key":
                         ) : (
                           <span className="text-xs text-muted-foreground">No action needed</span>
                         )}
+                      </TableCell>
+                      <TableCell>
+                        {(order as any).source === "api" && normalizeOrderStatus(order) === "delivered" ? (
+                          <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>
+                        ) : <span className="text-xs text-muted-foreground">—</span>}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -1453,6 +1459,7 @@ case "api-key":
                       <TableHead className="text-xs">Method</TableHead>
                       <TableHead className="text-xs">Source Account</TableHead>
                       <TableHead className="text-xs">Status</TableHead>
+                        <TableHead className="text-xs">Report</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1487,6 +1494,11 @@ case "api-key":
                               </Badge>
                             );
                           })()}
+                        </TableCell>
+                        <TableCell>
+                          {(order as any).source === "api" && normalizeOrderStatus(order) === "delivered" ? (
+                            <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>
+                          ) : <span className="text-xs text-muted-foreground">—</span>}
                         </TableCell>
                       </TableRow>
                     ))}

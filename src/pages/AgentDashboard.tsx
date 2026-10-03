@@ -2706,7 +2706,7 @@ return (
                         
                         // Determine if this is an API order (check source field)
                         const isAPIOrder = (order as any).source === "api";
-                        const paymentMethodDisplay = isAPIOrder ? "API Wallet" : (order.payment_method === "wallet" ? "Wallet" : "Paystack");
+                        const paymentMethodDisplay = isAPIOrder ? "API Wallet" : ((order as any).source === "api" ? "API Wallet" : order.payment_method === "wallet" ? "Wallet" : "Paystack");
                         const subagentName = (order as any).subagent_stores?.store_name || "Unknown Subagent";
                         const subSubagentName = (order as any).sub_subagent_stores?.store_name || "Sub-Subagent";
 
