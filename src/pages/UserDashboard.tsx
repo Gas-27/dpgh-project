@@ -556,43 +556,17 @@ const UserDashboard = () => {
     if (!userId) return;
     setLoadingApiOrders(true);
     try {
-      // Keep this query identical to the working agent dashboard: API orders
-      // are owned by api_users.identity_id and have source = "api", matching AgentDashboard.
-      const { data: apiUserRows, error: apiUserError } = await supabase
-        .from("api_users")
-        .select("id, identity_id, api_key")
-        .eq("identity_id", userId)
-        .order("created_at", { ascending: false });
-      const apiUsers = apiUserRows ?? [];
+  // Use the server-side user-history endpoint so admin impersonation does not
+  // apply the admin browser session's RLS policy to the customer's API audits.
+  const response = await fetch(`/api/get-orders?identity_id=${encodeURIComponent(userId)}&limit=500`);
+  const payload = await response.json();
+  if (!response.ok || !payload.success) {
+    console.log("[v0] API order history request failed:", payload);
+    setApiOrders([]);
+    return;
+  }
 
-      const orderColumns = "id, customer_id, user_id, api_user, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at";
-
-      if (apiUserError) {
-        console.log("[v0] API user lookup failed:", apiUserError);
-      }
-
-      // The working AgentDashboard loads API audits by the api_users primary key:
-      // orders.api_user = api_users.id. Use the same relationship here.
-      const apiUserIds = apiUsers.map((apiUser) => apiUser.id).filter(Boolean);
-      if (apiUserIds.length === 0) {
-        setApiOrders([]);
-        return;
-      }
-
-      const { data: auditOrders, error: auditOrdersError } = await supabase
-        .from("orders")
-        .select(orderColumns)
-        .in("api_user", apiUserIds)
-        .order("created_at", { ascending: false })
-        .limit(500);
-
-      if (auditOrdersError) {
-        console.log("[v0] Error fetching API orders:", auditOrdersError);
-        setApiOrders([]);
-        return;
-      }
-
-      setApiOrders(auditOrders ?? []);
+  setApiOrders(payload.data?.orders ?? []);
     } catch (error) {
       console.log("[v0] Error fetching API orders:", error);
     } finally {
