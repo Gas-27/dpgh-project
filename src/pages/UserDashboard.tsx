@@ -566,60 +566,33 @@ const UserDashboard = () => {
 
       const orderColumns = "id, customer_id, user_id, api_user, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at";
 
-      // Use the same server-side API-order path as the API itself. It uses the
-      // service-role client, so RLS cannot hide a user's own API history.
-      if (userId) {
-        const apiResponse = await fetch(`/api/get-orders?identity_id=${encodeURIComponent(userId)}`);
-        const apiPayload = await apiResponse.json();
-        if (apiResponse.ok && apiPayload.success) {
-          setApiOrders(apiPayload.data?.orders ?? []);
-          setLoadingApiOrders(false);
-          return;
-        }
-        console.log("[v0] API order endpoint failed:", apiPayload);
-      }
-
-      let identityOrders: any[] = [];
-      let identityOrdersError: any = null;
-
-      if (apiUserRow?.identity_id) {
-        const result = await supabase
-          .from("orders")
-          .select(orderColumns)
-.eq("source", "api")
-  .eq("user_id", apiUserRow.identity_id)
-          .order("created_at", { ascending: false })
-          .limit(500);
-        identityOrders = result.data ?? [];
-        identityOrdersError = result.error;
-      }
-
       if (apiUserError) {
         console.log("[v0] API user lookup failed:", apiUserError);
       }
 
-      if (identityOrdersError) {
-        console.log("[v0] Error fetching API orders:", identityOrdersError);
+      // Match AgentDashboard exactly: API audits are orders with source=api and
+      // user_id equal to api_users.identity_id. Include legacy api_user/customer
+      // ownership as a compatibility fallback, without changing the source.
+      const ownership = [
+        `user_id.eq.${apiUserRow?.identity_id ?? userId}`,
+        `customer_id.eq.${userId}`,
+        ...(apiUserRow?.id ? [`api_user.eq.${apiUserRow.id}`] : []),
+      ].join(",");
+      const { data: auditOrders, error: auditOrdersError } = await supabase
+        .from("orders")
+        .select(orderColumns)
+        .eq("source", "api")
+        .or(ownership)
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      if (auditOrdersError) {
+        console.log("[v0] Error fetching API orders:", auditOrdersError);
         setApiOrders([]);
         return;
       }
 
-      // Older API orders may have been stored with api_user or the user id.
-      const legacyOrders = await supabase
-        .from("orders")
-        .select(orderColumns)
-.eq("source", "api")
-  .or(`api_user.eq.${apiUserRow?.id ?? "00000000-0000-0000-0000-000000000000"},user_id.eq.${userId},customer_id.eq.${userId}`)
-        .order("created_at", { ascending: false })
-        .limit(500);
-
-      const ordersById = new Map<string, any>();
-      for (const order of [...(identityOrders ?? []), ...(legacyOrders.data ?? [])]) {
-        ordersById.set(order.id, order);
-      }
-      setApiOrders(Array.from(ordersById.values()).sort((a, b) =>
-        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      ));
+      setApiOrders(auditOrders ?? []);
     } catch (error) {
       console.log("[v0] Error fetching API orders:", error);
     } finally {
