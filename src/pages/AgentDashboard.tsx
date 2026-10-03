@@ -2585,9 +2585,9 @@ return (
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{databaseFinancialTotals.totalOrders}</p></CardContent></Card>
-              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {databaseFinancialTotals.totalRevenue.toFixed(2)}</p></CardContent></Card>
-              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Profit</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {databaseFinancialTotals.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p></CardContent></Card>
+              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p></CardContent></Card>
+              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {filteredProfitStats.totalRevenue.toFixed(2)}</p></CardContent></Card>
+              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Profit</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {filteredProfitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p></CardContent></Card>
               <Card className="border-yellow-500/30 bg-yellow-500/5">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">

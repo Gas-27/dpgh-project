@@ -2533,6 +2533,12 @@ return (
                   <p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {totalRevenue.toFixed(2)}</p>
                 </CardContent>
               </Card>
+              <Card className="border-green-500/30 bg-green-500/5">
+                <CardContent className="p-6 text-center">
+                  <p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Profit (Filtered)" : "Total Profit"}</p>
+                  <p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {totalProfit.toFixed(2)}</p>
+                </CardContent>
+              </Card>
             </div>
 
             {/* My Wallet Card */}

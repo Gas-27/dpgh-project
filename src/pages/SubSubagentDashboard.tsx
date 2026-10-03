@@ -2101,16 +2101,21 @@ return (
                   <p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p>
                 </CardContent>
               </Card>
-              <Card className="border-border">
-                <CardContent className="p-6 text-center">
-                  <p className="text-muted-foreground text-sm">
-                    {dateFilter !== "all" ? `Revenue (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Revenue"}
-                  </p>
-                  <p className="font-display text-2xl font-bold mt-1 text-green-400">GHC{totalRevenue.toFixed(2)}</p>
-                </CardContent>
-              </Card>
-
-            </div>
+  <Card className="border-border">
+  <CardContent className="p-6 text-center">
+  <p className="text-muted-foreground text-sm">
+  {dateFilter !== "all" ? `Revenue (${dateFilter === "custom" ? "Custom" : dateFilter === "week" ? "This Week" : dateFilter === "month" ? "This Month" : dateFilter.charAt(0).toUpperCase() + dateFilter.slice(1)})` : "Total Revenue"}
+  </p>
+  <p className="font-display text-2xl font-bold mt-1 text-green-400">GHC{totalRevenue.toFixed(2)}</p>
+  </CardContent>
+  </Card>
+  <Card className="border-green-500/30 bg-green-500/5">
+  <CardContent className="p-6 text-center">
+  <p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Profit (Filtered)" : "Total Profit"}</p>
+  <p className="font-display text-2xl font-bold mt-1 text-green-400">GHC{totalProfit.toFixed(2)}</p>
+  </CardContent>
+  </Card>
+  </div>
 
             {/* My Wallet Card */}
             <Card className="border-yellow-500/30 bg-yellow-500/5">
@@ -2768,7 +2773,7 @@ return (
                   )}
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
-                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br />�������� Markup Explanation (Remember to click save after applying markup)</p>
+                  <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br />���������� Markup Explanation (Remember to click save after applying markup)</p>
                   <p className="text-xs text-muted-foreground mt-2">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
