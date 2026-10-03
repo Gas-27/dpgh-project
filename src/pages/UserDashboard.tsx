@@ -576,7 +576,7 @@ const UserDashboard = () => {
       const { data: identityOrders, error: identityOrdersError } = await supabase
         .from("orders")
         .select(orderColumns)
-        .eq("source", "api")
+        .ilike("source", "api")
         .or(`user_id.eq.${userId},customer_id.eq.${userId}`)
         .order("created_at", { ascending: false })
         .limit(500);
@@ -591,7 +591,8 @@ const UserDashboard = () => {
         ? await supabase
             .from("orders")
             .select(orderColumns)
-            .eq("api_user", apiUserRow.id)
+            .or(`source.ilike.api,api_user.eq.${apiUserRow.id}`)
+            .or(`api_user.eq.${apiUserRow.id},user_id.eq.${apiUserRow.identity_id},user_id.eq.${apiUserRow.id}`)
             .order("created_at", { ascending: false })
             .limit(500)
         : { data: [] as any[], error: null };
