@@ -2292,8 +2292,12 @@ const handleSaveStore = async () => {
     let storefrontProfit = 0;
     let subSubagentProfit = 0;
     
-    // Storefront profit from own orders (not sub-subagent)
-    const completedOrders = allCompletedOrders;
+  // Storefront profit from own orders (not sub-subagent)
+  // Use the dashboard's loaded orders collection.
+  const completedOrders = orders.filter((order: any) =>
+  (order.status === "completed" || order.status === "paid" || order.fulfillment_status === "delivered") &&
+  order.status !== "refunded"
+  );
     for (const order of completedOrders) {
       if (!order.sub_subagent_store_id) {
         storefrontProfit += getSubagentOrderFigures(order).profit;
