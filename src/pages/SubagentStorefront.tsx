@@ -635,9 +635,10 @@ export function SubagentStorefront() {
     .from("promo_code_settings")
     .select("claim_visible")
     .eq("owner_id", matched.user_id)
-    .eq("store_type", "subagent")
-    .maybeSingle();
-  setFreeDataEnabled(promoSetting?.claim_visible === true);
+.eq("store_type", "subagent")
+  .order("updated_at", { ascending: false })
+  .limit(1);
+  setFreeDataEnabled(promoSetting?.[0]?.claim_visible === true);
       
       setLoading(false);
     };

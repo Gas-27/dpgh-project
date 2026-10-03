@@ -60,7 +60,7 @@ export default function PublicProductsSection({
     const loadProducts = async () => {
       const now = new Date().toISOString();
       const fields =
-        "id,title,description,price,image_urls,created_at,store_id,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,seller_phone";
+        "id,title,description,price,image_urls,created_at,store_id,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at";
       const [storeResult, allResult] = await Promise.all([
         storeId
           ? supabase
@@ -81,6 +81,12 @@ export default function PublicProductsSection({
 
       if (cancelled) return;
       const all = (allResult.data ?? []) as PublicProduct[];
+      const storeIds = [...new Set(all.map((product) => product.store_id).filter(Boolean))] as string[];
+      if (storeIds.length) {
+        const { data: stores } = await supabase.from("agent_stores").select("id,whatsapp_number,support_number").in("id", storeIds);
+        const contacts = new Map((stores ?? []).map((store) => [store.id, store.whatsapp_number || store.support_number || null]));
+        all.forEach((product) => { product.seller_phone = contacts.get(product.store_id ?? "") ?? null; });
+      }
       const boosted = all.filter((product) => {
         const globalBoost =
           product.boost_global === true &&
