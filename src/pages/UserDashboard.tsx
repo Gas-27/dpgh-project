@@ -292,6 +292,7 @@ const UserDashboard = () => {
   .from("orders")
   .select("id, customer_id, user_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at")
   .or(`customer_id.eq.${effectiveUserId},user_id.eq.${effectiveUserId}`)
+  .or("source.is.null,source.neq.api")
   .order("created_at", { ascending: false })
   .limit(500);
 
