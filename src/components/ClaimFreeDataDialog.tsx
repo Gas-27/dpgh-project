@@ -58,6 +58,9 @@ const getWeekBounds = () => {
 export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subagentStoreId }: ClaimFreeDataDialogProps) {
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
+  const [promoCode, setPromoCode] = useState("");
+  const [codeError, setCodeError] = useState("");
+  const [validatedCode, setValidatedCode] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [checking, setChecking] = useState(false);
   const [eligibilityChecked, setEligibilityChecked] = useState(false);
@@ -110,6 +113,9 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
   useEffect(() => {
     if (open) {
       setPhone("");
+      setPromoCode("");
+      setCodeError("");
+      setValidatedCode(null);
       setEligibilityChecked(false);
       setTotalGbThisWeek(0);
       setCanClaim(false);
@@ -119,6 +125,26 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
   }, [open]);
 
   const checkEligibility = async () => {
+    setCodeError("");
+    setValidatedCode(null);
+    const normalizedCode = promoCode.trim().toUpperCase();
+    if (!normalizedCode) {
+      setCodeError("Enter the generated promo code to continue.");
+      return;
+    }
+    const { data: code, error: codeErrorResponse } = await supabase
+      .from("promo_codes")
+      .select("id, code, size_gb, network, claimed_at, expires_at, refunded_at")
+      .eq("code", normalizedCode)
+      .is("claimed_at", null)
+      .is("refunded_at", null)
+      .gt("expires_at", new Date().toISOString())
+      .maybeSingle();
+    if (codeErrorResponse || !code) {
+      setCodeError("This code is incorrect, used, expired, or does not exist. Enter the correct code.");
+      return;
+    }
+    setValidatedCode(code);
     if (!isValidPhone(phone)) {
       toast({ title: "Invalid Phone", description: "Please enter a valid phone number", variant: "destructive" });
       return;
@@ -175,11 +201,20 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
   };
 
   const handleClaim = async () => {
-    if (!canClaim) return;
+    if (!canClaim || !validatedCode) return;
 
     setLoading(true);
     try {
       const normalizedPhone = normalizePhone(phone.trim());
+
+      const { data: claimedCode, error: codeClaimError } = await supabase
+        .from("promo_codes")
+        .update({ claimed_at: new Date().toISOString() })
+        .eq("id", validatedCode.id)
+        .is("claimed_at", null)
+        .select("id")
+        .maybeSingle();
+      if (codeClaimError || !claimedCode) throw new Error("This promo code has already been claimed or is no longer active.");
 
       // Record the claim
       const { error: claimError } = await supabase
@@ -313,6 +348,18 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
           {!claimSuccess ? (
             <>
+              <div>
+                <Label className="text-green-200 text-xs mb-1 block">Enter your generated promo code</Label>
+                <Input
+                  placeholder="e.g. VJK3PGE2JME3"
+                  value={promoCode}
+                  onChange={(e) => { setPromoCode(e.target.value.toUpperCase().replace(/\s/g, "")); setCodeError(""); setValidatedCode(null); }}
+                  className="bg-white/10 text-white border-white/20 placeholder:text-white/30 tracking-widest font-mono"
+                  disabled={eligibilityChecked}
+                />
+                {codeError && <p className="mt-1 text-xs text-red-300">{codeError}</p>}
+                {validatedCode && <p className="mt-1 text-xs text-green-300">Code accepted. Continue with your phone number.</p>}
+              </div>
               <div>
                 <Label className="text-green-200 text-xs mb-1 block">Enter your phone number</Label>
                 <div className="flex gap-2">
