@@ -560,11 +560,27 @@ const UserDashboard = () => {
       // are owned by api_users.identity_id and have source = "api".
       const { data: apiUserRow, error: apiUserError } = await supabase
         .from("api_users")
-        .select("id, identity_id")
+        .select("id, identity_id, api_key")
         .eq("identity_id", userId)
         .maybeSingle();
 
       const orderColumns = "id, customer_id, user_id, api_user, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at";
+
+      // Use the same server-side API-order path as the API itself. It uses the
+      // service-role client, so RLS cannot hide a user's own API history.
+      if (apiUserRow?.api_key) {
+        const apiResponse = await fetch("/api/get-orders", {
+          headers: { Authorization: `Bearer ${apiUserRow.api_key}` },
+        });
+        const apiPayload = await apiResponse.json();
+        if (apiResponse.ok && apiPayload.success) {
+          setApiOrders(apiPayload.data?.orders ?? []);
+          setLoadingApiOrders(false);
+          return;
+        }
+        console.log("[v0] API order endpoint failed:", apiPayload);
+      }
+
       let identityOrders: any[] = [];
       let identityOrdersError: any = null;
 
