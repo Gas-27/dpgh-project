@@ -627,6 +627,12 @@ const UserDashboard = () => {
     }
   };
 
+  useEffect(() => {
+    if ((activeMenu === "api-orders" || activeMenu === "api-info") && effectiveUserId) {
+      loadApiOrders();
+    }
+  }, [activeMenu, effectiveUserId]);
+
   const filteredApiOrders = apiOrders.filter((order) => {
     const matchSearch = apiOrdersSearch === "" || 
       order.customer_number?.includes(apiOrdersSearch) ||
