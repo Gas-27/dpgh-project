@@ -629,7 +629,7 @@ const UserDashboard = () => {
 
   useEffect(() => {
     if ((activeMenu === "api-orders" || activeMenu === "api-info") && effectiveUserId) {
-      loadApiOrders();
+      fetchApiOrders();
     }
   }, [activeMenu, effectiveUserId]);
 
