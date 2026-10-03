@@ -564,26 +564,21 @@ const UserDashboard = () => {
         .from("api_users")
         .select("id, identity_id")
         .eq("identity_id", userId)
-        .eq("is_user", true)
         .maybeSingle();
 
       if (apiUserError) {
-        console.log("[v0] Error fetching api_users row:", apiUserError);
-        setApiOrders([]);
-        return;
-      }
-
-      if (!apiUserRow) {
-        setApiOrders([]);
-        return;
+        console.log("[v0] Error fetching api_users row; continuing with identity-linked orders:", apiUserError);
       }
 
       const orderColumns = "id, customer_id, user_id, api_user, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at";
+      // API purchases are written with the authenticated user's id, not only
+      // through api_users. Query this path directly so orders still appear if
+      // the API-user profile row is missing or has a different role flag.
       const { data: identityOrders, error: identityOrdersError } = await supabase
         .from("orders")
         .select(orderColumns)
         .eq("source", "api")
-        .eq("user_id", apiUserRow.identity_id)
+        .eq("user_id", userId)
         .order("created_at", { ascending: false })
         .limit(500);
 
@@ -593,12 +588,14 @@ const UserDashboard = () => {
         return;
       }
 
-      const legacyOrders = await supabase
-        .from("orders")
-        .select(orderColumns)
-        .eq("api_user", apiUserRow.id)
-        .order("created_at", { ascending: false })
-        .limit(500);
+      const legacyOrders = apiUserRow
+        ? await supabase
+            .from("orders")
+            .select(orderColumns)
+            .eq("api_user", apiUserRow.id)
+            .order("created_at", { ascending: false })
+            .limit(500)
+        : { data: [] as any[], error: null };
 
       const ordersById = new Map<string, any>();
       for (const order of [...(identityOrders ?? []), ...(legacyOrders.data ?? [])]) {
