@@ -230,8 +230,7 @@ const UserDashboard = () => {
     { id: "rewards", label: "Rewards & Benefits", icon: ImageIcon },
     { id: "api-key", label: "API Key", icon: Zap },
       { id: "api-docs", label: "API Docs", icon: BookOpen },
-    { id: "api-orders", label: "API Orders", icon: BarChart3 },
-    { id: "afa-registration", label: "AFA Registration", icon: Package },
+      { id: "afa-registration", label: "AFA Registration", icon: Package },
     { id: "sms", label: "Send SMS", icon: Send },
     { id: "topup", label: "Top Up", icon: Coins },
     { id: "become-agent", label: "Become an Agent", icon: Users },
@@ -983,8 +982,7 @@ case "api-key":
   return <PromoCodesPanel walletBalance={normalWallet} ownerType="agent" ownerId={effectiveUserId} />;
       case "api-docs":
         return renderApiDocs();
-      case "api-orders":
-        return renderApiOrders();
+
       case "afa-registration":
         return renderAfaRegistration();
   case "services":
