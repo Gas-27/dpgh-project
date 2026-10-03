@@ -33,6 +33,7 @@ import SmsHistory from "@/components/SmsHistory";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
+import PromoCodesPanel from "@/components/PromoCodesPanel";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
@@ -228,6 +229,7 @@ const UserDashboard = () => {
   { id: "reports", label: "Report an Issue", icon: AlertTriangle },
     { id: "rewards", label: "Rewards & Benefits", icon: ImageIcon },
     { id: "api-key", label: "API Key", icon: Zap },
+    { id: "promo-codes", label: "Promo Codes", icon: Tag },
     { id: "api-docs", label: "API Docs", icon: BookOpen },
     { id: "api-orders", label: "API Orders", icon: BarChart3 },
     { id: "afa-registration", label: "AFA Registration", icon: Package },
@@ -987,8 +989,10 @@ const UserDashboard = () => {
   return <ReportCenter reporterRole={isImpersonating ? "user" : "user"} />;
       case "rewards":
         return renderFlyerGenerator();
-      case "api-key":
-        return renderApiKey();
+case "api-key":
+  return renderApiKey();
+  case "promo-codes":
+  return <PromoCodesPanel walletBalance={normalWallet} ownerType="agent" ownerId={effectiveUserId} />;
       case "api-docs":
         return renderApiDocs();
       case "api-orders":
@@ -1834,16 +1838,16 @@ const UserDashboard = () => {
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-sm text-muted-foreground">
-            Now that you&apos;ve set up your API, contact us to learn more about integration options and technical support.
+            Now that you&apos;ve set up your API, contact us by email for integration options and technical support. If you have a contact you want us to verify on our portal, send it to us and we will submit it for approval.
           </p>
           <a
-            href="https://whatsapp.com/channel/0029Vb69LKt42DcgVbzaUS1q"
+            href="mailto:justbuyapisupport@gmail.com?subject=API%20Support%20Request"
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors"
           >
             <Send className="h-4 w-4" />
-            Contact via WhatsApp
+            Email justbuyapisupport@gmail.com
           </a>
         </CardContent>
       </Card>

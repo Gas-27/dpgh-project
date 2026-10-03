@@ -616,7 +616,8 @@ export function SubSubagentStorefront() {
       });
       
   setSubagentPrices(priceMap);
-      if (appSettingsRes.data) setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
+      const { data: promoSetting } = await supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", matched.user_id).eq("store_type", "subsubagent").maybeSingle();
+  setFreeDataEnabled(Boolean(promoSetting?.claim_visible));
       
       setLoading(false);
     };

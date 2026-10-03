@@ -795,7 +795,8 @@ const AgentStorefront = () => {
       setAgentPrices(priceMap);
       setAgentSubagentPrices(agentPriceMap);
       if (appSettingsRes.data) {
-    setFreeDataEnabled(appSettingsRes.data.free_data_enabled ?? true);
+    const { data: promoSetting } = await supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", matched.user_id).eq("store_type", "agent").maybeSingle();
+  setFreeDataEnabled(Boolean(promoSetting?.claim_visible));
     setShowAgentPrice((matched.theme_config as any)?.show_agent_price ?? false);
   }
       setLoading(false);

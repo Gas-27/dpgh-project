@@ -4573,16 +4573,16 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <p className="text-sm text-muted-foreground">
-                    Now that you've set up your API, contact us to learn more about integration options and technical support.
+                    Now that you've set up your API, contact us by email for integration options and technical support. If you have a contact you want us to verify on our portal, send it to us and we will submit it for approval.
                   </p>
                   <a 
-                    href="https://whatsapp.com/channel/0029Vb69LKt42DcgVbzaUS1q"
+                    href="mailto:justbuyapisupport@gmail.com?subject=API%20Support%20Request"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md text-sm font-medium transition-colors"
                   >
                     <Send className="h-4 w-4" />
-                    Contact via WhatsApp
+                    Email justbuyapisupport@gmail.com
                   </a>
                 </CardContent>
               </Card>
