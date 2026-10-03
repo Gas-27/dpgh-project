@@ -557,7 +557,7 @@ const UserDashboard = () => {
     setLoadingApiOrders(true);
     try {
       // Keep this query identical to the working agent dashboard: API orders
-      // are owned by api_users.identity_id and have source = "api".
+      // are owned by api_users.identity_id and have source = "api", matching AgentDashboard.
       const { data: apiUserRow, error: apiUserError } = await supabase
         .from("api_users")
         .select("id, identity_id, api_key")
@@ -586,8 +586,8 @@ const UserDashboard = () => {
         const result = await supabase
           .from("orders")
           .select(orderColumns)
-        .eq("payment_method", "api_wallet")
-        .eq("user_id", apiUserRow.identity_id)
+.eq("source", "api")
+  .eq("user_id", apiUserRow.identity_id)
           .order("created_at", { ascending: false })
           .limit(500);
         identityOrders = result.data ?? [];
@@ -608,8 +608,8 @@ const UserDashboard = () => {
       const legacyOrders = await supabase
         .from("orders")
         .select(orderColumns)
-        .eq("payment_method", "api_wallet")
-        .or(`api_user.eq.${apiUserRow?.id ?? "00000000-0000-0000-0000-000000000000"},user_id.eq.${userId},customer_id.eq.${userId}`)
+.eq("source", "api")
+  .or(`api_user.eq.${apiUserRow?.id ?? "00000000-0000-0000-0000-000000000000"},user_id.eq.${userId},customer_id.eq.${userId}`)
         .order("created_at", { ascending: false })
         .limit(500);
 

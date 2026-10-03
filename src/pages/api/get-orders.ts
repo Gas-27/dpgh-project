@@ -81,7 +81,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     query = supabase
       .from('orders')
       .select('id, customer_number, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, payment_method, source, created_at, updated_at')
-      .eq('payment_method', 'api_wallet')
+      .eq('source', 'api')
       .or(ownershipFilters)
       .order('created_at', { ascending: false });
   }
