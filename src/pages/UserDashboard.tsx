@@ -556,46 +556,49 @@ const UserDashboard = () => {
     if (!userId) return;
     setLoadingApiOrders(true);
     try {
-      // Match the agent dashboard: API orders are linked through the API user's
-      // identity_id and marked with source = "api". The api_user column is
-      // retained as a compatibility fallback for older order records.
+      // Keep this query identical to the working agent dashboard: API orders
+      // are owned by api_users.identity_id and have source = "api".
       const { data: apiUserRow, error: apiUserError } = await supabase
         .from("api_users")
         .select("id, identity_id")
         .eq("identity_id", userId)
+        .eq("is_agent", true)
         .maybeSingle();
 
-      if (apiUserError) {
-        console.log("[v0] Error fetching api_users row; continuing with identity-linked orders:", apiUserError);
+      const orderColumns = "id, customer_id, user_id, api_user, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at";
+      let identityOrders: any[] = [];
+      let identityOrdersError: any = null;
+
+      if (apiUserRow?.identity_id) {
+        const result = await supabase
+          .from("orders")
+          .select(orderColumns)
+          .eq("source", "api")
+          .eq("user_id", apiUserRow.identity_id)
+          .order("created_at", { ascending: false })
+          .limit(500);
+        identityOrders = result.data ?? [];
+        identityOrdersError = result.error;
       }
 
-      const orderColumns = "id, customer_id, user_id, api_user, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at";
-      // API purchases are written with the authenticated user's id, not only
-      // through api_users. Query this path directly so orders still appear if
-      // the API-user profile row is missing or has a different role flag.
-      const { data: identityOrders, error: identityOrdersError } = await supabase
-        .from("orders")
-        .select(orderColumns)
-        .ilike("source", "api")
-        .or(`user_id.eq.${userId},customer_id.eq.${userId}`)
-        .order("created_at", { ascending: false })
-        .limit(500);
+      if (apiUserError) {
+        console.log("[v0] API user lookup failed:", apiUserError);
+      }
 
       if (identityOrdersError) {
-        console.log("[v0] Error fetching identity-linked API orders:", identityOrdersError);
+        console.log("[v0] Error fetching API orders:", identityOrdersError);
         setApiOrders([]);
         return;
       }
 
-      const legacyOrders = apiUserRow
-        ? await supabase
-            .from("orders")
-            .select(orderColumns)
-            .or(`source.ilike.api,api_user.eq.${apiUserRow.id}`)
-            .or(`api_user.eq.${apiUserRow.id},user_id.eq.${apiUserRow.identity_id},user_id.eq.${apiUserRow.id}`)
-            .order("created_at", { ascending: false })
-            .limit(500)
-        : { data: [] as any[], error: null };
+      // Older API orders may have been stored with api_user or the user id.
+      const legacyOrders = await supabase
+        .from("orders")
+        .select(orderColumns)
+        .eq("source", "api")
+        .or(`api_user.eq.${apiUserRow?.id ?? "00000000-0000-0000-0000-000000000000"},user_id.eq.${userId},customer_id.eq.${userId}`)
+        .order("created_at", { ascending: false })
+        .limit(500);
 
       const ordersById = new Map<string, any>();
       for (const order of [...(identityOrders ?? []), ...(legacyOrders.data ?? [])]) {
