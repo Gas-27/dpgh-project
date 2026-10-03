@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
-import DashboardMiniBar from "@/components/DashboardMiniBar";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
@@ -2034,7 +2033,6 @@ return (
   {/* OVERVIEW */}
           <TabsContent value="approvals" className="mt-0 space-y-6"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="subsubagent-dashboard" storeId={subagentStore?.id} /></CardContent></Card></TabsContent>
 <TabsContent value="overview" className="mt-0 space-y-6">
-  <DashboardMiniBar onSelect={setActiveTab} />
   <Button type="button" size="sm" className="rounded-full border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setActiveTab("withdraw")}>Withdraw</Button>
                                               {/* Instruction Manual Dropdown */}
   <Card className="hidden border-primary/30 bg-primary/5">
