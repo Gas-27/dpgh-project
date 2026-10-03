@@ -11,20 +11,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
-  // Extract API key from Authorization header: "Bearer pk_live_..."
+  // API clients authenticate with their API key. The dashboard may also request
+  // the signed-in user's history; that path uses the server-side Supabase
+  // client so RLS cannot hide orders from the dashboard.
   const authHeader = req.headers['authorization'] || req.headers['Authorization'];
   const apiKey = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '').trim() : null;
+  const requestedIdentity = typeof req.query.identity_id === 'string' ? req.query.identity_id : null;
 
-  if (!apiKey) {
-    return res.status(401).json({ success: false, error: 'Missing API key. Provide it as Authorization: Bearer <api_key>' });
+  let apiUser;
+  let apiUserError;
+  if (requestedIdentity) {
+    ({ data: apiUser, error: apiUserError } = await supabase
+      .from('api_users')
+      .select('id, identity_id, is_agent')
+      .eq('identity_id', requestedIdentity)
+      .maybeSingle());
+  } else if (apiKey) {
+    ({ data: apiUser, error: apiUserError } = await supabase
+      .from('api_users')
+      .select('id, identity_id, is_agent')
+      .eq('api_key', apiKey)
+      .maybeSingle());
+  } else {
+    return res.status(401).json({ success: false, error: 'Missing API key or identity' });
   }
-
-  // Look up the api_users row for this key
-  const { data: apiUser, error: apiUserError } = await supabase
-    .from('api_users')
-    .select('identity_id, is_agent')
-    .eq('api_key', apiKey)
-    .maybeSingle();
 
   if (apiUserError || !apiUser) {
     return res.status(401).json({ success: false, error: 'Invalid API key' });
@@ -57,7 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     query = supabase
       .from('orders')
       .select('id, customer_number, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, payment_method, source, created_at, updated_at')
-      .eq('user_id', apiUser.identity_id)
+      .or(`user_id.eq.${apiUser.identity_id},api_user.eq.${apiUser.id}`)
       .order('created_at', { ascending: false });
   }
 

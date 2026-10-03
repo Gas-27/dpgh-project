@@ -568,10 +568,8 @@ const UserDashboard = () => {
 
       // Use the same server-side API-order path as the API itself. It uses the
       // service-role client, so RLS cannot hide a user's own API history.
-      if (apiUserRow?.api_key) {
-        const apiResponse = await fetch("/api/get-orders", {
-          headers: { Authorization: `Bearer ${apiUserRow.api_key}` },
-        });
+      if (userId) {
+        const apiResponse = await fetch(`/api/get-orders?identity_id=${encodeURIComponent(userId)}`);
         const apiPayload = await apiResponse.json();
         if (apiResponse.ok && apiPayload.success) {
           setApiOrders(apiPayload.data?.orders ?? []);
