@@ -556,17 +556,23 @@ const UserDashboard = () => {
     if (!userId) return;
     setLoadingApiOrders(true);
     try {
-  // Use the server-side user-history endpoint so admin impersonation does not
-  // apply the admin browser session's RLS policy to the customer's API audits.
-  const response = await fetch(`/api/get-orders?identity_id=${encodeURIComponent(userId)}&limit=500`);
-  const payload = await response.json();
-  if (!response.ok || !payload.success) {
-    console.log("[v0] API order history request failed:", payload);
+  // This is a Vite deployment, so /api/get-orders is not a served route.
+  // Query Supabase directly using the impersonated account id.
+  const { data: orders, error } = await supabase
+    .from("orders")
+    .select("id, user_id, customer_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at")
+    .eq("user_id", userId)
+    .eq("payment_method", "api_wallet")
+    .order("created_at", { ascending: false })
+    .limit(500);
+
+  if (error) {
+    console.log("[v0] API order history query failed:", error);
     setApiOrders([]);
     return;
   }
 
-  setApiOrders(payload.data?.orders ?? []);
+  setApiOrders(orders ?? []);
     } catch (error) {
       console.log("[v0] Error fetching API orders:", error);
     } finally {
