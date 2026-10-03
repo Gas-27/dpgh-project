@@ -631,8 +631,11 @@ export function SubagentStorefront() {
       });
       
       setSubagentPrices(priceMap);
-      const { data: promoSetting } = await supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", matched.user_id).eq("store_type", "subagent").maybeSingle();
-  setFreeDataEnabled(Boolean(promoSetting?.claim_visible));
+      const [{ data: promoSetting }, { data: activePromoCodes }] = await Promise.all([
+  supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", matched.user_id).eq("store_type", "subagent").maybeSingle(),
+  supabase.from("promo_codes").select("id").eq("owner_id", matched.user_id).eq("store_type", "subagent").is("claimed_at", null).is("refunded_at", null).gt("expires_at", new Date().toISOString()).limit(1),
+]);
+  setFreeDataEnabled(Boolean(promoSetting?.claim_visible && activePromoCodes?.length));
       
       setLoading(false);
     };
@@ -1596,7 +1599,7 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
           initialRight={24}
           storageKey="claim-free-data-subagent"
           onClick={() => setClaimFreeDataOpen(true)}
-          title="Claim Free Data"
+          title="Promo Codes Available"
         >
           <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
             <Gift className="h-6 w-6" />
