@@ -1843,7 +1843,7 @@ case "api-key":
   <div className="space-y-6">
   <Card className="border-primary/30 bg-primary/5">
     <CardHeader><CardTitle className="text-base">Why use the Agent API?</CardTitle></CardHeader>
-    <CardContent><p className="text-sm text-muted-foreground leading-relaxed">Using the API from your agent signup and the API key generated in your Agent Dashboard is better than using the API key in the User Dashboard. You receive free USD credit from the site to use for your own website, and each customer purchase is credited to your wallet. This free USD applies to orders from your main site; customers using your API wallet still pay for those API orders.</p></CardContent>
+    <CardContent className="space-y-4"><p className="text-sm text-muted-foreground leading-relaxed">Using the API from your agent signup and the API key generated in your Agent Dashboard is better than using the API key in the User Dashboard. You receive free USSD code and other benefits that you can add from your site to yours as well, and each customer purchase is credited to your wallet. This free USSD applies to orders from your main site, meaning the USSD you receive can be used to make purchases and the orders will go through even if you have no money in your API Wallet. Remember to set the selling price so you make a profit from every sale.</p><button type="button" onClick={() => setActiveMenu("become-agent")} className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90">Become an Agent</button></CardContent>
   </Card>
   {/* Need Help with API Card */}
       <Card className="border-primary/30 bg-primary/5">
