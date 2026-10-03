@@ -124,7 +124,7 @@ export default function AgentSignupPrompt({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100%-1rem)] max-w-4xl max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain p-4 sm:p-6">
         <DialogClose className="absolute right-4 top-4 z-10">
           <X className="h-5 w-5" />
         </DialogClose>
