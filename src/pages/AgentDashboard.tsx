@@ -2786,7 +2786,7 @@ return (
           <TabsContent value="instant-data" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="instant" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
   <TabsContent value="subscription" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription" /></TabsContent>
   <TabsContent value="subscription-price" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription-price" /></TabsContent>
-  <TabsContent value="promo" className="mt-0"><PromoCodesPanel walletBalance={Number(store?.wallet_balance ?? 0)} /></TabsContent>
+  <TabsContent value="promo" className="mt-0"><PromoCodesPanel walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} /></TabsContent>
   <TabsContent value="social-boost" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="social-boost" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
   <TabsContent value="buy" className="space-y-4 mt-0">
             {store && (<Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>

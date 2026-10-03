@@ -2022,7 +2022,7 @@ return (
   <TabsContent value="subscription" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subsubagent" ownerId={subagentStore?.id} canSetPrices initialTab="subscription" /></TabsContent>
   <TabsContent value="subscription-price" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subsubagent" ownerId={subagentStore?.id} canSetPrices initialTab="subscription-price" /></TabsContent>
   <TabsContent value="services" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subsubagent" ownerId={subagentStore?.id} initialTab="services" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
-  <TabsContent value="promo" className="mt-0"><PromoCodesPanel walletBalance={Number(subagentStore?.wallet_balance ?? 0)} /></TabsContent>
+  <TabsContent value="promo" className="mt-0"><PromoCodesPanel walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subsubagent" ownerId={subagentStore?.id} /></TabsContent>
   <TabsContent value="social-boost" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="sub_subagent" ownerId={subagentStore?.id} canSetPrices initialTab="social-boost" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
   <TabsContent value="store" className="mt-0">{/* Store Prices */}</TabsContent>
 
