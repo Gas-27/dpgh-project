@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Gift, Loader2, CheckCircle, X, Trophy, Calendar, AlertCircle, Info } from "lucide-react";
+import { Gift, Loader2, CheckCircle, X, Trophy, Calendar, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { detectNetwork, normalizePhone as normalizePhoneUtil, isValidPhone as isValidPhoneUtil } from "@/lib/phoneUtils";
 import NetworkIndicator from "@/components/NetworkIndicator";
@@ -332,25 +332,9 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
           <DialogTitle className="text-xl font-black text-center text-white flex items-center justify-center gap-2">
             <Gift className="h-6 w-6 text-green-400" /> Claim Free Data
           </DialogTitle>
-          <DialogDescription className="text-center text-green-300 text-xs">
-            Buy {requiredGb}GB of <span className="font-bold text-yellow-300">{networkText}</span> data in a week and get <span className="font-bold text-yellow-300">{freeRewardGb}GB FREE!</span>
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Info Box - Week Details */}
-          <div className="bg-blue-900/30 border border-blue-500/30 rounded-lg p-3">
-            <div className="flex items-start gap-2">
-              <Info className="h-4 w-4 text-blue-400 mt-0.5 shrink-0" />
-              <div className="text-xs text-blue-200 space-y-1">
-                <p><span className="font-bold">Week runs Monday to Sunday.</span></p>
-                <p>Offer expires: <span className="font-bold text-yellow-300">{weekEnd.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })}</span></p>
-                <p className="text-blue-300/70">If not claimed by Sunday, the offer resets and is lost.</p>
-                {!telecelEnabled && <p className="text-orange-300/80">Telecel purchases do not count (no {freeRewardGb}GB available).</p>}
-              </div>
-            </div>
-          </div>
-
           {!claimSuccess ? (
             <>
               <div>
