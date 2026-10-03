@@ -256,6 +256,34 @@ const SubSubagentDashboard = () => {
   const [customStartDate, setCustomStartDate] = useState("");
   const [customEndDate, setCustomEndDate] = useState("");
   const [showRefundedOnly, setShowRefundedOnly] = useState(false);
+  const [databaseFinancialTotals, setDatabaseFinancialTotals] = useState({ totalOrders: 0, totalRevenue: 0, totalProfit: 0 });
+
+  useEffect(() => {
+    if (!subagentStore?.id) return;
+    const now = new Date();
+    const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    let start: string | null = null;
+    let end: string | null = null;
+    if (dateFilter === "today") start = startOfToday.toISOString();
+    if (dateFilter === "yesterday") {
+      const yesterday = new Date(startOfToday); yesterday.setDate(yesterday.getDate() - 1);
+      start = yesterday.toISOString(); end = startOfToday.toISOString();
+    }
+    if (dateFilter === "week") { const week = new Date(startOfToday); week.setDate(week.getDate() - 7); start = week.toISOString(); }
+    if (dateFilter === "month") { const month = new Date(startOfToday); month.setMonth(month.getMonth() - 1); start = month.toISOString(); }
+    if (dateFilter === "custom") {
+      start = customStartDate ? new Date(`${customStartDate}T00:00:00`).toISOString() : null;
+      end = customEndDate ? new Date(`${customEndDate}T23:59:59.999`).toISOString() : null;
+    }
+    let cancelled = false;
+    supabase.rpc("get_store_financial_totals", { p_store_id: subagentStore.id, p_store_level: "subsubagent", p_start: start, p_end: end })
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (cancelled || error) return;
+        setDatabaseFinancialTotals({ totalOrders: Number(data?.total_orders ?? 0), totalRevenue: Number(data?.total_revenue ?? 0), totalProfit: Number(data?.total_profit ?? 0) });
+      });
+    return () => { cancelled = true; };
+  }, [subagentStore?.id, dateFilter, customStartDate, customEndDate]);
   
   // Notification popup state
   const [showSubagentNotificationPopup, setShowSubagentNotificationPopup] = useState(true);
@@ -1804,23 +1832,12 @@ const handleSaveStore = async () => {
 
   // Only count customer orders (not wallet purchases by subagent) for revenue
   const customerOrders = dateFilteredOrders.filter(o => o.payment_method !== "wallet");
-  const totalRevenue = customerOrders.reduce((sum, order) => sum + ((order.status === "completed" || order.status === "paid") ? Number(order.selling_price || order.amount) : 0), 0);
-  
-  // Calculate profit from ALL completed orders (customer pays, subagent earns profit)
-  const allCompletedOrders = customerOrders.filter(o => o.status === "completed" || o.status === "paid");
-  const totalProfit = allCompletedOrders.reduce((sum, order) => {
-    // Use stored profit if available, otherwise calculate from stored prices or fallback
-    if (order.profit !== null && order.profit !== undefined && order.profit !== 0) {
-      return sum + Number(order.profit);
-    }
-    // Fallback for old orders without stored profit
-    const baseCost = order.base_price || (order.package_id ? (basePrices[order.package_id] || 0) : 0);
-    return sum + (Number(order.selling_price || order.amount) - baseCost);
-  }, 0);
+  const totalRevenue = databaseFinancialTotals.totalRevenue;
+  const totalProfit = databaseFinancialTotals.totalProfit;
   
   const pendingOrders = dateFilteredOrders.filter(o => o.status !== "completed").length;
   // Use totalOrderCount when viewing all dates (which is the true total from database), otherwise use filtered length
-  const totalOrders = dateFilter === "all" ? totalOrderCount : dateFilteredOrders.length;
+  const totalOrders = databaseFinancialTotals.totalOrders;
   const completedWithdrawals = withdrawals.filter(w => w.status === "completed" || w.status === "success").reduce((s, w) => s + Number(w.amount), 0);
   const totalWithdrawals = withdrawals.reduce((s, w) => s + Number(w.amount), 0);
   // Calculate wallet purchases from orders
