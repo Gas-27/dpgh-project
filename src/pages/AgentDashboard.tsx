@@ -2365,7 +2365,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
 
   const dateFilteredOrders = getDateFilteredOrders(orders);
   // Use totalOrderCount when viewing all dates (which is the true total from database), otherwise use filtered length
-  const totalOrders = dateFilter === "all" ? totalOrderCount : dateFilteredOrders.length;
+  const totalOrders = databaseFinancialTotals.totalOrders;
   const pendingOrders = dateFilteredOrders.filter(o => o.status === "pending").length;
   // When "show refunded only" is on, draw from the full allRefundedOrders list fetched from DB
   const filteredOrders = (showRefundedOnly ? allRefundedOrders : getDateFilteredOrders(orders)).filter(o => {
@@ -2373,30 +2373,13 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     return matchesSearch;
   });
   
-  // Calculate filtered profit stats based on date filter (no useMemo to avoid hook issues)
-  const filteredProfitStats = (() => {
-    const completedOrders = dateFilteredOrders.filter(o => (o.status === "completed" || o.status === "paid") && o.payment_method !== "wallet" && o.status !== "refunded");
-    let revenue = 0;
-    let profit = 0;
-    
-    for (const order of completedOrders) {
-      const orderRevenue = order.selling_price && order.selling_price > 0 
-        ? Number(order.selling_price) 
-        : Number(order.amount);
-      revenue += orderRevenue;
-      
-      // Calculate profit
-      if (order.profit !== null && order.profit !== undefined && order.profit !== 0) {
-        profit += Number(order.profit);
-      } else {
-        const pkg = packages.find(p => p.id === order.package_id);
-        const baseCost = order.base_price || pkg?.agent_price || 0;
-        profit += orderRevenue - baseCost;
-      }
-    }
-    
-    return { totalRevenue: revenue, totalProfit: profit };
-  })();
+  // Financial KPIs come from the database aggregate, not the paginated orders array.
+  // This keeps the figures complete for large stores and applies the same status,
+  // refund, descendant-store, and role-specific profit rules as the other dashboards.
+  const filteredProfitStats = {
+    totalRevenue: databaseFinancialTotals.totalRevenue,
+    totalProfit: databaseFinancialTotals.totalProfit,
+  };
   
   // Calculate breakdown by profit source
   const profitBreakdown = (() => {
