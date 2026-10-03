@@ -558,11 +558,12 @@ const UserDashboard = () => {
     try {
       // Keep this query identical to the working agent dashboard: API orders
       // are owned by api_users.identity_id and have source = "api", matching AgentDashboard.
-      const { data: apiUserRow, error: apiUserError } = await supabase
+      const { data: apiUserRows, error: apiUserError } = await supabase
         .from("api_users")
         .select("id, identity_id, api_key")
         .eq("identity_id", userId)
-        .maybeSingle();
+        .order("created_at", { ascending: false });
+      const apiUsers = apiUserRows ?? [];
 
       const orderColumns = "id, customer_id, user_id, api_user, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at";
 
@@ -570,19 +571,18 @@ const UserDashboard = () => {
         console.log("[v0] API user lookup failed:", apiUserError);
       }
 
-      // Match AgentDashboard exactly: API audits are orders with source=api and
-      // user_id equal to api_users.identity_id. Include legacy api_user/customer
-      // ownership as a compatibility fallback, without changing the source.
-      const ownership = [
-        `user_id.eq.${apiUserRow?.identity_id ?? userId}`,
-        `customer_id.eq.${userId}`,
-        ...(apiUserRow?.id ? [`api_user.eq.${apiUserRow.id}`] : []),
-      ].join(",");
+      // The working AgentDashboard loads API audits by the api_users primary key:
+      // orders.api_user = api_users.id. Use the same relationship here.
+      const apiUserIds = apiUsers.map((apiUser) => apiUser.id).filter(Boolean);
+      if (apiUserIds.length === 0) {
+        setApiOrders([]);
+        return;
+      }
+
       const { data: auditOrders, error: auditOrdersError } = await supabase
         .from("orders")
         .select(orderColumns)
-        .eq("source", "api")
-        .or(ownership)
+        .in("api_user", apiUserIds)
         .order("created_at", { ascending: false })
         .limit(500);
 
@@ -2437,7 +2437,8 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                         <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Date</th>
                         <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Contact</th>
                         <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Network</th>
-                        <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Data</th>
+                        <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Data Size</th>
+                        <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Payment</th>
                         <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Amount</th>
 <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Order Status</th>
   <th className="px-3 py-2 text-xs font-medium text-muted-foreground">Action</th>
@@ -2458,6 +2459,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                             </td>
                             <td className="px-3 py-2 text-xs font-semibold text-cyan-400">
                               {order.size_gb_text || `${order.size_gb}GB`}
+                            </td>
+                            <td className="px-3 py-2 text-xs text-muted-foreground">
+                              {order.payment_method === "api_wallet" || order.payment_method === "wallet" ? "API Wallet" : (order.payment_method || "API Wallet")}
                             </td>
                             <td className="px-3 py-2 text-xs font-semibold">
                               GHC {Number(order.selling_price || order.amount || 0).toFixed(2)}
