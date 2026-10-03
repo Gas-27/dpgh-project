@@ -70,9 +70,35 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
 
   const savePromoVisibility = async (value: boolean) => {
     setPromoVisible(value);
-    if (!userId) return;
-    const { error } = await supabase.from("promo_code_settings").upsert({ owner_id: promoOwnerId, store_type: storeType, claim_visible: value, updated_at: new Date().toISOString() }, { onConflict: "owner_id,store_type" });
-    if (error) toast({ title: "Could not save promo visibility", description: error.message, variant: "destructive" });
+    if (!userId || !promoOwnerId) return;
+
+    const settings = {
+      owner_id: promoOwnerId,
+      store_type: storeType,
+      claim_visible: value,
+      updated_at: new Date().toISOString(),
+    };
+
+    const { data: existing, error: lookupError } = await supabase
+      .from("promo_code_settings")
+      .select("id")
+      .eq("owner_id", promoOwnerId)
+      .maybeSingle();
+
+    if (lookupError) {
+      setPromoVisible(!value);
+      toast({ title: "Could not save promo visibility", description: lookupError.message, variant: "destructive" });
+      return;
+    }
+
+    const { error } = existing
+      ? await supabase.from("promo_code_settings").update(settings).eq("id", existing.id)
+      : await supabase.from("promo_code_settings").insert(settings);
+
+    if (error) {
+      setPromoVisible(!value);
+      toast({ title: "Could not save promo visibility", description: error.message, variant: "destructive" });
+    }
   };
 
   const completeGeneration = async () => {
