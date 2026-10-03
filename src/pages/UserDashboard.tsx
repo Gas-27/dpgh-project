@@ -287,12 +287,11 @@ const UserDashboard = () => {
         // linked orders match auth.users, none match customers.id). Never
         // resolve through the customers table here.
   // Orders guardrail: keep columns explicit and bound every read; never use select('*') or an unbounded full-table query here.
-  const { data: ordersData, error: ordersError } = await supabase
+  const { data: ordersData, error: ordersError, count: ordersCount } = await supabase
   .from("orders")
-  .select("id, customer_id, user_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at")
+  .select("id, customer_id, user_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at", { count: "exact" })
   .or(`customer_id.eq.${effectiveUserId},user_id.eq.${effectiveUserId}`)
-  .order("created_at", { ascending: false })
-  .limit(500);
+  .order("created_at", { ascending: false });
 
         console.log("[v0] Orders fetch result - Error:", ordersError, "Data:", ordersData);
 
@@ -302,6 +301,7 @@ const UserDashboard = () => {
           const userOrders = (ordersData as Order[]) || [];
           console.log("[v0] User orders loaded:", userOrders.length, "orders");
           setOrders(userOrders);
+  setTotalOrders(ordersCount ?? userOrders.length);
 
           let totalGB = 0;
           let totalCost = 0;
@@ -1372,8 +1372,7 @@ case "api-key":
     });
 
     // Calculate stats
-    const totalOrders = orders.length;
-    const totalSpent = orders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
+  const totalSpent = orders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
 
     return (
       <div className="space-y-6">

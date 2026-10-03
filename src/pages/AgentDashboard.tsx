@@ -537,14 +537,13 @@ const AgentDashboard = () => {
         p_start: start,
         p_end: end,
       }).maybeSingle(),
-      apiUserData?.identity_id
-        ? supabase.from("orders").select("amount, selling_price, profit, created_at", { count: "exact" }).eq("source", "api").eq("user_id", apiUserData.identity_id).gte("created_at", start ?? "1970-01-01T00:00:00.000Z").lt("created_at", end ?? "9999-12-31T23:59:59.999Z")
+      user?.id
+        ? supabase.from("orders").select("amount, selling_price, profit, created_at", { count: "exact" }).eq("source", "api").eq("user_id", user.id).gte("created_at", start ?? "1970-01-01T00:00:00.000Z").lt("created_at", end ?? "9999-12-31T23:59:59.999Z")
         : Promise.resolve({ data: [], count: 0, error: null }),
     ]).then(([rpcResult, apiResult]) => {
       if (cancelled) return;
       if (rpcResult.error) {
         console.error("[v0] Failed to load database financial totals:", rpcResult.error);
-        return;
       }
       const apiOrders = apiResult.data ?? [];
       setDatabaseFinancialTotals({
@@ -555,7 +554,7 @@ const AgentDashboard = () => {
     });
 
     return () => { cancelled = true; };
-  }, [store?.id, dateFilter, customStartDate, customEndDate]);
+  }, [store?.id, user?.id, dateFilter, customStartDate, customEndDate]);
   
   // Flyer
   const flyerRef = useRef<HTMLDivElement>(null);
