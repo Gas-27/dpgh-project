@@ -948,12 +948,10 @@ const UserDashboard = () => {
           <Tabs defaultValue="api-key" className="w-full">
             <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="api-key">API Key</TabsTrigger>
-              <TabsTrigger value="api-orders">API Orders</TabsTrigger>
-              <TabsTrigger value="api-docs">API Docs</TabsTrigger>
+                          <TabsTrigger value="api-docs">API Docs</TabsTrigger>
             </TabsList>
             <TabsContent value="api-key">{renderApiKey()}</TabsContent>
-            <TabsContent value="api-orders">{renderApiOrders()}</TabsContent>
-            <TabsContent value="api-docs">{renderApiDocs()}</TabsContent>
+                      <TabsContent value="api-docs">{renderApiDocs()}</TabsContent>
           </Tabs>
         ) : (
           <>{(() => {

@@ -531,20 +531,26 @@ const AgentDashboard = () => {
     }
 
     let cancelled = false;
-    supabase.rpc("get_agent_financial_totals", {
-      p_agent_store_id: store.id,
-      p_start: start,
-      p_end: end,
-    }).maybeSingle().then(({ data, error }) => {
+    Promise.all([
+      supabase.rpc("get_agent_financial_totals", {
+        p_agent_store_id: store.id,
+        p_start: start,
+        p_end: end,
+      }).maybeSingle(),
+      apiUserData?.identity_id
+        ? supabase.from("orders").select("amount, selling_price, profit, created_at", { count: "exact" }).eq("source", "api").eq("user_id", apiUserData.identity_id).gte("created_at", start ?? "1970-01-01T00:00:00.000Z").lt("created_at", end ?? "9999-12-31T23:59:59.999Z")
+        : Promise.resolve({ data: [], count: 0, error: null }),
+    ]).then(([rpcResult, apiResult]) => {
       if (cancelled) return;
-      if (error) {
-        console.error("[v0] Failed to load database financial totals:", error);
+      if (rpcResult.error) {
+        console.error("[v0] Failed to load database financial totals:", rpcResult.error);
         return;
       }
+      const apiOrders = apiResult.data ?? [];
       setDatabaseFinancialTotals({
-        totalOrders: Number(data?.total_orders ?? 0),
-        totalRevenue: Number(data?.total_revenue ?? 0),
-        totalProfit: Number(data?.total_profit ?? 0),
+        totalOrders: Number(rpcResult.data?.total_orders ?? 0) + (apiResult.count ?? apiOrders.length),
+        totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum, order) => sum + Number(order.selling_price ?? order.amount ?? 0), 0),
+        totalProfit: Number(rpcResult.data?.total_profit ?? 0) + apiOrders.reduce((sum, order) => sum + Number(order.profit ?? 0), 0),
       });
     });
 
@@ -590,7 +596,7 @@ const AgentDashboard = () => {
   };
   const withdrawalBalance = getWithdrawalBalance();
 
-  // ─── flyer scale ─────────���──────────────────────────���──────���������──────────────
+  // ─── flyer scale ─────────���──────────────────────────���──────�����������──────────────
   const recalcScale = useCallback(() => {
     if (!flyerContainerRef.current) return;
     const cw = flyerContainerRef.current.clientWidth || 600;
@@ -2364,7 +2370,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
 
   const dateFilteredOrders = getDateFilteredOrders(orders);
   // Use totalOrderCount when viewing all dates (which is the true total from database), otherwise use filtered length
-  const totalOrders = dateFilteredOrders.length;
+  const totalOrders = databaseFinancialTotals.totalOrders;
   const pendingOrders = dateFilteredOrders.filter(o => o.status === "pending").length;
   // When "show refunded only" is on, draw from the full allRefundedOrders list fetched from DB
   const filteredOrders = (showRefundedOnly ? allRefundedOrders : getDateFilteredOrders(orders)).filter(o => {
@@ -2568,8 +2574,8 @@ return (
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p></CardContent></Card>
-              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {filteredProfitStats.totalRevenue.toFixed(2)}</p></CardContent></Card>
-              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Profit</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {filteredProfitStats.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p></CardContent></Card>
+              <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {databaseFinancialTotals.totalRevenue.toFixed(2)}</p></CardContent></Card>
+              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Profit</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {databaseFinancialTotals.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p><details className="mt-2 text-left text-sm"><summary className="cursor-pointer font-semibold text-green-400">What is this?</summary><p className="mt-2 rounded-md border border-green-500/40 bg-green-500/10 p-3 text-muted-foreground">This is a display of your profit from store sales and profit from subagent sales. This money is already part of your wallet balance and you can spend or withdraw it anytime.</p></details></CardContent></Card>
               <Card className="border-yellow-500/30 bg-yellow-500/5">
                 <CardContent className="p-6">
                   <div className="flex items-center justify-between">
@@ -3885,7 +3891,7 @@ return (
           <TabsContent value="api-docs" className="mt-0 space-y-6">
             <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
               <Button type="button" variant="ghost" onClick={() => setActiveTab("api-key")}>API Key</Button>
-              <Button type="button" variant="ghost" onClick={() => setActiveTab("api-orders")}>API Orders</Button>
+              
               <Button type="button" variant="secondary" className="bg-background" onClick={() => setActiveTab("api-docs")}>API Docs</Button>
             </div>
             {/* Header Card */}
@@ -4277,7 +4283,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           </TabsContent>
 
           {/* ============================= API ORDERS ============================= */}
-          <TabsContent value="api-orders" className="mt-0 space-y-4">
+          <TabsContent value="api-orders" className="hidden">
             <Card className="border-border">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
@@ -4389,7 +4395,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           <TabsContent value="api-key" className="mt-0 space-y-4">
   <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
     <Button type="button" variant="secondary" className="bg-background" onClick={() => setActiveTab("api-key")}>API Key</Button>
-    <Button type="button" variant="ghost" onClick={() => setActiveTab("api-orders")}>API Orders</Button>
+    
     <Button type="button" variant="ghost" onClick={() => setActiveTab("api-docs")}>API Docs</Button>
   </div>
   {/* API Key Warning */}
