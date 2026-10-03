@@ -557,39 +557,56 @@ const UserDashboard = () => {
     if (!userId) return;
     setLoadingApiOrders(true);
     try {
-      // Step 1: find this user's api_users.id via identity_id
+      // Match the agent dashboard: API orders are linked through the API user's
+      // identity_id and marked with source = "api". The api_user column is
+      // retained as a compatibility fallback for older order records.
       const { data: apiUserRow, error: apiUserError } = await supabase
         .from("api_users")
-        .select("id")
+        .select("id, identity_id")
         .eq("identity_id", userId)
+        .eq("is_user", true)
         .maybeSingle();
 
       if (apiUserError) {
         console.log("[v0] Error fetching api_users row:", apiUserError);
-        setLoadingApiOrders(false);
+        setApiOrders([]);
         return;
       }
 
       if (!apiUserRow) {
-        // User has no api_users entry — no API orders
         setApiOrders([]);
-        setLoadingApiOrders(false);
         return;
       }
 
-      // Step 2: fetch orders where api_user = api_users.id
-      const { data, error } = await supabase
-.from("orders")
-  .select("id, customer_id, user_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at")
-  .eq("api_user", apiUserRow.id)
-  .order("created_at", { ascending: false })
-  .limit(500);
+      const orderColumns = "id, customer_id, user_id, api_user, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at";
+      const { data: identityOrders, error: identityOrdersError } = await supabase
+        .from("orders")
+        .select(orderColumns)
+        .eq("source", "api")
+        .eq("user_id", apiUserRow.identity_id)
+        .order("created_at", { ascending: false })
+        .limit(500);
 
-      if (error) {
-        console.log("[v0] Error fetching API orders:", error);
-      } else {
-        setApiOrders(data ?? []);
+      if (identityOrdersError) {
+        console.log("[v0] Error fetching identity-linked API orders:", identityOrdersError);
+        setApiOrders([]);
+        return;
       }
+
+      const legacyOrders = await supabase
+        .from("orders")
+        .select(orderColumns)
+        .eq("api_user", apiUserRow.id)
+        .order("created_at", { ascending: false })
+        .limit(500);
+
+      const ordersById = new Map<string, any>();
+      for (const order of [...(identityOrders ?? []), ...(legacyOrders.data ?? [])]) {
+        ordersById.set(order.id, order);
+      }
+      setApiOrders(Array.from(ordersById.values()).sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
+      ));
     } catch (error) {
       console.log("[v0] Error fetching API orders:", error);
     } finally {
