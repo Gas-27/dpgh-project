@@ -1758,6 +1758,13 @@ export default function ChatBot({ page }: ChatBotProps) {
                 }
               </button>
             </div>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="w-full rounded-lg border border-slate-600 py-2 text-xs font-semibold text-slate-300 transition hover:bg-slate-700 hover:text-white"
+            >
+              Cancel
+            </button>
             <p className="text-[10px] text-slate-600 text-center">
               Press Enter to send &middot; 24/7 support
             </p>

@@ -616,11 +616,13 @@ export function SubSubagentStorefront() {
       });
       
   setSubagentPrices(priceMap);
-      const [{ data: promoSetting }, { data: activePromoCodes }] = await Promise.all([
-  supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", matched.user_id).eq("store_type", "subsubagent").maybeSingle(),
-  supabase.from("promo_codes").select("id").eq("owner_id", matched.user_id).eq("store_type", "subsubagent").is("claimed_at", null).is("refunded_at", null).gt("expires_at", new Date().toISOString()).limit(1),
-]);
-  setFreeDataEnabled(Boolean(promoSetting?.claim_visible && activePromoCodes?.length));
+  const { data: promoSetting } = await supabase
+    .from("promo_code_settings")
+    .select("claim_visible")
+    .eq("owner_id", matched.user_id)
+    .eq("store_type", "subsubagent")
+    .maybeSingle();
+  setFreeDataEnabled(promoSetting?.claim_visible === true);
       
       setLoading(false);
     };
