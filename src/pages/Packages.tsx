@@ -2030,7 +2030,7 @@ const searchOrders = async (input?: string) => {
 
 
   {/* Free-data claim UI is intentionally not shown on the public Packages storefront. */}
-  {false && !showSpinWheel && freeDataEnabled && (
+  {!showSpinWheel && freeDataEnabled && (
         <DraggableFAB
           initialBottom={150}
           initialRight={24}

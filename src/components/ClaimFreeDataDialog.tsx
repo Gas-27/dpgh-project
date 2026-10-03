@@ -68,6 +68,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
   const [canClaim, setCanClaim] = useState(false);
   const [alreadyClaimed, setAlreadyClaimed] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState(false);
+  const [claimOrderId, setClaimOrderId] = useState<string | null>(null);
   
   // Admin configurable settings
   const [requiredGb, setRequiredGb] = useState(DEFAULT_REQUIRED_GB);
@@ -121,6 +122,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
       setCanClaim(false);
       setAlreadyClaimed(false);
       setClaimSuccess(false);
+      setClaimOrderId(null);
     }
   }, [open]);
 
@@ -273,7 +275,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
       }
 
       // Create a pending order for admin to fulfill
-      const { error: orderError } = await supabase
+      const { data: createdOrder, error: orderError } = await supabase
         .from("orders")
         .insert({
           package_id: packageId,
@@ -286,10 +288,13 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
           payment_method: "free_data_claim",
           agent_store_id: storeId || null,
           subagent_store_id: subagentStoreId || null,
-        });
+        })
+        .select("id")
+        .single();
 
       if (orderError) throw orderError;
 
+      setClaimOrderId(createdOrder?.id ?? null);
       setClaimSuccess(true);
       toast({ 
         title: "Congratulations!", 
@@ -472,13 +477,18 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
               </div>
               <h3 className="text-xl font-bold text-white mb-2">Claim Successful!</h3>
               <p className="text-green-300 text-sm">
-                Your free {freeRewardGb}GB will be sent to your number shortly.
+                {freeRewardGb}GB {validatedCode?.network?.toUpperCase() || "data"} will be sent to {phone} shortly.
               </p>
+              {claimOrderId && (
+                <p className="mt-2 text-xs text-green-200/80">
+                  Order ID: <span className="font-mono">{claimOrderId}</span>. Track this order on the site using your phone number or order ID.
+                </p>
+              )}
               <Button
                 onClick={() => onOpenChange(false)}
                 className="mt-4 bg-green-600 hover:bg-green-700"
               >
-                Close
+                Track Order / Done
               </Button>
             </div>
           )}

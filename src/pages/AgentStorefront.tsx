@@ -16,6 +16,7 @@ import StorefrontSectionCards, { type SectionId } from "@/components/StorefrontS
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 import HubtelPurchasePanel from "@/components/HubtelPurchasePanel";
+import PublicProductsSection from "@/components/PublicProductsSection";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
@@ -1187,7 +1188,7 @@ const searchOrders = useCallback(async (input?: string) => {
       <div id="storefront-section-content" className="scroll-mt-6" />
   <ActiveTabMaintenance active={activeCategory === "vouchers" ? "instant" : activeCategory} label={activeCategory === "data" ? "Cheap Data" : activeCategory === "vouchers" ? "Airtime & Data" : activeCategory} onReturn={() => setActiveCategory("data")} />
   {activeCategory === "products" ? (
-        <div className="container pb-20"><Card className="border-primary/30"><CardContent className="p-4 sm:p-6"><div className="mb-6 text-center"><h2 className="font-display text-2xl font-bold">Products</h2><p className="text-sm text-muted-foreground">Products available from this store</p></div>{storeProducts.length === 0 ? <p className="py-12 text-center text-muted-foreground">No products are available right now.</p> : <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{storeProducts.map(product => <Card key={product.id} className="overflow-hidden" style={{ borderRadius: cardRadius, boxShadow: cardShadow ? `0 10px 24px ${primaryColor}20` : "none" }}><div className="aspect-[4/3] bg-muted">{product.image_urls?.[0] ? <img src={product.image_urls[0]} alt={product.title} className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-sm text-muted-foreground">No image</div>}</div><CardContent className="space-y-3 p-4"><div><h3 className="font-semibold">{product.title}</h3><p className="mt-1 text-sm text-muted-foreground">{product.description}</p></div><div className="flex items-center justify-between"><span className="font-bold" style={{ color: primaryColor }}>GHS {Number(product.price).toFixed(2)}</span><Button variant="outline" onClick={() => { setSelectedProduct(product); setSelectedProductImage(0); }}>More details</Button></div></CardContent></Card>)}</div>}</CardContent></Card></div>
+    <PublicProductsSection storeId={store?.id} storeKind="agent" supportPhone={store?.support_number || store?.whatsapp_number} />
   ) : activeCategory === "social-boost" ? (
   <div className="w-full pb-20"><SocialBoostPurchasePanel walletBalance={0} ownerType="storefront" checkoutMode="paystack" /></div>
   ) : activeCategory === "services" ? (
