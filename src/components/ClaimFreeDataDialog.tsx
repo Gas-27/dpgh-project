@@ -316,7 +316,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
   if (!settingsLoaded) {
     return (
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-sm border-green-500/30" style={{ background: "linear-gradient(160deg, #001a00 0%, #003300 55%, #001a00 100%)" }}>
+        <DialogContent className="w-[calc(100%-1rem)] max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain border-green-500/30 p-4 sm:p-6" style={{ background: "linear-gradient(160deg, #001a00 0%, #003300 55%, #001a00 100%)" }}>
           <div className="flex items-center justify-center py-8">
             <Loader2 className="h-8 w-8 animate-spin text-green-400" />
           </div>
@@ -327,7 +327,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-sm border-green-500/30" style={{ background: "linear-gradient(160deg, #001a00 0%, #003300 55%, #001a00 100%)" }}>
+      <DialogContent className="w-[calc(100%-1rem)] max-w-lg max-h-[calc(100dvh-2rem)] overflow-y-auto overscroll-contain border-green-500/30 p-4 sm:p-6" style={{ background: "linear-gradient(160deg, #001a00 0%, #003300 55%, #001a00 100%)" }}>
         <DialogHeader>
           <DialogTitle className="text-xl font-black text-center text-white flex items-center justify-center gap-2">
             <Gift className="h-6 w-6 text-green-400" /> Claim Free Data
