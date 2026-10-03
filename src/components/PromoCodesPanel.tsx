@@ -47,11 +47,11 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
       if (first) { setNetwork(first.network); setSelectedId(first.id); }
       if (!auth.user) return;
       const [{ data: setting }, { data: saved }] = await Promise.all([
-  supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", ownerId ?? auth.user.id).eq("store_type", storeType).maybeSingle(),
+  supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", ownerId ?? auth.user.id).eq("store_type", storeType).order("updated_at", { ascending: false }).limit(1),
   supabase.from("promo_codes").select("id, code, size_gb, network, claimed_at, is_fake, expires_at, refunded_at").eq("owner_id", ownerId ?? auth.user.id).eq("store_type", storeType).order("created_at", { ascending: false }),
       ]);
       if (!mounted) return;
-      setPromoVisible(Boolean(setting?.claim_visible));
+      setPromoVisible(Boolean(setting?.[0]?.claim_visible));
       setCodes((saved ?? []).map((item: any) => ({ id: item.id, code: item.code, size: Number(item.size_gb), network: item.network, used: Boolean(item.claimed_at), is_fake: item.is_fake, expires_at: item.expires_at, refunded_at: item.refunded_at })));
     })();
     return () => { mounted = false; };
@@ -83,7 +83,8 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
       .from("promo_code_settings")
       .select("owner_id")
       .eq("owner_id", promoOwnerId)
-      .maybeSingle();
+      .order("updated_at", { ascending: false })
+      .limit(1);
 
     if (lookupError) {
       setPromoVisible(!value);
@@ -91,7 +92,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
       return;
     }
 
-    const { error } = existing
+    const { error } = existing?.[0]
       ? await supabase
           .from("promo_code_settings")
           .update(settings)
