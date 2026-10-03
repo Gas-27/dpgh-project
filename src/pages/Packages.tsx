@@ -1304,6 +1304,8 @@ const Packages = () => {
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
   const [showClaimFreeData, setShowClaimFreeData] = useState(false);
   const [freeDataEnabled, setFreeDataEnabled] = useState(true);
+  const [freeDataRequiredGb, setFreeDataRequiredGb] = useState(35);
+  const [freeDataRewardGb, setFreeDataRewardGb] = useState(1);
   const [subscriptionComingSoon, setSubscriptionComingSoon] = useState(false);
   const [showSubscriptionComingSoon, setShowSubscriptionComingSoon] = useState(false);
   const [spinConfig, setSpinConfig] = useState<{
@@ -1345,10 +1347,12 @@ const Packages = () => {
         );
       });
     // Load customer-facing pricing display settings
-    supabase.from("app_settings").select("free_data_enabled,show_api_price,show_agent_price").eq("id", 1).single()
+    supabase.from("app_settings").select("free_data_enabled,free_data_required_gb,free_data_reward_gb,show_api_price,show_agent_price").eq("id", 1).single()
       .then(({ data }) => {
         if (data) {
           setFreeDataEnabled(data.free_data_enabled ?? true);
+          setFreeDataRequiredGb(data.free_data_required_gb ?? 35);
+          setFreeDataRewardGb(data.free_data_reward_gb ?? 1);
           setShowApiPrice(data.show_api_price !== false);
           setShowAgentPrice(data.show_agent_price !== false);
                   const comingSoon = data.subscription_coming_soon === true;
@@ -1539,6 +1543,23 @@ const searchOrders = async (input?: string) => {
       <div className="container pt-24 pb-16">
         <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
+        {freeDataEnabled && (
+          <button
+            type="button"
+            onClick={() => setShowClaimFreeData(true)}
+            className="mx-auto mb-6 flex w-full max-w-2xl items-center gap-4 rounded-2xl border border-emerald-400/40 bg-emerald-500/10 px-5 py-4 text-left shadow-lg shadow-emerald-950/20 transition hover:border-emerald-300/70 hover:bg-emerald-500/15"
+            aria-label="View free data offer"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+              <Gift className="h-6 w-6" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-display text-lg font-bold text-emerald-300">Buy {freeDataRequiredGb}GB and get {freeDataRewardGb}GB free</span>
+              <span className="block text-sm text-muted-foreground">Your purchases this week can qualify you for the free-data reward. Tap to check your eligibility.</span>
+            </span>
+            <span className="shrink-0 text-sm font-semibold text-emerald-300">View offer</span>
+          </button>
+        )}
 
   <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={handleStorefrontSectionSelect} onBecomeAgent={() => setShowBecomeAgent(true)} />
   <ActiveTabMaintenance active={activeCategory === "vouchers" ? "instant" : activeCategory} label={catLabels[activeCategory] || activeCategory} onReturn={() => changeCategory("data")} />
