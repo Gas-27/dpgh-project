@@ -81,8 +81,9 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
 
     const { data: existing, error: lookupError } = await supabase
       .from("promo_code_settings")
-      .select("id")
+      .select("owner_id, store_type")
       .eq("owner_id", promoOwnerId)
+      .eq("store_type", storeType)
       .maybeSingle();
 
     if (lookupError) {
@@ -92,7 +93,11 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
     }
 
     const { error } = existing
-      ? await supabase.from("promo_code_settings").update(settings).eq("id", existing.id)
+      ? await supabase
+          .from("promo_code_settings")
+          .update(settings)
+          .eq("owner_id", promoOwnerId)
+          .eq("store_type", storeType)
       : await supabase.from("promo_code_settings").insert(settings);
 
     if (error) {
