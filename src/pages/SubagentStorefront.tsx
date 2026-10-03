@@ -1567,9 +1567,10 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
           onClick={() => setClaimFreeDataOpen(true)}
           title="Promo Codes Available"
         >
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
-            <Gift className="h-6 w-6" />
-          </div>
+<div className="flex items-center gap-2 rounded-2xl bg-green-950 px-5 py-3 text-green-300 shadow-lg transition-all duration-300 hover:bg-green-900 hover:scale-105">
+  <Gift className="h-6 w-6 text-yellow-400" />
+  <span className="font-bold tracking-wide">FREE DATA</span>
+  </div>
         </DraggableFAB>
       )}
 

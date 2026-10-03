@@ -555,13 +555,20 @@ const UserDashboard = () => {
   if (!targetUserId) return;
   setLoadingApiOrders(true);
     try {
-  // This is a Vite deployment, so /api/get-orders is not a served route.
-  // Query Supabase directly using the impersonated account id.
+  // API orders can be owned by either the auth identity or the api_users row.
+  const { data: apiIdentity } = await supabase
+  .from("api_users")
+  .select("id, identity_id")
+  .eq("identity_id", targetUserId)
+  .maybeSingle();
+  const ownerFilter = apiIdentity?.id && apiIdentity.id !== targetUserId
+    ? `user_id.eq.${targetUserId},user_id.eq.${apiIdentity.id}`
+    : `user_id.eq.${targetUserId}`;
   const { data: orders, error } = await supabase
-    .from("orders")
-    .select("id, user_id, customer_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, source, provider_reference, provider_order_id, created_at, updated_at")
-    .eq("user_id", targetUserId)
-    .eq("source", "api")
+  .from("orders")
+  .select("id, user_id, customer_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, source, provider_reference, provider_order_id, created_at, updated_at")
+  .or(ownerFilter)
+  .eq("source", "api")
     .order("created_at", { ascending: false })
     .limit(500);
 
@@ -1833,8 +1840,12 @@ case "api-key":
   );
 
   const renderApiKey = () => (
-    <div className="space-y-6">
-      {/* Need Help with API Card */}
+  <div className="space-y-6">
+  <Card className="border-primary/30 bg-primary/5">
+    <CardHeader><CardTitle className="text-base">Why use the Agent API?</CardTitle></CardHeader>
+    <CardContent><p className="text-sm text-muted-foreground leading-relaxed">Using the API from your agent signup and the API key generated in your Agent Dashboard is better than using the API key in the User Dashboard. You receive free USD credit from the site to use for your own website, and each customer purchase is credited to your wallet. This free USD applies to orders from your main site; customers using your API wallet still pay for those API orders.</p></CardContent>
+  </Card>
+  {/* Need Help with API Card */}
       <Card className="border-primary/30 bg-primary/5">
         <CardHeader>
           <CardTitle className="text-base">Need Help with API?</CardTitle>
