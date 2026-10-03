@@ -586,8 +586,8 @@ const UserDashboard = () => {
         const result = await supabase
           .from("orders")
           .select(orderColumns)
-          .eq("source", "api")
-          .eq("user_id", apiUserRow.identity_id)
+        .eq("payment_method", "api_wallet")
+        .eq("user_id", apiUserRow.identity_id)
           .order("created_at", { ascending: false })
           .limit(500);
         identityOrders = result.data ?? [];
@@ -608,7 +608,7 @@ const UserDashboard = () => {
       const legacyOrders = await supabase
         .from("orders")
         .select(orderColumns)
-        .eq("source", "api")
+        .eq("payment_method", "api_wallet")
         .or(`api_user.eq.${apiUserRow?.id ?? "00000000-0000-0000-0000-000000000000"},user_id.eq.${userId},customer_id.eq.${userId}`)
         .order("created_at", { ascending: false })
         .limit(500);

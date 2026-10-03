@@ -18,26 +18,33 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const apiKey = typeof authHeader === 'string' ? authHeader.replace(/^Bearer\s+/i, '').trim() : null;
   const requestedIdentity = typeof req.query.identity_id === 'string' ? req.query.identity_id : null;
 
-  let apiUser;
-  let apiUserError;
+  let apiUser: any = null;
+  let apiUsers: any[] = [];
+  let apiUserError: any = null;
   if (requestedIdentity) {
-    ({ data: apiUser, error: apiUserError } = await supabase
+    const result = await supabase
       .from('api_users')
       .select('id, identity_id, is_agent')
       .eq('identity_id', requestedIdentity)
-      .maybeSingle());
+      .order('created_at', { ascending: false });
+    apiUsers = result.data ?? [];
+    apiUserError = result.error;
+    apiUser = apiUsers[0] ?? null;
   } else if (apiKey) {
-    ({ data: apiUser, error: apiUserError } = await supabase
+    const result = await supabase
       .from('api_users')
       .select('id, identity_id, is_agent')
       .eq('api_key', apiKey)
-      .maybeSingle());
+      .maybeSingle();
+    apiUser = result.data;
+    apiUsers = apiUser ? [apiUser] : [];
+    apiUserError = result.error;
   } else {
     return res.status(401).json({ success: false, error: 'Missing API key or identity' });
   }
 
   if (apiUserError || !apiUser) {
-    return res.status(401).json({ success: false, error: 'Invalid API key' });
+    return res.status(401).json({ success: false, error: 'API user not found' });
   }
 
   // Optional query filters
@@ -64,10 +71,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .order('created_at', { ascending: false });
   } else {
     // Regular user: fetch orders by their identity_id
+    const apiUserIds = apiUsers.map((user) => user.id).filter(Boolean);
+    const ownershipFilters = [
+      `user_id.eq.${apiUser.identity_id}`,
+      `customer_id.eq.${apiUser.identity_id}`,
+      ...(apiUserIds.length > 0 ? [`api_user.in.(${apiUserIds.join(',')})`] : []),
+    ].join(',');
+
     query = supabase
       .from('orders')
       .select('id, customer_number, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, payment_method, source, created_at, updated_at')
-      .or(`user_id.eq.${apiUser.identity_id},api_user.eq.${apiUser.id}`)
+      .eq('payment_method', 'api_wallet')
+      .or(ownershipFilters)
       .order('created_at', { ascending: false });
   }
 
