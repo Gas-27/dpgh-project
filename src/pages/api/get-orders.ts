@@ -70,20 +70,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       .eq('agent_store_id', agentStore.id)
       .order('created_at', { ascending: false });
   } else {
-    // Regular user: fetch orders by their identity_id
-    const apiUserIds = apiUsers.map((user) => user.id).filter(Boolean);
-    const ownershipFilters = [
-      `user_id.eq.${apiUser.identity_id}`,
-      `customer_id.eq.${apiUser.identity_id}`,
-      ...(apiUserIds.length > 0 ? [`api_user.in.(${apiUserIds.join(',')})`] : []),
-    ].join(',');
-
-    query = supabase
-      .from('orders')
-      .select('id, customer_number, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, payment_method, source, created_at, updated_at')
-      .eq('source', 'api')
-      .or(ownershipFilters)
-      .order('created_at', { ascending: false });
+  // Dashboard API Orders are owned by the account auth id. API-created orders
+  // use payment_method=api_wallet and do not have agent/subagent store ids.
+  query = supabase
+  .from('orders')
+  .select('id, user_id, customer_number, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, payment_status, payment_method, source, created_at, updated_at')
+  .eq('user_id', apiUser.identity_id)
+  .eq('payment_method', 'api_wallet')
+  .order('created_at', { ascending: false });
   }
 
   // Apply optional filters
