@@ -86,6 +86,9 @@ export default async function handler(
         order_status: 'processing',
         fulfillment_status: 'pending',
         payment_method: 'api',
+        // Keep the auth owner on the order so the user dashboard and admin
+        // impersonation view can resolve API purchases without joining first.
+        user_id: apiUser.identity_id,
         source: 'api',
         purchase_provider: purchaseProvider,
         purchase_provider_source: 'api',

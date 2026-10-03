@@ -31,6 +31,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
   const [promoVisible, setPromoVisible] = useState(false);
 
   const storeType = adminMode ? "admin" : ownerType;
+  const promoOwnerId = ownerId ?? userId;
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -46,8 +47,8 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
       if (first) { setNetwork(first.network); setSelectedId(first.id); }
       if (!auth.user) return;
       const [{ data: setting }, { data: saved }] = await Promise.all([
-        supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", auth.user.id).eq("store_type", storeType).maybeSingle(),
-        supabase.from("promo_codes").select("id, code, size_gb, network, claimed_at, is_fake, expires_at, refunded_at").eq("owner_id", auth.user.id).eq("store_type", storeType).order("created_at", { ascending: false }),
+  supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", ownerId ?? auth.user.id).eq("store_type", storeType).maybeSingle(),
+  supabase.from("promo_codes").select("id, code, size_gb, network, claimed_at, is_fake, expires_at, refunded_at").eq("owner_id", ownerId ?? auth.user.id).eq("store_type", storeType).order("created_at", { ascending: false }),
       ]);
       if (!mounted) return;
       setPromoVisible(Boolean(setting?.claim_visible));
@@ -70,7 +71,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
   const savePromoVisibility = async (value: boolean) => {
     setPromoVisible(value);
     if (!userId) return;
-    const { error } = await supabase.from("promo_code_settings").upsert({ owner_id: userId, store_type: storeType, claim_visible: value, updated_at: new Date().toISOString() }, { onConflict: "owner_id,store_type" });
+    const { error } = await supabase.from("promo_code_settings").upsert({ owner_id: promoOwnerId, store_type: storeType, claim_visible: value, updated_at: new Date().toISOString() }, { onConflict: "owner_id,store_type" });
     if (error) toast({ title: "Could not save promo visibility", description: error.message, variant: "destructive" });
   };
 

@@ -319,10 +319,9 @@ const UserDashboard = () => {
         // Fetch user's API key and both wallet types
         const { data: apiUserData } = await supabase
           .from("api_users")
-          .select("id, api_key, wallet")
-          .eq("identity_id", effectiveUserId)
-          .eq("is_user", true)
-          .maybeSingle();
+  .select("id, api_key, wallet, identity_id")
+  .eq("identity_id", effectiveUserId)
+  .maybeSingle();
 
         let apiUserId: string | null = null;
         if (apiUserData) {
@@ -578,7 +577,7 @@ const UserDashboard = () => {
         .from("orders")
         .select(orderColumns)
         .eq("source", "api")
-        .eq("user_id", userId)
+        .or(`user_id.eq.${userId},customer_id.eq.${userId}`)
         .order("created_at", { ascending: false })
         .limit(500);
 
