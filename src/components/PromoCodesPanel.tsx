@@ -32,6 +32,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
 
   const storeType = adminMode ? "admin" : ownerType;
   const promoOwnerId = ownerId ?? userId;
+  const settingsOwnerId = userId;
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -47,7 +48,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
       if (first) { setNetwork(first.network); setSelectedId(first.id); }
       if (!auth.user) return;
       const [{ data: setting }, { data: saved }] = await Promise.all([
-  supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", ownerId ?? auth.user.id).eq("store_type", storeType).order("updated_at", { ascending: false }).limit(1),
+  supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", auth.user.id).eq("store_type", storeType).order("updated_at", { ascending: false }).limit(1),
   supabase.from("promo_codes").select("id, code, size_gb, network, claimed_at, is_fake, expires_at, refunded_at").eq("owner_id", ownerId ?? auth.user.id).eq("store_type", storeType).order("created_at", { ascending: false }),
       ]);
       if (!mounted) return;
@@ -70,10 +71,10 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
 
   const savePromoVisibility = async (value: boolean) => {
     setPromoVisible(value);
-    if (!userId || !promoOwnerId) return;
+    if (!settingsOwnerId) return;
 
     const settings = {
-      owner_id: promoOwnerId,
+      owner_id: settingsOwnerId,
       store_type: storeType,
       claim_visible: value,
       updated_at: new Date().toISOString(),
@@ -82,7 +83,8 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
     const { data: existing, error: lookupError } = await supabase
       .from("promo_code_settings")
       .select("owner_id")
-      .eq("owner_id", promoOwnerId)
+      .eq("owner_id", settingsOwnerId)
+      .eq("store_type", storeType)
       .order("updated_at", { ascending: false })
       .limit(1);
 
@@ -92,12 +94,9 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
       return;
     }
 
-    const { error } = existing?.[0]
-      ? await supabase
-          .from("promo_code_settings")
-          .update(settings)
-          .eq("owner_id", promoOwnerId)
-      : await supabase.from("promo_code_settings").insert(settings);
+    const { error } = await supabase
+      .from("promo_code_settings")
+      .upsert(settings, { onConflict: "owner_id,store_type" });
 
     if (error) {
       setPromoVisible(!value);
