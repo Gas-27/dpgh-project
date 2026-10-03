@@ -1281,7 +1281,7 @@ case "api-key":
                       <TableCell className="text-sm font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {(order as any).source === "api" ? "API Wallet" : order.payment_method === "wallet" ? "Wallet" : "Paystack"}
+                          {((order as any).source === "api" || order.payment_method === "api_wallet") ? "API Wallet" : order.payment_method === "wallet" ? "Wallet" : "Paystack"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -1472,7 +1472,7 @@ case "api-key":
                         <TableCell className="text-sm font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-xs">
-                            {(order as any).source === "api" ? "API Wallet" : order.payment_method === "wallet" ? "Wallet" : "Paystack"}
+                            {((order as any).source === "api" || order.payment_method === "api_wallet") ? "API Wallet" : order.payment_method === "wallet" ? "Wallet" : "Paystack"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">
@@ -2252,7 +2252,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                 <li>• <span className="font-mono">fullName</span> (required) - Full name</li>
                 <li>• <span className="font-mono">phoneNumber</span> (required) - Phone number</li>
                 <li>• <span className="font-mono">idNumber</span> (required) - ID number</li>
-                <li>• <span className="font-mono">dateOfBirth</span> (required) - Date of birth (YYYY-MM-DD)</li>
+                <li>�� <span className="font-mono">dateOfBirth</span> (required) - Date of birth (YYYY-MM-DD)</li>
                 <li>• <span className="font-mono">town</span> (required) - Town/City</li>
                 <li>• <span className="font-mono">occupation</span> (required) - Occupation</li>
                 <li>• <span className="font-mono">region</span> (required) - Region</li>
