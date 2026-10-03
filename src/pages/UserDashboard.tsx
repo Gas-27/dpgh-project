@@ -562,7 +562,6 @@ const UserDashboard = () => {
         .from("api_users")
         .select("id, identity_id")
         .eq("identity_id", userId)
-        .eq("is_agent", true)
         .maybeSingle();
 
       const orderColumns = "id, customer_id, user_id, api_user, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at";
