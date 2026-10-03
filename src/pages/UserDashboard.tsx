@@ -1390,6 +1390,14 @@ case "api-key":
               <p className="font-display text-3xl font-bold mt-2 text-cyan-400">GHC {totalSpent.toFixed(2)}</p>
             </CardContent>
           </Card>
+          {apiKey && (
+            <Card className="border-cyan-500/30 bg-cyan-500/5">
+              <CardContent className="p-6 text-center">
+                <p className="text-muted-foreground text-sm">API Wallet</p>
+                <p className="font-display text-3xl font-bold mt-2 text-cyan-400">GHC {Number(apiWallet).toFixed(2)}</p>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Refund Notification Banner */}
@@ -2562,8 +2570,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
         {/* Refunded Orders Table */}
         {filteredRefunds.length === 0 ? (
           <Card>
-            <CardContent className="p-12 text-center">
-              <p className="text-muted-foreground">No refunded orders</p>
+            <CardContent className="p-6 text-center">
+              <p className="text-muted-foreground text-sm">Total Spent</p>
+              <p className="font-display text-3xl font-bold mt-2 text-cyan-400">GHC {totalSpent.toFixed(2)}</p>
             </CardContent>
           </Card>
         ) : (

@@ -946,7 +946,7 @@ const AgentDashboard = () => {
       // First fetch API user data to get identity for API order filtering
       const { data: apiUserData } = await supabase
         .from("api_users")
-        .select("identity_id")
+        .select("identity_id, api_key, wallet")
         .eq("identity_id", effectiveUserId)
         .eq("is_agent", true)
         .maybeSingle();
@@ -2575,9 +2575,10 @@ return (
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p></CardContent></Card>
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {databaseFinancialTotals.totalRevenue.toFixed(2)}</p></CardContent></Card>
               <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Profit</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {databaseFinancialTotals.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p><details className="mt-2 text-left text-sm"><summary className="cursor-pointer font-semibold text-green-400">What is this?</summary><p className="mt-2 rounded-md border border-green-500/40 bg-green-500/10 p-3 text-muted-foreground">This is a display of your profit from store sales and profit from subagent sales. This money is already part of your wallet balance and you can spend or withdraw it anytime.</p></details></CardContent></Card>
-              <Card className="border-yellow-500/30 bg-yellow-500/5">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between">
+  {apiKey && <Card className="border-cyan-500/30 bg-cyan-500/5"><CardContent className="p-6 text-center"><p className="text-sm text-muted-foreground">API Wallet</p><p className="font-display text-2xl font-bold text-cyan-400 mt-1">GHC {Number(wallet).toFixed(2)}</p></CardContent></Card>}
+  <Card className="border-yellow-500/30 bg-yellow-500/5">
+  <CardContent className="p-6">
+  <div className="flex items-center justify-between">
                     <div className="flex-1">
                       <p className="text-sm text-muted-foreground">My Wallet</p>
                       <p className="font-display text-2xl font-bold text-yellow-400 mt-1">GHC {Number(store?.wallet_balance ?? 0).toFixed(2)}</p>
