@@ -552,16 +552,16 @@ const UserDashboard = () => {
   }, [user?.id, impersonatedCustomerId]);
 
   const fetchApiOrders = async () => {
-    const userId = impersonatedCustomerId || user?.id;
-    if (!userId) return;
-    setLoadingApiOrders(true);
+  const targetUserId = impersonatedCustomerId ?? user?.id;
+  if (!targetUserId) return;
+  setLoadingApiOrders(true);
     try {
   // This is a Vite deployment, so /api/get-orders is not a served route.
   // Query Supabase directly using the impersonated account id.
   const { data: orders, error } = await supabase
     .from("orders")
     .select("id, user_id, customer_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at")
-    .eq("user_id", userId)
+    .eq("user_id", targetUserId)
     .eq("payment_method", "api_wallet")
     .order("created_at", { ascending: false })
     .limit(500);
