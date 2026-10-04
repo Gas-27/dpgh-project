@@ -39,8 +39,10 @@ const AuthCallback = () => {
         navigate("/only-admin/log.in", { replace: true });
       } else if (roles.includes("agent")) {
         navigate("/agent", { replace: true });
+      } else if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) {
+        navigate("/sub-subagent-dashboard", { replace: true });
       } else if (roles.includes("subagent")) {
-        navigate("/subagent-dashboard", { replace: true });
+        navigate("/dashboard", { replace: true });
       } else {
         navigate("/user-dashboard", { replace: true });
       }

@@ -175,13 +175,15 @@ const Login = () => {
           .from("user_roles")
           .select("role")
           .eq("user_id", session.user.id);
-        let route = "https://dataplug.store/";
+        const appUrl = window.location.origin;
+        let route = `${appUrl}/`;
         if (rolesData) {
           const roles = rolesData.map(r => String(r.role).trim().toLowerCase());
-          if (roles.includes("admin")) route = "https://dataplug.store/admin";
-          else if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) route = "https://agentsstore.shop/sub-subagent-dashboard";
-          else if (roles.includes("subagent")) route = "https://agentsstore.shop/dashboard";
-          else if (roles.includes("agent")) route = "https://dataplug.store/agent";
+          if (roles.includes("admin")) route = `${appUrl}/admin`;
+          else if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) route = `${appUrl}/sub-subagent-dashboard`;
+          else if (roles.includes("subagent")) route = `${appUrl}/dashboard`;
+          else if (roles.includes("agent")) route = `${appUrl}/agent`;
+          else route = `${appUrl}/user-dashboard`;
         }
         window.location.replace(route);
       }
