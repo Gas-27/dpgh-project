@@ -66,7 +66,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
   const rate = !adminMode && count > 20 ? 0.02 : 0;
   const discount = gross * rate;
   const total = gross - discount;
-  const active = codes.filter((code) => !code.used && !code.refunded_at && (!code.expires_at || new Date(code.expires_at) > new Date()));
+  const active = codes.filter((code) => !code.used && !code.is_fake && !code.refunded_at && (!code.expires_at || new Date(code.expires_at) > new Date()));
   const expired = codes.filter((code) => !code.used && Boolean(code.expires_at) && new Date(code.expires_at as string) <= new Date());
 
   const savePromoVisibility = async (value: boolean) => {

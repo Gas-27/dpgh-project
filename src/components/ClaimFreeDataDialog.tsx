@@ -48,7 +48,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
   const [claimSuccess, setClaimSuccess] = useState(false);
   const [claimOrderId, setClaimOrderId] = useState<string | null>(null);
   
-  const freeRewardGb = FREE_REWARD_GB;
+  const freeRewardGb = Number(validatedCode?.size_gb ?? FREE_REWARD_GB);
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -125,44 +125,19 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
       const claimNetwork = detectedNetwork !== "unknown" ? detectedNetwork : String(validatedCode.network || "mtn").toLowerCase();
       
       // Get a valid package_id for the free data (find package matching detected network and reward GB)
-      const { data: packageData } = await supabase
+      const { data: packageData, error: packageError } = await supabase
         .from("data_packages")
-        .select("id")
+        .select("id, size_gb")
         .eq("id", validatedCode.package_id)
         .eq("network", claimNetwork)
         .eq("size_gb", freeRewardGb)
         .eq("active", true)
-        .limit(1)
         .single();
 
-      // If no exact match, get any active package for that network
-      let packageId = packageData?.id;
-      if (!packageId) {
-        const { data: fallbackPackage } = await supabase
-          .from("data_packages")
-          .select("id")
-          .eq("network", claimNetwork)
-          .eq("active", true)
-          .limit(1)
-          .single();
-        packageId = fallbackPackage?.id;
+      if (packageError || !packageData) {
+        throw new Error(`The ${validatedCode.network} package for ${freeRewardGb}GB is unavailable.`);
       }
-      
-      // If still no package, try MTN as final fallback
-      if (!packageId && claimNetwork !== "mtn") {
-        const { data: mtnFallback } = await supabase
-          .from("data_packages")
-          .select("id")
-          .eq("network", "mtn")
-          .eq("active", true)
-          .limit(1)
-          .single();
-        packageId = mtnFallback?.id;
-      }
-
-      if (!packageId) {
-        throw new Error("No valid data package found for free data claim");
-      }
+      const packageId = packageData.id;
 
       // Create a pending order for admin to fulfill
       const { data: createdOrder, error: orderError } = await supabase
@@ -184,17 +159,15 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
       if (orderError) throw orderError;
 
-      const { data: claimedCode, error: codeClaimError } = await supabase
+      const { error: codeClaimError } = await supabase
         .from("promo_codes")
         .update({ claimed_at: new Date().toISOString() })
         .eq("id", validatedCode.id)
         .is("claimed_at", null)
-        .is("refunded_at", null)
-        .select("id")
-        .maybeSingle();
-      if (codeClaimError || !claimedCode) {
+        .is("refunded_at", null);
+      if (codeClaimError) {
         await supabase.from("orders").delete().eq("id", createdOrder.id);
-        throw new Error("This promo code was claimed by someone else. Please use another code.");
+        throw new Error("The promo code could not be claimed. Please try again.");
       }
 
       const { error: claimError } = await supabase
