@@ -50,7 +50,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
       if (!auth.user) return;
       const [{ data: setting }, { data: saved }] = await Promise.all([
   supabase.from("promo_code_settings").select("claim_visible").eq("owner_id", auth.user.id).eq("store_type", storeType).order("updated_at", { ascending: false }).limit(1),
-  supabase.from("promo_codes").select("id, code, size_gb, network, claimed_at, is_fake, expires_at, refunded_at").eq("owner_id", ownerId ?? auth.user.id).eq("store_type", storeType).order("created_at", { ascending: false }),
+  supabase.from("promo_codes").select("id, code, size_gb, network, claimed_at, is_fake, expires_at, refunded_at").or(`owner_id.eq.${auth.user.id}${ownerId && ownerId !== auth.user.id ? `,owner_id.eq.${ownerId}` : ""}`).eq("store_type", storeType).order("created_at", { ascending: false }),
       ]);
       if (!mounted) return;
       setPromoVisible(Boolean(setting?.[0]?.claim_visible));
