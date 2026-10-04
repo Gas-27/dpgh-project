@@ -29,6 +29,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
   const [expiryHours, setExpiryHours] = useState("24");
   const [customPrefix, setCustomPrefix] = useState("");
   const [promoVisible, setPromoVisible] = useState(false);
+  const [copiedFakeCodes, setCopiedFakeCodes] = useState<Set<string>>(() => new Set());
 
   const storeType = adminMode ? "admin" : ownerType;
   const promoOwnerId = ownerId ?? userId;
@@ -68,6 +69,17 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
   const total = gross - discount;
   const active = codes.filter((code) => !code.used && !code.is_fake && !code.refunded_at && (!code.expires_at || new Date(code.expires_at) > new Date()));
   const expired = codes.filter((code) => !code.used && Boolean(code.expires_at) && new Date(code.expires_at as string) <= new Date());
+
+  const copyFakeCodeOnce = async (code: PromoCode) => {
+    if (!code.is_fake || copiedFakeCodes.has(code.id)) return;
+    try {
+      await navigator.clipboard.writeText(code.code);
+      setCopiedFakeCodes((current) => new Set(current).add(code.id));
+      toast({ title: "Fake code copied" });
+    } catch {
+      toast({ title: "Could not copy fake code", variant: "destructive" });
+    }
+  };
 
   const savePromoVisibility = async (value: boolean) => {
     setPromoVisible(value);
@@ -130,6 +142,6 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
     <Card><CardHeader><CardTitle>Generate New Promo Codes</CardTitle></CardHeader><CardContent className="flex flex-col gap-5"><div className="grid gap-2 sm:grid-cols-3">{networks.map((item) => <Button key={item} type="button" variant={network.toLowerCase() === item.toLowerCase() ? "default" : "secondary"} onClick={() => { setNetwork(item); setSelectedId(packages.find((pkg) => pkg.network.toLowerCase() === item.toLowerCase())?.id ?? ""); }}>{item}</Button>)}</div><div className="flex flex-wrap gap-2">{available.map((item) => <Button key={item.id} type="button" variant={selected?.id === item.id ? "default" : "secondary"} onClick={() => setSelectedId(item.id)}>{item.size_gb}GB (GH₵{Number(item.agent_price ?? item.price).toFixed(2)})</Button>)}</div><label className="flex flex-col gap-2 text-sm">Number of Codes<Input type="number" min={1} max={100} value={quantity} onChange={(event) => setQuantity(event.target.value === "" ? "" : Math.min(100, Math.max(1, Number(event.target.value))))} /></label><label className="flex flex-col gap-2 text-sm">Expires after<Select value={expiryHours} onValueChange={setExpiryHours}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent>{[["0.5","30 minutes"],["1","1 hour"],["3","3 hours"],["6","6 hours"],["12","12 hours"],["24","24 hours"],["72","3 days"],["168","7 days"]].map(([value,label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></label><label className="flex flex-col gap-2 text-sm">Custom Prefix (optional)<Input placeholder="e.g. FREE, XMAS" value={customPrefix} onChange={(event) => setCustomPrefix(event.target.value.slice(0, 12))} /></label><div className="rounded-lg border border-primary/40 p-4 text-sm"><div className="flex justify-between"><span>Gross total:</span><strong>GH₵{gross.toFixed(2)}</strong></div><div className="flex justify-between text-emerald-600"><span>Discount ({rate * 100}%):</span><strong>-GH₵{discount.toFixed(2)}</strong></div><div className="mt-3 flex justify-between border-t pt-3 text-base"><strong>Wallet deduction:</strong><strong className="text-primary">GH₵{total.toFixed(2)}</strong></div></div></CardContent></Card>
     <Button className="w-full" onClick={() => adminMode ? void completeGeneration() : setConfirmOpen(true)}><Plus data-icon="inline-start" /> Generate Codes</Button>
     <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}><AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Confirm wallet deduction</AlertDialogTitle><AlertDialogDescription>GH₵{total.toFixed(2)} will be deducted from your wallet for these codes after the {rate * 100}% discount. Do you agree?</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={() => void completeGeneration()}>Agree and continue</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
-    <Card><CardHeader><CardTitle className="flex items-center justify-between">Your Codes<Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(active.map((code) => code.code).join("\n"))} disabled={!active.length}><Copy data-icon="inline-start" /> Copy Active Codes</Button></CardTitle></CardHeader><CardContent className="flex flex-col gap-2">{codes.length ? codes.map((item) => { const status = item.used ? "CLAIMED" : item.refunded_at ? "REFUNDED" : item.expires_at && new Date(item.expires_at) <= new Date() ? "EXPIRED" : item.is_fake ? "FAKE" : "ACTIVE"; return <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border p-3"><span className="font-mono text-primary">{item.code}</span><span className="text-sm text-muted-foreground">{item.network} · {item.size}GB · {status}</span></div>; }) : <p className="py-8 text-center text-muted-foreground">No promo codes generated yet.</p>}</CardContent></Card>
+    <Card><CardHeader><CardTitle className="flex items-center justify-between">Your Codes<Button variant="outline" size="sm" onClick={() => navigator.clipboard.writeText(active.map((code) => code.code).join("\n"))} disabled={!active.length}><Copy data-icon="inline-start" /> Copy Active Codes</Button></CardTitle></CardHeader><CardContent className="flex flex-col gap-2">{codes.length ? codes.map((item) => { const status = item.used ? "CLAIMED" : item.refunded_at ? "REFUNDED" : item.expires_at && new Date(item.expires_at) <= new Date() ? "EXPIRED" : item.is_fake ? "FAKE" : "ACTIVE"; return <div key={item.id} className="flex items-center justify-between gap-3 rounded-lg border p-3"><div className="flex min-w-0 items-center gap-3"><span className="font-mono text-primary">{item.code}</span><span className="text-sm text-muted-foreground">{item.network} · {item.size}GB · {status}</span></div>{item.is_fake && <Button type="button" variant="outline" size="sm" onClick={() => void copyFakeCodeOnce(item)} disabled={copiedFakeCodes.has(item.id)}><Copy data-icon="inline-start" />{copiedFakeCodes.has(item.id) ? "Copied" : "Copy"}</Button>}</div>; }) : <p className="py-8 text-center text-muted-foreground">No promo codes generated yet.</p>}</CardContent></Card>
   </div>;
 }
