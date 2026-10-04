@@ -946,7 +946,7 @@ const AgentDashboard = () => {
       // First fetch API user data to get identity for API order filtering
       const { data: apiUserData } = await supabase
         .from("api_users")
-        .select("identity_id, api_key, wallet")
+        .select("id, identity_id, api_key, wallet")
         .eq("identity_id", effectiveUserId)
         .eq("is_agent", true)
         .maybeSingle();
@@ -957,7 +957,7 @@ const AgentDashboard = () => {
         // Fetch normal agent store orders with subagent info
         supabase.from("orders").select("*, subagent_stores(store_name), sub_subagent_stores(store_name)", { count: "exact" }).eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 99999),
         // Fetch API orders made by this api_user (orders where source=api and user_id is the api_user's identity)
-        apiUserData ? supabase.from("orders").select("*", { count: "exact" }).eq("source", "api").or(`user_id.eq.${apiUserData.identity_id},customer_id.eq.${effectiveUserId}`).order("created_at", { ascending: false }).range(0, 99999) : Promise.resolve({ data: [], count: 0, error: null }),
+        apiUserData ? supabase.from("orders").select("*", { count: "exact" }).eq("source", "api").or(`user_id.eq.${apiUserData.identity_id},user_id.eq.${apiUserData.id},customer_id.eq.${effectiveUserId}`).order("created_at", { ascending: false }).range(0, 99999) : Promise.resolve({ data: [], count: 0, error: null }),
         // Fetch personal purchases made from the Packages/UserDashboard page (customer_id = auth user, no agent_store_id)
         supabase.from("orders").select("*", { count: "exact" }).eq("customer_id", effectiveUserId).is("agent_store_id", null).order("created_at", { ascending: false }).range(0, 99999),
         supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", sd.id).order("created_at", { ascending: false }),
@@ -969,15 +969,17 @@ const AgentDashboard = () => {
       ]);
       
       // Combine agent store orders, API orders, and personal purchases from packages page
-      const combinedOrders = [
+      const combinedOrders = Array.from(new Map([
         ...(agentOrdersR.data ?? []),
         ...(apiOrdersR.data ?? []),
         ...(personalOrdersR.data ?? []),
-      ].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      ].map((order: any) => [order.id, order])).values()).sort(
+        (a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
       
       const orderR = {
         data: combinedOrders,
-        count: (agentOrdersR.count ?? 0) + (apiOrdersR.count ?? 0) + (personalOrdersR.count ?? 0),
+        count: combinedOrders.length,
         error: agentOrdersR.error || apiOrdersR.error || personalOrdersR.error,
         status: agentOrdersR.status || apiOrdersR.status,
       };

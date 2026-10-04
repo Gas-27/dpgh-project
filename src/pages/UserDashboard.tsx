@@ -578,7 +578,15 @@ const UserDashboard = () => {
     return;
   }
 
-  setApiOrders(orders ?? []);
+  const loadedApiOrders = orders ?? [];
+  setApiOrders(loadedApiOrders);
+  setOrders((currentOrders) => {
+    const merged = [...currentOrders, ...loadedApiOrders];
+    return Array.from(new Map(merged.map((order) => [order.id, order])).values()).sort(
+      (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    ) as Order[];
+  });
+  setTotalOrders((currentTotal) => Math.max(currentTotal, loadedApiOrders.length));
     } catch (error) {
       console.log("[v0] Error fetching API orders:", error);
     } finally {
@@ -1506,7 +1514,7 @@ case "api-key":
                           })()}
                         </TableCell>
                         <TableCell>
-                          {(order as any).source === "api" && normalizeOrderStatus(order) === "delivered" ? (
+{((order as any).source === "api" || order.payment_method === "api_wallet") && normalizeOrderStatus(order) === "delivered" ? (
                             <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>
                           ) : <span className="text-xs text-muted-foreground">—</span>}
                         </TableCell>
