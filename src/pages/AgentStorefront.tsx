@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import DraggableFAB from "@/components/DraggableFAB";
+import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
@@ -482,7 +483,7 @@ statusMessage = "Your number is new on our portal.";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // NOTIFICATION MODAL
-// ───────────────────────────────────────────────────────────────────���─────────
+// ───────────────────────────────────────────────────────────────────�����─────────
 const NotificationModal = ({
   notifications,
   onDismiss,
@@ -1786,7 +1787,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
           onClick={() => setClaimFreeDataOpen(true)}
           title="Promo Codes Available"
         >
-<img src="/images/free-data-promo.jpeg" alt="Free Data" className="block w-56 max-w-[calc(100vw-1rem)] select-none rounded-r-full rounded-l-[3rem] shadow-lg" draggable={false} />
+<PromoCodeFreeDataIcon />
         </DraggableFAB>
       )}
 

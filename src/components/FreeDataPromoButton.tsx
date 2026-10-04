@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import ClaimFreeDataDialog from "@/components/ClaimFreeDataDialog";
 import { DraggableFAB } from "@/components/DraggableFAB";
+import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function FreeDataPromoButton() {
@@ -39,7 +40,7 @@ export default function FreeDataPromoButton() {
         title="Claim Free Data"
         className="w-56 max-w-[calc(100vw-1rem)] overflow-hidden rounded-r-full rounded-l-[3rem]"
       >
-        <img src="/images/free-data-promo.jpeg" alt="Free Data" className="block h-auto w-full select-none" draggable={false} />
+        <PromoCodeFreeDataIcon />
       </DraggableFAB>
       <ClaimFreeDataDialog open={open} onOpenChange={setOpen} />
     </>

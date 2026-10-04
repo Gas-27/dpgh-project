@@ -21,6 +21,7 @@ const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDia
 import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
 import DraggableFAB from "@/components/DraggableFAB";
+import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
   import DeliveryProgressCard from "@/components/DeliveryProgressCard";
   import NotificationPopup from "@/components/NotificationPopup";
@@ -1339,7 +1340,7 @@ const searchOrders = useCallback(async (input?: string) => {
           onClick={() => setClaimFreeDataOpen(true)}
           title="Promo Codes Available"
         >
-<img src="/images/free-data-promo.jpeg" alt="Free Data" className="block w-56 max-w-[calc(100vw-1rem)] select-none rounded-r-full rounded-l-[3rem] shadow-lg" draggable={false} />
+<PromoCodeFreeDataIcon />
         </DraggableFAB>
       )}
 
