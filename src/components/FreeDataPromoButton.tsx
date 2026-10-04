@@ -10,14 +10,20 @@ export default function FreeDataPromoButton() {
   useEffect(() => {
     let active = true;
     const loadSetting = async () => {
-      const { data } = await supabase.from("app_settings").select("free_data_enabled").eq("id", 1).maybeSingle();
-      if (active) setEnabled(data?.free_data_enabled === true);
+      const { data } = await supabase
+        .from("promo_code_settings")
+        .select("claim_visible")
+        .eq("store_type", "admin")
+        .eq("claim_visible", true)
+        .order("updated_at", { ascending: false })
+        .limit(1);
+      if (active) setEnabled(Boolean(data?.[0]?.claim_visible));
     };
     loadSetting();
     const channel = supabase
       .channel("free-data-visibility")
-      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "app_settings", filter: "id=eq.1" }, (payload) => {
-        if (active) setEnabled(payload.new.free_data_enabled === true);
+      .on("postgres_changes", { event: "*", schema: "public", table: "promo_code_settings", filter: "store_type=eq.admin" }, () => {
+        loadSetting();
       })
       .subscribe();
     return () => { active = false; supabase.removeChannel(channel); };
