@@ -110,7 +110,8 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
       const price = Number(pricing?.customer_price ?? selectedResult?.price ?? selectedResult?.registrationPrice ?? selectedResult?.amount ?? 0);
       if (!Number.isFinite(price) || price <= 0) throw new Error("No customer price is configured for this domain extension.");
       if (walletBalance < price) throw new Error(`Insufficient wallet balance. You need GHC ${price.toFixed(2)}.`);
-      const idempotencyKey = `${storeKind}:${agentStoreId ?? "user"}:${value}:${crypto.randomUUID()}`;
+      const normalizedDomain = value.trim().toLowerCase();
+      const idempotencyKey = `${storeKind}:${agentStoreId ?? "user"}:${normalizedDomain}`;
       const { data: purchase, error: purchaseError } = await supabase.rpc("purchase_domain_for_store", {
         p_domain: value,
         p_store_kind: storeKind,
