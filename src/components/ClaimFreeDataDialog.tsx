@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Gift, Loader2, CheckCircle, X, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { detectNetwork, normalizePhone as normalizePhoneUtil, isValidPhone as isValidPhoneUtil } from "@/lib/phoneUtils";
+import { detectNetwork, normalizePhone as normalizePhoneUtil, isValidPhone as isValidPhoneUtil, phoneMatchesNetwork } from "@/lib/phoneUtils";
 import NetworkIndicator from "@/components/NetworkIndicator";
 
 interface ClaimFreeDataDialogProps {
@@ -74,19 +74,32 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
     }
     const { data: code, error: codeErrorResponse } = await supabase
       .from("promo_codes")
-      .select("id, code, size_gb, network, claimed_at, expires_at, refunded_at")
+      .select("id, code, package_id, size_gb, network, claimed_at, expires_at, refunded_at, is_fake")
       .eq("code", normalizedCode)
-      .is("claimed_at", null)
-      .is("refunded_at", null)
-      .gt("expires_at", new Date().toISOString())
       .maybeSingle();
     if (codeErrorResponse || !code) {
-      setCodeError("This code is incorrect, used, expired, or does not exist. Enter the correct code.");
+      setCodeError("This promo code does not exist.");
+      return;
+    }
+    if (code.is_fake || code.claimed_at) {
+      setCodeError("This promo code has already been used.");
+      return;
+    }
+    if (code.refunded_at) {
+      setCodeError("This promo code was refunded and cannot be claimed.");
+      return;
+    }
+    if (code.expires_at && new Date(code.expires_at).getTime() <= Date.now()) {
+      setCodeError("This promo code has expired.");
       return;
     }
     setValidatedCode(code);
     if (!isValidPhone(phone)) {
       toast({ title: "Invalid Phone", description: "Please enter a valid phone number", variant: "destructive" });
+      return;
+    }
+    if (!phoneMatchesNetwork(normalizePhone(phone), String(code.network || ""))) {
+      setCodeError(`This code is for ${code.network}. Enter a ${code.network} phone number.`);
       return;
     }
 
@@ -108,36 +121,14 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
     try {
       const normalizedPhone = normalizePhone(phone.trim());
 
-      const { data: claimedCode, error: codeClaimError } = await supabase
-        .from("promo_codes")
-        .update({ claimed_at: new Date().toISOString() })
-        .eq("id", validatedCode.id)
-        .is("claimed_at", null)
-        .select("id")
-        .maybeSingle();
-      if (codeClaimError || !claimedCode) throw new Error("This promo code has already been claimed or is no longer active.");
-
-      // Record the claim
-      const { error: claimError } = await supabase
-        .from("free_data_claims")
-        .insert({
-          phone_number: normalizedPhone,
-          gb_amount: freeRewardGb,
-          total_gb_purchased: 0,
-          agent_store_id: storeId || null,
-          subagent_store_id: subagentStoreId || null,
-        });
-
-      if (claimError) throw claimError;
-
-      // Detect network from phone number
       const detectedNetwork = detectNetwork(normalizedPhone);
-      const claimNetwork = detectedNetwork !== "unknown" ? detectedNetwork : "mtn";
+      const claimNetwork = detectedNetwork !== "unknown" ? detectedNetwork : String(validatedCode.network || "mtn").toLowerCase();
       
       // Get a valid package_id for the free data (find package matching detected network and reward GB)
       const { data: packageData } = await supabase
         .from("data_packages")
         .select("id")
+        .eq("id", validatedCode.package_id)
         .eq("network", claimNetwork)
         .eq("size_gb", freeRewardGb)
         .eq("active", true)
@@ -192,6 +183,30 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
         .single();
 
       if (orderError) throw orderError;
+
+      const { data: claimedCode, error: codeClaimError } = await supabase
+        .from("promo_codes")
+        .update({ claimed_at: new Date().toISOString() })
+        .eq("id", validatedCode.id)
+        .is("claimed_at", null)
+        .is("refunded_at", null)
+        .select("id")
+        .maybeSingle();
+      if (codeClaimError || !claimedCode) {
+        await supabase.from("orders").delete().eq("id", createdOrder.id);
+        throw new Error("This promo code was claimed by someone else. Please use another code.");
+      }
+
+      const { error: claimError } = await supabase
+        .from("free_data_claims")
+        .insert({
+          phone_number: normalizedPhone,
+          gb_amount: freeRewardGb,
+          total_gb_purchased: 0,
+          agent_store_id: storeId || null,
+          subagent_store_id: subagentStoreId || null,
+        });
+      if (claimError) throw claimError;
 
       setClaimOrderId(createdOrder?.id ?? null);
       setClaimSuccess(true);
