@@ -116,14 +116,15 @@ const Login = () => {
         return;
       }
       
-      // Route each verified role to its canonical dashboard domain.
-      let redirectTo = "https://dataplug.store/user-dashboard";
+  // Keep the user on the host where authentication started.
+  const appUrl = window.location.origin;
+  let redirectTo = `${appUrl}/user-dashboard`;
       if (roles.includes("sub_subagent") || roles.includes("sub-subagent")) {
-        redirectTo = "https://agentsstore.shop/sub-subagent-dashboard";
+        redirectTo = `${appUrl}/sub-subagent-dashboard`;
       } else if (roles.includes("subagent")) {
-        redirectTo = "https://agentsstore.shop/dashboard";
+        redirectTo = `${appUrl}/dashboard`;
       } else if (roles.includes("agent")) {
-        redirectTo = "https://dataplug.store/agent";
+        redirectTo = `${appUrl}/agent`;
       }
 
       toast({ title: "Welcome back!", description: "Redirecting..." });

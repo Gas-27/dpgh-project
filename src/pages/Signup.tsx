@@ -31,9 +31,8 @@ const Signup = () => {
 
   const handleGoogleSignup = async () => {
     setGoogleLoading(true);
-    // Use the exact domain in Supabase's Site URL (no www) so Supabase
-    // honours the redirectTo instead of falling back to the Site URL root.
-    const appUrl = "https://dataplug.store";
+    // Keep OAuth on the host where signup started.
+    const appUrl = window.location.origin;
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {
