@@ -4,7 +4,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Gift, Loader2, CheckCircle, X, Trophy, Calendar, AlertCircle } from "lucide-react";
+import { Gift, Loader2, CheckCircle, X, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { detectNetwork, normalizePhone as normalizePhoneUtil, isValidPhone as isValidPhoneUtil } from "@/lib/phoneUtils";
 import NetworkIndicator from "@/components/NetworkIndicator";
@@ -16,9 +16,7 @@ interface ClaimFreeDataDialogProps {
   subagentStoreId?: string | null;
 }
 
-// Default values - can be overridden by admin settings
-const DEFAULT_REQUIRED_GB = 35;
-const DEFAULT_FREE_REWARD_GB = 1;
+const FREE_REWARD_GB = 1;
 
 // Normalize phone number to consistent format
 const normalizePhone = (phone: string): string => {
@@ -37,23 +35,6 @@ const isValidPhone = (phone: string): boolean => {
   return /^0[235]\d{8}$/.test(normalized);
 };
 
-// Get start and end of current week (Monday to Sunday)
-const getWeekBounds = () => {
-  const now = new Date();
-  const dayOfWeek = now.getDay();
-  const diff = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-  
-  const weekStart = new Date(now);
-  weekStart.setDate(now.getDate() - diff);
-  weekStart.setHours(0, 0, 0, 0);
-  
-  const weekEnd = new Date(weekStart);
-  weekEnd.setDate(weekStart.getDate() + 6);
-  weekEnd.setHours(23, 59, 59, 999);
-  
-  return { weekStart, weekEnd };
-};
-
 export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subagentStoreId }: ClaimFreeDataDialogProps) {
   const { toast } = useToast();
   const [phone, setPhone] = useState("");
@@ -64,49 +45,10 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
   const [checking, setChecking] = useState(false);
   const [eligibilityChecked, setEligibilityChecked] = useState(false);
   const [canClaim, setCanClaim] = useState(false);
-  const [alreadyClaimed, setAlreadyClaimed] = useState(false);
   const [claimSuccess, setClaimSuccess] = useState(false);
   const [claimOrderId, setClaimOrderId] = useState<string | null>(null);
   
-  // Admin configurable settings
-  const [requiredGb, setRequiredGb] = useState(DEFAULT_REQUIRED_GB);
-  const [freeRewardGb, setFreeRewardGb] = useState(DEFAULT_FREE_REWARD_GB);
-  const [telecelEnabled, setTelecelEnabled] = useState(false);
-  const [settingsLoaded, setSettingsLoaded] = useState(false);
-
-  // Load admin settings
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const { data } = await supabase
-          .from("app_settings")
-          .select("free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled")
-          .eq("id", 1)
-          .single();
-        
-        if (data) {
-          setRequiredGb(data.free_data_required_gb ?? DEFAULT_REQUIRED_GB);
-          setFreeRewardGb(data.free_data_reward_gb ?? DEFAULT_FREE_REWARD_GB);
-          setTelecelEnabled(data.free_data_telecel_enabled ?? false);
-        }
-      } catch (err) {
-        console.log("Using default free data settings");
-      } finally {
-        setSettingsLoaded(true);
-      }
-    };
-    
-    if (open) loadSettings();
-  }, [open]);
-
-  // Get eligible networks based on settings
-  const getEligibleNetworks = () => {
-    const networks = ["mtn", "airteltigo", "airtel-tigo", "at"];
-    if (telecelEnabled) {
-      networks.push("telecel", "vodafone");
-    }
-    return networks;
-  };
+  const freeRewardGb = FREE_REWARD_GB;
 
   // Reset state when dialog opens
   useEffect(() => {
@@ -116,8 +58,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
       setCodeError("");
       setValidatedCode(null);
       setEligibilityChecked(false);
-        setCanClaim(false);
-      setAlreadyClaimed(false);
+      setCanClaim(false);
       setClaimSuccess(false);
       setClaimOrderId(null);
     }
@@ -151,27 +92,10 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
     setChecking(true);
     try {
-      const normalizedPhone = normalizePhone(phone.trim());
-      const { weekStart } = getWeekBounds();
-
-      // Promo-code claims are independent of purchase volume. Only prevent a
-      // second claim for the same phone during the current claim period.
-      const { data: claims, error: claimsError } = await supabase
-        .from("free_data_claims")
-        .select("created_at")
-        .eq("phone_number", normalizedPhone)
-        .gte("created_at", weekStart.toISOString())
-        .limit(1);
-
-      if (claimsError && claimsError.code !== "PGRST116") throw claimsError;
-
-      const hasClaimed = Boolean(claims?.length);
-      setAlreadyClaimed(hasClaimed);
-      setCanClaim(!hasClaimed);
+      // Promo-code eligibility is independent of purchase volume. The atomic
+      // claimed_at update below enforces one-time use when Claim is pressed.
+      setCanClaim(true);
       setEligibilityChecked(true);
-    } catch (err: any) {
-      console.error("Error checking eligibility:", err);
-      toast({ title: "Error", description: "Failed to check eligibility. Please try again.", variant: "destructive" });
     } finally {
       setChecking(false);
     }
@@ -283,18 +207,6 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
     }
   };
 
-  if (!settingsLoaded) {
-    return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[calc(100%-1rem)] max-w-lg max-h-[min(760px,calc(100dvh-2rem))] overflow-y-auto overscroll-contain border-green-500/30 p-4 sm:p-6" style={{ background: "linear-gradient(160deg, #001a00 0%, #003300 55%, #001a00 100%)" }}>
-          <div className="flex items-center justify-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-green-400" />
-          </div>
-        </DialogContent>
-      </Dialog>
-    );
-  }
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="w-[calc(100%-1rem)] max-w-lg max-h-[min(760px,calc(100dvh-2rem))] overflow-y-auto overscroll-contain border-green-500/30 p-4 sm:p-6" style={{ background: "linear-gradient(160deg, #001a00 0%, #003300 55%, #001a00 100%)" }}>
@@ -369,16 +281,6 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
               {eligibilityChecked && (
                 <div className="space-y-4">
-                  {/* Status Messages */}
-                  {alreadyClaimed && (
-                    <div className="bg-orange-900/40 border border-orange-500/40 rounded-lg p-3 text-center">
-                      <p className="text-orange-300 text-sm font-bold">Already Claimed This Week</p>
-                      <p className="text-orange-200/70 text-xs mt-1">
-                        You&apos;ve already claimed your free data this week. Come back next Monday!
-                      </p>
-                    </div>
-                  )}
-
                   {canClaim && (
                     <Button
                       onClick={handleClaim}
