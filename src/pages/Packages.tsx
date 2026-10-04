@@ -11,6 +11,7 @@ import PublicProductsSection from "@/components/PublicProductsSection";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import DigitalServicesCatalog, { Service } from "@/components/DigitalServicesCatalog";
 import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
 // Lazy-loaded to break circular dependency (ReferenceError: Cannot access 'J' before initialization)
@@ -1175,7 +1176,7 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
   );
 };
 
-// �������─────────────────────���──�����───────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
+// ���������─────────────────────���──�����───────────────────────── Packages Page (UPDATED: phone search strips spaces) ─���
 const Packages = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const { toast } = useToast();
@@ -2029,20 +2030,7 @@ const searchOrders = async (input?: string) => {
 
 
 
-  {/* Admin-controlled Free Data claim entry point. */}
-  {!showSpinWheel && freeDataEnabled && (
-        <DraggableFAB
-          initialBottom={150}
-          initialRight={24}
-          storageKey="claim-free-data"
-          onClick={() => setShowClaimFreeData(true)}
-          title="Claim Free Data"
-        >
-          <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
-            <Gift className="h-6 w-6" />
-          </div>
-        </DraggableFAB>
-      )}
+  {!showSpinWheel && <FreeDataPromoButton />}
 
       <AFARegistrationSuccess />
       
