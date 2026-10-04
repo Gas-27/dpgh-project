@@ -110,10 +110,16 @@ export default function DomainDashboardPanel({ walletBalance = 0, walletLabel = 
       const price = Number(pricing?.customer_price ?? selectedResult?.price ?? selectedResult?.registrationPrice ?? selectedResult?.amount ?? 0);
       if (!Number.isFinite(price) || price <= 0) throw new Error("No customer price is configured for this domain extension.");
       if (walletBalance < price) throw new Error(`Insufficient wallet balance. You need GHC ${price.toFixed(2)}.`);
-      const idempotencyKey = `${agentStoreId ?? "user"}:${value}:${Date.now()}`;
-      const { data: purchase, error: purchaseError } = await supabase.rpc("purchase_domain_for_store", { p_domain: value, p_store_kind: storeKind, p_store_id: agentStoreId, p_idempotency_key: idempotencyKey, p_registration_metadata: {} });
+      const idempotencyKey = `${storeKind}:${agentStoreId ?? "user"}:${value}:${crypto.randomUUID()}`;
+      const { data: purchase, error: purchaseError } = await supabase.rpc("purchase_domain_for_store", {
+        p_domain: value,
+        p_store_kind: storeKind,
+        p_store_id: agentStoreId,
+        p_idempotency_key: idempotencyKey,
+        p_registration_metadata: { fulfillment_mode: "manual_admin", source: `${storeKind}_dashboard` },
+      });
       if (purchaseError) throw purchaseError;
-      setMessage(`Wallet payment recorded for ${purchase?.domain ?? value}. Admin can now see this pending purchase and buy it manually on Spaceship.`);
+      setMessage(`Payment recorded for ${purchase?.domain ?? value}. Your wallet was charged and the request is now waiting for admin to purchase and connect the domain.`);
       onPurchaseComplete?.();
       await loadDomains();
     }
