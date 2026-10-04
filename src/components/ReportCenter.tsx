@@ -18,7 +18,7 @@ const waLink = (phone?: string | null) => { if (!phone) return null; let d = pho
 const db = supabase as any;
 const notice = "Support replies may take 12–72 hours because our team is working through a high volume of requests. For non-urgent questions, please use the chatbot first—it contains answers to many common questions on the site. Use this report form for issues, misunderstandings, suggestions, and general support feedback.";
 type Role = "user" | "agent" | "subagent" | "subsubagent";
-type Report = { id: string; reporter_id: string; reporter_role: Role; reporter_email?: string | null; reporter_phone?: string | null; store_name?: string | null; store_id?: string | null; topup_reference?: string | null; category: string; subject: string; message: string; status: string; priority: string; created_at: string; updated_at: string; unread_for_reporter?: boolean | number };
+type Report = { id: string; reporter_id: string; reporter_role: Role; reporter_email?: string | null; reporter_phone?: string | null; store_name?: string | null; store_id?: string | null; topup_reference?: string | null; category: string; subject: string; message: string; status: string; priority: string; created_at: string; updated_at: string; unread_for_reporter?: number };
 type Message = { id: string; report_id: string; author_id: string; body: string; attachment_url?: string | null; attachment_type?: "image" | "video" | null; created_at: string };
 type Props = { admin?: boolean; reporterRole?: Role };
 
@@ -26,7 +26,7 @@ export default function ReportCenter({ admin = false, reporterRole = "user" }: P
   const { user } = useAuth(); const { toast } = useToast();
   const [reports, setReports] = useState<Report[]>([]); const [messages, setMessages] = useState<Message[]>([]); const [selected, setSelected] = useState<Report | null>(null);
   const [loading, setLoading] = useState(false); const [reply, setReply] = useState(""); const [attachment, setAttachment] = useState<File | null>(null); const [form, setForm] = useState({ category: "issue", subject: "", message: "" }); const fileRef = useRef<HTMLInputElement>(null);
-  const hasUnread = (report: Report) => !admin && (report.unread_for_reporter === true || Number(report.unread_for_reporter) > 0);
+  const hasUnread = (report: Report) => !admin && (Number(report.unread_for_reporter) > 0);
   const unread = useMemo(() => reports.filter(hasUnread).length, [reports, admin]);
   const load = async () => { if (!user) return; setLoading(true); if (!admin) { const { data: context } = await db.rpc("get_my_report_context"); if (context) setForm((current) => ({ ...current, ...context })); } let query = db.from("reports").select("*").order("updated_at", { ascending: false }); const { data, error } = admin ? await query : await query.eq("reporter_id", user.id); if (!error) setReports(data || []); setLoading(false); };
   useEffect(() => { load(); }, [user?.id, admin]);

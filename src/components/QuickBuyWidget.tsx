@@ -20,7 +20,7 @@ interface DataPackage {
   network: string;
   size_gb: number;
   price: number;
-  data_package_id?: string;
+  bundle_id?: string;
   size_gb_text?: string;
   active?: boolean;
 }

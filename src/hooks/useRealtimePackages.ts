@@ -10,7 +10,7 @@ export interface DataPackage {
   agent_price?: number;
   api_price?: number;
   active: boolean;
-  data_package_id?: string;
+  bundle_id?: string;
 }
 
 /**

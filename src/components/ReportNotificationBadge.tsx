@@ -11,7 +11,7 @@ export default function ReportNotificationBadge() {
     if (!user) return;
     let active = true;
     const load = async () => {
-      const { data: unreadReports, count: unread } = await (supabase as any).from("reports").select("id,subject,message", { count: "exact" }).eq("reporter_id", user.id).eq("unread_for_reporter", true).order("updated_at", { ascending: false });
+      const { data: unreadReports, count: unread } = await (supabase as any).from("reports").select("id,subject,message", { count: "exact" }).eq("reporter_id", user.id).gt("unread_for_reporter", 0).order("updated_at", { ascending: false });
       if (active) { setCount(unread || 0); if (unreadReports?.[0]) setReply(unreadReports[0]); }
     };
     load();

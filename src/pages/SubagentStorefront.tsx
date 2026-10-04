@@ -868,8 +868,8 @@ const searchOrders = useCallback(async (input?: string) => {
       // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
       // This enriches the order with package details
       if (false && (order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
-        const { data: pkg } = supabase.from("data_packages").select("size_gb_text, data_package_id").eq("id", order.package_id).single();
-        return { ...order, size_gb_text: pkg?.size_gb_text, data_package_id: pkg?.data_package_id };
+        const { data: pkg } = supabase.from("data_packages").select("size_gb_text, bundle_id").eq("id", order.package_id).single();
+        return { ...order, size_gb_text: pkg?.size_gb_text, bundle_id: pkg?.bundle_id };
       }
       return order;
     });
