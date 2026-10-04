@@ -803,7 +803,7 @@ const AgentStorefront = () => {
 .eq("store_type", "agent")
   .order("updated_at", { ascending: false })
   .limit(1);
-  setFreeDataEnabled(promoSetting?.[0]?.claim_visible === true);
+  setFreeDataEnabled(appSettingsRes.data.free_data_enabled !== false && promoSetting?.[0]?.claim_visible === true);
     setShowAgentPrice((matched.theme_config as any)?.show_agent_price ?? false);
   }
       setLoading(false);

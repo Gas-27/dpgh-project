@@ -37,7 +37,8 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import ChatBot from "@/components/ChatBot";
-import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+  import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+  import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
@@ -124,6 +125,7 @@ const menuItems = [
   { id: "services", label: "Services", icon: BriefcaseBusiness },
   { id: "social-boost", label: "Social Boost", icon: Sparkles },
   { id: "promo", label: "Promo Codes", icon: Gift },
+  { id: "domains", label: "Custom Branding (Domain)", icon: Globe2 },
   { id: "subscription", label: "Subscription", icon: CreditCard },
   { id: "subscription-price", label: "Subscription (Price Set)", icon: Save },
   { id: "store", label: "Store Prices", icon: CreditCard },
@@ -179,7 +181,7 @@ How to use:
 2. RECIPIENTS – Upload a CSV/Excel file OR type manually.
    • Format: phone number followed by GB size, one per line
    • Example: 0241234567 2 (sends 2GB to that number)
-3. GLOBAL PACKAGE (Optional) ��� Set a default GB size for all recipients without specified sizes.
+3. GLOBAL PACKAGE (Optional) ����� Set a default GB size for all recipients without specified sizes.
 4. Review the summary showing total recipients, total GB, and total cost.
 5. Click "Pay with Wallet" to process all orders at once.
 
@@ -2450,7 +2452,8 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
 return (
   <div className="min-h-screen bg-background">
   <ReportNotificationBadge />
-      {/* Admin Impersonation Banner */}
+  <FreeDataPromoButton />
+  {/* Admin Impersonation Banner */}
       {isImpersonating && (
         <div className="bg-blue-500/20 border-b border-blue-500/30 px-4 py-3">
           <div className="container flex items-center justify-between">
@@ -2513,7 +2516,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
-  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "api-key", label: "API Info" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
+  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "api-key", label: "API Info" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
   
 
   {/* ============================= DOMAINS ============================= */}

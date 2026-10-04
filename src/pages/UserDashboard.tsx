@@ -7,7 +7,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
-import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+  import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+  import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -945,9 +946,10 @@ const UserDashboard = () => {
       { id: "api-info", label: "API Info", className: "border-indigo-500/50 bg-indigo-500/10 text-indigo-700" },
     ];
 
-    return (
-      <div className="space-y-5">
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
+  return (
+  <div className="space-y-5">
+  <FreeDataPromoButton />
+  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
           {miniTabs.map((tab) => (
             <button
               key={tab.id}

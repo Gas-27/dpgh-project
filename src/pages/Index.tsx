@@ -8,7 +8,8 @@ import ServicesSection from "@/components/ServicesSection";
 import AgentSection from "@/components/AgentSection";
 import Footer from "@/components/Footer";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
-import ChatBot from "@/components/ChatBot";
+  import ChatBot from "@/components/ChatBot";
+  import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import PremiumSubscriptionBanner from "@/components/PremiumSubscriptionBanner";
 import JsonLd from "@/components/JsonLd";
 
@@ -45,7 +46,8 @@ const Index = () => {
       <Footer />
 
       <WhatsAppFloatingButton />
-      <ChatBot page="home" />
+      <FreeDataPromoButton />
+  <ChatBot page="home" />
     </div>
   );
 };
