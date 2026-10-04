@@ -13,14 +13,19 @@ export default function FreeDataPromoButton() {
   useEffect(() => {
     let active = true;
     const loadSetting = async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      const ownerId = auth.user?.id;
+      if (!ownerId) {
+        if (active) setEnabled(false);
+        return;
+      }
       const { data } = await supabase
         .from("promo_code_settings")
         .select("claim_visible")
+        .eq("owner_id", ownerId)
         .eq("store_type", "admin")
-        .eq("claim_visible", true)
-        .order("updated_at", { ascending: false })
-        .limit(1);
-      if (active) setEnabled(Boolean(data?.[0]?.claim_visible));
+        .maybeSingle();
+      if (active) setEnabled(data?.claim_visible === true);
     };
     loadSetting();
     const channel = supabase
