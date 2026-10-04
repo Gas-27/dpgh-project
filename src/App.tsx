@@ -239,12 +239,6 @@ const CustomDomainResolver = () => {
 const App = () => {
   const hostname = window.location.hostname.toLowerCase();
 
-  useEffect(() => {
-    if (hostname === "justbuygh.com" || hostname === "www.justbuygh.com") {
-      window.location.replace("https://dataplug.store/");
-    }
-  }, [hostname]);
-
   // Determine if we are on a subdomain of datastores.shop or agentsstore.shop
   const isAgentSubdomain = hostname.endsWith(`.${DOMAINS.AGENT_STORE}`) && hostname !== DOMAINS.AGENT_STORE;
   const isSubagentDomain = hostname === DOMAINS.SUBAGENT_STORE || 
