@@ -786,7 +786,7 @@ const AgentStorefront = () => {
         supabase.from("data_packages").select("*").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", matched.id),
         supabase.from("subagent_package_prices").select("package_id, base_price, created_at").eq("agent_store_id", matched.id).is("subagent_store_id", null).order("created_at", { ascending: false }),
-        supabase.from("app_settings").select("free_data_enabled, show_price_breakdown").eq("id", 1).single(),
+        supabase.from("app_settings").select("show_price_breakdown").eq("id", 1).single(),
       ]);
       setPackages(pkgRes.data ?? []);
       const priceMap: Record<string, number> = {};

@@ -579,7 +579,7 @@ export function SubSubagentStorefront() {
         matched.agent_store_id ? supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id) : Promise.resolve({ data: null, error: null }),
         // Parent subagent's sub-subagent template price (sub_subagent_store_id IS NULL)
         matched.subagent_store_id ? supabase.from("sub_subagent_package_prices").select("package_id, base_price").eq("subagent_store_id", matched.subagent_store_id).is("sub_subagent_store_id", null) : Promise.resolve({ data: null, error: null }),
-        supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
+        Promise.resolve({ data: null, error: null }),
         supabase.from("subagent_stores").select("whatsapp_number, support_number").eq("id", matched.subagent_store_id).single(),
       ]);
 

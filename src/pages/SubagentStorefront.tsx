@@ -602,7 +602,7 @@ export function SubagentStorefront() {
         supabase.from("data_packages").select("*").order("size_gb"),
         supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", matched.id).order("created_at", { ascending: false }),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", matched.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
-        supabase.from("app_settings").select("free_data_enabled").eq("id", 1).single(),
+        Promise.resolve({ data: null, error: null }),
         supabase.from("agent_stores").select("whatsapp_number, support_number").eq("id", matched.agent_store_id).single(),
       ]);
 

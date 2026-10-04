@@ -4853,7 +4853,8 @@ const AdminDashboard = () => {
     </CardContent>
   </Card>
 
-  {/* Free Data Offer Settings */}
+  {false && <>
+  {/* Weekly 35GB offer removed; promo-code Free Data is managed in Promo Codes. */}
   <Card className="border-border">
                       <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Gift className="h-5 w-5 text-green-500" /> Free Data Offer Settings</CardTitle></CardHeader>
                       <CardContent className="space-y-6">
@@ -4932,6 +4933,7 @@ const AdminDashboard = () => {
                         </Button>
                       </CardContent>
                     </Card>
+                  </>}
                   </CardContent>
               </Card>
 

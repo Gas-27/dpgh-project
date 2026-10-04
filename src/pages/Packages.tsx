@@ -1303,10 +1303,6 @@ const Packages = () => {
     if (searchParams.get("spin") === "true") setShowSpinWheel(true);
   }, [searchParams]);
   const [showBecomeAgent, setShowBecomeAgent] = useState(false);
-  const [showClaimFreeData, setShowClaimFreeData] = useState(false);
-  const [freeDataEnabled, setFreeDataEnabled] = useState(true);
-  const [freeDataRequiredGb, setFreeDataRequiredGb] = useState(35);
-  const [freeDataRewardGb, setFreeDataRewardGb] = useState(1);
   const [subscriptionComingSoon, setSubscriptionComingSoon] = useState(false);
   const [showSubscriptionComingSoon, setShowSubscriptionComingSoon] = useState(false);
   const [spinConfig, setSpinConfig] = useState<{
@@ -1348,12 +1344,10 @@ const Packages = () => {
         );
       });
     // Load customer-facing pricing display settings
-    supabase.from("app_settings").select("free_data_enabled,free_data_required_gb,free_data_reward_gb,show_api_price,show_agent_price").eq("id", 1).single()
+    supabase.from("app_settings").select("show_api_price,show_agent_price").eq("id", 1).single()
       .then(({ data }) => {
         if (data) {
-          setFreeDataEnabled(data.free_data_enabled ?? true);
-          setFreeDataRequiredGb(data.free_data_required_gb ?? 35);
-          setFreeDataRewardGb(data.free_data_reward_gb ?? 1);
+
           setShowApiPrice(data.show_api_price !== false);
           setShowAgentPrice(data.show_agent_price !== false);
                   const comingSoon = data.subscription_coming_soon === true;
