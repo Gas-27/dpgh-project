@@ -85,7 +85,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
     const pending = codes.filter((code) => code.is_fake && !copiedFakeCodes.has(code.id));
     if (!pending.length) return;
     try {
-      await navigator.clipboard.writeText(pending.map((code) => code.code).join("\\n"));
+      await navigator.clipboard.writeText(pending.map((code) => code.code).join("\n"));
       setCopiedFakeCodes((current) => new Set([...current, ...pending.map((code) => code.id)]));
       toast({ title: "Fake codes copied", description: `${pending.length} fake code${pending.length === 1 ? "" : "s"} copied.` });
     } catch {
