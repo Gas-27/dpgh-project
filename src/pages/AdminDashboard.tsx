@@ -319,15 +319,7 @@ const AdminDashboard = () => {
   const [tabControls, setTabControls] = useState<TabControls>({});
   const [savingTabControls, setSavingTabControls] = useState(false);
 
-  // Free Data Offer settings
-  const [freeDataConfig, setFreeDataConfig] = useState({
-    enabled: true,
-    required_gb: 35,
-    reward_gb: 1,
-    telecel_enabled: false,
-  });
-  const [freeDataSaving, setFreeDataSaving] = useState(false);
-
+  
   // Special MTN Mashup Pricing
   const [specialMTNPricing, setSpecialMTNPricing] = useState({
     tier1_user_price: "6.00",
@@ -717,7 +709,7 @@ const AdminDashboard = () => {
         supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
         supabase
           .from("app_settings")
-          .select("agent_registration_fee, free_data_enabled, free_data_required_gb, free_data_reward_gb, free_data_telecel_enabled, chatbot_enabled, show_price_breakdown, show_api_price, show_agent_price, tab_controls")
+          .select("agent_registration_fee, chatbot_enabled, show_price_breakdown, show_api_price, show_agent_price, tab_controls")
           .eq("id", 1)
           .single(),
       ]);
@@ -730,12 +722,7 @@ const AdminDashboard = () => {
         setAgentRegistrationFee(appSettings.agent_registration_fee);
       }
       if (appSettings) {
-        setFreeDataConfig({
-          enabled: appSettings.free_data_enabled ?? true,
-          required_gb: appSettings.free_data_required_gb ?? 35,
-          reward_gb: appSettings.free_data_reward_gb ?? 1,
-          telecel_enabled: appSettings.free_data_telecel_enabled ?? false,
-        });
+
         if (typeof appSettings.chatbot_enabled === 'boolean') {
           setChatbotEnabled(appSettings.chatbot_enabled);
         }
@@ -863,26 +850,7 @@ const AdminDashboard = () => {
     setSavingTabControls(false);
   };
 
-  // Save free data offer settings
-  const saveFreeDataSettings = async () => {
-    setFreeDataSaving(true);
-    const { error } = await supabase
-      .from("app_settings")
-      .upsert({ 
-        id: 1, 
-        free_data_enabled: freeDataConfig.enabled,
-        free_data_required_gb: freeDataConfig.required_gb,
-        free_data_reward_gb: freeDataConfig.reward_gb,
-        free_data_telecel_enabled: freeDataConfig.telecel_enabled,
-        updated_at: new Date().toISOString() 
-      });
-    if (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
-    } else {
-      toast({ title: "Free Data Settings saved!" });
-    }
-    setFreeDataSaving(false);
-  };
+
   
   // Save chatbot enabled/disabled setting
   const saveChatbotSetting = async (enabled: boolean) => {
@@ -4853,90 +4821,6 @@ const AdminDashboard = () => {
     </CardContent>
   </Card>
 
-  {false && <>
-  {/* Weekly 35GB offer removed; promo-code Free Data is managed in Promo Codes. */}
-  <Card className="border-border">
-                      <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Gift className="h-5 w-5 text-green-500" /> Free Data Offer Settings</CardTitle></CardHeader>
-                      <CardContent className="space-y-6">
-                        {/* Enable/Disable Toggle */}
-                        <div className="flex items-center justify-between border p-4 rounded-lg bg-gradient-to-r from-green-900/20 to-emerald-900/20 border-green-500/30">
-                          <div className="space-y-0.5">
-                            <Label className="text-base font-semibold">Enable Free Data Offer</Label>
-                            <p className="text-sm text-muted-foreground">
-                              Show or hide the Gift icon on all storefronts
-                            </p>
-                          </div>
-                          <Switch 
-                            checked={freeDataConfig.enabled} 
-                            onCheckedChange={(checked) => setFreeDataConfig({ ...freeDataConfig, enabled: checked })} 
-                          />
-                        </div>
-
-                        <div className="bg-green-900/20 border border-green-500/30 rounded-lg p-4">
-                          <p className="text-sm text-green-300">
-                            Users who purchase the required GB within a week (Monday-Sunday) can claim free data once. 
-                            If not claimed by Sunday, the offer expires and resets.
-                          </p>
-                        </div>
-                        
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <Label>Required GB to Claim</Label>
-                            <Input 
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="35"
-                              value={freeDataConfig.required_gb || ''} 
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9]/g, '');
-                                setFreeDataConfig({ ...freeDataConfig, required_gb: val === '' ? 0 : parseInt(val, 10) });
-                              }}
-                              disabled={!freeDataConfig.enabled}
-                            />
-                            <p className="text-xs text-muted-foreground">Users must buy this much GB in a week to qualify</p>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Free Reward GB</Label>
-                            <Input 
-                              type="text"
-                              inputMode="numeric"
-                              placeholder="1"
-                              value={freeDataConfig.reward_gb || ''} 
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^0-9]/g, '');
-                                setFreeDataConfig({ ...freeDataConfig, reward_gb: val === '' ? 0 : parseInt(val, 10) });
-                              }}
-                              disabled={!freeDataConfig.enabled}
-                            />
-                            <p className="text-xs text-muted-foreground">How much free data they receive</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-between border p-4 rounded-lg">
-                          <div className="space-y-0.5">
-                            <Label className="text-base">Include Telecel Purchases</Label>
-                            <p className="text-sm text-muted-foreground">
-                              If OFF, only MTN and AirtelTigo purchases count toward the required GB.
-                              Turn this ON if Telecel has {freeDataConfig.reward_gb}GB packages available.
-                            </p>
-                          </div>
-                          <Switch 
-                            checked={freeDataConfig.telecel_enabled} 
-                            onCheckedChange={(checked) => setFreeDataConfig({ ...freeDataConfig, telecel_enabled: checked })}
-                            disabled={!freeDataConfig.enabled}
-                          />
-                        </div>
-                        
-                        <Button onClick={saveFreeDataSettings} disabled={freeDataSaving}>
-                          {freeDataSaving ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
-                          Save Free Data Settings
-                        </Button>
-                      </CardContent>
-                    </Card>
-                  </>}
-                  </CardContent>
-              </Card>
-
               {/* Special MTN Mashup Pricing removed from admin settings. */}
               {false && <Card className="border-amber-500/30 bg-amber-50/5">
                 <CardHeader>
@@ -5088,6 +4972,8 @@ const AdminDashboard = () => {
                   </div>
                 </CardContent>
               </Card>}
+                  </CardContent>
+                </Card>
             </TabsContent>
             )}
 
