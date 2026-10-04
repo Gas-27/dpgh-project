@@ -159,17 +159,16 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
       if (orderError) throw orderError;
 
-      const { data: claimedCode, error: codeClaimError } = await supabase
-        .from("promo_codes")
-        .update({ claimed_at: new Date().toISOString() })
-        .eq("id", validatedCode.id)
-        .is("claimed_at", null)
-        .is("refunded_at", null)
-        .select("id")
-        .maybeSingle();
-      if (codeClaimError || !claimedCode) {
+      const { data: claimed, error: codeClaimError } = await supabase.rpc("claim_promo_code", {
+        p_code_id: validatedCode.id,
+      });
+      if (codeClaimError) {
         await supabase.from("orders").delete().eq("id", createdOrder.id);
-        throw new Error("This promo code has already been used by someone else. Please use another code.");
+        throw new Error("We could not verify this promo code right now. Please try again.");
+      }
+      if (!claimed) {
+        await supabase.from("orders").delete().eq("id", createdOrder.id);
+        throw new Error("This promo code has already been used, refunded, or expired. Please use another code.");
       }
 
       const { error: claimError } = await supabase
