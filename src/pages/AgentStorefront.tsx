@@ -798,8 +798,8 @@ const AgentStorefront = () => {
       const { data: promoSettings } = await supabase
         .from("promo_code_settings")
         .select("claim_visible")
-        .eq("owner_id", matched.user_id)
-        .eq("store_type", "agent")
+.or(`owner_id.eq.${matched.user_id},owner_id.eq.${matched.id}`)
+  .eq("store_type", "agent")
         .order("updated_at", { ascending: false })
         .limit(1);
       setFreeDataEnabled(promoSettings?.[0]?.claim_visible === true);
