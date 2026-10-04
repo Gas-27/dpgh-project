@@ -603,7 +603,7 @@ const AgentStorefront = () => {
   
   // ── Claim Free Data dialog ──
   const [claimFreeDataOpen, setClaimFreeDataOpen] = useState(false);
-  const [freeDataEnabled, setFreeDataEnabled] = useState(true);
+  const [freeDataEnabled, setFreeDataEnabled] = useState(false);
   const [showAgentPrice, setShowAgentPrice] = useState(false);
   
   // ── Category ──
@@ -795,16 +795,15 @@ const AgentStorefront = () => {
       (agentSubagentPriceRes.data ?? []).forEach((p: any) => { if (p.base_price != null && agentPriceMap[p.package_id] == null) agentPriceMap[p.package_id] = Number(p.base_price); });
       setAgentPrices(priceMap);
       setAgentSubagentPrices(agentPriceMap);
-      if (appSettingsRes.data) {
-  const { data: promoSetting } = await supabase
-    .from("promo_code_settings")
-    .select("claim_visible")
-    .eq("owner_id", matched.user_id)
-.eq("store_type", "agent")
-  .maybeSingle();
-  setFreeDataEnabled(promoSetting?.claim_visible === true);
-    setShowAgentPrice((matched.theme_config as any)?.show_agent_price ?? false);
-  }
+      const { data: promoSettings } = await supabase
+        .from("promo_code_settings")
+        .select("claim_visible")
+        .eq("owner_id", matched.user_id)
+        .eq("store_type", "agent")
+        .order("updated_at", { ascending: false })
+        .limit(1);
+      setFreeDataEnabled(promoSettings?.[0]?.claim_visible === true);
+      setShowAgentPrice((matched.theme_config as any)?.show_agent_price ?? false);
       setLoading(false);
     };
     fetchStore();
