@@ -9,10 +9,18 @@ export default function FreeDataPromoButton() {
 
   useEffect(() => {
     let active = true;
-    supabase.from("app_settings").select("free_data_enabled").eq("id", 1).maybeSingle().then(({ data }) => {
-      if (active) setEnabled(data?.free_data_enabled !== false);
-    });
-    return () => { active = false; };
+    const loadSetting = async () => {
+      const { data } = await supabase.from("app_settings").select("free_data_enabled").eq("id", 1).maybeSingle();
+      if (active) setEnabled(data?.free_data_enabled === true);
+    };
+    loadSetting();
+    const channel = supabase
+      .channel("free-data-visibility")
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "app_settings", filter: "id=eq.1" }, (payload) => {
+        if (active) setEnabled(payload.new.free_data_enabled === true);
+      })
+      .subscribe();
+    return () => { active = false; supabase.removeChannel(channel); };
   }, []);
 
   if (!enabled) return null;
