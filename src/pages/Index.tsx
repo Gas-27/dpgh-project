@@ -7,6 +7,10 @@ import TrustTicker from "@/components/TrustTicker";
 import ServicesSection from "@/components/ServicesSection";
 import AgentSection from "@/components/AgentSection";
 import Footer from "@/components/Footer";
+import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+import ChatBot from "@/components/ChatBot";
+import PremiumSubscriptionBanner from "@/components/PremiumSubscriptionBanner";
+import JsonLd from "@/components/JsonLd";
 
 const Index = () => {
   const location = useLocation();
@@ -26,52 +30,22 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <JsonLd data={[{"@context":"https://schema.org","@type":"Organization","name":"DataPlug Ghana","url":"https://dataplug.store","logo":"https://dataplug.store/icons/icon-512x512.png","areaServed":"GH"},{"@context":"https://schema.org","@type":"WebSite","name":"DataPlug Store","url":"https://dataplug.store","inLanguage":"en-GH","potentialAction":{"@type":"SearchAction","target":"https://dataplug.store/packages?q={search_term_string}","query-input":"required name=search_term_string"}}]} />
       <NotificationPopup />
       <Navbar />
-      <HeroSection />
-      <TrustTicker />
-      <ServicesSection />
-      <AgentSection />
+      <main id="main-content">
+        <HeroSection />
+        <TrustTicker />
+        <ServicesSection />
+        <section className="container max-w-5xl mx-auto px-4 py-8">
+          <PremiumSubscriptionBanner />
+        </section>
+        <AgentSection />
+      </main>
       <Footer />
 
-      {/* Floating WhatsApp Button */}
-      <a
-        href="https://whatsapp.com/channel/0029VbCBiBmCsU9XSl2ozc3R"
-        target="_blank"
-        style={{
-          position: "fixed",
-          bottom: "20px",
-          right: "20px",
-          zIndex: 1000,
-          display: "flex",
-          alignItems: "center",
-          gap: "10px",          // space between icon and text
-          backgroundColor: "#25D366",
-          borderRadius: "30px", // rounded pill shape for icon + text
-          padding: "10px 15px",
-          boxShadow: "0 4px 6px rgba(0,0,0,0.3)",
-          cursor: "pointer",
-          transition: "transform 0.2s",
-        }}
-        onMouseOver={(e) => (e.currentTarget.style.transform = "scale(1.05)")}
-        onMouseOut={(e) => (e.currentTarget.style.transform = "scale(1)")}
-      >
-        <img
-          src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg"
-          alt="Join WhatsApp Channel"
-          style={{ width: "35px", height: "35px" }}
-        />
-        <span
-          style={{
-            color: "white",
-            fontWeight: "bold",
-            fontSize: "14px",
-            whiteSpace: "nowrap",
-          }}
-        >
-          Join channel – get updates & free giveaways
-        </span>
-      </a>
+      <WhatsAppFloatingButton />
+      <ChatBot page="home" />
     </div>
   );
 };
