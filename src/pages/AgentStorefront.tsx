@@ -801,9 +801,8 @@ const AgentStorefront = () => {
     .select("claim_visible")
     .eq("owner_id", matched.user_id)
 .eq("store_type", "agent")
-  .order("updated_at", { ascending: false })
-  .limit(1);
-  setFreeDataEnabled(appSettingsRes.data.free_data_enabled !== false && promoSetting?.[0]?.claim_visible === true);
+  .maybeSingle();
+  setFreeDataEnabled(promoSetting?.claim_visible === true);
     setShowAgentPrice((matched.theme_config as any)?.show_agent_price ?? false);
   }
       setLoading(false);
@@ -1788,10 +1787,9 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
           onClick={() => setClaimFreeDataOpen(true)}
           title="Promo Codes Available"
         >
-<div className="flex items-center gap-2 rounded-2xl bg-green-950 px-5 py-3 text-green-300 shadow-lg transition-all duration-300 hover:bg-green-900 hover:scale-105">
-  <Gift className="h-6 w-6 text-yellow-400" />
-  <span className="font-bold tracking-wide">FREE DATA</span>
-  </div>
+<div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-green-600 to-emerald-500 hover:from-green-700 hover:to-emerald-600 text-white shadow-lg transition-all duration-300 hover:scale-110">
+            <Gift className="h-6 w-6" />
+          </div>
         </DraggableFAB>
       )}
 
