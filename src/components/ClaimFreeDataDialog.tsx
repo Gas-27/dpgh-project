@@ -72,11 +72,10 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
       setCodeError("Enter the generated promo code to continue.");
       return;
     }
-    const { data: code, error: codeErrorResponse } = await supabase
-      .from("promo_codes")
-      .select("id, code, package_id, size_gb, network, claimed_at, expires_at, refunded_at, is_fake")
-      .eq("code", normalizedCode)
-      .maybeSingle();
+    const { data: codeRows, error: codeErrorResponse } = await supabase.rpc("lookup_promo_code", {
+      p_code: normalizedCode,
+    });
+    const code = codeRows?.[0] ?? null;
     if (codeErrorResponse || !code) {
       setCodeError("This promo code does not exist.");
       return;
