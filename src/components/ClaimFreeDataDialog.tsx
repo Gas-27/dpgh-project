@@ -159,15 +159,17 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
       if (orderError) throw orderError;
 
-      const { error: codeClaimError } = await supabase
+      const { data: claimedCode, error: codeClaimError } = await supabase
         .from("promo_codes")
         .update({ claimed_at: new Date().toISOString() })
         .eq("id", validatedCode.id)
         .is("claimed_at", null)
-        .is("refunded_at", null);
-      if (codeClaimError) {
+        .is("refunded_at", null)
+        .select("id")
+        .maybeSingle();
+      if (codeClaimError || !claimedCode) {
         await supabase.from("orders").delete().eq("id", createdOrder.id);
-        throw new Error("The promo code could not be claimed. Please try again.");
+        throw new Error("This promo code has already been used by someone else. Please use another code.");
       }
 
       const { error: claimError } = await supabase
@@ -179,7 +181,13 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
           agent_store_id: storeId || null,
           subagent_store_id: subagentStoreId || null,
         });
-      if (claimError) throw claimError;
+      if (claimError) {
+        await Promise.all([
+          supabase.from("promo_codes").update({ claimed_at: null }).eq("id", validatedCode.id),
+          supabase.from("orders").delete().eq("id", createdOrder.id),
+        ]);
+        throw claimError;
+      }
 
       setClaimOrderId(createdOrder?.id ?? null);
       setClaimSuccess(true);
