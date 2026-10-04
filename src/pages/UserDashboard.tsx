@@ -1309,7 +1309,7 @@ case "api-key":
                         )}
                       </TableCell>
                       <TableCell>
-                        {(order as any).source === "api" && normalizeOrderStatus(order) === "delivered" ? (
+                        {((order as any).source === "api" || order.payment_method === "api_wallet") && normalizeOrderStatus(order) === "delivered" ? (
                           <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>
                         ) : <span className="text-xs text-muted-foreground">—</span>}
                       </TableCell>

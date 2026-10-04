@@ -56,7 +56,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
       setCodes((saved ?? []).map((item: any) => ({ id: item.id, code: item.code, size: Number(item.size_gb), network: item.network, used: Boolean(item.claimed_at), is_fake: item.is_fake, expires_at: item.expires_at, refunded_at: item.refunded_at })));
     })();
     return () => { mounted = false; };
-  }, [storeType]);
+  }, [storeType, ownerId]);
 
   const available = useMemo(() => packages.filter((item) => item.network.toLowerCase() === network.toLowerCase()), [packages, network]);
   const selected = packages.find((item) => item.id === selectedId) ?? available[0];
@@ -123,7 +123,7 @@ export default function PromoCodesPanel({ walletBalance, adminMode = false, owne
   };
 
   return <div className="flex flex-col gap-6">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-2 text-2xl font-bold"><Gift className="text-primary" /> Promo Codes</h2><p className="text-sm text-muted-foreground">Buy data in bulk and share one-time claim codes.</p><p className="mt-1 text-sm text-emerald-600">Discount rule: more than 20 codes gets 2% off. 20 codes or fewer gets no discount.</p></div></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="flex items-center gap-2 text-2xl font-bold"><Gift className="text-primary" /> Promo Codes</h2><p className="text-sm text-muted-foreground">Buy data in bulk and share one-time claim codes.</p><p className="mt-1 text-sm text-emerald-600">Discount rule: more than 20 codes gets 2% off. 20 codes or fewer gets no discount.</p><p className="mt-1 text-sm text-muted-foreground">Each real code works once. After a successful claim it becomes Claimed and cannot be reused on another phone. Unused codes stay Active until their expiry time, then become Expired.</p></div></div>
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">{[["Available Balance", `GH₵${walletBalance.toFixed(2)}`], ["Generated", codes.length], ["Active Codes", active.length], ["Claimed", codes.filter((code) => code.used).length], ["Expired", expired.length]].map(([label, value]) => <Card key={String(label)}><CardContent className="p-4"><p className="text-sm text-muted-foreground">{label}</p><p className="text-2xl font-bold text-primary">{value}</p></CardContent></Card>)}</div>
     <Card><CardContent className="flex items-center justify-between gap-4 p-4"><div><p className="font-semibold">Promo Code Display</p><p className="text-sm text-muted-foreground">Show the promo offer only when this is on and active codes are available.</p></div><Switch checked={promoVisible} onCheckedChange={savePromoVisibility} /></CardContent></Card>
     {adminMode && <Tabs value={mode} onValueChange={(value) => setMode(value as "real" | "fake")}><TabsList><TabsTrigger value="real">Real Code</TabsTrigger><TabsTrigger value="fake">Fake Code</TabsTrigger></TabsList><TabsContent value="fake" className="pt-3 text-sm text-muted-foreground">Fake codes are saved but always respond that the data has already been claimed.</TabsContent></Tabs>}

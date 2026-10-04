@@ -531,16 +531,20 @@ const AgentDashboard = () => {
     }
 
     let cancelled = false;
-    Promise.all([
-      supabase.rpc("get_agent_financial_totals", {
-        p_agent_store_id: store.id,
-        p_start: start,
-        p_end: end,
-      }).maybeSingle(),
-      user?.id
-        ? supabase.from("orders").select("amount, selling_price, profit, created_at", { count: "exact" }).eq("source", "api").or(`user_id.eq.${user.id},customer_id.eq.${user.id},agent_store_id.eq.${store.id}`).gte("created_at", start ?? "1970-01-01T00:00:00.000Z").lt("created_at", end ?? "9999-12-31T23:59:59.999Z")
-        : Promise.resolve({ data: [], count: 0, error: null }),
-    ]).then(([rpcResult, apiResult]) => {
+    (async () => {
+      const { data: apiUser } = user?.id
+        ? await supabase.from("api_users").select("id, identity_id").eq("identity_id", user.id).eq("is_agent", true).maybeSingle()
+        : { data: null };
+      const apiOwnerIds = [user?.id, apiUser?.id, apiUser?.identity_id].filter(Boolean);
+      const apiOwnerFilter = apiOwnerIds.length ? apiOwnerIds.map((id) => `user_id.eq.${id}`).join(",") : `agent_store_id.eq.${store.id}`;
+      const [rpcResult, apiResult] = await Promise.all([
+        supabase.rpc("get_agent_financial_totals", {
+          p_agent_store_id: store.id,
+          p_start: start,
+          p_end: end,
+        }).maybeSingle(),
+        supabase.from("orders").select("id, amount, selling_price, profit, created_at", { count: "exact" }).eq("source", "api").or(`${apiOwnerFilter},customer_id.eq.${user?.id ?? store.id},agent_store_id.eq.${store.id}`).gte("created_at", start ?? "1970-01-01T00:00:00.000Z").lt("created_at", end ?? "9999-12-31T23:59:59.999Z"),
+      ]);
       if (cancelled) return;
       if (rpcResult.error) {
         console.error("[v0] Failed to load database financial totals:", rpcResult.error);
@@ -551,7 +555,7 @@ const AgentDashboard = () => {
         totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum, order) => sum + Number(order.selling_price ?? order.amount ?? 0), 0),
         totalProfit: Number(rpcResult.data?.total_profit ?? 0) + apiOrders.reduce((sum, order) => sum + Number(order.profit ?? 0), 0),
       });
-    });
+    })();
 
     return () => { cancelled = true; };
   }, [store?.id, user?.id, dateFilter, customStartDate, customEndDate]);
