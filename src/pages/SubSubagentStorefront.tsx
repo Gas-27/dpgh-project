@@ -1339,7 +1339,7 @@ const searchOrders = useCallback(async (input?: string) => {
           onClick={() => setClaimFreeDataOpen(true)}
           title="Promo Codes Available"
         >
-<img src="/images/free-data-promo.jpeg" alt="Free Data" className="block w-[min(31rem,calc(100vw-1rem))] select-none rounded-r-full rounded-l-[3rem] shadow-lg" draggable={false} />
+<img src="/images/free-data-promo.jpeg" alt="Free Data" className="block w-56 max-w-[calc(100vw-1rem)] select-none rounded-r-full rounded-l-[3rem] shadow-lg" draggable={false} />
         </DraggableFAB>
       )}
 

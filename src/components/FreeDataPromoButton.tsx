@@ -37,7 +37,7 @@ export default function FreeDataPromoButton() {
         storageKey="promo-code-free-data-admin"
         onClick={() => setOpen(true)}
         title="Claim Free Data"
-        className="w-[min(31rem,calc(100vw-1rem))] overflow-hidden rounded-r-full rounded-l-[3rem]"
+        className="w-56 max-w-[calc(100vw-1rem)] overflow-hidden rounded-r-full rounded-l-[3rem]"
       >
         <img src="/images/free-data-promo.jpeg" alt="Free Data" className="block h-auto w-full select-none" draggable={false} />
       </DraggableFAB>
