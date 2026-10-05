@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -73,6 +73,14 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
     }
   };
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (providerType !== "mobile_money" || mobileNumber.length < 10 || mobileNumber === verifiedNumber || lookingUpName) return;
+    const timeout = window.setTimeout(() => {
+      void lookupRecipientName(mobileNumber);
+    }, 350);
+    return () => window.clearTimeout(timeout);
+  }, [mobileNumber, providerType, verifiedNumber, lookingUpName]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -236,10 +244,6 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
                   maxLength={12}
                 />
                 {lookingUpName && <p className="text-xs text-cyan-600">Verifying mobile money account name…</p>}
-                <Button type="button" variant="outline" onClick={() => lookupRecipientName(mobileNumber)} disabled={lookingUpName || mobileNumber.length < 10 || loading}>
-                  {lookingUpName ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  {lookingUpName ? "Verifying number…" : "Verify number"}
-                </Button>
                 {!lookingUpName && accountHolder && <p className="text-xs text-emerald-600">Registered account name verified and filled automatically.</p>}
               </div>
             </>
