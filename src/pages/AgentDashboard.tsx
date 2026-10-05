@@ -1917,7 +1917,10 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
   };
 
   // ==================== FLYER FUNCTIONS ====================
-  const getFlyerPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
+  const getFlyerPrice = (pkg: DataPackage) => {
+    const configuredPrice = agentPrices[pkg.id];
+    return configuredPrice !== undefined && configuredPrice !== null ? Number(configuredPrice) : Number(pkg.agent_price ?? pkg.price);
+  };
   const getMtnPkgs = () => MTN_SIZES.map(s => { const p = packages.find(x => x.network === "mtn" && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
   const getAirtelPkgs = () => AIRTEL_SIZES.map(s => { const p = packages.find(x => (x.network === "airteltigo" || x.network === "atbigtime" || x.network === "atbigshare") && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
   const getTelecelPkgs = () => TELECEL_SIZES.map(s => { const p = packages.find(x => x.network === "telecel" && x.size_gb === s); return p ? { size: s, price: getFlyerPrice(p) } : null; }).filter(Boolean) as { size: number; price: number }[];
@@ -1960,7 +1963,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     const cover = (x: number, y: number, width: number, height: number, color = "#06101f") => { context.fillStyle = color; context.fillRect(x, y, width, height); };
     const drawRows = (rows: { size: number; price: number }[], x: number, y: number, width: number) => {
       cover(x, y, width, 410, "#06101f");
-      rows.slice(0, 10).forEach((row, index) => drawText(`${row.size}GB     GHS ${Number(row.price).toFixed(2)}`, x + width / 2, y + 25 + index * 38, 22));
+      rows.slice(0, 15).forEach((row, index) => drawText(`${row.size}GB     GHS ${Number(row.price).toFixed(2)}`, x + width / 2, y + 18 + index * 26, 21));
     };
 
     cover(185, 88, 710, 115, "#06101f");
