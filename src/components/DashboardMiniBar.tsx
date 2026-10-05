@@ -1,4 +1,4 @@
-import { Bell, Gift, ShoppingCart, Sparkles, Zap } from "lucide-react";
+import { Bell, Gift, Image, ShoppingCart, Sparkles, Zap } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type DashboardMiniBarProps = { onSelect: (tab: string) => void };
@@ -8,6 +8,7 @@ const links = [
   ["notifications", "Notifications", Bell],
   ["social-boost", "Social Boost", Sparkles],
   ["api-key", "API Info", Zap],
+  ["flyer", "Flyer Generator", Image],
   ["promo", "Promo Codes", Gift],
 ] as const;
 

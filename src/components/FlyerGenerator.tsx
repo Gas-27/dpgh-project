@@ -361,7 +361,7 @@ const FlyerGenerator = ({
                         overflow: "hidden",
                     }}
                 >
-                    <img src="/images/data-plug-flyer-template.png" alt="Data Plug flyer template" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }} />
+                    <img src="/images/data-plug-flyer-template.png?v=2" alt="Data Plug flyer template" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", zIndex: 0 }} />
                     <div style={{ position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none" }}>
                         <div style={{ position: "absolute", top: 860, left: 55, right: 55, textAlign: "center", color: "#fff", fontSize: 23, fontWeight: 900, textShadow: "0 2px 4px #000" }}>{storeName}</div>
                         <div style={{ position: "absolute", top: 1080, left: 320, color: "#fff", fontSize: 28, fontWeight: 900, fontFamily: "monospace" }}>{topupReference || "0"}</div>
