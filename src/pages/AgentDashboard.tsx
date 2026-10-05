@@ -2432,7 +2432,10 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
 
   const dateFilteredOrders = getDateFilteredOrders(orders);
   // Use totalOrderCount when viewing all dates (which is the true total from database), otherwise use filtered length
-  const totalOrders = databaseFinancialTotals.totalOrders;
+  const totalOrders = Math.max(
+    databaseFinancialTotals.totalOrders,
+    new Set([...orders, ...apiOrders].map((order: any) => order.id).filter(Boolean)).size,
+  );
   const pendingOrders = dateFilteredOrders.filter(o => o.status === "pending").length;
   // When "show refunded only" is on, draw from the full allRefundedOrders list fetched from DB
   const filteredOrders = (showRefundedOnly ? allRefundedOrders : getDateFilteredOrders(orders)).filter(o => {
