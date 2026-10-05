@@ -418,10 +418,11 @@ const AgentDashboard = () => {
   const [recipientLookupLoading, setRecipientLookupLoading] = useState(false);
   const [recipientVerifiedNumber, setRecipientVerifiedNumber] = useState("");
   const lookupRecipientName = async (number: string) => {
-    const normalized = number.replace(/\D/g, "");
-    if (normalized.length !== 10 || recipientLookupLoading) return;
+const localNumber = number.replace(/\D/g, "");
+    if (localNumber.length !== 10 || recipientLookupLoading) return;
+    const normalized = `233${localNumber.slice(1)}`;
     setRecipientLookupLoading(true);
-    try { const response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ""}` }, body: JSON.stringify({ msisdn: normalized, mobile_number: normalized }) }); const result = await response.json().catch(() => ({})); const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name; if (!response.ok || !name) throw new Error(result.error || result.message || "This number could not be verified"); setRecipientName(String(name)); setRecipientVerifiedNumber(normalized); } catch (error) { toast({ title: "Recipient lookup failed", description: error instanceof Error ? error.message : "This number could not be verified", variant: "destructive" }); } finally { setRecipientLookupLoading(false); }
+    try { const response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ""}` }, body: JSON.stringify({ msisdn: normalized, mobile_number: normalized, destination: normalized }) }); const result = await response.json().catch(() => ({})); const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name; if (!response.ok || !name) throw new Error(result.error || result.message || "This number could not be verified"); setRecipientName(String(name)); setRecipientVerifiedNumber(normalized); } catch (error) { toast({ title: "Recipient lookup failed", description: error instanceof Error ? error.message : "This number could not be verified", variant: "destructive" }); } finally { setRecipientLookupLoading(false); }
   };
 
   const detectNetwork = (number: string): string => {
@@ -3770,12 +3771,12 @@ handleMobileNumberChange(digits);
                         )}
                       </div>
                       
-                      <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
+                      <div className="order-4 bg-blue-500/10 border border-blue-500/30 rounded-lg p-3">
                         <p className="text-xs text-blue-400 font-medium">📝 Step 1: Create Recipient</p>
                         <p className="text-xs text-blue-300 mt-1">First, save this recipient. Then you can select them and enter your withdrawal amount.</p>
                       </div>
 
-                      <div className="flex gap-2 pt-2">
+<div className="order-3 flex gap-2 pt-2">
                         <Button 
                           variant="outline" 
                           className="flex-1"

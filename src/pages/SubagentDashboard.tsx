@@ -198,10 +198,11 @@ const SubagentDashboard = () => {
   const [recipientLookupLoading, setRecipientLookupLoading] = useState(false);
   const [recipientVerifiedNumber, setRecipientVerifiedNumber] = useState("");
   const lookupRecipientName = async (number: string) => {
-    const normalized = number.replace(/\D/g, "");
-    if (normalized.length !== 10 || recipientLookupLoading) return;
+    const localNumber = number.replace(/\D/g, "");
+    if (localNumber.length !== 10 || recipientLookupLoading) return;
+    const normalized = `233${localNumber.slice(1)}`;
     setRecipientLookupLoading(true);
-    try { const response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ""}` }, body: JSON.stringify({ msisdn: normalized, mobile_number: normalized }) }); const result = await response.json().catch(() => ({})); const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name; if (!response.ok || !name) throw new Error(result.error || result.message || "This number could not be verified"); setRecipientName(String(name)); setRecipientVerifiedNumber(normalized); } catch (error) { toast({ title: "Recipient lookup failed", description: error instanceof Error ? error.message : "This number could not be verified", variant: "destructive" }); } finally { setRecipientLookupLoading(false); }
+    try { const response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ""}` }, body: JSON.stringify({ msisdn: normalized, mobile_number: normalized, destination: normalized }) }); const result = await response.json().catch(() => ({})); const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name; if (!response.ok || !name) throw new Error(result.error || result.message || "This number could not be verified"); setRecipientName(String(name)); setRecipientVerifiedNumber(normalized); } catch (error) { toast({ title: "Recipient lookup failed", description: error instanceof Error ? error.message : "This number could not be verified", variant: "destructive" }); } finally { setRecipientLookupLoading(false); }
   };
 
   const detectNetwork = (number: string): string => {
