@@ -566,6 +566,7 @@ const AgentDashboard = () => {
   const flyerRef = useRef<HTMLDivElement>(null);
   const flyerContainerRef = useRef<HTMLDivElement>(null);
   const [generatingFlyer, setGeneratingFlyer] = useState(false);
+  const [flyerPreviewUrl, setFlyerPreviewUrl] = useState<string>("");
   const [flyerScale, setFlyerScale] = useState(1);
   const [flyerColors, setFlyerColors] = useState(() => {
     try { const s = localStorage.getItem("flyerColors"); return s ? JSON.parse(s) : DEFAULT_FLYER_COLORS; }
@@ -1982,6 +1983,13 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     return canvas.toDataURL("image/png");
   };
 
+  useEffect(() => {
+    if (activeTab !== "flyer" || !store?.id || packages.length === 0) return;
+    let cancelled = false;
+    generatePng().then((url) => { if (!cancelled) setFlyerPreviewUrl(url); }).catch((error) => console.error("[v0] Flyer preview generation failed:", error));
+    return () => { cancelled = true; };
+  }, [activeTab, store?.id, store?.store_name, store?.topup_reference, store?.custom_domain, packages, agentPrices]);
+
   const downloadFlyer = async () => {
     setGeneratingFlyer(true);
     try {
@@ -3200,7 +3208,7 @@ return (
               </Card>
               <div ref={flyerContainerRef} className="w-full overflow-hidden rounded-lg border border-border" style={{ aspectRatio: `${FLYER_W} / ${FLYER_H}`, position: "relative", background: "#000" }}>
 <div ref={flyerRef} style={{ width: FLYER_W, height: FLYER_H, transform: `scale(${flyerScale})`, transformOrigin: "top left", position: "absolute", top: 0, left: 0, backgroundColor: "#000000", fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", overflow: "hidden" }}>
-  <img src="/images/agent-flyer-reference.png" alt="Dynamic agent flyer template" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", zIndex: 20 }} />
+  {flyerPreviewUrl ? <img src={flyerPreviewUrl} alt={`${storeName} dynamic flyer preview`} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", zIndex: 20 }} /> : <div className="absolute inset-0 flex items-center justify-center text-sm text-muted-foreground">Generating personalized flyer preview…</div>}
   
   {/* TOP NAV - Store Name */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 32px", backgroundColor: "#0a0a0a", borderBottom: "1px solid #1e1e1e" }}>
