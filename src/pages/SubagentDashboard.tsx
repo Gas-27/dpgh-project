@@ -202,7 +202,7 @@ const SubagentDashboard = () => {
     if (localNumber.length !== 10 || recipientLookupLoading) return;
     const normalized = `233${localNumber.slice(1)}`;
     setRecipientLookupLoading(true);
-    try { const response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ""}` }, body: JSON.stringify({ msisdn: normalized, mobile_number: normalized, destination: normalized }) }); const result = await response.json().catch(() => ({})); const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name; if (!response.ok || !name) throw new Error(result.error || result.message || "This number could not be verified"); setRecipientName(String(name)); setRecipientVerifiedNumber(normalized); } catch (error) { toast({ title: "Recipient lookup failed", description: error instanceof Error ? error.message : "This number could not be verified", variant: "destructive" }); } finally { setRecipientLookupLoading(false); }
+    try { const response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ""}` }, body: JSON.stringify({ msisdn: normalized, mobile_number: normalized, destination: normalized }) }); const result = await response.json().catch(() => ({})); const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name; if (!response.ok || !name) throw new Error(result.error || result.message || "This number could not be verified"); setRecipientName(String(name)); setRecipientVerifiedNumber(localNumber); } catch (error) { toast({ title: "Recipient lookup failed", description: error instanceof Error ? error.message : "This number could not be verified", variant: "destructive" }); } finally { setRecipientLookupLoading(false); }
   };
 
   const detectNetwork = (number: string): string => {
@@ -1389,7 +1389,7 @@ const handleSaveStore = async () => {
     }
     
     if (transferRecipients.length >= 5) { 
-      toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
+      toast({ title: "Maximum 5 recipients allowed", variant: "destructive" }); 
       return; 
     }
     if (!recipientName.trim()) { 
@@ -1552,7 +1552,7 @@ const handleSaveStore = async () => {
     // Validate new recipient form if creating new
     if (createNewRecipient) {
       if (transferRecipients.length >= 5) { 
-        toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
+        toast({ title: "Maximum 5 recipients allowed", variant: "destructive" }); 
         return; 
       }
       if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
