@@ -38,7 +38,37 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
   const [accountNumber, setAccountNumber] = useState("");
   const [mobileNetwork, setMobileNetwork] = useState("mtn");
   const [mobileNumber, setMobileNumber] = useState("");
+  const [lookingUpName, setLookingUpName] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const lookupRecipientName = async (number: string) => {
+    const normalized = number.replace(/\D/g, "");
+    if (providerType !== "mobile_money" || normalized.length < 10) return;
+    setLookingUpName(true);
+    try {
+      let response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ msisdn: normalized, mobile_number: normalized }),
+      });
+      let result = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        response = await fetch("https://api.dataplug.store/functions/v1/hubtel-gateway", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ action: "msisdn_lookup", msisdn: normalized, mobile_number: normalized }),
+        });
+        result = await response.json().catch(() => ({}));
+      }
+      if (!response.ok) throw new Error(result.error || result.message || "Could not verify this mobile number");
+      const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name;
+      if (name) setAccountHolder(String(name));
+    } catch (lookupError) {
+      setError(lookupError instanceof Error ? lookupError.message : "Could not verify this mobile number");
+    } finally {
+      setLookingUpName(false);
+    }
+  };
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -195,10 +225,13 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
                   id="mobile"
                   value={mobileNumber}
                   onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, ""))}
+                  onBlur={(e) => lookupRecipientName(e.target.value)}
                   placeholder="024XXXXXXX or similar"
                   disabled={loading}
                   maxLength={12}
                 />
+                {lookingUpName && <p className="text-xs text-cyan-600">Verifying mobile money account name…</p>}
+                {!lookingUpName && accountHolder && <p className="text-xs text-emerald-600">Account name verified and filled automatically.</p>}
               </div>
             </>
           )}

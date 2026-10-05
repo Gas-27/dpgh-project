@@ -169,11 +169,21 @@ export async function createPayoutRequest(
     }
 
     if (!response.ok) {
-      throw new Error(result.error || result.message || `Payout request failed (${response.status})`);
+      const apiReason = result.error || result.message || result.data?.message || result.data?.error || `Payout request failed (${response.status})`;
+      const normalizedReason = String(apiReason).toLowerCase();
+      if (normalizedReason.includes("balance") || normalizedReason.includes("insufficient") || normalizedReason.includes("limit") || normalizedReason.includes("fund")) {
+        throw new Error(`${apiReason}. Please try a lower amount. If it still fails, try again tomorrow because the Paystack transfer limit may have been reached.`);
+      }
+      throw new Error(String(apiReason));
     }
 
     if (result.success === false) {
-      throw new Error(result.error || result.message || "Payout request failed");
+      const apiReason = result.error || result.message || result.data?.message || result.data?.error || "Payout request failed";
+      const normalizedReason = String(apiReason).toLowerCase();
+      if (normalizedReason.includes("balance") || normalizedReason.includes("insufficient") || normalizedReason.includes("limit") || normalizedReason.includes("fund")) {
+        throw new Error(`${apiReason}. Please try a lower amount. If it still fails, try again tomorrow because the Paystack transfer limit may have been reached.`);
+      }
+      throw new Error(String(apiReason));
     }
 
     return result;

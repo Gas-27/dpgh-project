@@ -56,18 +56,18 @@ export default async function handler(
       });
     }
 
-    // Check max 2 recipients limit
+    // Keep recipient management bounded while allowing any of the five saved recipients to be selected for payout.
     const { count, error: countError } = await supabase
       .from("transfer_recipients")
       .select("id", { count: "exact", head: true })
       .eq("user_id", userId)
       .eq("status", "active");
 
-    if (!countError && count && count >= 2) {
+    if (!countError && count && count >= 5) {
       console.log(`[CREATE-RECIPIENT] Recipient limit reached: ${count}`);
       return res.status(400).json({
         success: false,
-        error: "Maximum 2 active recipients allowed",
+        error: "Maximum 5 active recipients allowed",
       });
     }
 
