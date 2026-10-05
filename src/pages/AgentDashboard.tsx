@@ -1927,6 +1927,11 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
   const generatePng = async (): Promise<string> => {
     const el = flyerRef.current;
     if (!el) throw new Error("Flyer element not found");
+
+    // Wait for the supplied flyer artwork and live store overlays before exporting or sharing.
+    await Promise.all(Array.from(el.querySelectorAll("img")).map((image) => image.decode().catch(() => undefined)));
+    if (document.fonts?.ready) await document.fonts.ready;
+
     const prev = el.style.transform;
     el.style.transform = "none";
     try {
@@ -1979,7 +1984,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     try {
       const dataUrl = await generatePng();
       const blob = await (await fetch(dataUrl)).blob();
-      const file = new File([blob], "flyer.png", { type: "image/png" });
+      const file = new File([blob], `${(store?.store_name || "flyer").replace(/[^a-z0-9]+/gi, "-").replace(/^-|-$/g, "") || "flyer"}-flyer.png`, { type: "image/png" });
 
       // 1. Try to share the image file (mobile browsers that support file sharing)
       if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
