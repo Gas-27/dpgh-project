@@ -31,7 +31,12 @@ const Index = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <JsonLd data={[{"@context":"https://schema.org","@type":"Organization","name":"DataPlug Ghana","url":"https://dataplug.store","logo":"https://dataplug.store/icons/icon-512x512.png","areaServed":"GH"},{"@context":"https://schema.org","@type":"WebSite","name":"DataPlug Store","url":"https://dataplug.store","inLanguage":"en-GH","potentialAction":{"@type":"SearchAction","target":"https://dataplug.store/packages?q={search_term_string}","query-input":"required name=search_term_string"}}]} />
+      <JsonLd data={(() => {
+        const isJustBuy = /(^|\.)justbuygh\.com$/i.test(window.location.hostname);
+        const origin = isJustBuy ? `https://${window.location.hostname}` : "https://dataplug.store";
+        const name = isJustBuy ? "JustBuyGH" : "DataPlug Ghana";
+        return [{"@context":"https://schema.org","@type":"Organization","name":name,"url":origin,"logo":`${origin}/icons/icon-512x512.png`,"areaServed":"GH","description":isJustBuy ? "Ghana's digital services hub for cheap data, airtime, bulk SMS, bills, subscriptions, games and social media boosts." : "Ghana's digital services marketplace for data, airtime, bills and subscriptions."},{"@context":"https://schema.org","@type":"WebSite","name":name,"url":origin,"inLanguage":"en-GH","potentialAction":{"@type":"SearchAction","target":`${origin}/packages?q={search_term_string}`,"query-input":"required name=search_term_string"}}];
+      })()} />
       <NotificationPopup />
       <Navbar />
       <main id="main-content">

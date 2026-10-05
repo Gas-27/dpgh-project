@@ -12,9 +12,14 @@ export interface SeoMeta {
   ogSiteName?: string;
 }
 
-const SITE_NAME = "DataPlug Store";
-const BASE_URL = "https://dataplug.store";
 const DEFAULT_OG_IMAGE = "https://dataplug.store/og-default.png";
+
+function getHostSeo(hostname: string) {
+  const isJustBuy = hostname === "justbuygh.com" || hostname === "www.justbuygh.com";
+  return isJustBuy
+    ? { siteName: "JustBuyGH", baseUrl: `https://${hostname}`, image: "/og-default.png", suffix: " | JustBuyGH" }
+    : { siteName: "DataPlug Store", baseUrl: "https://dataplug.store", image: DEFAULT_OG_IMAGE, suffix: " | DataPlug Store" };
+}
 
 /**
  * Dynamically sets document.title, meta description, canonical URL,
@@ -30,15 +35,16 @@ export function useSeoMeta({
   ogType = "website",
   noIndex = false,
   keywords,
-  ogImageAlt = "DataPlug Ghana data bundle store",
-  ogSiteName = "DataPlug Store",
+  ogImageAlt = "Ghana digital services marketplace",
+  ogSiteName,
 }: SeoMeta) {
   useEffect(() => {
-    const fullTitle = title.includes(SITE_NAME) ? title : `${title} | ${SITE_NAME}`;
+    const hostSeo = getHostSeo(window.location.hostname);
+    const fullTitle = title.includes(hostSeo.siteName) ? title : `${title}${hostSeo.suffix}`;
     const pathname = window.location.pathname;
     const hasQueryParameters = window.location.search.length > 0;
     const cleanPath = (canonicalPath || pathname || "/").split("?")[0].replace(/\/+$/, "") || "/";
-    const canonicalUrl = `${BASE_URL}${cleanPath === "/" ? "/" : cleanPath}`;
+    const canonicalUrl = `${hostSeo.baseUrl}${cleanPath === "/" ? "/" : cleanPath}`;
 
     // --- <title> ---
     document.title = fullTitle;
@@ -85,7 +91,7 @@ export function useSeoMeta({
     setMeta('meta[property="og:url"]', "property", "og:url", canonicalUrl);
     setMeta('meta[property="og:type"]', "property", "og:type", ogType);
     setMeta('meta[property="og:image"]', "property", "og:image", ogImage);
-    setMeta('meta[property="og:site_name"]', "property", "og:site_name", ogSiteName);
+    setMeta('meta[property="og:site_name"]', "property", "og:site_name", ogSiteName || hostSeo.siteName);
     setMeta('meta[property="og:image:alt"]', "property", "og:image:alt", ogImageAlt);
     setMeta('meta[property="og:locale"]', "property", "og:locale", "en_GH");
 

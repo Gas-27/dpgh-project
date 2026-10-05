@@ -1,11 +1,13 @@
 export const SITE_ORIGIN = "https://dataplug.store";
+export const JUSTBUYGH_ORIGIN = "https://justbuygh.com";
 
-export type SeoBrand = "dataplug" | "datastores" | "agentsstore";
+export type SeoBrand = "dataplug" | "justbuygh" | "datastores" | "agentsstore";
 
 export function getSeoBrand(hostname = typeof window !== "undefined" ? window.location.hostname : "") : SeoBrand {
   const host = hostname.toLowerCase().split(":")[0];
   if (host === "agentsstore.shop" || host.endsWith(".agentsstore.shop")) return "agentsstore";
   if (host === "datastores.shop" || host.endsWith(".datastores.shop")) return "datastores";
+  if (host === "justbuygh.com" || host === "www.justbuygh.com") return "justbuygh";
   return "dataplug";
 }
 
@@ -19,6 +21,7 @@ export function getStorefrontSeo(hostname = typeof window !== "undefined" ? wind
   const brand = getSeoBrand(hostname);
   if (brand === "agentsstore") return { siteName: "Agents Store", title: "Discover Digital Services from Independent Agents", description: "Explore trusted digital services, subscriptions, and tools offered by independent agents in one convenient marketplace.", keywords: ["agent marketplace", "digital services", "online subscriptions", "independent agents"] };
   if (brand === "datastores") return { siteName: "DataStores", title: "Digital Services and Agent Stores Online", description: "Browse digital services and storefronts from trusted agents, with simple access and convenient online purchasing.", keywords: ["digital services marketplace", "agent stores", "online services", "digital subscriptions"] };
+  if (brand === "justbuygh") return { siteName: "JustBuyGH", title: "JustBuyGH | Cheap Data, Airtime, Bills, Subscriptions & Social Boosts in Ghana", description: "JustBuyGH is Ghana's affordable digital services hub for bulk SMS, cheap data, airtime, ECG and DStv payments, games with real rewards, premium subscriptions, and social media boosts.", keywords: ["JustBuyGH", "cheap data Ghana", "buy data online Ghana", "bulk SMS Ghana", "cheap airtime Ghana", "ECG payment Ghana", "DStv payment Ghana", "online games Ghana", "win real money Ghana", "Netflix subscription Ghana", "ChatGPT Pro Ghana", "Canva Pro Ghana", "CapCut Pro Ghana", "Spotify Premium Ghana", "Apple Music Ghana", "social media boost Ghana", "WhatsApp boost Ghana", "Instagram followers Ghana", "TikTok boost Ghana", "YouTube promotion Ghana", "Telegram promotion Ghana"] };
   return { siteName: "DataPlug Store", title: "DataPlug Ghana | Data, Airtime, Bills, TV Subscriptions & Digital Services", description: "DataPlug Store is Ghana's multipurpose digital services marketplace for affordable MTN, Telecel and AirtelTigo data, airtime, subscriptions, social boosts, ECG payments, DStv, GOtv and StarTimes.", keywords: ["DataPlug Ghana", "digital services Ghana", "buy data online Ghana", "cheap data bundles Ghana", "MTN data bundles Ghana", "Telecel data Ghana", "AirtelTigo data Ghana", "airtime top up Ghana", "ECG payment Ghana", "DStv subscription Ghana", "GOtv subscription Ghana", "StarTimes subscription Ghana", "social boost Ghana", "online subscriptions Ghana", "data reseller Ghana"] };
 }
 
