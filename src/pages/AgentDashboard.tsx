@@ -415,6 +415,14 @@ const AgentDashboard = () => {
   const [recipientName, setRecipientName] = useState("");
   const [mobileNetwork, setMobileNetwork] = useState("mtn");
   const [mobileNumber, setMobileNumber] = useState("");
+  const [recipientLookupLoading, setRecipientLookupLoading] = useState(false);
+  const [recipientVerifiedNumber, setRecipientVerifiedNumber] = useState("");
+  const lookupRecipientName = async (number: string) => {
+    const normalized = number.replace(/\D/g, "");
+    if (normalized.length !== 10 || recipientLookupLoading) return;
+    setRecipientLookupLoading(true);
+    try { const response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ msisdn: normalized, mobile_number: normalized }) }); const result = await response.json().catch(() => ({})); const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name; if (!response.ok || !name) throw new Error(result.error || result.message || "This number could not be verified"); setRecipientName(String(name)); setRecipientVerifiedNumber(normalized); } catch (error) { toast({ title: "Recipient lookup failed", description: error instanceof Error ? error.message : "This number could not be verified", variant: "destructive" }); } finally { setRecipientLookupLoading(false); }
+  };
 
   const detectNetwork = (number: string): string => {
     const prefix = number.replace(/\D/g, "").substring(0, 3);
@@ -1734,7 +1742,7 @@ const AgentDashboard = () => {
       return;
     }
     
-    if (transferRecipients.length >= 2) { 
+    if (transferRecipients.length >= 5) { 
       toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
       return; 
     }
@@ -1821,7 +1829,7 @@ const AgentDashboard = () => {
     
     // Validate new recipient form if creating new
     if (createNewRecipient) {
-      if (transferRecipients.length >= 2) { 
+      if (transferRecipients.length >= 5) { 
         toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
         return; 
       }
@@ -2362,7 +2370,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     });
   };
 
-  // ─── GUARDS ─────────────────────────────────────────────────────────────────
+  // ─── GUARDS ──────────────────────────────────────────────────��──────────────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3"><Zap className="h-10 w-10 text-primary animate-pulse" /><p className="text-muted-foreground font-display">Loading dashboard...</p></div>
@@ -3700,10 +3708,10 @@ return (
                       variant="outline" 
                       className="w-full" 
                       onClick={() => setCreateNewRecipient(true)}
-                      disabled={transferRecipients.length >= 2 || !!impersonatedUserId}
+                      disabled={transferRecipients.length >= 5 || !!impersonatedUserId}
                       title={impersonatedUserId ? "Cannot create new recipients while impersonating. Use existing recipients only." : ""}
                     >
-                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/2)`}
+                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/5)`}
                     </Button>
                   </>
                 ) : (
@@ -3726,11 +3734,12 @@ return (
                       <h3 className="font-medium">Create New Recipient</h3>
                       <div className="space-y-1">
                         <Label>Full Name</Label>
-                        <Input 
-                          placeholder="John Doe" 
-                          value={recipientName}
-                          onChange={e => setRecipientName(e.target.value)}
-                        />
+<Input
+  placeholder="Enter mobile number first"
+  value={recipientName}
+  readOnly
+  disabled={recipientLookupLoading}
+  />
                       </div>
                       
                       <div className="space-y-1">
@@ -3740,9 +3749,11 @@ return (
                           value={mobileNumber}
                           onChange={e => {
                             const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
-                            handleMobileNumberChange(digits);
-                          }}
-                          maxLength={10}
+handleMobileNumberChange(digits);
+    setRecipientName(""); setRecipientVerifiedNumber("");
+    if (digits.length === 10) void lookupRecipientName(digits);
+  }}
+  maxLength={10}
                         />
                         <p className="text-xs text-muted-foreground">Enter 10-digit Ghana number. Example: 0241234567</p>
                         {mobileNumber.replace(/\D/g, "").length >= 3 && (
@@ -3781,7 +3792,7 @@ return (
                         <Button 
                             variant="hero"
                             className="flex-1 bg-green-600 hover:bg-green-700"
-                            disabled={!recipientName.trim() || !mobileNumber.trim()}
+                            disabled={!recipientName.trim() || !mobileNumber.trim() || recipientVerifiedNumber !== mobileNumber || recipientLookupLoading}
                             onClick={() => handleAddRecipient()}
                           >
                             <Save className="h-4 w-4 mr-2" />
@@ -5097,7 +5108,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                                 <TableCell className="text-green-400 font-semibold">GHC{Number(ssa.wallet_balance || 0).toFixed(2)}</TableCell>
                                 <TableCell className="text-primary font-semibold">GHC{Number(ssa.afa_bundle_price || 0).toFixed(2)}</TableCell>
                                 <TableCell className="text-sm">{ssa.whatsapp_number || "—"}</TableCell>
-                                <TableCell className="text-xs text-muted-foreground">{ssa.created_at ? new Date(ssa.created_at).toLocaleDateString() : "—"}</TableCell>
+                                <TableCell className="text-xs text-muted-foreground">{ssa.created_at ? new Date(ssa.created_at).toLocaleDateString() : "���"}</TableCell>
                                 <TableCell>
                                   <Button
                                     variant="outline"

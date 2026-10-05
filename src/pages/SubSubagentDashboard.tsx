@@ -193,6 +193,14 @@ const SubSubagentDashboard = () => {
   const [recipientName, setRecipientName] = useState("");
   const [mobileNetwork, setMobileNetwork] = useState("mtn");
   const [mobileNumber, setMobileNumber] = useState("");
+  const [recipientLookupLoading, setRecipientLookupLoading] = useState(false);
+  const [recipientVerifiedNumber, setRecipientVerifiedNumber] = useState("");
+  const lookupRecipientName = async (number: string) => {
+    const normalized = number.replace(/\D/g, "");
+    if (normalized.length !== 10 || recipientLookupLoading) return;
+    setRecipientLookupLoading(true);
+    try { const response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ msisdn: normalized, mobile_number: normalized }) }); const result = await response.json().catch(() => ({})); const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name; if (!response.ok || !name) throw new Error(result.error || result.message || "This number could not be verified"); setRecipientName(String(name)); setRecipientVerifiedNumber(normalized); } catch (error) { toast({ title: "Recipient lookup failed", description: error instanceof Error ? error.message : "This number could not be verified", variant: "destructive" }); } finally { setRecipientLookupLoading(false); }
+  };
 
   const detectNetwork = (number: string): string => {
     const prefix = number.replace(/\D/g, "").substring(0, 3);
@@ -1043,7 +1051,7 @@ const handleSaveStore = async () => {
       toast({ title: "Not authenticated", variant: "destructive" });
       return;
     }
-    if (transferRecipients.length >= 2) {
+    if (transferRecipients.length >= 5) {
       toast({ title: "Maximum 2 recipients allowed", variant: "destructive" });
       return;
     }
@@ -1140,7 +1148,7 @@ const handleSaveStore = async () => {
     if (amount > availableWalletBalance) { toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" }); return; }
     if (!createNewRecipient && !selectedRecipient) { toast({ title: "Select a recipient", variant: "destructive" }); return; }
     if (createNewRecipient) {
-      if (transferRecipients.length >= 2) { toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); return; }
+      if (transferRecipients.length >= 5) { toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); return; }
       if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
       if (!mobileNumber.trim()) { toast({ title: "Enter mobile number", variant: "destructive" }); return; }
     }
@@ -2606,7 +2614,7 @@ return (
                   <div className="space-y-3">
                     <div className="space-y-1">
                       <Label>Full Name</Label>
-                      <Input placeholder="e.g. John Doe" value={recipientName} onChange={e => setRecipientName(e.target.value)} />
+                      <Input placeholder="Enter mobile number first" value={recipientName} readOnly disabled={recipientLookupLoading} />
                     </div>
                     <div className="space-y-1">
                       <Label>Mobile Number</Label>
@@ -2615,9 +2623,11 @@ return (
                         value={mobileNumber}
                         onChange={e => {
                           const digits = e.target.value.replace(/\D/g, "").slice(0, 10);
-                          handleMobileNumberChange(digits);
-                        }}
-                        maxLength={10}
+handleMobileNumberChange(digits);
+    setRecipientName(""); setRecipientVerifiedNumber("");
+    if (digits.length === 10) void lookupRecipientName(digits);
+  }}
+  maxLength={10}
                         disabled={!!editingRecipient}
                       />
                       <p className="text-xs text-muted-foreground">Enter 10-digit Ghana number. Example: 0241234567</p>
@@ -2637,7 +2647,7 @@ return (
                     </div>
                     <div className="flex gap-2">
                       <Button variant="outline" onClick={() => { setCreateNewRecipient(false); setEditingRecipient(null); setRecipientName(""); setMobileNumber(""); setMobileNetwork("mtn"); }}>Cancel</Button>
-                      <Button variant="hero" onClick={() => editingRecipient ? handleSaveEditedRecipient() : handleAddRecipient()} disabled={withdrawLoading || !recipientName || !mobileNumber}>
+                      <Button variant="hero" onClick={() => editingRecipient ? handleSaveEditedRecipient() : handleAddRecipient()} disabled={withdrawLoading || !recipientName || !mobileNumber || recipientVerifiedNumber !== mobileNumber || recipientLookupLoading}>
                         {withdrawLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />Saving...</> : <><Save className="h-4 w-4 mr-2" />{editingRecipient ? "Update" : "Save"} Recipient</>}
                       </Button>
                     </div>
