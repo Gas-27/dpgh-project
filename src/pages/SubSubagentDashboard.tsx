@@ -199,7 +199,7 @@ const SubSubagentDashboard = () => {
     const normalized = number.replace(/\D/g, "");
     if (normalized.length !== 10 || recipientLookupLoading) return;
     setRecipientLookupLoading(true);
-    try { const response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ msisdn: normalized, mobile_number: normalized }) }); const result = await response.json().catch(() => ({})); const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name; if (!response.ok || !name) throw new Error(result.error || result.message || "This number could not be verified"); setRecipientName(String(name)); setRecipientVerifiedNumber(normalized); } catch (error) { toast({ title: "Recipient lookup failed", description: error instanceof Error ? error.message : "This number could not be verified", variant: "destructive" }); } finally { setRecipientLookupLoading(false); }
+    try { const response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || ""}` }, body: JSON.stringify({ msisdn: normalized, mobile_number: normalized }) }); const result = await response.json().catch(() => ({})); const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name; if (!response.ok || !name) throw new Error(result.error || result.message || "This number could not be verified"); setRecipientName(String(name)); setRecipientVerifiedNumber(normalized); } catch (error) { toast({ title: "Recipient lookup failed", description: error instanceof Error ? error.message : "This number could not be verified", variant: "destructive" }); } finally { setRecipientLookupLoading(false); }
   };
 
   const detectNetwork = (number: string): string => {
@@ -2596,7 +2596,7 @@ return (
                     ))}
                     {transferRecipients.length < 2 && (
                       <Button variant="outline" className="w-full" onClick={() => { setCreateNewRecipient(true); setRecipientName(""); setMobileNetwork("mtn"); setMobileNumber(""); setEditingRecipient(null); }}>
-                        + Add New Recipient ({transferRecipients.length}/2)
+                        + Add New Recipient ({transferRecipients.length}/5)
                       </Button>
                     )}
                   </div>
@@ -2611,13 +2611,13 @@ return (
 
                 {/* New recipient form */}
                 {createNewRecipient && (
-                  <div className="space-y-3">
-                    <div className="space-y-1">
-                      <Label>Full Name</Label>
+<div className="flex flex-col space-y-3">
+  <div className="order-2 space-y-1">
+  <Label>Full Name</Label>
                       <Input placeholder="Enter mobile number first" value={recipientName} readOnly disabled={recipientLookupLoading} />
                     </div>
-                    <div className="space-y-1">
-                      <Label>Mobile Number</Label>
+  <div className="order-1 space-y-1">
+  <Label>Mobile Number</Label>
                       <Input
                         placeholder="e.g. 0241234567"
                         value={mobileNumber}
