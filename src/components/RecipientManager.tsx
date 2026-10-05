@@ -81,7 +81,7 @@ export default function RecipientManager({ token, onRefresh, refreshKey }: Recip
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold text-slate-900">Transfer Recipients</h2>
-        {recipients.length < 2 && (
+        {recipients.length < 5 && (
           <Button
             onClick={() => setShowForm(!showForm)}
             className="flex items-center gap-2"
@@ -146,9 +146,9 @@ export default function RecipientManager({ token, onRefresh, refreshKey }: Recip
         </div>
       )}
 
-      {recipients.length >= 2 && (
+      {recipients.length >= 5 && (
         <p className="text-xs text-slate-500 text-center">
-          Maximum 2 recipients allowed. Remove one to add another.
+          Maximum 5 recipients allowed. Remove one to add another.
         </p>
       )}
     </div>

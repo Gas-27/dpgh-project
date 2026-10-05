@@ -39,6 +39,7 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
   const [mobileNetwork, setMobileNetwork] = useState("mtn");
   const [mobileNumber, setMobileNumber] = useState("");
   const [lookingUpName, setLookingUpName] = useState(false);
+  const [verifiedNumber, setVerifiedNumber] = useState("");
   const [loading, setLoading] = useState(false);
 
   const lookupRecipientName = async (number: string) => {
@@ -62,7 +63,9 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
       }
       if (!response.ok) throw new Error(result.error || result.message || "Could not verify this mobile number");
       const name = result.name || result.data?.name || result.data?.account_name || result.account_name || result.customer_name;
-      if (name) setAccountHolder(String(name));
+      if (!name) throw new Error("This number is not registered or could not be verified");
+      setAccountHolder(String(name));
+      setVerifiedNumber(normalized);
     } catch (lookupError) {
       setError(lookupError instanceof Error ? lookupError.message : "Could not verify this mobile number");
     } finally {
@@ -78,6 +81,9 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
     try {
       setLoading(true);
 
+      if (providerType === "mobile_money" && verifiedNumber !== mobileNumber) {
+        throw new Error("Verify the mobile number first so the registered account name can be filled automatically");
+      }
       if (!accountHolder.trim()) {
         throw new Error("Account holder name is required");
       }
@@ -162,9 +168,9 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
             <Input
               id="holder"
               value={accountHolder}
-              onChange={(e) => setAccountHolder(e.target.value)}
-              placeholder="Full name"
-              disabled={loading}
+              readOnly
+              placeholder="Enter and verify the mobile number first"
+              disabled={loading || providerType === "mobile_money"}
             />
           </div>
 
@@ -224,14 +230,17 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
                 <Input
                   id="mobile"
                   value={mobileNumber}
-                  onChange={(e) => setMobileNumber(e.target.value.replace(/\D/g, ""))}
-                  onBlur={(e) => lookupRecipientName(e.target.value)}
+                  onChange={(e) => { setMobileNumber(e.target.value.replace(/\D/g, "")); setVerifiedNumber(""); setAccountHolder(""); }}
                   placeholder="024XXXXXXX or similar"
                   disabled={loading}
                   maxLength={12}
                 />
                 {lookingUpName && <p className="text-xs text-cyan-600">Verifying mobile money account name…</p>}
-                {!lookingUpName && accountHolder && <p className="text-xs text-emerald-600">Account name verified and filled automatically.</p>}
+                <Button type="button" variant="outline" onClick={() => lookupRecipientName(mobileNumber)} disabled={lookingUpName || mobileNumber.length < 10 || loading}>
+                  {lookingUpName ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  {lookingUpName ? "Verifying number…" : "Verify number"}
+                </Button>
+                {!lookingUpName && accountHolder && <p className="text-xs text-emerald-600">Registered account name verified and filled automatically.</p>}
               </div>
             </>
           )}
