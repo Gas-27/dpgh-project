@@ -1939,8 +1939,8 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
         quality: 1,
         width: FLYER_W,
         height: FLYER_H,
-        pixelRatio: 1,
-        backgroundColor: "#000000",
+  pixelRatio: 2,
+  backgroundColor: "#000000",
         skipFonts: false,
         style: { transform: "none", transformOrigin: "top left" },
       });
@@ -3167,17 +3167,7 @@ return (
               </Card>
               <div ref={flyerContainerRef} className="w-full overflow-hidden rounded-lg border border-border" style={{ aspectRatio: `${FLYER_W} / ${FLYER_H}`, position: "relative", background: "#000" }}>
                 <div ref={flyerRef} style={{ width: FLYER_W, height: FLYER_H, transform: `scale(${flyerScale})`, transformOrigin: "top left", position: "absolute", top: 0, left: 0, backgroundColor: "#000000", fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", overflow: "hidden" }}>
-                  <img src="/images/agent-flyer-template.png" alt="Agent data and digital services flyer template" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", zIndex: 100 }} />
-                  <div style={{ position: "absolute", inset: 0, zIndex: 101, pointerEvents: "none" }}>
-                    <div style={{ position: "absolute", top: 900, left: 300, right: 300, height: 105, color: "#fff", fontSize: 46, fontWeight: 900, fontFamily: "monospace", textAlign: "center", textShadow: "0 2px 5px #000", display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,.45)", borderRadius: 24 }}>{store?.topup_reference || "ACCESS CODE"}</div>
-                    <div style={{ position: "absolute", top: 425, left: 48, width: 245, color: "#fff", fontSize: 23, fontWeight: 800, textAlign: "center", textShadow: "0 2px 4px #000", lineHeight: "31px" }}>{getMtnPkgs().slice(0, 10).map((p) => <div key={`mtn-${p.size}`}>{p.size}GB&nbsp;&nbsp; {Number(p.price).toFixed(2)}</div>)}</div>
-                    <div style={{ position: "absolute", top: 425, left: 375, width: 245, color: "#fff", fontSize: 23, fontWeight: 800, textAlign: "center", textShadow: "0 2px 4px #000", lineHeight: "31px" }}>{getTelecelPkgs().slice(0, 10).map((p) => <div key={`tel-${p.size}`}>{p.size}GB&nbsp;&nbsp; {Number(p.price).toFixed(2)}</div>)}</div>
-                    <div style={{ position: "absolute", top: 425, left: 700, width: 245, color: "#fff", fontSize: 23, fontWeight: 800, textAlign: "center", textShadow: "0 2px 4px #000", lineHeight: "31px" }}>{getAirtelPkgs().slice(0, 10).map((p) => <div key={`air-${p.size}`}>{p.size}GB&nbsp;&nbsp; {Number(p.price).toFixed(2)}</div>)}</div>
-                    <div style={{ position: "absolute", top: 115, left: 190, right: 190, color: "#fff", fontSize: 40, fontWeight: 900, textAlign: "center", textTransform: "uppercase", textShadow: "0 3px 6px #000", background: "rgba(0,0,0,.35)", borderRadius: 16, padding: "8px 18px" }}>{storeName}</div>
-                    <div style={{ position: "absolute", top: 1570, left: 190, right: 190, color: "#fff", fontSize: 27, fontWeight: 800, textAlign: "center", textShadow: "0 2px 4px #000", background: "rgba(0,0,0,.62)", borderRadius: 14, padding: "8px 14px", whiteSpace: "nowrap" }}>{storeUrl}</div>
-                  </div>
-                  {/* Existing flyer layout retained beneath the new image template for fallback compatibility. */}
-                  <div style={{ display: "none" }} />
+
                   {/* TOP NAV - Store Name */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 32px", backgroundColor: "#0a0a0a", borderBottom: "1px solid #1e1e1e" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}><div style={{ width: 36, height: 36, background: flyerColors.buttonBg, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div><span style={{ fontSize: 20, fontWeight: 900, color: "#fff", letterSpacing: 0.5 }}>{storeName.toUpperCase()}</span></div>
