@@ -3166,9 +3166,10 @@ return (
                 </CardContent>
               </Card>
               <div ref={flyerContainerRef} className="w-full overflow-hidden rounded-lg border border-border" style={{ aspectRatio: `${FLYER_W} / ${FLYER_H}`, position: "relative", background: "#000" }}>
-                <div ref={flyerRef} style={{ width: FLYER_W, height: FLYER_H, transform: `scale(${flyerScale})`, transformOrigin: "top left", position: "absolute", top: 0, left: 0, backgroundColor: "#000000", fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", overflow: "hidden" }}>
-
-                  {/* TOP NAV - Store Name */}
+<div ref={flyerRef} style={{ width: FLYER_W, height: FLYER_H, transform: `scale(${flyerScale})`, transformOrigin: "top left", position: "absolute", top: 0, left: 0, backgroundColor: "#000000", fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", overflow: "hidden" }}>
+  <img src="/images/agent-flyer-reference.png" alt="Dynamic agent flyer template" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", zIndex: 20 }} />
+  
+  {/* TOP NAV - Store Name */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 32px", backgroundColor: "#0a0a0a", borderBottom: "1px solid #1e1e1e" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}><div style={{ width: 36, height: 36, background: flyerColors.buttonBg, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div><span style={{ fontSize: 20, fontWeight: 900, color: "#fff", letterSpacing: 0.5 }}>{storeName.toUpperCase()}</span></div>
                     <div style={{ display: "flex", gap: 24, alignItems: "center" }}>{["Packages", "Services", "Become an Agent"].map(l => (<span key={l} style={{ fontSize: 14, color: "#666", fontWeight: 500 }}>{l}</span>))}<span style={{ fontSize: 13, color: flyerColors.buttonBg, fontWeight: 700, padding: "5px 14px", background: `${flyerColors.buttonBg}20`, borderRadius: 7, border: `1px solid ${flyerColors.buttonBg}40` }}>Agent Dashboard</span><span style={{ fontSize: 14, color: "#888" }}>Sign Out</span></div>
