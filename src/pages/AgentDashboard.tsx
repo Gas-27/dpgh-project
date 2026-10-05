@@ -563,8 +563,8 @@ const localNumber = number.replace(/\D/g, "");
       const apiOrders = apiResult.data ?? [];
       setDatabaseFinancialTotals({
         totalOrders: Number(rpcResult.data?.total_orders ?? 0) + (apiResult.count ?? apiOrders.length),
-        totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum, order) => sum + Number(order.selling_price ?? order.amount ?? 0), 0),
-        totalProfit: Number(rpcResult.data?.total_profit ?? 0) + apiOrders.reduce((sum, order) => sum + Number(order.profit ?? 0), 0),
+totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum, order) => sum + (String((order as any).payment_method || "").toLowerCase() === "free_data_claim" ? 0 : Number(order.selling_price ?? order.amount ?? 0)), 0),
+  totalProfit: Number(rpcResult.data?.total_profit ?? 0) + apiOrders.reduce((sum, order) => sum + (String((order as any).payment_method || "").toLowerCase() === "free_data_claim" ? 0 : Number(order.profit ?? 0)), 0),
       });
     })();
 
@@ -2748,8 +2748,13 @@ return (
                         let sellPrice: number;
                         let baseCost: number;
                         let profit: number;
+                        const isFreeDataClaim = String((order as any).payment_method || "").toLowerCase() === "free_data_claim";
                         
-                        if (isSubagentOrder) {
+                        if (isFreeDataClaim) {
+                          sellPrice = 0;
+                          baseCost = 0;
+                          profit = 0;
+                        } else if (isSubagentOrder) {
                           // AGENT'S PERSPECTIVE for subagent orders:
                           // Sell Price = what agent charged subagent; Base Cost = admin charges agent
                           const agentPriceToSubagent = subagentBasePrices[order.package_id] || adminBasePrice;

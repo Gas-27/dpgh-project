@@ -2671,8 +2671,13 @@ return (
                             let sellPrice: number;
                             let baseCost: number;
                             let profit: number;
+                            const isFreeDataClaim = String(order.payment_method || "").toLowerCase() === "free_data_claim";
 
-                            if (isSubSubagentOrder) {
+                            if (isFreeDataClaim) {
+                              sellPrice = 0;
+                              baseCost = 0;
+                              profit = 0;
+                            } else if (isSubSubagentOrder) {
                               // SUBAGENT's perspective for sub-subagent orders:
                               // Sell = what sub-subagent paid subagent = stored base_price (the "Cost from Agent")
                               // Cost = what subagent pays agent = basePrices (subagent_package_prices.base_price)

@@ -2236,10 +2236,11 @@ return (
                             const currentCostFromAgent = order.package_id ? (basePrices[order.package_id] || 0) : 0;
                             const storedCostFromAgent = order.base_price ?? null;
                             // Use current cost from basePrices; fall back to what was stored at purchase time
-                            const baseCost = currentCostFromAgent > 0 ? currentCostFromAgent : (storedCostFromAgent && storedCostFromAgent > 0 ? storedCostFromAgent : 0);
+                            const isFreeDataClaim = String(order.payment_method || "").toLowerCase() === "free_data_claim";
+                            const baseCost = isFreeDataClaim ? 0 : (currentCostFromAgent > 0 ? currentCostFromAgent : (storedCostFromAgent && storedCostFromAgent > 0 ? storedCostFromAgent : 0));
 
-                            const sellPrice = (storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount;
-                            const profit = (storedProfit !== null && storedProfit !== 0) ? storedProfit : (sellPrice - baseCost);
+                            const sellPrice = isFreeDataClaim ? 0 : ((storedSellPrice && storedSellPrice > 0) ? storedSellPrice : order.amount);
+                            const profit = isFreeDataClaim ? 0 : ((storedProfit !== null && storedProfit !== 0) ? storedProfit : (sellPrice - baseCost));
                             
                             return (
                               <TableRow key={order.id}>
