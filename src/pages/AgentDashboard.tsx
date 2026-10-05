@@ -3162,6 +3162,16 @@ return (
               </Card>
               <div ref={flyerContainerRef} className="w-full overflow-hidden rounded-lg border border-border" style={{ aspectRatio: `${FLYER_W} / ${FLYER_H}`, position: "relative", background: "#000" }}>
                 <div ref={flyerRef} style={{ width: FLYER_W, height: FLYER_H, transform: `scale(${flyerScale})`, transformOrigin: "top left", position: "absolute", top: 0, left: 0, backgroundColor: "#000000", fontFamily: "'Inter','Helvetica Neue',Arial,sans-serif", overflow: "hidden" }}>
+                  <img src="/images/agent-flyer-template.png" alt="Agent data and digital services flyer template" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "fill", zIndex: 100 }} />
+                  <div style={{ position: "absolute", inset: 0, zIndex: 101, pointerEvents: "none" }}>
+                    <div style={{ position: "absolute", top: 822, left: 300, right: 180, color: "#fff", fontSize: 46, fontWeight: 900, fontFamily: "monospace", textAlign: "center", textShadow: "0 2px 5px #000" }}>{store?.topup_reference || "ACCESS CODE"}</div>
+                    <div style={{ position: "absolute", top: 352, left: 42, width: 300, color: "#fff", fontSize: 22, fontWeight: 800, textAlign: "center", textShadow: "0 2px 4px #000" }}>{getMtnPkgs().slice(0, 10).map((p) => <div key={`mtn-${p.size}`} style={{ lineHeight: "29px" }}>{p.size}GB&nbsp;&nbsp; GHC {Number(p.price).toFixed(2)}</div>)}</div>
+                    <div style={{ position: "absolute", top: 352, left: 360, width: 300, color: "#fff", fontSize: 22, fontWeight: 800, textAlign: "center", textShadow: "0 2px 4px #000" }}>{getTelecelPkgs().slice(0, 10).map((p) => <div key={`tel-${p.size}`} style={{ lineHeight: "29px" }}>{p.size}GB&nbsp;&nbsp; GHC {Number(p.price).toFixed(2)}</div>)}</div>
+                    <div style={{ position: "absolute", top: 352, left: 678, width: 300, color: "#fff", fontSize: 22, fontWeight: 800, textAlign: "center", textShadow: "0 2px 4px #000" }}>{getAirtelPkgs().slice(0, 10).map((p) => <div key={`air-${p.size}`} style={{ lineHeight: "29px" }}>{p.size}GB&nbsp;&nbsp; GHC {Number(p.price).toFixed(2)}</div>)}</div>
+                    <div style={{ position: "absolute", top: 160, left: 180, right: 180, color: "#fff", fontSize: 38, fontWeight: 900, textAlign: "center", textTransform: "uppercase", textShadow: "0 3px 6px #000" }}>{storeName}</div>
+                  </div>
+                  {/* Existing flyer layout retained beneath the new image template for fallback compatibility. */}
+                  <div style={{ display: "none" }} />
                   {/* TOP NAV - Store Name */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 32px", backgroundColor: "#0a0a0a", borderBottom: "1px solid #1e1e1e" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 12 }}><div style={{ width: 36, height: 36, background: flyerColors.buttonBg, borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center" }}><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div><span style={{ fontSize: 20, fontWeight: 900, color: "#fff", letterSpacing: 0.5 }}>{storeName.toUpperCase()}</span></div>
