@@ -35,6 +35,7 @@ import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
+import DynamicFlyer from "@/components/DynamicFlyer";
 // COMMENTED OUT: mashup packages deactivated
 // import MashupFlyerGenerator from "@/components/MashupFlyerGenerator";
 import SubSubagentAFAPriceManager from "@/components/SubSubagentAFAPriceManager";
@@ -3088,16 +3089,16 @@ handleMobileNumberChange(digits);
           {/* FLYER GENERATOR */}
           <TabsContent value="flyer" className="mt-0 space-y-6">
             {subagentStore && (
-              <FlyerGenerator
-                storeName={subagentStore.store_name}
-                storeUrl={storeUrl}
-                whatsappNumber={subagentStore.whatsapp_number || ""}
-                supportNumber={subagentStore.support_number || ""}
-                packages={packages}
-                agentPrices={subagentPrices}
-                basePrices={basePrices}
-                topupReference={subagentStore.topup_reference || ""}
-              />
+<DynamicFlyer
+  storeName={subagentStore.store_name}
+  accessCode={subagentStore.access_code || subagentStore.topup_reference || ""}
+  storeUrl={storeUrl}
+  packages={{
+    mtn: packages.filter((p: any) => p.network === "mtn" && p.active !== false).map((p: any) => ({ size_gb: Number(p.size_gb), price: Number(subagentPrices[p.id] ?? p.agent_price ?? p.price) })),
+    telecel: packages.filter((p: any) => p.network === "telecel" && p.active !== false).map((p: any) => ({ size_gb: Number(p.size_gb), price: Number(subagentPrices[p.id] ?? p.agent_price ?? p.price) })),
+    airteltigo: packages.filter((p: any) => ["airteltigo", "atbigtime", "atbigshare"].includes(p.network) && p.active !== false).map((p: any) => ({ size_gb: Number(p.size_gb), price: Number(subagentPrices[p.id] ?? p.agent_price ?? p.price) })),
+  }}
+  />
             )}
           </TabsContent>
 

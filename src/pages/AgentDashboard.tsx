@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Switch } from "@/components/ui/switch";
+import DynamicFlyer from "@/components/DynamicFlyer";
 import {
   Store, Wifi, Settings, ExternalLink, Copy, BarChart3, ShoppingCart, Save, Gift,
   LogOut, Zap, Edit2, Wallet, Phone, CreditCard, Loader2, ArrowDownToLine,
@@ -3189,8 +3190,9 @@ return (
           </TabsContent>
 
           {/* ============================= FLYER GENERATOR ============================= */}
-          <TabsContent value="flyer" className="mt-0">
-            <div className="space-y-4">
+<TabsContent value="flyer" className="mt-0">
+  <DynamicFlyer storeName={store?.store_name || ""} accessCode={store?.access_code || store?.topup_reference || ""} storeUrl={storeUrl} packages={{ mtn: getMtnPkgs().map(p => ({ size_gb: p.size, price: p.price })), telecel: getTelecelPkgs().map(p => ({ size_gb: p.size, price: p.price })), airteltigo: getAirtelPkgs().map(p => ({ size_gb: p.size, price: p.price })) }} />
+  <div className="hidden space-y-4">
               <Card className="border-border">
                 <CardHeader className="pb-3"><CardTitle className="font-display flex items-center gap-2"><Image className="h-5 w-5 text-primary" /> Flyer Generator</CardTitle><p className="text-sm text-muted-foreground">Live prices auto-populate. Customise colours, edit share message, then download or share directly to WhatsApp.</p></CardHeader>
                 <CardContent className="space-y-4">
