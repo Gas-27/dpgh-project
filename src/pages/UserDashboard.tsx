@@ -238,6 +238,8 @@ const UserDashboard = () => {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
+  const showUserUssd = totalOrders > 1;
+
   // Agent-only features (locked for regular users)
   const agentOnlyItems = [
     { id: "bulk-orders", label: "Bulk Orders", icon: ShoppingCart },
@@ -246,7 +248,7 @@ const UserDashboard = () => {
     { id: "subagent-prices", label: "Subagent Prices", icon: TrendingUp },
     { id: "appearance", label: "Appearance", icon: Settings },
     { id: "notifications", label: "Notifications", icon: Bell },
-    { id: "ussd-code", label: "USSD Code", icon: Smartphone },
+    ...(showUserUssd ? [{ id: "ussd-code", label: "USSD Code", icon: Smartphone }] : []),
     { id: "view-subagents", label: "View Subagents", icon: Users },
     { id: "view-sub-subagents", label: "View Sub-Subagents", icon: Users },
     { id: "more", label: "More...", icon: MoreHorizontal },
@@ -1211,7 +1213,7 @@ case "api-key":
       })()}
 
       {/* Account Reference and Codes Card */}
-      <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5">
+      <Card className={showUserUssd ? "border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5" : "hidden"}>
         <CardContent className="p-6">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="text-center md:text-left">
