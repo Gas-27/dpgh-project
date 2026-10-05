@@ -1932,21 +1932,51 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     await Promise.all(Array.from(el.querySelectorAll("img")).map((image) => image.decode().catch(() => undefined)));
     if (document.fonts?.ready) await document.fonts.ready;
 
-    const prev = el.style.transform;
-    el.style.transform = "none";
-    try {
-      return await toPng(el, {
-        quality: 1,
-        width: FLYER_W,
-        height: FLYER_H,
-  pixelRatio: 2,
-  backgroundColor: "#000000",
-        skipFonts: false,
-        style: { transform: "none", transformOrigin: "top left" },
-      });
-    } finally {
-      el.style.transform = prev;
-    }
+    const image = new window.Image();
+    image.crossOrigin = "anonymous";
+    image.src = "/images/agent-flyer-reference.png";
+    await new Promise<void>((resolve, reject) => { image.onload = () => resolve(); image.onerror = () => reject(new Error("Flyer template failed to load")); });
+
+    const canvas = document.createElement("canvas");
+    canvas.width = FLYER_W * 2;
+    canvas.height = FLYER_H * 2;
+    const context = canvas.getContext("2d");
+    if (!context) throw new Error("Canvas is not available");
+    context.scale(2, 2);
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(image, 0, 0, FLYER_W, FLYER_H);
+
+    const drawText = (value: string, x: number, y: number, size: number, color = "#fff", align: CanvasTextAlign = "center") => {
+      context.font = `900 ${size}px Arial, sans-serif`;
+      context.textAlign = align;
+      context.textBaseline = "middle";
+      context.fillStyle = color;
+      context.shadowColor = "#000";
+      context.shadowBlur = 5;
+      context.fillText(value, x, y);
+      context.shadowBlur = 0;
+    };
+    const cover = (x: number, y: number, width: number, height: number, color = "#06101f") => { context.fillStyle = color; context.fillRect(x, y, width, height); };
+    const drawRows = (rows: { size: number; price: number }[], x: number, y: number, width: number) => {
+      cover(x, y, width, 410, "#06101f");
+      rows.slice(0, 10).forEach((row, index) => drawText(`${row.size}GB     GHS ${Number(row.price).toFixed(2)}`, x + width / 2, y + 25 + index * 38, 22));
+    };
+
+    cover(185, 88, 710, 115, "#06101f");
+    drawText(`${storeName} DATA BUNDLES`, 540, 145, 42);
+    drawRows(getMtnPkgs(), 35, 425, 275);
+    drawRows(getTelecelPkgs(), 365, 425, 275);
+    drawRows(getAirtelPkgs(), 695, 425, 275);
+    cover(35, 350, 275, 75, "#06101f"); drawText("MTN", 172, 388, 30, "#f5b81b");
+    cover(365, 350, 275, 75, "#06101f"); drawText("TELECEL", 502, 388, 30, "#ef4444");
+    cover(695, 350, 275, 75, "#06101f"); drawText("AIRTELTIGO", 832, 388, 27, "#ef4444");
+    cover(285, 885, 510, 130, "#06101f");
+    drawText(`*380*455#`, 540, 925, 48, "#ffd21a");
+    drawText(`Access Code: ${store?.topup_reference || ""}`, 540, 980, 27, "#fff");
+    cover(115, 1515, 850, 68, "#06101f");
+    drawText(storeUrl, 540, 1548, 27, "#fff");
+    return canvas.toDataURL("image/png");
   };
 
   const downloadFlyer = async () => {
