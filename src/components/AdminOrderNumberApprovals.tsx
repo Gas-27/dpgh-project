@@ -21,7 +21,7 @@ export default function AdminOrderNumberApprovals() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [hasMore, setHasMore] = useState(false);
-  const pageSize = view === "pending" ? 50 : 100;
+  const pageSize = view === "pending" ? 1000 : 50;
 
   async function load() {
     setLoading(true);
@@ -48,13 +48,18 @@ export default function AdminOrderNumberApprovals() {
     const { error } = await supabase.from("order_number_submissions").update({ status: "approved", updated_at: new Date().toISOString() }).in("id", ids);
     setSaving(false);
     if (error) toast({ title: "Could not mark submitted", description: error.message, variant: "destructive" });
-    else { toast({ title: "Numbers moved to Submitted", description: `${ids.length} number${ids.length === 1 ? "" : "s"} marked as submitted.` }); void load(); }
+    else {
+      const submittedAt = new Date().toISOString();
+      setRows((current) => view === "pending" ? current.filter((row) => !ids.includes(row.id)) : current.map((row) => ids.includes(row.id) ? { ...row, status: "approved", updated_at: submittedAt } : row));
+      setSelected((current) => current.filter((id) => !ids.includes(id)));
+      toast({ title: "Numbers moved to Submitted", description: `${ids.length} number${ids.length === 1 ? "" : "s"} marked as submitted.` });
+    }
   }
   async function reject(id: string) {
     setSaving(true);
     const { error } = await supabase.from("order_number_submissions").update({ status: "rejected", updated_at: new Date().toISOString() }).eq("id", id);
     setSaving(false);
-    if (error) toast({ title: "Could not reject number", description: error.message, variant: "destructive" }); else void load();
+    if (error) toast({ title: "Could not reject number", description: error.message, variant: "destructive" }); else { setRows((current) => current.filter((row) => row.id !== id)); setSelected((current) => current.filter((selectedId) => selectedId !== id)); toast({ title: "Number rejected" }); }
   }
   const selectedRows = filtered.filter((row) => selected.includes(row.id));
 
