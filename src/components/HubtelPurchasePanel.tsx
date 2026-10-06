@@ -2,16 +2,13 @@
 
 import { useEffect, useState } from "react";
 import {
-  buyHubtelAirtime,
-  buyHubtelData,
-  payHubtelBill,
   toHubtelBillService,
-  toHubtelService,
   verifyHubtelMsisdn,
   getHubtelDataCatalog,
   getHubtelBillCatalog,
   type HubtelService,
 } from "@/services/hubtelService";
+import { purchaseWithKorba } from "@/services/korbaService";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -462,35 +459,28 @@ export default function HubtelPurchasePanel({
         : {};
       let response;
       if (mode === "instant") {
-        const service = toHubtelService(network, instantProduct);
-        response =
-          instantProduct === "data"
-            ? await buyHubtelData({
-                service,
-                phoneNumber: customer,
-                amount: Number(amount),
-                bundle: selectedInstantItem?.value,
-                ...wallet,
-              })
-            : await buyHubtelAirtime({
-                service,
-                phoneNumber: customer,
-                amount: Number(customAirtimeAmount),
-                ...wallet,
-              });
+        response = await purchaseWithKorba({
+          productType: instantProduct,
+          amount: instantProduct === "data" ? Number(amount) : Number(customAirtimeAmount),
+          customerNumber: customer,
+          networkCode: network.toUpperCase().replace(/[^A-Z]/g, ""),
+          packageCode: selectedInstantItem?.value,
+          ...wallet,
+        });
       } else {
         const billService = toHubtelBillService(service);
         if (!billService)
           throw new Error(
             "This utility service is not configured for Hubtel yet.",
           );
-        response = await payHubtelBill({
-          service: billService,
+        response = await purchaseWithKorba({
+          productType: billService === "ecg" ? "ecg" : billService === "startimes" ? "startimes" : "ecg",
           accountNumber: customer,
-          phoneNumber: billService === "ecg" || billService === "ghana_water" ? phone : undefined,
-          sessionId: billService === "ghana_water" ? billSessionId || undefined : undefined,
-          email: undefined,
+          customerNumber: customer,
+          phoneNumber: phone || undefined,
+          meterNumber: billService === "ecg" ? customer : undefined,
           amount: Number(amount),
+          networkCode: billService,
           ...wallet,
         });
       }
