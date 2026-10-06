@@ -1192,7 +1192,7 @@ const searchOrders = useCallback(async (input?: string) => {
   {activeCategory === "products" ? (
     <PublicProductsSection storeId={store?.id} storeKind="agent" supportPhone={store?.support_number || store?.whatsapp_number} />
   ) : activeCategory === "social-boost" ? (
-  <div className="w-full pb-20"><SocialBoostPurchasePanel walletBalance={0} ownerType="storefront" checkoutMode="paystack" /></div>
+  <div className="w-full pb-20"><SocialBoostPurchasePanel walletBalance={0} ownerType="agent" storeId={store?.id} checkoutMode="paystack" /></div>
   ) : activeCategory === "services" ? (
   <div className="container pb-20"><HubtelPurchasePanel mode="services" /></div>
   ) : activeCategory === "vouchers" ? (

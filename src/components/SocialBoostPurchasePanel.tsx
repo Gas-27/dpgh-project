@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-type Props = { walletBalance: number; ownerType?: string; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack" };
+type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack" };
 type ProviderService = { service: number; name: string; category: string; rate: string; min: string; max: string; average?: string; average_time?: string; note?: string; notes?: string; refill?: boolean; cancel?: boolean };
 
 const platforms = ["TikTok", "Instagram", "Facebook", "YouTube", "WhatsApp"];
@@ -45,7 +45,7 @@ const platformTileBg: Record<string, string> = {
 };
 const fallbackServices: ProviderService[] = [{ service: 1, name: "Followers", category: "TikTok", rate: "0.90", min: "50", max: "50000", average_time: "4 Hours", refill: true, cancel: true }];
 
-export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", canSetPrices = false, checkoutMode = "wallet" }: Props) {
+export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", storeId = null, canSetPrices = false, checkoutMode = "wallet" }: Props) {
   const { toast } = useToast();
   const [platform, setPlatform] = useState("TikTok");
   const [catalog, setCatalog] = useState<ProviderService[]>(fallbackServices);
@@ -106,7 +106,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     }
     const { data } = await (supabase as any)
       .from("social_boost_orders")
-      .select("order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains")
+      .select("order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains,selling_amount,base_amount,profit_amount,seller_store_kind")
       .eq("user_id", userId)
       .order("created_at", { ascending: false })
       .limit(50);
@@ -186,7 +186,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
           email: `social_boost_${Date.now()}@datapluggh.com`,
           amount: total,
           callback_url: `${window.location.origin}/social-boost?payment=success`,
-          metadata: { kind: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity },
+          metadata: { type: "social_boost", kind: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, owner_type: ownerType, seller_store_kind: ownerType === "storefront" ? undefined : ownerType, seller_store_id: ownerType === "storefront" ? storeId : undefined, requested_price: total },
         },
       });
       setBuying(false);
@@ -220,7 +220,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     if (!userId) return setOrderStatus("Sign in to track your order");
     const { data: local, error: localError } = await (supabase as any)
       .from("social_boost_orders")
-      .select("order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains")
+      .select("order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains,selling_amount,base_amount,profit_amount,seller_store_kind")
       .eq("user_id", userId)
       .eq("order_number", Number(searchOrder.trim()))
       .maybeSingle();
@@ -344,8 +344,8 @@ const noteLines = String(service.notes || service.note || "No additional note ha
   <div className="border-b bg-[#dddff5] px-3 py-3 font-semibold">My Social Boost History</div>
   <div className="max-h-80 overflow-auto">
   <table className="min-w-[760px] w-full text-left text-sm">
-            <thead className="font-semibold"><tr>{["Order", "Date", "Link", "Quantity", "Service", "Status", "Remains"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead>
-            <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t"><td className="px-3 py-3">#{item.order_number}</td><td className="px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="max-w-[220px] break-all px-3 py-3 text-blue-700">{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td></tr>) : <tr><td colSpan={7} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
+            <thead className="font-semibold"><tr>{["Order", "Date", "Link", "Quantity", "Service", "Status", "Remains", "Price", "Profit"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead>
+            <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t"><td className="px-3 py-3">#{item.order_number}</td><td className="px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="max-w-[220px] break-all px-3 py-3 text-blue-700">{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td><td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td><td className="px-3 py-3 text-emerald-700">{item.profit_amount != null ? `GHC ${Number(item.profit_amount).toFixed(2)}` : "—"}</td></tr>) : <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
             </table>
           </div>
         </div>

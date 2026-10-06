@@ -1084,7 +1084,7 @@ const searchOrders = useCallback(async (input?: string) => {
   <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "vouchers" : id as typeof activeSection)} onBecomeAgent={() => setShowSubSubagentForm(true)} />
   <div id="storefront-section-content" className="scroll-mt-6" />
   <ActiveTabMaintenance active={activeSection === "vouchers" ? "instant" : activeSection} label={activeSection === "data" ? "Cheap Data" : activeSection === "vouchers" ? "Airtime & Data" : activeSection} onReturn={() => setActiveSection("data")} />
-  {activeSection === "social-boost" && <SocialBoostPurchasePanel walletBalance={0} ownerType="storefront" checkoutMode="paystack" />}
+  {activeSection === "social-boost" && <SocialBoostPurchasePanel walletBalance={0} ownerType="subagent" storeId={store?.id} checkoutMode="paystack" />}
   {activeSection === "products" && <PublicProductsSection storeId={store?.id} storeKind="subagent" />}
   {activeSection === "services" && <HubtelPurchasePanel mode="services" />}
 {activeSection === "data" && <>

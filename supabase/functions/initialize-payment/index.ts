@@ -55,6 +55,42 @@ Deno.serve(async (req) => {
     }
 
     // ==========================
+    // SOCIAL BOOST PAYMENT
+    // ==========================
+    if (metadata?.type === "social_boost" || metadata?.kind === "social_boost") {
+      const serviceId = Number(metadata.service_id);
+      const quantity = Number(metadata.quantity);
+      if (!Number.isInteger(serviceId) || !Number.isFinite(quantity) || quantity <= 0 || !email) {
+        return new Response(JSON.stringify({ error: "Missing required Social Boost payment fields" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const adminClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data: serviceRow } = await adminClient.from("social_boost_service_pricing").select("admin_price_per_1000,default_price_per_1000,min_quantity,max_quantity").eq("service_id", serviceId).maybeSingle();
+      const minQuantity = Number(serviceRow?.min_quantity ?? 1);
+      const maxQuantity = Number(serviceRow?.max_quantity ?? 100000000);
+      if (quantity < minQuantity || quantity > maxQuantity) return new Response(JSON.stringify({ error: "Invalid Social Boost quantity" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const basePrice = Number(serviceRow?.default_price_per_1000 ?? serviceRow?.admin_price_per_1000 ?? 0);
+      let sellingPrice = basePrice;
+      const sellerKind = metadata.seller_store_kind;
+      const sellerStoreId = metadata.seller_store_id;
+      if (sellerKind && sellerStoreId) {
+        const table = sellerKind === "agent" ? "agent_stores" : sellerKind === "subagent" ? "subagent_stores" : "sub_subagent_stores";
+        const { data: storeRow } = await adminClient.from(table).select("user_id").eq("id", sellerStoreId).maybeSingle();
+        if (storeRow?.user_id) {
+          const { data: customPrice } = await adminClient.from("social_boost_reseller_pricing").select("price_per_1000").eq("user_id", storeRow.user_id).eq("service_id", serviceId).maybeSingle();
+          sellingPrice = Number(customPrice?.price_per_1000 || basePrice);
+        }
+      }
+      const baseAmount = Math.round((quantity / 1000) * basePrice * 100) / 100;
+      const sellingAmount = Math.round((quantity / 1000) * sellingPrice * 100) / 100;
+      const feeAmount = Math.round(sellingAmount * (PAYSTACK_FEE_PERCENT / 100) * 100) / 100;
+      const socialMetadata = { ...metadata, type: "social_boost", base_amount: baseAmount, selling_amount: sellingAmount, profit_amount: Math.max(0, sellingAmount - baseAmount), fee_amount: feeAmount };
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", { method: "POST", headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ email, amount: Math.round((sellingAmount + feeAmount) * 100), currency: "GHS", callback_url, metadata: socialMetadata }) });
+      const result = await paystackRes.json();
+      if (!result.status) return new Response(JSON.stringify({ error: result.message || "Social Boost payment initialization failed" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ authorization_url: result.data.authorization_url, reference: result.data.reference, amount: sellingAmount + feeAmount, base_amount: baseAmount, selling_amount: sellingAmount, profit_amount: Math.max(0, sellingAmount - baseAmount) }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ==========================
     // AFA BUNDLE PAYMENT
     // ==========================
     if (metadata?.type === "afa_bundle") {

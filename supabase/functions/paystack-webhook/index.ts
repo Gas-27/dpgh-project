@@ -102,6 +102,31 @@ Deno.serve(async (req) => {
     console.log(`Processing payment: ${reference}, type: ${paymentType}`);
 
     // =====================================
+    // SOCIAL BOOST PAYMENT HANDLER
+    // =====================================
+    if (paymentType === "social_boost") {
+      const baseAmount = Number(metadata?.base_amount || 0);
+      const sellingAmount = Number(metadata?.selling_amount || Number(amount) / 100);
+      const { error: socialError } = await supabaseClient.from("social_boost_orders").insert({
+        user_id: metadata?.user_id || metadata?.customer_id || null,
+        order_number: Number(String(reference).replace(/\D/g, "").slice(-9)) || null,
+        target_link: metadata?.target_link || null,
+        quantity: Number(metadata?.quantity || 0),
+        service: `${metadata?.service_id || ""}:${metadata?.service_name || ""}`,
+        amount: sellingAmount,
+        base_amount: baseAmount,
+        selling_amount: sellingAmount,
+        profit_amount: Math.max(0, sellingAmount - baseAmount),
+        seller_store_kind: metadata?.seller_store_kind || null,
+        seller_store_id: metadata?.seller_store_id || null,
+        payment_reference: reference,
+        provider_status: "pending",
+      });
+      if (socialError && !String(socialError.message).toLowerCase().includes("duplicate")) return new Response(JSON.stringify({ error: "Could not record Social Boost payment" }), { status: 500, headers: corsHeaders });
+      return new Response(JSON.stringify({ success: true, reference }), { status: 200, headers: corsHeaders });
+    }
+
+    // =====================================
     // PUBLIC SMS PAYMENT HANDLER
     // =====================================
     if (paymentType === "sms_campaign") {
