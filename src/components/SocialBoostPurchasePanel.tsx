@@ -73,9 +73,16 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
 
   useEffect(() => {
     let mounted = true;
-    supabase.functions.invoke("social-boost", { body: { action: "services" } }).then(({ data }) => {
-      if (mounted && Array.isArray(data) && data.length) setCatalog(data);
-    });
+  Promise.all([
+  supabase.functions.invoke("social-boost", { body: { action: "services" } }),
+  (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider_rate,min_quantity,max_quantity,average_completion_time,notes"),
+  ]).then(([providerResult, pricingResult]) => {
+  if (!mounted) return;
+  const providerServices = Array.isArray(providerResult.data) ? providerResult.data : [];
+  const pricingServices = Array.isArray(pricingResult.data) ? pricingResult.data.map((row: any) => ({ service: Number(row.service_id), name: row.service_name, category: row.category, rate: String(row.provider_rate ?? 0), min: String(row.min_quantity ?? 1), max: String(row.max_quantity ?? 100000), average_time: row.average_completion_time ?? "", notes: row.notes ?? "" })) : [];
+  const merged = [...providerServices, ...pricingServices].filter((item, index, list) => list.findIndex((candidate) => Number(candidate.service) === Number(item.service)) === index);
+  if (merged.length) setCatalog(merged);
+  });
     return () => { mounted = false; };
   }, []);
 
