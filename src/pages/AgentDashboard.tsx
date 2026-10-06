@@ -1744,8 +1744,8 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       return;
     }
     
-    if (transferRecipients.length >= 5) { 
-      toast({ title: "Maximum 5 recipients allowed", variant: "destructive" }); 
+    if (transferRecipients.length >= 2) { 
+      toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
       return; 
     }
     if (!recipientName.trim()) { 
@@ -1831,8 +1831,8 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
     
     // Validate new recipient form if creating new
     if (createNewRecipient) {
-      if (transferRecipients.length >= 5) { 
-        toast({ title: "Maximum 5 recipients allowed", variant: "destructive" }); 
+      if (transferRecipients.length >= 2) { 
+        toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
         return; 
       }
       if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
@@ -3719,10 +3719,10 @@ return (
                       variant="outline" 
                       className="w-full" 
                       onClick={() => setCreateNewRecipient(true)}
-                      disabled={transferRecipients.length >= 5 || !!impersonatedUserId}
+                      disabled={transferRecipients.length >= 2 || !!impersonatedUserId}
                       title={impersonatedUserId ? "Cannot create new recipients while impersonating. Use existing recipients only." : ""}
                     >
-                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/5)`}
+                      {impersonatedUserId ? "Cannot Add Recipient While Impersonating" : transferRecipients.length === 0 ? "Add Recipient" : `+ Add New Recipient (${transferRecipients.length}/2)`}
                     </Button>
                   </>
                 ) : (

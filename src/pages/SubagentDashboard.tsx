@@ -1389,8 +1389,8 @@ const handleSaveStore = async () => {
       return;
     }
     
-    if (transferRecipients.length >= 5) { 
-      toast({ title: "Maximum 5 recipients allowed", variant: "destructive" }); 
+    if (transferRecipients.length >= 2) { 
+      toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
       return; 
     }
     if (!recipientName.trim()) { 
@@ -1552,8 +1552,8 @@ const handleSaveStore = async () => {
     
     // Validate new recipient form if creating new
     if (createNewRecipient) {
-      if (transferRecipients.length >= 5) { 
-        toast({ title: "Maximum 5 recipients allowed", variant: "destructive" }); 
+      if (transferRecipients.length >= 2) { 
+        toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); 
         return; 
       }
       if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
@@ -3190,7 +3190,7 @@ return (
                       setEditingRecipient(null);
                     }}
                   >
-                    + Add New Recipient ({transferRecipients.length}/5)
+                    + Add New Recipient ({transferRecipients.length}/2)
                   </Button>
                 )}
               </div>

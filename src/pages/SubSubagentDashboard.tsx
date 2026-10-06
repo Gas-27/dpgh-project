@@ -1053,8 +1053,8 @@ const handleSaveStore = async () => {
       toast({ title: "Not authenticated", variant: "destructive" });
       return;
     }
-    if (transferRecipients.length >= 5) {
-      toast({ title: "Maximum 5 recipients allowed", variant: "destructive" });
+    if (transferRecipients.length >= 2) {
+      toast({ title: "Maximum 2 recipients allowed", variant: "destructive" });
       return;
     }
     if (!recipientName.trim()) {
@@ -1150,7 +1150,7 @@ const handleSaveStore = async () => {
     if (amount > availableWalletBalance) { toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" }); return; }
     if (!createNewRecipient && !selectedRecipient) { toast({ title: "Select a recipient", variant: "destructive" }); return; }
     if (createNewRecipient) {
-      if (transferRecipients.length >= 5) { toast({ title: "Maximum 5 recipients allowed", variant: "destructive" }); return; }
+      if (transferRecipients.length >= 2) { toast({ title: "Maximum 2 recipients allowed", variant: "destructive" }); return; }
       if (!recipientName.trim()) { toast({ title: "Enter recipient name", variant: "destructive" }); return; }
       if (!mobileNumber.trim()) { toast({ title: "Enter mobile number", variant: "destructive" }); return; }
     }
@@ -2599,7 +2599,7 @@ return (
                     ))}
                     {transferRecipients.length < 2 && (
                       <Button variant="outline" className="w-full" onClick={() => { setCreateNewRecipient(true); setRecipientName(""); setMobileNetwork("mtn"); setMobileNumber(""); setEditingRecipient(null); }}>
-                        + Add New Recipient ({transferRecipients.length}/5)
+                        + Add New Recipient ({transferRecipients.length}/2)
                       </Button>
                     )}
                   </div>
