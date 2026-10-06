@@ -438,18 +438,23 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchWithdrawalsWithStores = async (limit: number = 10000) => {
+  const fetchWithdrawalsWithStores = async (limit: number = 1000, searchTerm = "") => {
     try {
       // Query payout_requests directly — paginate to get everything past Supabase's 1000-row default
       let allRows: any[] = [];
       let page = 0;
       const pageSize = 1000;
       while (true) {
-        const { data: chunk, error } = await supabase
+        let withdrawalQuery = supabase
           .from("payout_requests")
           .select("*")
           .order("created_at", { ascending: false })
           .range(page * pageSize, (page + 1) * pageSize - 1);
+        if (searchTerm.trim()) {
+          const term = searchTerm.trim().replace(/[%_]/g, "\\$&");
+          withdrawalQuery = withdrawalQuery.or(`id.ilike.%${term}%,status.ilike.%${term}%,momo_name.ilike.%${term}%,momo_number.ilike.%${term}%,paystack_reference.ilike.%${term}%`);
+        }
+        const { data: chunk, error } = await withdrawalQuery;
         if (error) {
           console.error("Error fetching payout_requests:", error);
           break;
@@ -661,7 +666,7 @@ const AdminDashboard = () => {
     // Fetch data for this specific tab
     try {
       if (tabValue === "withdrawals") {
-        const data = await fetchWithdrawalsWithStores(10000);
+        const data = await fetchWithdrawalsWithStores(1000);
         setWithdrawals(data ?? []);
       } else if (tabValue === "topup") {
         const data = await fetchAllTopupsWithStores();
@@ -1456,7 +1461,7 @@ const AdminDashboard = () => {
         async (payload) => {
           // Refresh withdrawal list if withdrawals tab is loaded
           if (loadedTabs.has("withdrawals")) {
-            const updatedWithdrawals = await fetchWithdrawalsWithStores(10000);
+            const updatedWithdrawals = await fetchWithdrawalsWithStores(1000);
             setWithdrawals(updatedWithdrawals ?? []);
           }
 
@@ -2665,6 +2670,17 @@ const AdminDashboard = () => {
     return true;
   });
   
+  useEffect(() => {
+    const term = withdrawalSearchTerm.trim();
+    if (!term) return;
+    const timer = window.setTimeout(async () => {
+      const results = await fetchWithdrawalsWithStores(1000, term);
+      setWithdrawals(results ?? []);
+      setWithdrawalPage(1);
+    }, 300);
+    return () => window.clearTimeout(timer);
+  }, [withdrawalSearchTerm]);
+
   const filteredWithdrawals = withdrawals
     .filter((withdrawal) => {
       const term = withdrawalSearchTerm.trim().toLowerCase();

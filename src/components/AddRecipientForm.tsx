@@ -40,12 +40,14 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
   const [mobileNumber, setMobileNumber] = useState("");
   const [lookingUpName, setLookingUpName] = useState(false);
   const [verifiedNumber, setVerifiedNumber] = useState("");
+  const [lookupFailed, setLookupFailed] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const lookupRecipientName = async (number: string) => {
     const normalized = number.replace(/\D/g, "");
     if (providerType !== "mobile_money" || normalized.length < 10) return;
     setLookingUpName(true);
+    setLookupFailed(false);
     try {
       let response = await fetch("https://api.dataplug.store/functions/v1/hubtel-msisdn-lookup", {
         method: "POST",
@@ -67,7 +69,9 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
       setAccountHolder(String(name));
       setVerifiedNumber(normalized);
     } catch (lookupError) {
-      setError(lookupError instanceof Error ? lookupError.message : "Could not verify this mobile number");
+      setLookupFailed(true);
+      setVerifiedNumber("");
+      setError("Lookup failed. Enter the recipient’s full name, then click Save Recipient to save it.");
     } finally {
       setLookingUpName(false);
     }
@@ -89,8 +93,11 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
     try {
       setLoading(true);
 
-      if (providerType === "mobile_money" && verifiedNumber !== mobileNumber) {
-        throw new Error("Verify the mobile number first so the registered account name can be filled automatically");
+      if (providerType === "mobile_money" && verifiedNumber !== mobileNumber && !lookupFailed) {
+        throw new Error("Verify the mobile number first, or wait for lookup to fail and enter the full name manually");
+      }
+      if (providerType === "mobile_money" && mobileNumber.replace(/\D/g, "").length !== 10) {
+        throw new Error(`Enter a 10-digit mobile number. ${Math.max(0, 10 - mobileNumber.replace(/\D/g, "").length)} digit(s) left.`);
       }
       if (!accountHolder.trim()) {
         throw new Error("Account holder name is required");
@@ -176,9 +183,10 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
             <Input
               id="holder"
               value={accountHolder}
-              readOnly
-              placeholder="Enter and verify the mobile number first"
-              disabled={loading || providerType === "mobile_money"}
+              onChange={(e) => setAccountHolder(e.target.value)}
+              readOnly={providerType === "mobile_money" && !lookupFailed}
+              placeholder={lookupFailed ? "Enter the recipient’s full name" : "Enter and verify the mobile number first"}
+              disabled={loading}
             />
           </div>
 
@@ -239,12 +247,14 @@ export default function AddRecipientForm({ token, onSuccess, onCancel }: AddReci
                   id="mobile"
                   value={mobileNumber}
                   onChange={(e) => { setMobileNumber(e.target.value.replace(/\D/g, "")); setVerifiedNumber(""); setAccountHolder(""); }}
-                  placeholder="024XXXXXXX or similar"
+                  placeholder="Enter exactly 10 digits"
                   disabled={loading}
-                  maxLength={12}
+                  maxLength={10}
                 />
+                <p className="text-xs text-slate-500">Enter 10 digits. {Math.max(0, 10 - mobileNumber.length)} digit(s) left.</p>
                 {lookingUpName && <p className="text-xs text-cyan-600">Verifying mobile money account name…</p>}
-                {!lookingUpName && accountHolder && <p className="text-xs text-emerald-600">Registered account name verified and filled automatically.</p>}
+                {!lookingUpName && lookupFailed && <p className="text-xs text-amber-600">Lookup failed. Enter the full name above, then click Save Recipient.</p>}
+                {!lookingUpName && !lookupFailed && accountHolder && <p className="text-xs text-emerald-600">Registered account name verified and filled automatically.</p>}
               </div>
             </>
           )}
