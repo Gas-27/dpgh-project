@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { supabase } from "@/integrations/supabase/client";
+  import { VerificationOrdersCard } from "@/components/VerificationOrdersCard";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { verifyHubtelMsisdn } from "@/services/hubtelService";
@@ -4999,7 +5000,8 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                 </div>
 
                 {/* Balance + Stats */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+  <VerificationOrdersCard orders={dateFilteredOrders} onView={() => { setOrderSearch(" "); document.getElementById("agent-orders")?.scrollIntoView({ behavior: "smooth" }); }} />
+  <div id="agent-orders" className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="border-border">
                     <CardContent className="pt-6">
                       <p className="text-sm text-muted-foreground mb-2">Wallet Balance</p>

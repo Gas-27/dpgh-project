@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
+  import { VerificationOrdersCard } from "@/components/VerificationOrdersCard";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { useAuth } from "@/hooks/useAuth";
@@ -313,7 +314,7 @@ const SubSubagentDashboard = () => {
       toast({ title: "Refund unavailable", description: "This order is missing its Paystack reference or amount.", variant: "destructive" });
       return;
     }
-  const confirmed = window.confirm("Refund this order through Paystack? The money will return to the account or number used for this purchase. Refunds usually take 20 minutes to 72 hours, and Paystack will notify the customer.");
+  const confirmed = window.confirm("What you need to do: Nothing — no need to re-order or re-pay. Just wait; it delivers once it’s cleared. If you’d rather have a refund, contact support. ⚠️ Note: taking the refund removes this number from the batch we re-submit, so it won’t be delivered later.\n\nContinue with cancel and refund?");
   if (!confirmed) return;
   setRefundingOwnOrderId(order.id);
   setInitiatedOwnRefundIds((current) => new Set(current).add(order.id));
@@ -2118,7 +2119,8 @@ return (
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <VerificationOrdersCard orders={dateFilteredOrders} onView={() => { setOrderSearch(" "); document.getElementById("subsubagent-orders")?.scrollIntoView({ behavior: "smooth" }); }} />
+  <div id="subsubagent-orders" className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
               <Card className="border-border">
                 <CardContent className="p-6 text-center">
