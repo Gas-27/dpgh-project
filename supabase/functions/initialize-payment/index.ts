@@ -78,7 +78,7 @@ Deno.serve(async (req) => {
         const { data: storeRow } = await adminClient.from(table).select("user_id").eq("id", sellerStoreId).maybeSingle();
         if (storeRow?.user_id) {
           const { data: customPrice } = await adminClient.from("social_boost_reseller_pricing").select("price_per_1000").eq("user_id", storeRow.user_id).eq("service_id", serviceId).maybeSingle();
-          sellingPrice = Number(customPrice?.price_per_1000 || basePrice);
+          sellingPrice = Math.max(basePrice, Number(customPrice?.price_per_1000 || basePrice));
         }
       }
       const baseAmount = Math.round((quantity / 1000) * basePrice * 100) / 100;
