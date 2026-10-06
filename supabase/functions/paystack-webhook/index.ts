@@ -109,12 +109,28 @@ Deno.serve(async (req) => {
       if (existingOrder) return new Response(JSON.stringify({ success: true, already_processed: true, reference }), { status: 200, headers: corsHeaders });
       const baseAmount = Number(metadata?.base_amount || 0);
       const sellingAmount = Number(metadata?.selling_amount || Number(amount) / 100);
+      const providerKey = Deno.env.get("EXOBOOST_API_KEY");
+      const providerService = String(metadata?.service_id || "");
+      const providerLink = String(metadata?.target_link || "");
+      const providerQuantity = Number(metadata?.quantity || 0);
+      if (!providerKey || !providerService || !providerLink || !Number.isInteger(providerQuantity) || providerQuantity <= 0) {
+        return new Response(JSON.stringify({ error: "Social Boost payment metadata is incomplete" }), { status: 400, headers: corsHeaders });
+      }
+
+      const providerResponse = await fetch("https://exosupplier.com/api/v2", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+        body: new URLSearchParams({ key: providerKey, action: "add", service: providerService, link: providerLink, quantity: String(providerQuantity) }),
+      });
+      const providerPayload = await providerResponse.json().catch(() => ({}));
+      const providerOrderId = providerPayload?.order ? String(providerPayload.order) : null;
+      const providerStatus = providerResponse.ok && providerOrderId ? "processing" : "failed";
       const { error: socialError } = await supabaseClient.from("social_boost_orders").insert({
         user_id: metadata?.user_id || metadata?.customer_id || null,
         order_number: Number(String(reference).replace(/\D/g, "").slice(-9)) || null,
-        target_link: metadata?.target_link || null,
-        quantity: Number(metadata?.quantity || 0),
-        service: `${metadata?.service_id || ""}:${metadata?.service_name || ""}`,
+        target_link: providerLink,
+        quantity: providerQuantity,
+        service: `${providerService}:${metadata?.service_name || ""}`,
         amount: sellingAmount,
         base_amount: baseAmount,
         selling_amount: sellingAmount,
@@ -122,10 +138,13 @@ Deno.serve(async (req) => {
         seller_store_kind: metadata?.seller_store_kind || null,
         seller_store_id: metadata?.seller_store_id || null,
         payment_reference: reference,
-        provider_status: "pending",
+        provider_order_id: providerOrderId,
+        provider_status: providerStatus,
+        provider_response: providerPayload,
       });
       if (socialError && !String(socialError.message).toLowerCase().includes("duplicate")) return new Response(JSON.stringify({ error: "Could not record Social Boost payment" }), { status: 500, headers: corsHeaders });
-      return new Response(JSON.stringify({ success: true, reference }), { status: 200, headers: corsHeaders });
+      if (!providerOrderId) return new Response(JSON.stringify({ error: "Payment succeeded but Social Boost provider rejected the order" }), { status: 502, headers: corsHeaders });
+      return new Response(JSON.stringify({ success: true, reference, provider_order_id: providerOrderId }), { status: 200, headers: corsHeaders });
     }
 
     // =====================================

@@ -183,7 +183,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     if (checkoutMode === "paystack") {
       const { data, error } = await supabase.functions.invoke("initialize-payment", {
         body: {
-          email: `social_boost_${Date.now()}@datapluggh.com`,
+          email: (await supabase.auth.getUser()).data.user?.email || `social_boost_${Date.now()}@datapluggh.com`,
           amount: total,
           callback_url: `${window.location.origin}/social-boost?payment=success`,
           metadata: { type: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, owner_type: ownerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(ownerType) ? ownerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(ownerType) ? storeId : null },
