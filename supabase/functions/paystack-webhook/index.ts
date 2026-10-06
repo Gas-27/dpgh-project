@@ -105,6 +105,8 @@ Deno.serve(async (req) => {
     // SOCIAL BOOST PAYMENT HANDLER
     // =====================================
     if (paymentType === "social_boost") {
+      const { data: existingOrder } = await supabaseClient.from("social_boost_orders").select("id,provider_status").eq("payment_reference", reference).maybeSingle();
+      if (existingOrder) return new Response(JSON.stringify({ success: true, already_processed: true, reference }), { status: 200, headers: corsHeaders });
       const baseAmount = Number(metadata?.base_amount || 0);
       const sellingAmount = Number(metadata?.selling_amount || Number(amount) / 100);
       const { error: socialError } = await supabaseClient.from("social_boost_orders").insert({

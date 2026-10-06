@@ -68,10 +68,11 @@ Deno.serve(async (req) => {
       const minQuantity = Number(serviceRow?.min_quantity ?? 1);
       const maxQuantity = Number(serviceRow?.max_quantity ?? 100000000);
       if (quantity < minQuantity || quantity > maxQuantity) return new Response(JSON.stringify({ error: "Invalid Social Boost quantity" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      const basePrice = Number(serviceRow?.default_price_per_1000 ?? serviceRow?.admin_price_per_1000 ?? 0);
+      const basePrice = Number(serviceRow?.admin_price_per_1000 ?? serviceRow?.default_price_per_1000 ?? 0);
+      if (!Number.isFinite(basePrice) || basePrice <= 0) return new Response(JSON.stringify({ error: "Social Boost base price is not configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       let sellingPrice = basePrice;
-      const sellerKind = metadata.seller_store_kind;
-      const sellerStoreId = metadata.seller_store_id;
+      const sellerKind = ["agent", "subagent", "subsubagent"].includes(String(metadata.seller_store_kind)) ? String(metadata.seller_store_kind) : null;
+      const sellerStoreId = typeof metadata.seller_store_id === "string" ? metadata.seller_store_id : null;
       if (sellerKind && sellerStoreId) {
         const table = sellerKind === "agent" ? "agent_stores" : sellerKind === "subagent" ? "subagent_stores" : "sub_subagent_stores";
         const { data: storeRow } = await adminClient.from(table).select("user_id").eq("id", sellerStoreId).maybeSingle();
