@@ -52,6 +52,8 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const [service, setService] = useState(fallbackServices[0]);
   const [serviceType, setServiceType] = useState(fallbackServices[0].name);
   const [targetLink, setTargetLink] = useState("");
+  const [commentType, setCommentType] = useState("Average Quality Comments");
+  const [customComments, setCustomComments] = useState("");
   const [quantity, setQuantity] = useState<number | "">("");
   const [price, setPrice] = useState(49);
   const [searchOrder, setSearchOrder] = useState("");
@@ -182,8 +184,11 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const total = useMemo(() => Math.round((numericQuantity / 1000) * price * 100) / 100, [numericQuantity, price]);
 
   const buy = async () => {
+    const isCustomComments = /comment/i.test(`${service.name} ${selectedCategory}`);
     if (!targetLink.trim()) return toast({ title: "Account link required", description: "Enter the social profile or post link to boost.", variant: "destructive" });
+    if (isCustomComments && !customComments.trim()) return toast({ title: "Comments required", description: "Enter one comment per line before placing this order.", variant: "destructive" });
     if (!numericQuantity || numericQuantity < min || numericQuantity > max) return toast({ title: "Invalid quantity", description: `This service accepts ${min.toLocaleString()} to ${max.toLocaleString()}.`, variant: "destructive" });
+    const providerComments = customComments.trim().split(/\r?\n/).map((line) => line.trim()).filter(Boolean).join("\n");
     setBuying(true);
     if (checkoutMode === "paystack") {
       const { data, error } = await supabase.functions.invoke("initialize-payment", {
@@ -191,7 +196,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
           email: (await supabase.auth.getUser()).data.user?.email || `social_boost_${Date.now()}@datapluggh.com`,
           amount: total,
           callback_url: `${window.location.origin}/social-boost?payment=success`,
-          metadata: { type: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, owner_type: ownerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(ownerType) ? ownerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(ownerType) ? storeId : null },
+          metadata: { type: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: ownerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(ownerType) ? ownerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(ownerType) ? storeId : null },
         },
       });
       setBuying(false);
@@ -199,7 +204,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       window.location.assign(data.authorization_url);
       return;
     }
-    const { data: provider, error: providerError } = await supabase.functions.invoke("social-boost", { body: { action: "add", service: service.service, link: targetLink.trim(), quantity: numericQuantity } });
+    const { data: provider, error: providerError } = await supabase.functions.invoke("social-boost", { body: { action: "add", service: service.service, link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { type: commentType, comments: providerComments } : {}) } });
     if (providerError || !provider?.order) {
       setBuying(false);
       return toast({ title: "Social Boost provider rejected the order", description: providerError?.message ?? provider?.error ?? "The provider did not return an order ID.", variant: "destructive" });
@@ -464,6 +469,21 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             )}
           </div>
         </div>
+
+        {(/comment/i.test(`${service.name} ${selectedCategory}`)) && (
+          <div className="space-y-3 rounded-xl border border-fuchsia-400/50 bg-[#08122b] p-4">
+            <label className="block text-sm font-semibold">Comment type
+              <select value={commentType} onChange={(e) => setCommentType(e.target.value)} className="mt-2 w-full rounded-xl border border-blue-400/60 bg-[#061b43] px-4 py-3 text-white">
+                <option>Average Quality Comments</option><option>High Quality Comments</option><option>Emoji Comments</option>
+              </select>
+            </label>
+            <label className="block text-sm font-semibold">Comments
+              <span className="mt-0.5 block text-xs font-normal text-blue-100/60">Separate each comment by moving to a new line.</span>
+              <textarea value={customComments} onChange={(e) => setCustomComments(e.target.value)} rows={5} placeholder="Write one comment per line" className="mt-2 w-full rounded-xl border border-blue-400/60 bg-[#061b43] px-4 py-3 text-sm text-white placeholder:text-blue-100/40" />
+              <span className="text-xs font-normal text-blue-100/60">Min: {min.toLocaleString()} – Max: {max.toLocaleString()}</span>
+            </label>
+          </div>
+        )}
 
         {/* Quantity + Price */}
         <div className="flex items-start gap-3">

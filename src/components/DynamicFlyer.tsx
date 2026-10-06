@@ -90,13 +90,14 @@ MTN • AirtelTigo • Telecel ⚡ Instant Delivery • 24/7 Support
   const [messageCopied, setMessageCopied] = useState(false);
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !image) return;
+    if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
     canvas.width = WIDTH * SCALE;
     canvas.height = HEIGHT * SCALE;
     ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
-    ctx.drawImage(image, 0, 0, WIDTH, HEIGHT);
+    if (image) ctx.drawImage(image, 0, 0, WIDTH, HEIGHT);
+    else { ctx.fillStyle = "#063578"; ctx.fillRect(0, 0, WIDTH, HEIGHT); }
     const values = sample ? { name: "DEMO DATA STORE", code: "123456", url: "https://store.example.com", data: { mtn: [{ size_gb: 1, price: 5.5 }, { size_gb: 5, price: 20 }], telecel: [{ size_gb: 2, price: 10 }], airteltigo: [{ size_gb: 3, price: 14 }] } } : { name: storeName, code: accessCode, url: storeUrl, data: packages };
     const nameRegion = px(REGIONS.storeName);
     drawStoreName(ctx, values.name, nameRegion);

@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
       const providerResponse = await fetch("https://exosupplier.com/api/v2", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-        body: new URLSearchParams({ key: providerKey, action: "add", service: providerService, link: providerLink, quantity: String(providerQuantity) }),
+        body: new URLSearchParams({ key: providerKey, action: "add", service: providerService, link: providerLink, quantity: String(providerQuantity), ...(metadata?.comments ? { type: String(metadata.comment_type || "Average Quality Comments"), comments: String(metadata.comments) } : {}) }),
       });
       const providerPayload = await providerResponse.json().catch(() => ({}));
       const providerOrderId = providerPayload?.order ? String(providerPayload.order) : null;
