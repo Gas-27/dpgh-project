@@ -44,6 +44,7 @@ import AdminOrderStatusUpdater from "@/components/AdminOrderStatusUpdater";
 import NetworkProviderRoutingAdmin from "@/components/NetworkProviderRoutingAdmin";
 import AdminSpaceshipPricing from "@/components/AdminSpaceshipPricing";
 import AdminOrderNumberApprovals from "@/components/AdminOrderNumberApprovals";
+import AdminWaitingOrders from "@/components/AdminWaitingOrders";
   import AdminBlockedSenderIds from "@/components/AdminBlockedSenderIds";
 import WeeklyOrderTargetAdmin from "@/components/WeeklyOrderTargetAdmin";
 import PriceReductionRequestsAdmin from "@/components/PriceReductionRequestsAdmin";
@@ -80,6 +81,7 @@ interface Order {
   payment_method: string; subagent_store_id?: string | null; customer_id?: string | null;
   api_user?: string | null; package_id?: string | null; base_price?: number | null;
   agent_price?: number | null; refunded_amount?: number | null; fulfillment_provider?: string | null; purchase_provider?: string | null; purchase_provider_source?: string | null; provider_attempts?: Array<{ provider?: string; status?: string; created_at?: string }> | null;
+  admin_seen?: boolean; admin_seen_at?: string | null; order_status?: string; sub_subagent_store_id?: string | null;
 }
   interface WithdrawalRequest {
     id: string; agent_store_id: string | null; subagent_store_id?: string | null; sub_subagent_store_id?: string | null; amount: number; status: string;
@@ -666,7 +668,7 @@ const AdminDashboard = () => {
         setTopupHistory(data ?? []);
         setFilteredTopupHistory(data ?? []);
       } else if (tabValue === "orders") {
-        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount, sub_subagent_store_id, fulfillment_provider, provider_attempts", { column: "created_at", ascending: false }, 1000);
+        const data = await fetchRecords("orders", "id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, api_response, paystack_reference, created_at, agent_store_id, payment_method, subagent_store_id, customer_id, api_user, package_id, refunded_amount, sub_subagent_store_id, fulfillment_provider, provider_attempts, admin_seen, admin_seen_at", { column: "created_at", ascending: false }, 1000);
         setOrders(data ?? []);
         // Auto-refund any orders that are already order_status="failed" but not yet refunded.
         // These may have arrived before the realtime listener was active.
@@ -2742,6 +2744,7 @@ const AdminDashboard = () => {
   <TabsTrigger value="promo-codes" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Promo Codes</TabsTrigger>
 <TabsTrigger value="social-boost-orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Boost Orders</TabsTrigger>
             <TabsTrigger value="order_approvals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><ClipboardList className="h-3 w-3 md:h-4 md:w-4" /> Approvals</TabsTrigger>
+            <TabsTrigger value="waiting_numbers" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Eye className="h-3 w-3 md:h-4 md:w-4" /> Waiting numbers</TabsTrigger>
 <TabsTrigger value="subscriptions" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Paid subscriptions</TabsTrigger>
 <TabsTrigger value="orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
               <ShoppingCart className="h-3 w-3 md:h-4 md:w-4" /> Orders
@@ -2780,6 +2783,7 @@ const AdminDashboard = () => {
           <TabsContent value="subscriptions" className="space-y-6"><SubscriptionPaymentsPanel admin /></TabsContent>
           <TabsContent value="price_reduction_requests" className="space-y-6"><PriceReductionRequestsAdmin /></TabsContent>
 <TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /><AdminBlockedSenderIds /></TabsContent>
+          <TabsContent value="waiting_numbers" className="space-y-6"><AdminWaitingOrders orders={orders as any[]} onRefresh={() => { setLoadedTabs((current) => { const next = new Set(current); next.delete("orders"); return next; }); setActiveTab("orders"); }} /></TabsContent>
           <TabsContent value="domain_purchases" className="space-y-6"><AdminDomainPurchasesPanel /></TabsContent>
   <TabsContent value="domain_renewals" className="space-y-6"><AdminDomainRenewalsPanel /></TabsContent>
 
