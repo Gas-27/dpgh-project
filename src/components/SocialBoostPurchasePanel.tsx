@@ -152,19 +152,24 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   }, [service.service, service.rate]);
 
   useEffect(() => {
-    if (!canSetPrices) return;
     let mounted = true;
     (async () => {
       const { data: authData } = await supabase.auth.getUser();
       if (!authData.user || !mounted) return;
+      let pricingUserId = authData.user.id;
+      if (storeId && ["agent", "subagent", "subsubagent"].includes(ownerType)) {
+        const table = ownerType === "agent" ? "agent_stores" : ownerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
+        const { data: store } = await (supabase as any).from(table).select("user_id").eq("id", storeId).maybeSingle();
+        pricingUserId = store?.user_id ?? pricingUserId;
+      }
       const { data } = await (supabase as any)
         .from("social_boost_reseller_pricing")
         .select("service_id,price_per_1000")
-        .eq("user_id", authData.user.id);
+        .eq("user_id", pricingUserId);
       if (mounted && Array.isArray(data)) setResellerPrices(Object.fromEntries(data.map((row: any) => [row.service_id, Number(row.price_per_1000)])));
     })();
     return () => { mounted = false; };
-  }, [canSetPrices]);
+  }, [canSetPrices, ownerType, storeId]);
 
   useEffect(() => {
     const customPrice = resellerPrices[service.service];
