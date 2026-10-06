@@ -1357,11 +1357,9 @@ case "api-key":
                     {!pkg.active && <Badge variant="secondary">Offline</Badge>}
                     <p className="font-display text-4xl font-extrabold leading-none">{pkg.size_gb}GB</p>
                     <p className="text-sm font-bold uppercase text-yellow-300">{pkg.network}</p>
-                    <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
-                      <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
-                      <span className="text-white/50">|</span>
-                      <span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
-                    </div>
+  <div className="flex items-center justify-center text-sm font-semibold text-white/75">
+  <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
+  </div>
                     <div className="leading-tight"><p className="text-sm font-semibold text-white/75">Your price (user price):</p><p className="text-2xl font-extrabold">GHC {Number(pkg.price).toFixed(2)}</p></div>
                     <Button onClick={() => openBuyDialog(pkg)} disabled={!pkg.active} variant="outline" className="mt-1 h-9 w-full rounded-full border-white/30 bg-white/10 font-bold text-white hover:bg-white/20" size="sm">{pkg.active ? "Buy Now" : "Unavailable"}</Button>
                   </CardContent>
@@ -1895,7 +1893,7 @@ case "api-key":
 
       <Card>
         <CardHeader>
-          <CardTitle>API Key Management</CardTitle>
+          <CardTitle>API Key Management</CardTitle><p className="text-sm text-amber-600 dark:text-amber-300">To submit your numbers to MTN for verification, send the folder containing all your numbers to <a className="font-semibold underline" href="mailto:justbuyapisupport@gmail.com">justbuyapisupport@gmail.com</a>.</p>
         </CardHeader>
         <CardContent className="space-y-4">
           {apiKey ? (
