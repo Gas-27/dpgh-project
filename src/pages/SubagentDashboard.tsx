@@ -3081,9 +3081,9 @@ return (
                                 <TableCell>
                                   {refundsByOrderId[order.id] ? (
                                     <RefundStatusCell refund={refundsByOrderId[order.id]} />
-                                  ) : !isSubSub && !alreadyForwarded && new Date(order.created_at).toDateString() === new Date().toDateString() && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
+                                  ) : !isSubSub && !alreadyForwarded && ["waiting", "number verifying", "number_verifying"].includes(String(order.status ?? order.fulfillment_status ?? order.order_status ?? "").toLowerCase()) && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
                                     <Button size="sm" variant="outline" disabled={refundingOwnOrderId === order.id || initiatedOwnRefundIds.has(order.id)} onClick={() => processOwnStorefrontRefund(order)}>
-                                      {refundingOwnOrderId === order.id ? "Processing..." : initiatedOwnRefundIds.has(order.id) ? "Refund initiated" : "Refund via Paystack"}
+                                      {refundingOwnOrderId === order.id ? "Processing..." : initiatedOwnRefundIds.has(order.id) ? "Refund initiated" : "Cancel & refund"}
                                     </Button>
                                   ) : !isSubSub ? <span className="text-xs text-green-400">Refund submitted</span> : <span className="text-xs text-muted-foreground">Forward to sub-subagent</span>}
                                 </TableCell>

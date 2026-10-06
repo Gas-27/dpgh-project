@@ -2173,7 +2173,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
       toast({ title: "Refund unavailable", description: "The store-side refund amount could not be determined.", variant: "destructive" });
       return;
     }
-    const confirmed = window.confirm("Refund this order through Paystack? The money will return to the account or number used for this purchase. Refunds usually take 20 minutes to 72 hours, and Paystack will send the customer a refund notification.");
+    const confirmed = window.confirm("What you need to do: Nothing — no need to re-order or re-pay. Just wait; it delivers once it’s cleared. If you’d rather have a refund, contact support. Note: taking the refund removes this number from the batch we re-submit, so it won’t be delivered later.\n\nContinue with cancel and refund?");
     if (!confirmed) return;
     setRefundingDirectOrderId(order.id);
   setInitiatedDirectRefundIds((current) => new Set(current).add(order.id));
@@ -3107,7 +3107,7 @@ return (
                               <TableCell>
                                 {refundsByOrderId[order.id] ? (
                                   <RefundStatusCell refund={refundsByOrderId[order.id]} />
-                                ) : !isSubagentOrder && !isSubSubagentOrder && new Date(order.created_at).toDateString() === new Date().toDateString() && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
+                                ) : !isSubagentOrder && !isSubSubagentOrder && ["waiting", "number verifying", "number_verifying"].includes(String(order.status ?? order.fulfillment_status ?? order.order_status ?? "").toLowerCase()) && !(order as any).paystack_refund_id && !(order as any).refund_id ? (
                                   <Button
                                     size="sm"
                                     variant="outline"
@@ -3115,7 +3115,7 @@ return (
                                     disabled={refundingDirectOrderId === order.id || initiatedDirectRefundIds.has(order.id)}
                                     onClick={() => processDirectStorefrontRefund(order)}
                                   >
-                                    {refundingDirectOrderId === order.id ? "Processing..." : initiatedDirectRefundIds.has(order.id) ? "Refund initiated" : "Refund via Paystack"}
+                                    {refundingDirectOrderId === order.id ? "Processing..." : initiatedDirectRefundIds.has(order.id) ? "Refund initiated" : "Cancel & refund"}
                                   </Button>
                                 ) : !isSubagentOrder && !isSubSubagentOrder ? (
                                   <Badge className="bg-green-500/20 text-green-700 border-green-500/30 text-xs whitespace-nowrap">Refund submitted</Badge>
