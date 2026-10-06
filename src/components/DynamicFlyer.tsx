@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { Download, Share2, SlidersHorizontal } from "lucide-react";
+import { Download, Share2, SlidersHorizontal, Copy } from "lucide-react";
 
 export type FlyerPackage = { size_gb: number; price: number };
 export type FlyerPackages = { mtn: FlyerPackage[]; telecel: FlyerPackage[]; airteltigo: FlyerPackage[] };
@@ -75,11 +75,19 @@ function drawRows(ctx: CanvasRenderingContext2D, list: FlyerPackage[], region: R
   ctx.restore();
 }
 
-export function DynamicFlyer({ storeName, bannerText = "DATA PLUG", accessCode, storeUrl, packages }: { storeName: string; bannerText?: string; accessCode: string; storeUrl: string; packages: FlyerPackages }) {
+export function DynamicFlyer({ storeName, bannerText = "DATA PLUG", accessCode, storeUrl, contactNumber = "", packages }: { storeName: string; bannerText?: string; accessCode: string; storeUrl: string; contactNumber?: string; packages: FlyerPackages }) {
+  const shareMessage = `Get the BEST data deals from ${storeName || "our store"}! 🔥
+MTN • AirtelTigo • Telecel ⚡ Instant Delivery • 24/7 Support
+📲 USSD: *380*455# 🔑 Access Code: ${accessCode || "—"}
+🛒 Shop: ${storeUrl || "—"}
+🔥 More services available: 📶 Data Bundles • Airtime ⚡ ECG Prepaid • AFA Registration 📺 DSTV • GOtv • StarTimes 💧 Water Bill Payments 📱 Social Media Boosting 🎬 Netflix • Canva • Spotify • ChatGPT & more 🎮 Game Hub • Bulk SMS • Marketplace
+💰 Buy • Sell • Earn — All in One Place!
+📞 Contact: ${contactNumber || "—"}`;
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [calibrate, setCalibrate] = useState(false);
   const [sample, setSample] = useState(false);
+  const [messageCopied, setMessageCopied] = useState(false);
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas || !image) return;
@@ -102,8 +110,9 @@ export function DynamicFlyer({ storeName, bannerText = "DATA PLUG", accessCode, 
   useEffect(() => { const img = new Image(); img.crossOrigin = "anonymous"; img.onload = () => setImage(img); img.src = "/flyer-template.png"; }, []);
   useEffect(() => { void document.fonts?.ready.then(draw); }, [draw]);
   const download = () => { const canvas = canvasRef.current; if (!canvas) return; const link = document.createElement("a"); link.download = `${(storeName || "store").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-flyer.png`; link.href = canvas.toDataURL("image/png"); link.click(); };
-  const share = async () => { const canvas = canvasRef.current; if (!canvas) return; const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png")); if (!blob || !navigator.share) return download(); const file = new File([blob], `${storeName || "store"}-flyer.png`, { type: "image/png" }); if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: `${storeName} flyer` }); else download(); };
-  return <Card className="space-y-4 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold">Flyer Generator</h2><p className="text-sm text-muted-foreground">Storefront data is drawn directly into the blank flyer regions.</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={download}><Download className="mr-2 h-4 w-4" />Download PNG</Button><Button onClick={share}><Share2 className="mr-2 h-4 w-4" />Share</Button><Button variant={sample ? "default" : "outline"} onClick={() => setSample((value) => !value)}>Sample text</Button><Button variant={calibrate ? "default" : "ghost"} size="icon" onClick={() => setCalibrate((value) => !value)} aria-label="Toggle calibration"><SlidersHorizontal className="h-4 w-4" /></Button></div></div><canvas ref={canvasRef} className="mx-auto h-auto w-full max-w-[720px] rounded-lg" aria-label={`${storeName} promotional flyer`} />{calibrate && <pre className="max-h-48 overflow-auto rounded bg-muted p-3 text-xs">{JSON.stringify(REGIONS, null, 2)}</pre>}</Card>;
+  const copyMessage = async () => { await navigator.clipboard.writeText(shareMessage); setMessageCopied(true); window.setTimeout(() => setMessageCopied(false), 1800); };
+  const share = async () => { const canvas = canvasRef.current; if (!canvas) return; const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png")); if (!blob || !navigator.share) { await copyMessage(); return download(); } const file = new File([blob], `${storeName || "store"}-flyer.png`, { type: "image/png" }); if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: `${storeName} flyer`, text: shareMessage }); else { await copyMessage(); download(); } };
+  return <Card className="space-y-4 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold">Flyer Generator</h2><p className="text-sm text-muted-foreground">Storefront data is drawn directly into the blank flyer regions.</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={download}><Download className="mr-2 h-4 w-4" />Download PNG</Button><Button onClick={share}><Share2 className="mr-2 h-4 w-4" />Share</Button><Button variant={sample ? "default" : "outline"} onClick={() => setSample((value) => !value)}>Sample text</Button><Button variant={calibrate ? "default" : "ghost"} size="icon" onClick={() => setCalibrate((value) => !value)} aria-label="Toggle calibration"><SlidersHorizontal className="h-4 w-4" /></Button></div></div><div className="space-y-2"><div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">Share message</p><Button variant="outline" size="sm" onClick={copyMessage}><Copy className="mr-2 h-4 w-4" />{messageCopied ? "Copied" : "Copy message"}</Button></div><textarea readOnly value={shareMessage} rows={10} className="w-full resize-y rounded-md border border-border bg-muted/30 p-3 text-sm leading-relaxed" aria-label="Prefilled flyer share message" /></div><canvas ref={canvasRef} className="mx-auto h-auto w-full max-w-[720px] rounded-lg" aria-label={`${storeName} promotional flyer`} />{calibrate && <pre className="max-h-48 overflow-auto rounded bg-muted p-3 text-xs">{JSON.stringify(REGIONS, null, 2)}</pre>}</Card>;
 }
 
 export default DynamicFlyer;

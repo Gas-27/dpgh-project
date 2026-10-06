@@ -3093,6 +3093,7 @@ handleMobileNumberChange(digits);
   storeName={subagentStore.store_name}
   accessCode={subagentStore.access_code || subagentStore.topup_reference || ""}
   storeUrl={storeUrl}
+  contactNumber={subagentStore.support_number || subagentStore.phone_number || subagentStore.whatsapp_number || ""}
   packages={{
     mtn: packages.filter((p: any) => p.network === "mtn" && p.active !== false).map((p: any) => ({ size_gb: Number(p.size_gb), price: Number(subagentPrices[p.id] ?? p.agent_price ?? p.price) })),
     telecel: packages.filter((p: any) => p.network === "telecel" && p.active !== false).map((p: any) => ({ size_gb: Number(p.size_gb), price: Number(subagentPrices[p.id] ?? p.agent_price ?? p.price) })),
