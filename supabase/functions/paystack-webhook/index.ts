@@ -105,8 +105,8 @@ Deno.serve(async (req) => {
     // SOCIAL BOOST PAYMENT HANDLER
     // =====================================
     if (paymentType === "social_boost") {
-      const { data: existingOrder } = await supabaseClient.from("social_boost_orders").select("id,provider_status").eq("payment_reference", reference).maybeSingle();
-      if (existingOrder) return new Response(JSON.stringify({ success: true, already_processed: true, reference }), { status: 200, headers: corsHeaders });
+      const { data: existingOrder } = await supabaseClient.from("social_boost_orders").select("id,provider_order_id,provider_status").eq("payment_reference", reference).maybeSingle();
+      if (existingOrder?.provider_order_id || existingOrder?.provider_status === "processing") return new Response(JSON.stringify({ success: true, already_processed: true, reference }), { status: 200, headers: corsHeaders });
       const baseAmount = Number(metadata?.base_amount || 0);
       const sellingAmount = Number(metadata?.selling_amount || Number(amount) / 100);
       const providerKey = Deno.env.get("EXOBOOST_API_KEY");
@@ -145,15 +145,17 @@ Deno.serve(async (req) => {
       if (socialError && !String(socialError.message).toLowerCase().includes("duplicate")) return new Response(JSON.stringify({ error: "Could not record Social Boost payment" }), { status: 500, headers: corsHeaders });
       if (!providerOrderId) return new Response(JSON.stringify({ error: "Payment succeeded but Social Boost provider rejected the order" }), { status: 502, headers: corsHeaders });
 
-      const { error: profitError } = await supabaseClient.rpc("credit_social_boost_profit", {
-        p_reference: reference,
-        p_store_kind: metadata?.seller_store_kind || null,
-        p_store_id: metadata?.seller_store_id || null,
-        p_profit_amount: Math.max(0, sellingAmount - baseAmount),
-      });
-      if (profitError) {
-        console.error("[SOCIAL BOOST] Profit credit failed:", profitError);
-        return new Response(JSON.stringify({ error: "Social Boost profit credit failed" }), { status: 500, headers: corsHeaders });
+      if (metadata?.seller_store_kind && metadata?.seller_store_id && sellingAmount > baseAmount) {
+        const { error: profitError } = await supabaseClient.rpc("credit_social_boost_profit", {
+          p_reference: reference,
+          p_store_kind: metadata.seller_store_kind,
+          p_store_id: metadata.seller_store_id,
+          p_profit_amount: sellingAmount - baseAmount,
+        });
+        if (profitError) {
+          console.error("[SOCIAL BOOST] Profit credit failed:", profitError);
+          return new Response(JSON.stringify({ error: "Social Boost profit credit failed" }), { status: 500, headers: corsHeaders });
+        }
       }
 
       return new Response(JSON.stringify({ success: true, reference, provider_order_id: providerOrderId }), { status: 200, headers: corsHeaders });
