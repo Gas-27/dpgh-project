@@ -32,12 +32,12 @@ function dataLookupEndpoint(networkCode: string) {
 }
 
 function airtimeEndpoint(networkCode: string) {
-  if (["MTN", "VOD", "TELECEL", "AIR", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode)) return "/topup/";
+  if (["MTN", "VOD", "TELECEL", "AIR", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode)) return "/airtime_topup/";
   throw new Error(`Unsupported airtime network: ${networkCode}`);
 }
 
 function serviceEndpoint(productType: string) {
-  if (productType === "ecg") return "/ecg_pay_bill/";
+  if (productType === "ecg" || productType === "electricity") return "/ecg_direct_pay_bill/";
   if (["water", "gotv", "dstv", "startimes"].includes(productType)) return "/utilities_pay_bill/";
   return "/collect/";
 }
