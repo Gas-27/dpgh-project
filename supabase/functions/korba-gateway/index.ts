@@ -122,6 +122,7 @@ Deno.serve(async (request) => {
     const providerPayload = {
       amount: amount.toFixed(2),
       customer_number: customerNumber || undefined,
+      recipient_number: customerNumber || undefined,
       network_code: networkCode || undefined,
       product_type: productType,
       product_id: ["MTN", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode) && body.package_code ? String(body.package_code) : undefined,

@@ -229,13 +229,16 @@ export default function HubtelPurchasePanel({
     getKorbaDataBundles(network)
       .then((response) => {
         const raw = response.bundles;
+        const nested = raw && typeof raw === "object" ? raw as Record<string, unknown> : null;
         const items = Array.isArray(raw)
           ? raw
-          : Array.isArray(raw?.Data)
-            ? raw.Data
-            : Array.isArray(raw?.data)
-              ? raw.data
-              : [];
+          : Array.isArray(nested?.Data)
+            ? nested.Data
+            : Array.isArray(nested?.data)
+              ? nested.data
+              : Array.isArray(nested?.results)
+                ? nested.results
+                : [];
         const bundles = items
           .map((item: Record<string, unknown>) => {
             const name = item.name ?? item.display ?? item.description ?? item.product_name ?? item.bundle_name ?? item.title;
@@ -414,7 +417,11 @@ export default function HubtelPurchasePanel({
       toast({ title: "Verify water account first", description: "Complete the Ghana Water account lookup before paying.", variant: "destructive" });
       return;
     }
-    if (!amount || Number(amount) <= 0 || !customer) {
+    const purchaseAmount =
+      mode === "instant" && instantProduct === "airtime"
+        ? customAirtimeAmount
+        : amount;
+    if (!purchaseAmount || Number(purchaseAmount) <= 0 || !customer) {
       toast({
         title: "Complete the form",
         description: "Enter an amount and recipient number.",
@@ -477,9 +484,9 @@ export default function HubtelPurchasePanel({
         });
       }
       toast({
-        title: response.pending ? "Purchase pending with Hubtel" : "Purchase started",
+        title: response.pending ? "Purchase pending" : "Purchase started",
         description: response.pending
-          ? `Hubtel accepted transaction ${response.clientReference || "received"} and is waiting for fulfillment confirmation.`
+          ? `Your transaction ${response.clientReference || "received"} is waiting for confirmation.`
           : `Transaction ${response.clientReference || "received"} is processing.`,
       });
       setAmount("");
@@ -492,7 +499,7 @@ export default function HubtelPurchasePanel({
         description:
           error instanceof Error
             ? error.message
-            : "Hubtel could not process this request.",
+            : "This request could not be processed. Please try again.",
         variant: "destructive",
       });
     } finally {
