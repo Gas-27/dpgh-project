@@ -321,8 +321,24 @@ const noteLines = String(service.notes || service.note || "No additional note ha
         </div>
       </div>
 
+      {orderId && (
+        <div className="rounded-2xl border border-emerald-400/70 bg-emerald-950/40 p-4 text-emerald-50" role="status" aria-live="polite">
+          <div className="flex items-start gap-3">
+            <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-emerald-300" />
+            <div>
+              <h2 className="font-bold">Social Boost purchase successful</h2>
+              <p className="mt-1 text-sm text-emerald-100/90">Your order has been placed. Keep this order number and use it to track your purchase.</p>
+              <p className="mt-3 text-lg font-black tracking-wide">Order #{orderId}</p>
+              <Button type="button" size="sm" className="mt-3 bg-emerald-500 text-emerald-950 hover:bg-emerald-400" onClick={() => { setSearchOrder(orderId); document.getElementById("social-boost-track-order")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
+                Track this order
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Track Order */}
-      <div className="rounded-2xl border border-blue-500/60 bg-[#061b43] p-4">
+      <div id="social-boost-track-order" className="rounded-2xl border border-blue-500/60 bg-[#061b43] p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-3">
             <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-cyan-300"><Package className="h-6 w-6" /></span>

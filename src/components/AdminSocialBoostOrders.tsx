@@ -21,7 +21,7 @@ export default function AdminSocialBoostOrders() {
 
   const load = useCallback(async (sync = true) => {
     setLoading(true);
-    const { data } = await (supabase as any).from("social_boost_orders").select("id,order_number,created_at,target_link,amount,start_count,quantity,service,provider_status,remains,provider_order_id").order("created_at", { ascending: false }).limit(250);
+    const { data } = await (supabase as any).from("social_boost_orders").select("id,order_number,created_at,target_link,amount,start_count,quantity,service,provider_status,remains,provider_order_id").order("created_at", { ascending: false }).limit(100);
     let next = data ?? [];
     if (sync && next.some((order: any) => order.provider_order_id && !terminalStatuses.has(String(order.provider_status ?? "").toLowerCase()))) {
       setSyncing(true);
