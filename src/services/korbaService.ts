@@ -15,6 +15,15 @@ export type KorbaPurchaseRequest = {
   walletOwnerId?: string;
 };
 
+export async function getKorbaDataBundles(networkCode: string) {
+  const { data, error } = await supabase.functions.invoke("korba-gateway", {
+    body: { operation: "lookup", network_code: networkCode },
+  });
+  if (error) throw new Error(error.message || "Could not load Korba bundles");
+  if (!data?.success) throw new Error(data?.error_message || data?.error || "Could not load Korba bundles");
+  return data;
+}
+
 export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
   const { data, error } = await supabase.functions.invoke("korba-gateway", {
     body: {

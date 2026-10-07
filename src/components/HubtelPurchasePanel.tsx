@@ -2,14 +2,12 @@
 
 import { useEffect, useState } from "react";
 import {
-  toHubtelService,
   toHubtelBillService,
   verifyHubtelMsisdn,
-  getHubtelDataCatalog,
   getHubtelBillCatalog,
   type HubtelService,
 } from "@/services/hubtelService";
-import { purchaseWithKorba } from "@/services/korbaService";
+import { getKorbaDataBundles, purchaseWithKorba } from "@/services/korbaService";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -228,46 +226,39 @@ export default function HubtelPurchasePanel({
     setCatalogLoading(true);
     setCatalogError(null);
     setLiveBundles((current) => ({ ...current, [network]: [] }));
-    getHubtelDataCatalog({
-      service: toHubtelService(network, "data"),
-    })
+    getKorbaDataBundles(network)
       .then((response) => {
-        const items = Array.isArray((response.data as { Data?: unknown })?.Data)
-          ? (
-              response.data as {
-                Data: Array<{
-                  Display?: string;
-                  Value?: string;
-                  Amount?: number;
-                }>;
-              }
-            ).Data
-          : [];
+        const raw = response.bundles;
+        const items = Array.isArray(raw)
+          ? raw
+          : Array.isArray(raw?.Data)
+            ? raw.Data
+            : Array.isArray(raw?.data)
+              ? raw.data
+              : [];
         const bundles = items
-          .filter(
-            (item) =>
-              item.Display &&
-              item.Value &&
-              Number.isFinite(Number(item.Amount)),
-          )
-          .map((item) => ({
-            name: String(item.Display),
-            price: `₵${Number(item.Amount).toFixed(2)}`,
-            value: String(item.Value),
-          }));
+          .map((item: Record<string, unknown>) => {
+            const name = item.name ?? item.display ?? item.description ?? item.product_name ?? item.bundle_name ?? item.title;
+            const price = item.amount ?? item.price ?? item.value;
+            const value = item.product_id ?? item.bundle_id ?? item.id ?? item.code ?? item.value;
+            return name && value && Number.isFinite(Number(price))
+              ? { name: String(name), price: `₵${Number(price).toFixed(2)}`, value: String(value) }
+              : null;
+          })
+          .filter((item): item is { name: string; price: string; value: string } => Boolean(item));
         if (!cancelled) {
           setCatalogLoading(false);
           if (!bundles.length) {
-            setCatalogError("Couldn’t load bundles, try again.");
+            setCatalogError("Korba returned no bundles for this network.");
             return;
           }
           setLiveBundles((current) => ({ ...current, [network]: bundles }));
         }
       })
-      .catch(() => {
+      .catch((error: Error) => {
         if (!cancelled) {
           setCatalogLoading(false);
-          setCatalogError("Couldn’t load bundles, try again.");
+          setCatalogError(error.message || "Couldn’t load Korba bundles.");
         }
       });
     return () => {

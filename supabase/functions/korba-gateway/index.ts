@@ -24,6 +24,13 @@ function dataEndpoint(networkCode: string) {
   throw new Error(`Unsupported data network: ${networkCode}`);
 }
 
+function dataLookupEndpoint(networkCode: string) {
+  if (networkCode === "MTN") return "/get_mtndata_product_id/";
+  if (networkCode === "TELECEL" || networkCode === "VODAFONE") return "/get_vodafonedata_product_id/";
+  if (networkCode === "AIRTELTIGO" || networkCode === "AIRTEL-TIGO") return "/get_airteltigodata_product_id/";
+  throw new Error(`Unsupported data network: ${networkCode}`);
+}
+
 function airtimeEndpoint(networkCode: string) {
   if (["MTN", "TELECEL", "VODAFONE", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode)) return "/airtime_topup/";
   throw new Error(`Unsupported airtime network: ${networkCode}`);
@@ -92,6 +99,11 @@ Deno.serve(async (request) => {
     if (operation === "transactions") {
       return json(await korbaRequest("/client_transactions/", {}));
     }
+    if (operation === "lookup") {
+      const networkCode = String(body.network_code || "").trim().toUpperCase();
+      const result = await korbaRequest(dataLookupEndpoint(networkCode), {});
+      return json({ success: true, network_code: networkCode, bundles: result });
+    }
     if (operation !== "collect" && operation !== "data") return json({ error: "Unsupported Korba operation" }, 400);
 
     const amount = Number(body.amount);
@@ -111,7 +123,8 @@ Deno.serve(async (request) => {
       customer_number: customerNumber || undefined,
       network_code: networkCode || undefined,
       product_type: productType,
-      product_id: body.product_id ? String(body.product_id) : undefined,
+      product_id: ["MTN", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode) && body.package_code ? String(body.package_code) : undefined,
+      bundle_id: ["TELECEL", "VODAFONE"].includes(networkCode) && body.package_code ? String(body.package_code) : undefined,
       meter_number: body.meter_number ? String(body.meter_number) : undefined,
       account_number: body.account_number ? String(body.account_number) : undefined,
       package_code: body.package_code ? String(body.package_code) : undefined,
