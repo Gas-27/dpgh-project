@@ -39,16 +39,32 @@ export async function korbaRequest<T>(path: string, payload: KorbaPayload): Prom
   const secretKey = Deno.env.get("KORBA_SECRET_KEY");
   if (!clientId || !clientKey || !secretKey) throw new Error("Korba credentials are not configured");
 
+  const requestId = crypto.randomUUID();
   const numericClientId = Number(clientId);
   const body = { ...payload, client_id: Number.isFinite(numericClientId) ? numericClientId : clientId };
+  const requestUrl = `${korbaBaseUrl()}${path}`;
   const signature = await hmacSha256(secretKey, canonicalize(body));
-  const response = await fetch(`${korbaBaseUrl()}${path}`, {
+  const startedAt = Date.now();
+  console.log("[korba-request]", JSON.stringify({ request_id: requestId, method: "POST", url: requestUrl, path, payload: body }));
+
+  const response = await fetch(requestUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `HMAC ${clientKey}:${signature}` },
     body: JSON.stringify(body),
   });
-  const result = await response.json() as T & { success?: boolean; error_code?: number; error_message?: string };
-  if (!response.ok) throw new Error(result.error_message || `Korba request failed (${response.status})`);
+  const rawResponse = await response.text();
+  let result: T & { success?: boolean; error_code?: number; error_message?: string };
+  try {
+    result = JSON.parse(rawResponse) as T & { success?: boolean; error_code?: number; error_message?: string };
+  } catch {
+    result = { raw_response: rawResponse } as T & { success?: boolean; error_code?: number; error_message?: string };
+  }
+  console.log("[korba-response]", JSON.stringify({ request_id: requestId, status: response.status, status_text: response.statusText, ok: response.ok, duration_ms: Date.now() - startedAt, headers: Object.fromEntries(response.headers.entries()), raw_body: rawResponse, parsed_body: result }));
+  if (!response.ok) {
+    const error = new Error(result.error_message || `Korba request failed (${response.status})`) as Error & { details?: unknown };
+    error.details = { request_id: requestId, status: response.status, status_text: response.statusText, raw_body: rawResponse, parsed_body: result };
+    throw error;
+  }
   return result;
 }
 

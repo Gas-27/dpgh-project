@@ -58,12 +58,15 @@ async function refundWallet(debit: { ownerType: string; ownerId: string; amount:
 }
 
 Deno.serve(async (request) => {
+  const gatewayRequestId = crypto.randomUUID();
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
   let debit: { ownerType: string; ownerId: string; amount: number; balance: number } | null = null;
+  let body: Record<string, unknown> = {};
   try {
-    const body = await request.json();
+    body = await request.json();
+    console.log("[korba-gateway] request", JSON.stringify({ request_id: gatewayRequestId, method: request.method, body }));
     const operation = body.operation;
     const transaction_id = body.transaction_id || transactionId();
 
@@ -112,7 +115,13 @@ Deno.serve(async (request) => {
     return json({ ...result, transaction_id });
   } catch (error) {
     await refundWallet(debit);
-    console.error("[korba-gateway]", error);
-    return json({ error: error instanceof Error ? error.message : "Korba request failed", wallet_refunded: Boolean(debit) }, 502);
+    const errorDetails = error instanceof Error && "details" in error ? (error as Error & { details?: unknown }).details : undefined;
+    console.error("[korba-gateway] failure", JSON.stringify({ request_id: gatewayRequestId, request_body: body, error: error instanceof Error ? error.message : String(error), details: errorDetails, wallet_refunded: Boolean(debit) }));
+    return json({
+      error: error instanceof Error ? error.message : "Korba request failed",
+      request_id: gatewayRequestId,
+      korba_details: errorDetails,
+      wallet_refunded: Boolean(debit),
+    }, 502);
   }
 });
