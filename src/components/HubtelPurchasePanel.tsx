@@ -249,7 +249,7 @@ export default function HubtelPurchasePanel({
         if (!cancelled) {
           setCatalogLoading(false);
           if (!bundles.length) {
-            setCatalogError("Korba returned no bundles for this network.");
+            setCatalogError("No bundles are currently available for this network.");
             return;
           }
           setLiveBundles((current) => ({ ...current, [network]: bundles }));
@@ -258,7 +258,7 @@ export default function HubtelPurchasePanel({
       .catch((error: Error) => {
         if (!cancelled) {
           setCatalogLoading(false);
-          setCatalogError(error.message || "Couldn’t load Korba bundles.");
+          setCatalogError(error.message || "Couldn’t load available bundles.");
         }
       });
     return () => {

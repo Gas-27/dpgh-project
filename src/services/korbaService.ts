@@ -19,8 +19,8 @@ export async function getKorbaDataBundles(networkCode: string) {
   const { data, error } = await supabase.functions.invoke("korba-gateway", {
     body: { operation: "lookup", network_code: networkCode },
   });
-  if (error) throw new Error(error.message || "Could not load Korba bundles");
-  if (!data?.success) throw new Error(data?.error_message || data?.error || "Could not load Korba bundles");
+  if (error) throw new Error("Could not load available bundles. Please try again.");
+  if (!data?.success) throw new Error("Could not load available bundles. Please try again.");
   return data;
 }
 
@@ -42,10 +42,9 @@ export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
       wallet_balance_owner_id: request.walletOwnerId,
     },
   });
-  if (error) throw new Error(error.message || "Korba request failed");
+  if (error) throw new Error("The request could not be completed. Please try again.");
   if (!data?.success && !data?.transaction_id) {
-    const detail = data?.korba_details?.parsed_body?.error_message || data?.korba_details?.raw_body;
-    throw new Error([data?.error, detail, data?.request_id ? `Request ID: ${data.request_id}` : ""].filter(Boolean).join(" — ") || "Korba request failed");
+    throw new Error("The request could not be completed. Please try again.");
   }
   return data;
 }
