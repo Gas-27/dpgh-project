@@ -239,6 +239,24 @@ const CustomDomainResolver = () => {
 const App = () => {
   const hostname = window.location.hostname.toLowerCase();
 
+  useEffect(() => {
+    const isJustBuy = hostname === "justbuygh.com" || hostname === "www.justbuygh.com";
+    const icon = isJustBuy ? "/justbuygh-icon.png" : "/icons/icon-512x512.png";
+    const manifest = isJustBuy ? "/manifest-justbuygh.json" : "/manifest.json";
+    const brand = isJustBuy ? "JustBuyGH" : "DataPlug";
+
+    document.querySelectorAll<HTMLLinkElement>('link[rel="icon"], link[rel="apple-touch-icon"]').forEach((link) => {
+      link.href = icon;
+    });
+    const manifestLink = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+    if (manifestLink) manifestLink.href = manifest;
+    const appleTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
+    if (appleTitle) appleTitle.content = brand;
+    document.title = isJustBuy
+      ? "JustBuyGH | Cheap Data, Airtime, ECG, Subscriptions & Games in Ghana"
+      : "DataPlug Ghana | Cheap Data Bundles, MTN Data & Telecel Data Online";
+  }, [hostname]);
+
   // Determine if we are on a subdomain of datastores.shop or agentsstore.shop
   const isAgentSubdomain = hostname.endsWith(`.${DOMAINS.AGENT_STORE}`) && hostname !== DOMAINS.AGENT_STORE;
   const isSubagentDomain = hostname === DOMAINS.SUBAGENT_STORE || 
