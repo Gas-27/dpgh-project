@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -27,7 +27,7 @@ type PublicProduct = {
   seller_phone?: string | null;
 };
 
-const PAGE_SIZE = 15;
+const PAGE_SIZE = 10;
 
 function phoneDigits(value?: string | null) {
   return (value ?? "").replace(/\D/g, "");
@@ -46,6 +46,8 @@ export default function PublicProductsSection({
 }) {
   const [globalProducts, setGlobalProducts] = useState<PublicProduct[]>([]);
   const [storeProducts, setStoreProducts] = useState<PublicProduct[]>([]);
+  const [globalTotal, setGlobalTotal] = useState(0);
+  const [storeTotal, setStoreTotal] = useState(0);
   const [catalog, setCatalog] = useState<"store" | "global">("store");
   const [selected, setSelected] = useState<PublicProduct | null>(null);
   const [image, setImage] = useState(0);
@@ -59,76 +61,66 @@ export default function PublicProductsSection({
 
     const loadProducts = async () => {
       const now = new Date().toISOString();
-      const fields =
-        "id,title,description,price,image_urls,created_at,store_id,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at";
-      const [storeResult, allResult] = await Promise.all([
-        storeId
-          ? supabase
-              .from("store_products")
-              .select(fields)
-              .eq("store_id", storeId)
-              .eq("status", "active")
-              .eq("available", true)
-              .order("created_at", { ascending: false })
-          : Promise.resolve({ data: [] as PublicProduct[] }),
-        supabase
-          .from("store_products")
-          .select(fields)
-          .eq("status", "active")
-          .eq("available", true)
-          .order("created_at", { ascending: false }),
-      ]);
+      const fields = "id,title,description,price,image_urls,created_at,store_id,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at";
+      const queryProducts = (query: any) => searchQuery.trim()
+        ? query.or(`title.ilike.%${searchQuery.trim().replace(/[%_]/g, "\\$&")}%,description.ilike.%${searchQuery.trim().replace(/[%_]/g, "\\$&")}%`)
+        : query;
 
-      if (cancelled) return;
-      const all = (allResult.data ?? []) as PublicProduct[];
-      const storeIds = [...new Set(all.map((product) => product.store_id).filter(Boolean))] as string[];
-      if (storeIds.length) {
-        const { data: stores } = await supabase.from("agent_stores").select("id,whatsapp_number,support_number").in("id", storeIds);
-        const contacts = new Map((stores ?? []).map((store) => [store.id, store.whatsapp_number || store.support_number || null]));
-        all.forEach((product) => { product.seller_phone = contacts.get(product.store_id ?? "") ?? null; });
+      if (catalog === "store") {
+        if (!storeId) {
+          setStoreProducts([]);
+          setStoreTotal(0);
+          setLoading(false);
+          return;
+        }
+        const result = await queryProducts(supabase.from("store_products").select(fields, { count: "exact" }).eq("store_id", storeId).eq("status", "active").eq("available", true).order("created_at", { ascending: false }).range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1));
+        if (!cancelled) {
+          setStoreProducts((result.data ?? []) as PublicProduct[]);
+          setStoreTotal(result.count ?? 0);
+          setLoading(false);
+        }
+        return;
       }
-      const boosted = all.filter((product) => {
-        const globalBoost =
-          product.boost_global === true &&
-          !!product.boost_global_expires_at &&
-          product.boost_global_expires_at > now;
-        const siteBoost =
-          product.boost_sitewide === true &&
-          !!product.boost_sitewide_expires_at &&
-          product.boost_sitewide_expires_at > now;
-        return siteWide ? siteBoost : globalBoost || siteBoost;
-      });
-      const boostedIds = new Set(boosted.map((product) => product.id));
-      setGlobalProducts([
-        ...boosted,
-        ...all.filter((product) => !boostedIds.has(product.id)),
-      ]);
-      setStoreProducts((storeResult.data ?? []) as PublicProduct[]);
-      setLoading(false);
+
+      const base = () => queryProducts(supabase.from("store_products").select(fields, { count: "exact" }).eq("status", "active").eq("available", true));
+      const boostFilter = siteWide
+        ? `and(boost_sitewide.eq.true,boost_sitewide_expires_at.gt.${now})`
+        : `and(boost_global.eq.true,boost_global_expires_at.gt.${now}),and(boost_sitewide.eq.true,boost_sitewide_expires_at.gt.${now})`;
+      const boostedIdsResult = await base().or(boostFilter).select("id");
+      const boostedIds = (boostedIdsResult.data ?? []).map((product: any) => product.id);
+      const boostedCount = boostedIds.length;
+      const regularBase = () => {
+        const query = base();
+        return boostedIds.length
+          ? query.not("id", "in", `(${boostedIds.join(",")})`)
+          : query;
+      };
+      const start = page * PAGE_SIZE;
+      const boostedTake = Math.max(0, Math.min(PAGE_SIZE, boostedCount - start));
+      const regularTake = PAGE_SIZE - boostedTake;
+      const boostedPage = boostedTake
+        ? await base().or(boostFilter).order("created_at", { ascending: false }).range(start, start + boostedTake - 1)
+        : { data: [] as PublicProduct[] };
+      const regularOffset = Math.max(0, start - boostedCount);
+      const regularPage = regularTake
+        ? await regularBase().order("created_at", { ascending: false }).range(regularOffset, regularOffset + regularTake - 1)
+        : { data: [] as PublicProduct[] };
+      const regularCountResult = await regularBase().select("id", { count: "exact", head: true });
+      if (!cancelled) {
+        const products = [...((boostedPage.data ?? []) as PublicProduct[]), ...((regularPage.data ?? []) as PublicProduct[])];
+        setGlobalProducts(products);
+        setGlobalTotal(boostedCount + (regularCountResult.count ?? 0));
+        setLoading(false);
+      }
     };
 
-    loadProducts().catch(() => {
-      if (!cancelled) setLoading(false);
-    });
-    return () => {
-      cancelled = true;
-    };
-  }, [siteWide, storeId, storeKind]);
+    loadProducts().catch(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, [catalog, page, searchQuery, siteWide, storeId, storeKind]);
 
-  const filteredProducts = useMemo(() => {
-    const source = catalog === "store" ? storeProducts : globalProducts;
-    const query = searchQuery.trim().toLowerCase();
-    if (!query) return source;
-    return source.filter((product) =>
-      `${product.title} ${product.description}`.toLowerCase().includes(query),
-    );
-  }, [catalog, globalProducts, searchQuery, storeProducts]);
-
-  const pageCount = Math.ceil(filteredProducts.length / PAGE_SIZE);
-  const visibleProducts = filteredProducts.slice(
-    page * PAGE_SIZE,
-    (page + 1) * PAGE_SIZE,
-  );
+  const visibleProducts = catalog === "store" ? storeProducts : globalProducts;
+  const totalProducts = catalog === "store" ? storeTotal : globalTotal;
+  const pageCount = Math.ceil(totalProducts / PAGE_SIZE);
   const sellerPhone = selected?.seller_phone || supportPhone;
   const buyLink = sellerPhone
     ? `https://wa.me/${phoneDigits(sellerPhone)}?text=${encodeURIComponent(`Hello, I would like to buy ${selected?.title ?? "this product"}.`)}`
