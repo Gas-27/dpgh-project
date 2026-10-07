@@ -35,7 +35,8 @@ export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
   });
   if (error) throw new Error(error.message || "Korba request failed");
   if (!data?.success && !data?.transaction_id) {
-    throw new Error(data?.error || data?.error_message || "Korba request failed");
+    const detail = data?.korba_details?.parsed_body?.error_message || data?.korba_details?.raw_body;
+    throw new Error([data?.error, detail, data?.request_id ? `Request ID: ${data.request_id}` : ""].filter(Boolean).join(" — ") || "Korba request failed");
   }
   return data;
 }

@@ -19,8 +19,20 @@ function transactionId() {
 
 function dataEndpoint(networkCode: string) {
   if (networkCode === "MTN") return "/mtn_data_topup/";
-  if (networkCode === "TELECEL") return "/vodafone_data_topup/";
-  if (networkCode === "AIRTELTIGO") return "/airteltigo_data_topup/";
+  if (networkCode === "TELECEL" || networkCode === "VODAFONE") return "/vodafone_data_topup/";
+  if (networkCode === "AIRTELTIGO" || networkCode === "AIRTEL-TIGO") return "/airteltigo_data_topup/";
+  throw new Error(`Unsupported data network: ${networkCode}`);
+}
+
+function airtimeEndpoint(networkCode: string) {
+  if (["MTN", "TELECEL", "VODAFONE", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode)) return "/airtime_topup/";
+  throw new Error(`Unsupported airtime network: ${networkCode}`);
+}
+
+function serviceEndpoint(productType: string) {
+  if (productType === "ecg") return "/ecg_paybill/";
+  if (productType === "water") return "/utilities_paybill/";
+  if (["gotv", "dstv", "startimes"].includes(productType)) return "/utilities_paybill/";
   return "/collect/";
 }
 
@@ -83,25 +95,36 @@ Deno.serve(async (request) => {
     if (operation !== "collect" && operation !== "data") return json({ error: "Unsupported Korba operation" }, 400);
 
     const amount = Number(body.amount);
-    const customerNumber = String(body.customer_number || "").replace(/\s+/g, "");
+    const customerNumber = String(body.customer_number || body.phone_number || "").replace(/\s+/g, "");
     const networkCode = String(body.network_code || "").trim().toUpperCase();
     const productType = String(body.product_type || (body.mode === "services" ? "bill" : "data")).trim().toLowerCase();
-    const allowedProductTypes = new Set(["airtime", "data", "electricity", "ecg", "water", "gotv", "dstv", "bill"]);
+    const allowedProductTypes = new Set(["airtime", "data", "electricity", "ecg", "water", "gotv", "dstv", "startimes", "bill"]);
     if (!Number.isFinite(amount) || amount <= 0 || amount > 5000) return json({ error: "Enter an amount between GHC 0.01 and GHC 5,000" }, 400);
-    if (!/^0[235]\d{8}$/.test(customerNumber)) return json({ error: "Enter a valid Ghana phone number" }, 400);
+    if (!["ecg", "electricity", "water", "gotv", "dstv", "startimes"].includes(productType) && !/^0[235]\d{8}$/.test(customerNumber)) return json({ error: "Enter a valid Ghana phone number" }, 400);
+    if (["ecg", "electricity", "water", "gotv", "dstv", "startimes"].includes(productType) && !body.meter_number && !body.account_number && !customerNumber) return json({ error: "A meter, account, or customer number is required" }, 400);
     if (!allowedProductTypes.has(productType)) return json({ error: "Unsupported Korba service type" }, 400);
-    if (!networkCode) return json({ error: "Network or service code is required" }, 400);
+    if (!networkCode && productType !== "ecg" && productType !== "water" && !["gotv", "dstv", "startimes"].includes(productType)) return json({ error: "Network or service code is required" }, 400);
 
     debit = await debitWallet(body, amount);
     const providerPayload = {
-      amount: amount.toFixed(2), customer_number: customerNumber, network_code: networkCode,
-      product_type: productType, product_id: body.product_id ? String(body.product_id) : undefined,
+      amount: amount.toFixed(2),
+      customer_number: customerNumber || undefined,
+      network_code: networkCode || undefined,
+      product_type: productType,
+      product_id: body.product_id ? String(body.product_id) : undefined,
       meter_number: body.meter_number ? String(body.meter_number) : undefined,
       account_number: body.account_number ? String(body.account_number) : undefined,
       package_code: body.package_code ? String(body.package_code) : undefined,
-      description: String(body.description || `DataPlug ${productType} purchase`), transaction_id, callback_url: callbackUrl(),
+      bill_type: productType === "ecg" ? "ECG" : productType === "water" ? "GWCL" : productType.toUpperCase(),
+      description: String(body.description || `DataPlug ${productType} purchase`),
+      transaction_id,
+      callback_url: callbackUrl(),
     };
-    const endpoint = operation === "data" ? dataEndpoint(networkCode) : "/collect/";
+    const endpoint = operation === "data"
+      ? dataEndpoint(networkCode)
+      : productType === "airtime"
+        ? airtimeEndpoint(networkCode)
+        : serviceEndpoint(productType);
     const result = await korbaRequest(endpoint, providerPayload) as { success?: boolean; error_code?: number; error_message?: string; [key: string]: unknown };
 
     if (result.success === false) {
