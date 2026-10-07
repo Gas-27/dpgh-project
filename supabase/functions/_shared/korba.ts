@@ -74,5 +74,5 @@ export function userMessage(errorCode?: number) {
     400: "Enter a valid customer number.", 402: "Enter an amount.", 405: "This network is not available.",
     407: "This request was already submitted.", 409: "Enter a valid amount.", 410: "Enter a valid Ghana phone number.",
   };
-  return (errorCode && messages[errorCode]) || "Korba could not process the request. Please try again.";
+  return (errorCode && messages[errorCode]) || "The request could not be processed. Please try again.";
 }

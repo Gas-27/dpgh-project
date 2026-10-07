@@ -32,14 +32,13 @@ function dataLookupEndpoint(networkCode: string) {
 }
 
 function airtimeEndpoint(networkCode: string) {
-  if (["MTN", "TELECEL", "VODAFONE", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode)) return "/airtime_topup/";
+  if (["MTN", "VOD", "TELECEL", "AIR", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode)) return "/topup/";
   throw new Error(`Unsupported airtime network: ${networkCode}`);
 }
 
 function serviceEndpoint(productType: string) {
-  if (productType === "ecg") return "/ecg_paybill/";
-  if (productType === "water") return "/utilities_paybill/";
-  if (["gotv", "dstv", "startimes"].includes(productType)) return "/utilities_paybill/";
+  if (productType === "ecg") return "/ecg_pay_bill/";
+  if (["water", "gotv", "dstv", "startimes"].includes(productType)) return "/utilities_pay_bill/";
   return "/collect/";
 }
 
@@ -123,6 +122,7 @@ Deno.serve(async (request) => {
       amount: amount.toFixed(2),
       customer_number: customerNumber || undefined,
       recipient_number: customerNumber || undefined,
+      customer_phone_number: body.phone_number ? String(body.phone_number) : customerNumber || undefined,
       network_code: networkCode || undefined,
       product_type: productType,
       product_id: ["MTN", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode) && body.package_code ? String(body.package_code) : undefined,
@@ -131,6 +131,8 @@ Deno.serve(async (request) => {
       account_number: body.account_number ? String(body.account_number) : undefined,
       package_code: body.package_code ? String(body.package_code) : undefined,
       bill_type: productType === "ecg" ? "ECG" : productType === "water" ? "GWCL" : productType.toUpperCase(),
+      sender_name: String(body.sender_name || "DataPlug Customer"),
+      address: String(body.address || "Ghana"),
       description: String(body.description || `DataPlug ${productType} purchase`),
       transaction_id,
       callback_url: callbackUrl(),

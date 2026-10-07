@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type KorbaPurchaseRequest = {
-  productType: "airtime" | "data" | "ecg" | "startimes";
+  productType: "airtime" | "data" | "ecg" | "startimes" | "gotv" | "dstv";
   amount: number;
   customerNumber: string;
   networkCode: string;

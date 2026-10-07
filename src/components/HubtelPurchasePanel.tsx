@@ -39,7 +39,7 @@ const networks = [
 ];
 
 const networkBundles: Record<string, { name: string; price: string; value?: string }[]> = {};
-/* Live Normal Data bundles are loaded from Hubtel data_catalog. */
+  /* Live normal-data bundles are loaded from the connected service. */
 /*
   MTN: [
     ["Midnight 2.01GB", "₵1.00"],
@@ -230,7 +230,7 @@ export default function HubtelPurchasePanel({
       .then((response) => {
         const raw = response.bundles;
         const nested = raw && typeof raw === "object" ? raw as Record<string, unknown> : null;
-        const items = Array.isArray(raw)
+        const groups = Array.isArray(raw)
           ? raw
           : Array.isArray(nested?.Data)
             ? nested.Data
@@ -239,6 +239,11 @@ export default function HubtelPurchasePanel({
               : Array.isArray(nested?.results)
                 ? nested.results
                 : [];
+        const items = groups.flatMap((group: unknown) => {
+          if (!group || typeof group !== "object") return [];
+          const record = group as Record<string, unknown>;
+          return Array.isArray(record.bundles) ? record.bundles : [record];
+        });
         const bundles = items
           .map((item: Record<string, unknown>) => {
             const name = item.name ?? item.display ?? item.description ?? item.product_name ?? item.bundle_name ?? item.title;
@@ -462,7 +467,12 @@ export default function HubtelPurchasePanel({
           productType: instantProduct,
           amount: instantProduct === "data" ? Number(amount) : Number(customAirtimeAmount),
           customerNumber: customer,
-          networkCode: network.toUpperCase().replace(/[^A-Z]/g, ""),
+          networkCode: (() => {
+            const normalized = network.toUpperCase().replace(/[^A-Z]/g, "");
+            if (normalized.includes("AIRTEL")) return "AIR";
+            if (normalized.includes("TELECEL") || normalized.includes("VODAFONE")) return "VOD";
+            return normalized;
+          })(),
           packageCode: selectedInstantItem?.value,
           ...wallet,
         });
@@ -470,10 +480,19 @@ export default function HubtelPurchasePanel({
         const billService = toHubtelBillService(service);
         if (!billService)
           throw new Error(
-            "This utility service is not configured for Hubtel yet.",
+            "This utility service is not configured yet.",
           );
         response = await purchaseWithKorba({
-          productType: billService === "ecg" ? "ecg" : billService === "startimes" ? "startimes" : "ecg",
+          productType:
+            billService === "ecg"
+              ? "ecg"
+              : billService === "startimes"
+                ? "startimes"
+                : billService === "gotv"
+                  ? "gotv"
+                  : billService === "dstv"
+                    ? "dstv"
+                    : "ecg",
           accountNumber: customer,
           customerNumber: customer,
           phoneNumber: phone || undefined,
@@ -625,7 +644,7 @@ export default function HubtelPurchasePanel({
                     placeholder="Enter any amount from 0.01 to 100.00"
                   />
                   <p className="text-xs text-muted-foreground">
-                    Hubtel allows airtime top-ups up to GHS 100 per request.
+                    Airtime top-ups are available up to GHS 100 per request.
                   </p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-2">
@@ -722,8 +741,8 @@ export default function HubtelPurchasePanel({
                   !verificationError &&
                   normalizedPhone.length === 10 && (
                     <p className="text-xs text-muted-foreground">
-                      Hubtel did not return a registered name. You can still
-                      continue if the number is correct.
+The registered name could not be confirmed. You can still
+                continue if the number is correct.
                     </p>
                   )}
               </div>
@@ -809,7 +828,7 @@ export default function HubtelPurchasePanel({
                 placeholder="024 000 0000"
               />
               <p className="text-xs text-muted-foreground">
-                Required by Hubtel for ECG crediting when you enter a meter number.
+                Required to send the confirmation to your registered mobile number.
               </p>
             </div>
           )}
