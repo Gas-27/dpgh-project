@@ -513,6 +513,15 @@ export default function HubtelPurchasePanel({
       setSelectedInstantItem(null);
       setPhone("");
     } catch (error) {
+      console.error("[v0] Korba purchase failed", {
+        error,
+        message: error instanceof Error ? error.message : String(error),
+        mode,
+        product: mode === "instant" ? instantProduct : service,
+        amount,
+        customer,
+        network,
+      });
       toast({
         title: "Purchase could not start",
         description:

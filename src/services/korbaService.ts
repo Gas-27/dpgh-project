@@ -25,26 +25,47 @@ export async function getKorbaDataBundles(networkCode: string) {
 }
 
 export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
+  const requestBody = {
+    operation: request.productType === "data" ? "data" : "collect",
+    product_type: request.productType,
+    amount: request.amount,
+    customer_number: request.customerNumber,
+    network_code: request.networkCode,
+    package_code: request.packageCode,
+    meter_number: request.meterNumber,
+    account_number: request.accountNumber,
+    phone_number: request.phoneNumber,
+    order_id: request.orderId,
+    wallet_only: request.walletOnly === true,
+    wallet_balance_owner_type: request.walletOwnerType,
+    wallet_balance_owner_id: request.walletOwnerId,
+  };
+  console.log("[v0] Korba purchase request", requestBody);
   const { data, error } = await supabase.functions.invoke("korba-gateway", {
-    body: {
-      operation: request.productType === "data" ? "data" : "collect",
-      product_type: request.productType,
-      amount: request.amount,
-      customer_number: request.customerNumber,
-      network_code: request.networkCode,
-      package_code: request.packageCode,
-      meter_number: request.meterNumber,
-      account_number: request.accountNumber,
-      phone_number: request.phoneNumber,
-      order_id: request.orderId,
-      wallet_only: request.walletOnly === true,
-      wallet_balance_owner_type: request.walletOwnerType,
-      wallet_balance_owner_id: request.walletOwnerId,
-    },
+    body: requestBody,
   });
-  if (error) throw new Error("The request could not be completed. Please try again.");
+
+  let errorBody: Record<string, unknown> | null = null;
+  if (error?.context instanceof Response) {
+    errorBody = await error.context.clone().json().catch(() => null);
+  }
+  console.log("[v0] Korba purchase response", {
+    data,
+    error: error ? { message: error.message, name: error.name, contextStatus: error.context?.status } : null,
+    errorBody,
+  });
+
+  if (error) {
+    const details = errorBody?.korba_details as Record<string, unknown> | undefined;
+    const provider = details?.parsed_body as Record<string, unknown> | undefined;
+    const message =
+      String(errorBody?.error || provider?.error_message || provider?.message || error.message || "The request could not be completed.");
+    const requestId = errorBody?.request_id ? ` (Request ${errorBody.request_id})` : "";
+    throw new Error(`${message}${requestId}`);
+  }
   if (!data?.success && !data?.transaction_id) {
-    throw new Error("The request could not be completed. Please try again.");
+    console.error("[v0] Korba purchase returned an unsuccessful response", data);
+    throw new Error(String(data?.error_message || data?.message || "The request could not be completed. Please try again."));
   }
   return data;
 }
