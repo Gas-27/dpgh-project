@@ -83,9 +83,7 @@ export default function PublicProductsSection({
       }
 
       const base = () => queryProducts(supabase.from("store_products").select(fields, { count: "exact" }).eq("status", "active").eq("available", true));
-      const boostFilter = siteWide
-        ? `and(boost_sitewide.eq.true,boost_sitewide_expires_at.gt.${now})`
-        : `and(boost_global.eq.true,boost_global_expires_at.gt.${now}),and(boost_sitewide.eq.true,boost_sitewide_expires_at.gt.${now})`;
+      const boostFilter = `and(boost_global.eq.true,boost_global_expires_at.gt.${now}),and(boost_sitewide.eq.true,boost_sitewide_expires_at.gt.${now})`;
       const boostedIdsResult = await base().or(boostFilter).select("id");
       const boostedIds = (boostedIdsResult.data ?? []).map((product: any) => product.id);
       const boostedCount = boostedIds.length;

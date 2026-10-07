@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import {
+  toHubtelService,
   toHubtelBillService,
   verifyHubtelMsisdn,
   getHubtelDataCatalog,
