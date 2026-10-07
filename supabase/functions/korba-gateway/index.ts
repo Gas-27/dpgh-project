@@ -159,6 +159,11 @@ Deno.serve(async (request) => {
     console.error("[korba-gateway] failure", JSON.stringify({ request_id: gatewayRequestId, request_body: body, error: error instanceof Error ? error.message : String(error), details: errorDetails, wallet_refunded: Boolean(debit) }));
     return json({
       error: error instanceof Error ? error.message : "Korba request failed",
+      provider_message: errorDetails && typeof errorDetails === "object" && "parsed_body" in errorDetails
+        ? ((errorDetails as { parsed_body?: { detail?: string; error_message?: string; message?: string } }).parsed_body?.detail ||
+          (errorDetails as { parsed_body?: { error_message?: string } }).parsed_body?.error_message ||
+          (errorDetails as { parsed_body?: { message?: string } }).parsed_body?.message)
+        : undefined,
       request_id: gatewayRequestId,
       korba_details: errorDetails,
       wallet_refunded: Boolean(debit),

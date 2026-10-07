@@ -66,7 +66,7 @@ export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
     const details = errorBody?.korba_details as Record<string, unknown> | undefined;
     const provider = details?.parsed_body as Record<string, unknown> | undefined;
     const message =
-      String(errorBody?.error || provider?.error_message || provider?.message || error.message || "The request could not be completed.");
+      String(errorBody?.error || provider?.error_message || provider?.message || provider?.detail || error.message || "The request could not be completed.");
     const requestId = errorBody?.request_id ? ` (Request ${errorBody.request_id})` : "";
     throw new Error(`${message}${requestId}`);
   }
