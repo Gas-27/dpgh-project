@@ -4,7 +4,8 @@ const PRODUCTION_BASE_URL = "https://xchange.korba365.com/api/v1.0";
 export type KorbaPayload = Record<string, string | number | boolean | null | undefined>;
 
 export function korbaBaseUrl() {
-  return Deno.env.get("KORBA_ENV") === "production" ? PRODUCTION_BASE_URL : SANDBOX_BASE_URL;
+  const environment = String(Deno.env.get("KORBA_ENV") || "sandbox").trim().toLowerCase();
+  return environment === "production" || environment === "live" ? PRODUCTION_BASE_URL : SANDBOX_BASE_URL;
 }
 
 export function callbackUrl() {
@@ -34,9 +35,9 @@ async function hmacSha256(secret: string, message: string) {
 }
 
 export async function korbaRequest<T>(path: string, payload: KorbaPayload): Promise<T> {
-  const clientId = Deno.env.get("KORBA_CLIENT_ID");
-  const clientKey = Deno.env.get("KORBA_CLIENT_KEY");
-  const secretKey = Deno.env.get("KORBA_SECRET_KEY");
+  const clientId = Deno.env.get("KORBA_CLIENT_ID")?.trim();
+  const clientKey = Deno.env.get("KORBA_CLIENT_KEY")?.trim();
+  const secretKey = Deno.env.get("KORBA_SECRET_KEY")?.trim();
   if (!clientId || !clientKey || !secretKey) throw new Error("Korba credentials are not configured");
 
   const requestId = crypto.randomUUID();

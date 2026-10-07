@@ -102,7 +102,8 @@ Deno.serve(async (request) => {
     if (operation === "lookup") {
       const networkCode = String(body.network_code || "").trim().toUpperCase();
       const result = await korbaRequest(dataLookupEndpoint(networkCode), {});
-      return json({ success: true, network_code: networkCode, bundles: result });
+      const bundles = (result as Record<string, unknown>)?.data ?? (result as Record<string, unknown>)?.results ?? result;
+      return json({ success: (result as Record<string, unknown>)?.success !== false, network_code: networkCode, bundles });
     }
     if (operation !== "collect" && operation !== "data") return json({ error: "Unsupported Korba operation" }, 400);
 
