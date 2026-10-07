@@ -239,11 +239,23 @@ export default function HubtelPurchasePanel({
               : [record];
           });
         };
-        const nested = raw && typeof raw === "object" ? raw as Record<string, unknown> : null;
-        const source = Array.isArray(raw)
-          ? raw
-          : nested?.Data ?? nested?.data ?? nested?.results ?? [];
-        const items = flattenBundles(source);
+        const collectBundleArrays = (value: unknown, depth = 0): unknown[] => {
+          if (depth > 5 || value == null) return [];
+          if (Array.isArray(value)) return value;
+          if (typeof value !== "object") return [];
+          const record = value as Record<string, unknown>;
+          const preferredKeys = ["Data", "data", "results", "bundles", "products", "items"];
+          for (const key of preferredKeys) {
+            const found = collectBundleArrays(record[key], depth + 1);
+            if (found.length) return found;
+          }
+          for (const child of Object.values(record)) {
+            const found = collectBundleArrays(child, depth + 1);
+            if (found.length) return found;
+          }
+          return [];
+        };
+        const items = flattenBundles(collectBundleArrays(raw));
         const bundles = items
           .map((item) => {
             const name = item.name ?? item.display ?? item.description ?? item.product_name ?? item.bundle_name ?? item.title ?? item.bundle_size;
