@@ -229,24 +229,24 @@ export default function HubtelPurchasePanel({
     getKorbaDataBundles(network)
       .then((response) => {
         const raw = response.bundles;
+        const flattenBundles = (value: unknown): Record<string, unknown>[] => {
+          if (!Array.isArray(value)) return [];
+          return value.flatMap((entry) => {
+            if (!entry || typeof entry !== "object") return [];
+            const record = entry as Record<string, unknown>;
+            return Array.isArray(record.bundles)
+              ? flattenBundles(record.bundles)
+              : [record];
+          });
+        };
         const nested = raw && typeof raw === "object" ? raw as Record<string, unknown> : null;
-        const groups = Array.isArray(raw)
+        const source = Array.isArray(raw)
           ? raw
-          : Array.isArray(nested?.Data)
-            ? nested.Data
-            : Array.isArray(nested?.data)
-              ? nested.data
-              : Array.isArray(nested?.results)
-                ? nested.results
-                : [];
-        const items = groups.flatMap((group: unknown) => {
-          if (!group || typeof group !== "object") return [];
-          const record = group as Record<string, unknown>;
-          return Array.isArray(record.bundles) ? record.bundles : [record];
-        });
+          : nested?.Data ?? nested?.data ?? nested?.results ?? [];
+        const items = flattenBundles(source);
         const bundles = items
-          .map((item: Record<string, unknown>) => {
-            const name = item.name ?? item.display ?? item.description ?? item.product_name ?? item.bundle_name ?? item.title;
+          .map((item) => {
+            const name = item.name ?? item.display ?? item.description ?? item.product_name ?? item.bundle_name ?? item.title ?? item.bundle_size;
             const price = item.amount ?? item.price ?? item.value;
             const value = item.product_id ?? item.bundle_id ?? item.id ?? item.code ?? item.value;
             return name && value && Number.isFinite(Number(price))

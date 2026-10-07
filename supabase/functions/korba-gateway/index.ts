@@ -32,7 +32,7 @@ function dataLookupEndpoint(networkCode: string) {
 }
 
 function airtimeEndpoint(networkCode: string) {
-  if (["MTN", "VOD", "TELECEL", "AIR", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode)) return "/airtime_topup/";
+  if (["MTN", "VOD", "TELECEL", "AIR", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode)) return "/topup/";
   throw new Error(`Unsupported airtime network: ${networkCode}`);
 }
 

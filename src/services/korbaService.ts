@@ -19,8 +19,15 @@ export async function getKorbaDataBundles(networkCode: string) {
   const { data, error } = await supabase.functions.invoke("korba-gateway", {
     body: { operation: "lookup", network_code: networkCode },
   });
-  if (error) throw new Error("Could not load available bundles. Please try again.");
-  if (!data?.success) throw new Error("Could not load available bundles. Please try again.");
+  console.log("[v0] Korba bundle response", {
+    data,
+    error: error ? { message: error.message, status: error.context?.status } : null,
+  });
+  if (error) {
+    const errorBody = error.context instanceof Response ? await error.context.clone().json().catch(() => null) : null;
+    throw new Error(String(errorBody?.error || "Could not load available bundles. Please try again."));
+  }
+  if (!data?.success) throw new Error(String(data?.error_message || "Could not load available bundles. Please try again."));
   return data;
 }
 
