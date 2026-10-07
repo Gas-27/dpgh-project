@@ -68,6 +68,14 @@ Deno.serve(async (req) => {
             .eq("paystack_reference", reference)
             .maybeSingle();
 
+        const { data: packagePricing } = await supabase
+            .from("data_packages")
+            .select("price, agent_price")
+            .eq("id", packageId)
+            .maybeSingle();
+        const basePrice = Number(agentStoreId ? packagePricing?.agent_price : packagePricing?.price) || amount;
+        const profit = Math.max(0, amount - basePrice);
+
         if (existing) {
             return new Response(JSON.stringify({
                 success: true,
@@ -88,6 +96,10 @@ Deno.serve(async (req) => {
             status: "paid",
             fulfillment_status: "pending",
             paystack_reference: reference,
+            payment_method: "paystack",
+            selling_price: amount,
+            base_price: basePrice,
+            profit,
             user_id: authenticatedUserId,
             customer_id: authenticatedUserId,
         };
