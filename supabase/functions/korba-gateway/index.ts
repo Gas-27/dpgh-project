@@ -43,6 +43,13 @@ function airtimeEndpoint(networkCode: string) {
   throw new Error(`Unsupported airtime network: ${networkCode}`);
 }
 
+function utilityLookupEndpoint(productType: string) {
+  if (productType === "ecg" || productType === "electricity") return "/verify_ecg_meter/";
+  if (productType === "gotv" || productType === "dstv" || productType === "startimes") return "/verify_decoder/";
+  if (productType === "water") return "/verify_water_account/";
+  throw new Error(`Unsupported utility lookup type: ${productType}`);
+}
+
 function serviceEndpoint(productType: string) {
   if (productType === "ecg" || productType === "electricity") return "/ecg_direct_pay_bill/";
   if (["water", "gotv", "dstv", "startimes"].includes(productType)) return "/utilities_pay_bill/";
@@ -105,6 +112,19 @@ Deno.serve(async (request) => {
     if (operation === "transactions") {
       return json(await korbaRequest("/client_transactions/", {}));
     }
+    if (operation === "utility_lookup") {
+      const productType = String(body.product_type || "").trim().toLowerCase();
+      const customerNumber = String(body.customer_number || body.meter_number || body.account_number || "").replace(/\s+/g, "");
+      if (!customerNumber) return json({ error: "A meter, account, or decoder number is required" }, 400);
+      const result = await korbaRequest(utilityLookupEndpoint(productType), {
+        meter_number: body.meter_number ? String(body.meter_number) : undefined,
+        account_number: body.account_number ? String(body.account_number) : undefined,
+        decoder_number: body.decoder_number ? String(body.decoder_number) : undefined,
+        customer_number: customerNumber,
+        product_type: productType,
+      });
+      return json({ ...result, success: (result as Record<string, unknown>)?.success !== false, customer_number: customerNumber });
+    }
     if (operation === "lookup") {
     const networkCode = normalizeNetworkCode(String(body.network_code || ""));
       const result = await korbaRequest(dataLookupEndpoint(networkCode), {});
@@ -115,7 +135,7 @@ Deno.serve(async (request) => {
 
     const amount = Number(body.amount);
     const customerNumber = String(body.customer_number || body.phone_number || "").replace(/\s+/g, "");
-    const networkCode = String(body.network_code || "").trim().toUpperCase();
+    const networkCode = normalizeNetworkCode(String(body.network_code || ""));
     const productType = String(body.product_type || (body.mode === "services" ? "bill" : "data")).trim().toLowerCase();
     const allowedProductTypes = new Set(["airtime", "data", "electricity", "ecg", "water", "gotv", "dstv", "startimes", "bill"]);
     if (!Number.isFinite(amount) || amount <= 0 || amount > 5000) return json({ error: "Enter an amount between GHC 0.01 and GHC 5,000" }, 400);

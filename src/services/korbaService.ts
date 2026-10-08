@@ -31,6 +31,20 @@ export async function getKorbaDataBundles(networkCode: string) {
   return data;
 }
 
+export async function lookupKorbaUtility(input: {
+  productType: "ecg" | "electricity" | "water" | "gotv" | "dstv" | "startimes";
+  meterNumber?: string;
+  accountNumber?: string;
+  decoderNumber?: string;
+}) {
+  const { data, error } = await supabase.functions.invoke("korba-gateway", {
+    body: { operation: "utility_lookup", product_type: input.productType, meter_number: input.meterNumber, account_number: input.accountNumber, decoder_number: input.decoderNumber },
+  });
+  if (error) throw new Error("Korba utility lookup failed. Please check the number and try again.");
+  if (!data?.success) throw new Error(String(data?.error_message || data?.message || "The utility number could not be verified."));
+  return data;
+}
+
 export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
   const requestBody = {
     operation: request.productType === "data" ? "data" : "collect",
