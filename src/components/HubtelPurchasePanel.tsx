@@ -228,7 +228,7 @@ export default function HubtelPurchasePanel({
     setLiveBundles((current) => ({ ...current, [network]: [] }));
     getKorbaDataBundles(network)
       .then((response) => {
-        const raw = response.bundles;
+        const raw = response.bundles ?? response.data ?? response.result ?? response;
         const flattenBundles = (value: unknown): Record<string, unknown>[] => {
           if (!Array.isArray(value)) return [];
           return value.flatMap((entry) => {
