@@ -155,6 +155,7 @@ Deno.serve(async (request) => {
       product_id: ["MTN", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode) && body.package_code ? String(body.package_code) : undefined,
       bundle_id: ["TELECEL", "VODAFONE"].includes(networkCode) && body.package_code ? String(body.package_code) : undefined,
       meter_number: body.meter_number ? String(body.meter_number) : undefined,
+      meter_id: body.meter_number ? String(body.meter_number) : undefined,
       account_number: body.account_number ? String(body.account_number) : undefined,
       package_code: body.package_code ? String(body.package_code) : undefined,
       bill_type: productType === "ecg" ? "ECG" : productType === "water" ? "GWCL" : productType.toUpperCase(),

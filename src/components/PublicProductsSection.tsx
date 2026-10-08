@@ -20,6 +20,7 @@ type PublicProduct = {
   image_urls: string[];
   created_at?: string;
   store_id?: string | null;
+  store_kind?: string | null;
   boost_global?: boolean;
   boost_global_expires_at?: string | null;
   boost_sitewide?: boolean;
@@ -52,7 +53,13 @@ export default function PublicProductsSection({
   const [selected, setSelected] = useState<PublicProduct | null>(null);
   const [image, setImage] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [effectiveSearch, setEffectiveSearch] = useState("");
   const [page, setPage] = useState(0);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setEffectiveSearch(searchQuery.trim()), 250);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -61,10 +68,26 @@ export default function PublicProductsSection({
 
     const loadProducts = async () => {
       const now = new Date().toISOString();
-      const fields = "id,title,description,price,image_urls,created_at,store_id,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at";
-      const queryProducts = (query: any) => searchQuery.trim()
-        ? query.or(`title.ilike.%${searchQuery.trim().replace(/[%_]/g, "\\$&")}%,description.ilike.%${searchQuery.trim().replace(/[%_]/g, "\\$&")}%`)
+      const fields = "id,title,description,price,image_urls,created_at,store_id,store_kind,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at";
+      const queryProducts = (query: any) => effectiveSearch
+        ? query.or(`title.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%,description.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%`)
         : query;
+      const addSellerContacts = async (items: PublicProduct[]) => {
+        const idsByKind = new Map<string, string[]>();
+        items.forEach((item) => {
+          const kind = item.store_kind || "agent";
+          idsByKind.set(kind, [...(idsByKind.get(kind) || []), item.store_id || ""].filter(Boolean));
+        });
+        const tableForKind: Record<string, string> = { agent: "agent_stores", subagent: "subagent_stores", subsubagent: "sub_subagent_stores" };
+        const entries = await Promise.all([...idsByKind.entries()].map(async ([kind, ids]) => {
+          const table = tableForKind[kind];
+          if (!table || !ids.length) return [] as [string, string][];
+          const { data } = await supabase.from(table).select("id,support_number,whatsapp_number").in("id", [...new Set(ids)]);
+          return (data || []).map((row: any) => [row.id, row.whatsapp_number || row.support_number || ""] as [string, string]);
+        }));
+        const contacts = new Map(entries.flat());
+        return items.map((item) => ({ ...item, seller_phone: contacts.get(item.store_id || "") || null }));
+      };
 
       if (catalog === "store") {
         if (!storeId) {
@@ -75,7 +98,7 @@ export default function PublicProductsSection({
         }
         const result = await queryProducts(supabase.from("store_products").select(fields, { count: "exact" }).eq("store_id", storeId).eq("status", "active").eq("available", true).order("created_at", { ascending: false }).range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1));
         if (!cancelled) {
-          setStoreProducts((result.data ?? []) as PublicProduct[]);
+          setStoreProducts(await addSellerContacts((result.data ?? []) as PublicProduct[]));
           setStoreTotal(result.count ?? 0);
           setLoading(false);
         }
@@ -105,7 +128,7 @@ export default function PublicProductsSection({
         : { data: [] as PublicProduct[] };
       const regularCountResult = await regularBase().select("id", { count: "exact", head: true });
       if (!cancelled) {
-        const products = [...((boostedPage.data ?? []) as PublicProduct[]), ...((regularPage.data ?? []) as PublicProduct[])];
+        const products = await addSellerContacts([...((boostedPage.data ?? []) as PublicProduct[]), ...((regularPage.data ?? []) as PublicProduct[])] as PublicProduct[]);
         setGlobalProducts(products);
         setGlobalTotal(boostedCount + (regularCountResult.count ?? 0));
         setLoading(false);
@@ -114,14 +137,14 @@ export default function PublicProductsSection({
 
     loadProducts().catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [catalog, page, searchQuery, siteWide, storeId, storeKind]);
+  }, [catalog, effectiveSearch, page, siteWide, storeId, storeKind]);
 
   const visibleProducts = catalog === "store" ? storeProducts : globalProducts;
   const totalProducts = catalog === "store" ? storeTotal : globalTotal;
   const pageCount = Math.ceil(totalProducts / PAGE_SIZE);
   const sellerPhone = selected?.seller_phone || supportPhone;
   const buyLink = sellerPhone
-    ? `https://wa.me/${phoneDigits(sellerPhone)}?text=${encodeURIComponent(`Hello, I would like to buy ${selected?.title ?? "this product"}.`)}`
+    ? `https://wa.me/${phoneDigits(sellerPhone)}?text=${encodeURIComponent(`Hello, I would like to buy ${selected?.title ?? "this product"} for GHS ${Number(selected?.price || 0).toFixed(2)}. Description: ${selected?.description || "No description provided"}. Product image: ${selected?.image_urls?.[0] || "No image"}`)}`
     : undefined;
 
   return (
@@ -167,7 +190,7 @@ export default function PublicProductsSection({
             <p className="py-12 text-center text-muted-foreground">No products are available right now.</p>
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2">
                 {visibleProducts.map((product) => (
                   <button
                     type="button"
@@ -187,6 +210,7 @@ export default function PublicProductsSection({
                       <h3 className="font-semibold">{product.title}</h3>
                       <p className="line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
                       <p className="font-bold text-primary">GHS {Number(product.price).toFixed(2)}</p>
+                      {product.seller_phone && <p className="text-xs text-muted-foreground">Seller: {product.seller_phone}</p>}
                     </div>
                   </button>
                 ))}
@@ -229,7 +253,10 @@ export default function PublicProductsSection({
                     </div>
                   )}
                 </div>
-                <p className="text-lg font-bold text-primary">GHS {Number(selected.price).toFixed(2)}</p>
+                <div className="rounded-lg border bg-muted/40 p-3">
+                  <p className="text-lg font-bold text-primary">GHS {Number(selected.price).toFixed(2)}</p>
+                  {sellerPhone && <p className="mt-1 text-sm text-muted-foreground">Seller contact: {sellerPhone}</p>}
+                </div>
                 {buyLink ? (
                   <Button asChild className="w-full"><a href={buyLink} target="_blank" rel="noreferrer"><Phone className="mr-2 h-4 w-4" /> Contact seller to buy <ExternalLink className="ml-2 h-4 w-4" /></a></Button>
                 ) : (
