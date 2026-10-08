@@ -2045,8 +2045,21 @@ case "api-key":
         </CardContent>
       </Card>
 
-      {/* Supported Networks */}
-      <Card>
+  {/* Delivery Progress API */}
+  <Card className="border-purple-500/30 bg-purple-500/5">
+  <CardHeader><CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5 text-purple-400" />Delivery Progress API</CardTitle></CardHeader>
+  <CardContent className="space-y-4">
+  <p className="text-sm text-muted-foreground">Display the same delivery-progress card, status messages, estimates, and latest delivery details on your own website.</p>
+  <div className="rounded-lg border border-border bg-muted p-3 font-mono text-xs break-all">GET https://api.dataplug.store/functions/v1/delivery-progress?network=mtn</div>
+  <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`curl "https://api.dataplug.store/functions/v1/delivery-progress?network=mtn" \\\n  -H "Authorization: Bearer YOUR_API_KEY"`}</pre>
+  <p className="text-sm font-semibold">Embeddable card</p>
+  <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`<iframe src="https://api.dataplug.store/api/delivery-progress-widget?api_key=YOUR_API_KEY&network=mtn" style="width:100%;min-height:360px;border:0" title="Delivery Progress"></iframe>`}</pre>
+  <p className="text-xs text-muted-foreground">Your configured message, provider status, estimated window, last delivered order, timestamps, and duration are returned by the API and reflected in the widget.</p>
+  </CardContent>
+  </Card>
+
+  {/* Supported Networks */}
+  <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Globe className="h-5 w-5 text-green-400" />
