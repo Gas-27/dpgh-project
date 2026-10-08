@@ -17,6 +17,13 @@ function transactionId() {
   return `DP-${crypto.randomUUID()}`;
 }
 
+function normalizeNetworkCode(networkCode: string) {
+  const normalized = networkCode.trim().toUpperCase().replace(/[^A-Z]/g, "");
+  if (normalized === "VOD" || normalized === "VODAFONE") return "TELECEL";
+  if (normalized === "AIR" || normalized === "AIRTEL" || normalized === "AIRTELTIGO") return "AIRTELTIGO";
+  return normalized;
+}
+
 function dataEndpoint(networkCode: string) {
   if (networkCode === "MTN") return "/mtn_data_topup/";
   if (networkCode === "TELECEL" || networkCode === "VODAFONE") return "/vodafone_data_topup/";
@@ -99,7 +106,7 @@ Deno.serve(async (request) => {
       return json(await korbaRequest("/client_transactions/", {}));
     }
     if (operation === "lookup") {
-      const networkCode = String(body.network_code || "").trim().toUpperCase();
+    const networkCode = normalizeNetworkCode(String(body.network_code || ""));
       const result = await korbaRequest(dataLookupEndpoint(networkCode), {});
       const bundles = (result as Record<string, unknown>)?.data ?? (result as Record<string, unknown>)?.results ?? result;
       return json({ success: (result as Record<string, unknown>)?.success !== false, network_code: networkCode, bundles });

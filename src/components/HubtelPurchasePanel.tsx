@@ -258,8 +258,8 @@ export default function HubtelPurchasePanel({
         const items = flattenBundles(collectBundleArrays(raw));
         const bundles = items
           .map((item) => {
-            const name = item.name ?? item.display ?? item.description ?? item.product_name ?? item.bundle_name ?? item.title ?? item.bundle_size;
-            const price = item.amount ?? item.price ?? item.value;
+            const name = item.name ?? item.display ?? item.description ?? item.product_name ?? item.bundle_name ?? item.package_name ?? item.product_title ?? item.title ?? item.bundle_size ?? item.data_bundle;
+            const price = item.amount ?? item.price ?? item.value ?? item.bundle_price;
             const value = item.product_id ?? item.bundle_id ?? item.id ?? item.code ?? item.value;
             return name && value && Number.isFinite(Number(price))
               ? { name: String(name), price: `₵${Number(price).toFixed(2)}`, value: String(value) }
@@ -481,8 +481,8 @@ export default function HubtelPurchasePanel({
           customerNumber: customer,
           networkCode: (() => {
             const normalized = network.toUpperCase().replace(/[^A-Z]/g, "");
-            if (normalized.includes("AIRTEL")) return "AIR";
-            if (normalized.includes("TELECEL") || normalized.includes("VODAFONE")) return "VOD";
+            if (normalized.includes("AIRTEL")) return "AIRTELTIGO";
+            if (normalized.includes("TELECEL") || normalized.includes("VODAFONE")) return "TELECEL";
             return normalized;
           })(),
           packageCode: selectedInstantItem?.value,
