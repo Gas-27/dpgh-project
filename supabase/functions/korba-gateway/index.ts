@@ -75,7 +75,7 @@ Deno.serve(async (request) => {
       return json({ success: result.success !== false, network_code: network, bundles, raw: result });
     }
     if (operation === "utility_lookup") {
-      const productType = String(body.product_type || "").trim().toLowerCase(); const meterNumber = String(body.meter_number || "").replace(/\s+/g, ""); const phoneNumber = String(body.phone_number || "").replace(/\s+/g, ""); const customerNumber = String(body.customer_number || meterNumber || phoneNumber || body.account_number || body.decoder_number || "").replace(/\s+/g, "");
+      const productType = String(body.product_type || "").trim().toLowerCase(); const meterNumber = String(body.meter_number || "").replace(/\s+/g, ""); const rawPhoneNumber = String(body.phone_number || "").replace(/\s+/g, ""); const phoneNumber = rawPhoneNumber.startsWith("0") ? `233${rawPhoneNumber.slice(1)}` : rawPhoneNumber.startsWith("+233") ? rawPhoneNumber.slice(1) : rawPhoneNumber; const customerNumber = String(body.customer_number || meterNumber || phoneNumber || body.account_number || body.decoder_number || "").replace(/\s+/g, "");
       if (!utilityTypes.has(productType) || !customerNumber) return json({ success: false, error: "A supported utility type and customer number are required" }, 400);
       const transaction_id = transactionId();
   const requestPayload = productType === "ecg"
