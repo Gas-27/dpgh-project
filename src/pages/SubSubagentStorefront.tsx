@@ -14,7 +14,7 @@ import {
   Zap, Phone, Wifi, Clock, Search, Package,
   CheckCircle, XCircle, X, Loader2, Copy, Bell, Megaphone, Rocket,
   MessageCircle, Users, AlertTriangle, Check, Gift,
-  LinkIcon, Share2, ChevronDown,
+  LinkIcon, Share2, ChevronDown, Layers,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));

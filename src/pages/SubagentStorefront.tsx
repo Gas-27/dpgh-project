@@ -14,7 +14,7 @@ import {
   Zap, Phone, Wifi, Clock, Search, Package,
   CheckCircle, XCircle, X, Loader2, Copy, Bell, Megaphone, Rocket,
   MessageCircle, Users, AlertTriangle, Check, Gift,
-  FileSpreadsheet, RotateCcw, LinkIcon, Share2, ChevronDown,
+  FileSpreadsheet, RotateCcw, LinkIcon, Share2, ChevronDown, Layers,
   } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
@@ -1087,7 +1087,8 @@ const searchOrders = useCallback(async (input?: string) => {
   {activeSection === "social-boost" && <SocialBoostPurchasePanel walletBalance={0} ownerType="subagent" storeId={store?.id} checkoutMode="paystack" />}
   {activeSection === "products" && <PublicProductsSection storeId={store?.id} storeKind="subagent" />}
   {activeSection === "services" && <HubtelPurchasePanel mode="services" />}
-{activeSection === "data" && <>
+  {activeSection === "vouchers" && <HubtelPurchasePanel mode="instant" />}
+  {activeSection === "data" && <>
   <TrackOrderDropdown source="subagent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} />
   <SpinToWinCard target="subagent" />
   {(searching || searchPerformed) && <div className="mt-6 space-y-4">
