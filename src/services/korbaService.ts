@@ -7,6 +7,7 @@ export type KorbaPurchaseRequest = {
   networkCode: string;
   packageCode?: string;
   meterNumber?: string;
+  meterId?: string;
   accountNumber?: string;
   phoneNumber?: string;
   orderId?: string;
@@ -28,6 +29,13 @@ export async function getKorbaDataBundles(networkCode: string) {
     throw new Error(String(errorBody?.error || "Could not load available bundles. Please try again."));
   }
   if (!data?.success) throw new Error(String(data?.error_message || "Could not load available bundles. Please try again."));
+  return data;
+}
+
+export async function registerKorbaMeter(input: { alias: string; meterNumber: string; phoneNumber: string; meterCategory: "PREPAID" | "POSTPAID"; accountNumber?: string }) {
+  const { data, error } = await supabase.functions.invoke("korba-gateway", { body: { operation: "add_meter", alias: input.alias, meter_number: input.meterNumber, phone_number: input.phoneNumber, meter_category: input.meterCategory, account_number: input.accountNumber } });
+  if (error) throw new Error("Korba meter registration failed. Please check the meter details and try again.");
+  if (!data?.success) throw new Error(String(data?.error_message || data?.message || "The ECG meter could not be registered."));
   return data;
 }
 
@@ -54,6 +62,7 @@ export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
     network_code: request.networkCode,
     package_code: request.packageCode,
     meter_number: request.meterNumber,
+    meter_id: request.meterId,
     account_number: request.accountNumber,
     phone_number: request.phoneNumber,
     order_id: request.orderId,

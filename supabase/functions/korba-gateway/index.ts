@@ -112,6 +112,14 @@ Deno.serve(async (request) => {
     if (operation === "transactions") {
       return json(await korbaRequest("/client_transactions/", {}));
     }
+    if (operation === "add_meter") {
+      const meterNumber = String(body.meter_number || "").trim();
+      const phoneNumber = String(body.phone_number || "").trim();
+      const alias = String(body.alias || body.meter_name || "").trim();
+      const meterCategory = String(body.meter_category || "").trim().toUpperCase();
+      if (!meterNumber || !phoneNumber || !alias || !["PREPAID", "POSTPAID"].includes(meterCategory)) return json({ error: "meter_number, phone_number, alias, and meter_category (PREPAID or POSTPAID) are required" }, 400);
+      return json(await korbaRequest("/ecg_direct_add_meter/", { alias, meter_number: meterNumber, phone_number: phoneNumber, meter_category: meterCategory, account_number: body.account_number ? String(body.account_number) : undefined }));
+    }
     if (operation === "utility_lookup") {
       const productType = String(body.product_type || "").trim().toLowerCase();
       const customerNumber = String(body.customer_number || body.meter_number || body.account_number || "").replace(/\s+/g, "");
@@ -140,6 +148,7 @@ Deno.serve(async (request) => {
     const allowedProductTypes = new Set(["airtime", "data", "electricity", "ecg", "water", "gotv", "dstv", "startimes", "bill"]);
     if (!Number.isFinite(amount) || amount <= 0 || amount > 5000) return json({ error: "Enter an amount between GHC 0.01 and GHC 5,000" }, 400);
     if (!["ecg", "electricity", "water", "gotv", "dstv", "startimes"].includes(productType) && !/^0[235]\d{8}$/.test(customerNumber)) return json({ error: "Enter a valid Ghana phone number" }, 400);
+    if (productType === "ecg" && !body.meter_id) return json({ error: "Verify or register the ECG meter before paying" }, 400);
     if (["ecg", "electricity", "water", "gotv", "dstv", "startimes"].includes(productType) && !body.meter_number && !body.account_number && !customerNumber) return json({ error: "A meter, account, or customer number is required" }, 400);
     if (!allowedProductTypes.has(productType)) return json({ error: "Unsupported Korba service type" }, 400);
     if (!networkCode && productType !== "ecg" && productType !== "water" && !["gotv", "dstv", "startimes"].includes(productType)) return json({ error: "Network or service code is required" }, 400);
@@ -150,12 +159,13 @@ Deno.serve(async (request) => {
       customer_number: customerNumber || undefined,
       recipient_number: customerNumber || undefined,
       customer_phone_number: body.phone_number ? String(body.phone_number) : customerNumber || undefined,
+      phone_number: body.phone_number ? String(body.phone_number) : customerNumber || undefined,
       network_code: networkCode || undefined,
       product_type: productType,
       product_id: ["MTN", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode) && body.package_code ? String(body.package_code) : undefined,
       bundle_id: ["TELECEL", "VODAFONE"].includes(networkCode) && body.package_code ? String(body.package_code) : undefined,
       meter_number: body.meter_number ? String(body.meter_number) : undefined,
-      meter_id: body.meter_number ? String(body.meter_number) : undefined,
+      meter_id: body.meter_id ? String(body.meter_id) : undefined,
       account_number: body.account_number ? String(body.account_number) : undefined,
       package_code: body.package_code ? String(body.package_code) : undefined,
       bill_type: productType === "ecg" ? "ECG" : productType === "water" ? "GWCL" : productType.toUpperCase(),

@@ -7,7 +7,7 @@ import {
   getHubtelBillCatalog,
   type HubtelService,
 } from "@/services/hubtelService";
-import { getKorbaDataBundles, purchaseWithKorba } from "@/services/korbaService";
+import { getKorbaDataBundles, purchaseWithKorba, registerKorbaMeter } from "@/services/korbaService";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -197,6 +197,10 @@ export default function HubtelPurchasePanel({
   );
   const [billSessionId, setBillSessionId] = useState<string | null>(null);
   const [billLookupLoading, setBillLookupLoading] = useState(false);
+  const [meterName, setMeterName] = useState("");
+  const [meterCategory, setMeterCategory] = useState<"PREPAID" | "POSTPAID">("PREPAID");
+  const [registeredMeterId, setRegisteredMeterId] = useState("");
+  const [meterRegistrationLoading, setMeterRegistrationLoading] = useState(false);
 
   const normalizedPhone = phone.replace(/\D/g, "");
   const detectedNetwork = normalizedPhone.startsWith("0")
@@ -356,6 +360,10 @@ export default function HubtelPurchasePanel({
           const first = data?.Data?.[0];
           setBillAccountName(data?.Name || first?.Display || null);
           setBillAccountDetail(data?.Bouquet || data?.Display || null);
+          const lookupRecord = response as Record<string, unknown>;
+          const lookupData = (lookupRecord.data || {}) as Record<string, unknown>;
+          const meterId = lookupRecord.meter_id || lookupData.meter_id || lookupData.id || lookupData.meterId;
+          if (meterId) setRegisteredMeterId(String(meterId));
           setBillSessionId(data?.SessionId || data?.sessionId || first?.Value || null);
         })
         .catch(() => {
@@ -378,6 +386,25 @@ export default function HubtelPurchasePanel({
   function chooseServiceCategory(category: ServiceCategory) {
     setServiceCategory(category);
     setService(services[category][0]);
+  }
+
+  async function registerMeter() {
+    if (!meterName.trim() || !account.trim() || !phone.trim()) {
+      toast({ title: "Complete meter details", description: "Enter the meter name, physical meter number, and ECG phone number.", variant: "destructive" });
+      return;
+    }
+    setMeterRegistrationLoading(true);
+    try {
+      const result = await registerKorbaMeter({ alias: meterName.trim(), meterNumber: account.trim(), phoneNumber: phone.trim(), meterCategory, accountNumber: undefined });
+      const resultData = (result.data || result) as Record<string, unknown>;
+      const meterId = resultData.meter_id || resultData.id || result.meter_id;
+      if (meterId) setRegisteredMeterId(String(meterId));
+      toast({ title: "Meter registered", description: "The ECG meter is ready for payment." });
+    } catch (error) {
+      toast({ title: "Meter registration failed", description: error instanceof Error ? error.message : "Could not register this meter.", variant: "destructive" });
+    } finally {
+      setMeterRegistrationLoading(false);
+    }
   }
 
   async function submit() {
@@ -509,6 +536,7 @@ export default function HubtelPurchasePanel({
           customerNumber: customer,
           phoneNumber: phone || undefined,
           meterNumber: billService === "ecg" ? customer : undefined,
+          meterId: billService === "ecg" ? registeredMeterId || billAccountDetail || undefined : undefined,
           amount: Number(amount),
           networkCode: billService,
           ...wallet,
@@ -838,6 +866,17 @@ The registered name could not be confirmed. You can still
               ))}
             </div>
           </div>
+          {isEcg && (
+            <div className="grid gap-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <p className="text-sm font-semibold">Register ECG meter</p>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-2"><Label htmlFor="ecg-meter-name">Meter name</Label><Input id="ecg-meter-name" value={meterName} onChange={(event) => setMeterName(event.target.value)} placeholder="Home meter" /></div>
+                <div className="grid gap-2"><Label htmlFor="ecg-meter-category">Meter category</Label><select id="ecg-meter-category" className="h-10 rounded-md border bg-background px-3 text-sm" value={meterCategory} onChange={(event) => setMeterCategory(event.target.value as "PREPAID" | "POSTPAID")}><option value="PREPAID">Prepaid</option><option value="POSTPAID">Postpaid</option></select></div>
+              </div>
+              <Button type="button" variant="outline" onClick={registerMeter} disabled={meterRegistrationLoading}>{meterRegistrationLoading ? "Registering meter…" : "Register meter"}</Button>
+              {registeredMeterId && <p className="text-xs text-primary">Meter registered and ready for payment.</p>}
+            </div>
+          )}
           {isEcg && (
             <div className="grid gap-2">
               <Label htmlFor="hubtel-ecg-mobile">Registered mobile number</Label>
