@@ -323,17 +323,18 @@ export default function HubtelPurchasePanel({
     mode !== "instant" &&
     !!billService &&
     ["ecg", "dstv", "gotv", "startimes", "ghana_water"].includes(billService);
-  const trimmedAccount = account.trim();
+  const trimmedAccount = account.trim().replace(/\s+/g, "");
   const isEcg = billService === "ecg";
-  const trimmedEcgPhone = phone.trim();
+  const trimmedEcgPhone = phone.trim().replace(/\s+/g, "");
+  const isValidEcgMeter = /^P?[A-Z0-9]{6,}$/i.test(trimmedAccount) && !/^0\d{9}$/.test(trimmedAccount);
 
   useEffect(() => {
     let cancelled = false;
     setBillAccountName(null);
     setBillAccountDetail(null);
     setBillSessionId(null);
-    const lookupNumber = isEcg && trimmedAccount.length < 5 ? trimmedEcgPhone : trimmedAccount;
-    if (!supportsAccountLookup || lookupNumber.replace(/\D/g, "").length < 5) {
+const lookupNumber = isEcg ? (isValidEcgMeter ? trimmedAccount : trimmedEcgPhone) : trimmedAccount;
+  if (!supportsAccountLookup || (isEcg ? (isValidEcgMeter || trimmedEcgPhone.replace(/\D/g, "").length >= 10) : lookupNumber.replace(/\D/g, "").length >= 5) === false) {
       setBillLookupLoading(false);
       return;
     }
@@ -341,7 +342,7 @@ export default function HubtelPurchasePanel({
     const handle = setTimeout(() => {
       lookupKorbaUtility({
         productType: billService === "ecg" ? "ecg" : billService,
-        meterNumber: isEcg && trimmedAccount.length >= 5 ? trimmedAccount : undefined,
+        meterNumber: isEcg && isValidEcgMeter ? trimmedAccount : undefined,
         phoneNumber: isEcg ? trimmedEcgPhone : undefined,
         accountNumber: !isEcg ? trimmedAccount : undefined,
         decoderNumber: !isEcg ? trimmedAccount : undefined,
