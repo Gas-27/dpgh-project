@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
@@ -48,6 +49,7 @@ export default function PublicProductsSection({
   storeKind?: string;
   siteWide?: boolean;
 }) {
+  const navigate = useNavigate();
   const [globalProducts, setGlobalProducts] = useState<PublicProduct[]>([]);
   const [storeProducts, setStoreProducts] = useState<PublicProduct[]>([]);
   const [globalTotal, setGlobalTotal] = useState(0);
@@ -139,11 +141,13 @@ export default function PublicProductsSection({
   const pageCount = Math.ceil(totalProducts / PAGE_SIZE);
   const sellerPhone = selected?.seller_phone || supportPhone;
   const productImage = selected?.image_urls?.[0];
+  const productSlug = selected ? selected.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "product";
+  const productUrl = selected ? `${window.location.origin}/marketplace/product/${selected.id}/${productSlug || "product"}` : "";
   const sellerMessage = selected
     ? [
         `Hello, I would like to buy ${selected.title} for GHS ${Number(selected.price || 0).toFixed(2)}.`,
         `Details: ${selected.description || "No description provided"}`,
-        productImage ? `Product image: ${productImage}` : "Product image: not provided",
+        `Product page: ${productUrl}`,
       ].join("\n")
     : "";
   const buyLink = sellerPhone
@@ -202,10 +206,7 @@ export default function PublicProductsSection({
                   <button
                     type="button"
                     key={product.id}
-                    onClick={() => {
-                      setSelected(product);
-                      setImage(0);
-                    }}
+                    onClick={() => navigate(`/marketplace/product/${product.id}/${product.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "product"}`)}
                     className="overflow-hidden rounded-xl border border-primary/30 bg-card text-left transition hover:-translate-y-0.5 hover:border-primary hover:shadow-lg"
                   >
                     {product.image_urls?.[0] ? (
@@ -264,6 +265,9 @@ export default function PublicProductsSection({
                   <p className="text-lg font-bold text-primary">GHS {Number(selected.price).toFixed(2)}</p>
                   {sellerPhone && <p className="mt-1 text-sm text-muted-foreground">Seller contact: {sellerPhone}</p>}
                 </div>
+                <Button type="button" variant="outline" className="w-full" onClick={() => navigate(`/marketplace/product/${selected.id}/${productSlug || "product"}`)}>
+                  View product page <ExternalLink className="ml-2 h-4 w-4" />
+                </Button>
                 {buyLink ? (
                   <Button type="button" className="w-full" onClick={contactSeller}>
                     <Phone className="mr-2 h-4 w-4" /> Contact seller to buy <ExternalLink className="ml-2 h-4 w-4" />

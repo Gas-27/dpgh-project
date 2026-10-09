@@ -354,6 +354,8 @@ return (
                   <Route path="/pending-approval" element={<PendingApproval />} />
                   {/* Old paths – redirect to subdomain */}
                   <Route path="/store/:storeName/product/:productId" element={<ProductDetail />} />
+                  <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
+                  <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
                   <Route path="/agent/:storeName" element={<RedirectToAgentSubdomain />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
