@@ -45,7 +45,7 @@ export async function korbaRequest<T>(path: string, payload: KorbaPayload): Prom
   try { result = JSON.parse(raw); } catch { result = { raw_response: raw } as T & { success?: boolean; error_code?: number; error_message?: string }; }
   console.log("[korba-response]", JSON.stringify({ request_id: requestId, path, status: response.status, raw_body: raw, parsed_body: result }));
   if (!response.ok) {
-    const error = new Error(result.error_message || `Korba request failed (${response.status})`) as Error & { details?: unknown };
+    const error = new Error(result.error_message || result.message || result.detail || `Korba request failed (${response.status})`) as Error & { details?: unknown };
     error.details = { request_id: requestId, status: response.status, raw_body: raw, parsed_body: result };
     throw error;
   }
