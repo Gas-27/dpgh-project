@@ -78,16 +78,22 @@ Deno.serve(async (request) => {
       const productType = String(body.product_type || "").trim().toLowerCase(); const meterNumber = String(body.meter_number || "").replace(/\s+/g, ""); const phoneNumber = String(body.phone_number || "").replace(/\s+/g, ""); const customerNumber = String(body.customer_number || meterNumber || phoneNumber || body.account_number || body.decoder_number || "").replace(/\s+/g, "");
       if (!utilityTypes.has(productType) || !customerNumber) return json({ success: false, error: "A supported utility type and customer number are required" }, 400);
       const transaction_id = transactionId();
-      const requestPayload = { customer_number: meterNumber || phoneNumber, meter_number: meterNumber || undefined, phone_number: phoneNumber || undefined, bill_type: utilityBillType(productType), transaction_id };
-      console.log("[korba-gateway] utility lookup request", JSON.stringify({ operation, product_type: productType, path: "/utilities_validate_user/", payload: requestPayload }));
-      const result = await korbaRequest<JsonObject>("/utilities_validate_user/", requestPayload);
+  const requestPayload = productType === "ecg"
+    ? { phone_number: phoneNumber || undefined, account_number: String(body.account_number || "").replace(/\s+/g, "") || undefined }
+    : { customer_number: customerNumber, meter_number: meterNumber || undefined, phone_number: phoneNumber || undefined, bill_type: utilityBillType(productType), transaction_id };
+  const lookupPath = productType === "ecg" ? "/ecg_direct_meter_detail/" : "/utilities_validate_user/";
+  console.log("[korba-gateway] utility lookup request", JSON.stringify({ operation, product_type: productType, path: lookupPath, payload: requestPayload }));
+  const result = await korbaRequest<JsonObject>(lookupPath, requestPayload);
       const normalized = {
         ...result,
         success: result.success !== false,
         customer_number: customerNumber,
         customer_name: findNested(result, ["customer_name", "customerName", "account_name", "accountName", "registered_name", "name"]),
-        meter_id: findNested(result, ["meter_id", "meterId", "customer_id", "customerId", "account_id", "accountId"]),
-        session_id: findNested(result, ["session_id", "sessionId", "token", "reference"]),
+  meter_id: findNested(result, ["meter_id", "meterId", "id", "customer_id", "customerId", "account_id", "accountId"]),
+  meter_number: findNested(result, ["meter_number", "meterNumber"]),
+  meter_category: findNested(result, ["meter_category", "meterCategory"]),
+  account_number: findNested(result, ["account_number", "accountNumber"]),
+  session_id: findNested(result, ["session_id", "sessionId", "token", "reference"]),
       };
       console.log("[korba-gateway] utility lookup exact response", JSON.stringify({ product_type: productType, customer_number: customerNumber, response: result, normalized }));
       return json(normalized);
