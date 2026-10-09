@@ -46,9 +46,11 @@ Deno.serve(async (req) => {
   if (settingError) return json({ error: "Unable to load delivery settings" }, 500);
 
   const networks = network === "mtn_express" ? ["mtn_express", "mtn"] : [network];
-  const { data: orders, error: orderError } = await supabase.from("orders").select("id,customer_number,network,status,fulfillment_status,order_status,created_at,updated_at").in("network", networks).in("fulfillment_status", ["completed", "delivered"]).order("updated_at", { ascending: false }).limit(1);
+  const { data: orders, error: orderError } = await supabase.from("orders").select("id,customer_number,network,status,fulfillment_status,order_status,created_at,updated_at").in("network", networks).or("order_status.ilike.delivered,fulfillment_status.ilike.delivered,status.ilike.delivered").order("updated_at", { ascending: false }).limit(1);
   if (orderError) return json({ error: "Unable to load delivery history" }, 500);
 
   const latest = orders?.[0] || null;
-  return json({ success: true, data: { network, enabled: setting?.enabled ?? true, statusColor: setting?.status_color || "green", source: setting?.source || "orders", message: setting?.message || `${network} orders are being processed.`, estimatedDelivery: { minMinutes: Number(setting?.min_minutes || 30), maxMinutes: Number(setting?.max_minutes || 240) }, lastDelivered: latest ? { orderId: latest.id, customerNumber: maskNumber(latest.customer_number), placedAt: latest.created_at, deliveredAt: latest.updated_at, durationMinutes: durationMinutes(latest.created_at, latest.updated_at) } : null, updatedAt: setting?.updated_at || null }, meta: { version: "1", generatedAt: new Date().toISOString() } });
+  const minMinutes = Math.max(2, Number(setting?.min_minutes || 30));
+  const maxMinutes = Math.max(minMinutes, Number(setting?.max_minutes || 240));
+  return json({ success: true, data: { network, label: network === "mtn_express" ? "MTN Express" : network === "airteltigo" ? "AirtelTigo" : network.charAt(0).toUpperCase() + network.slice(1), enabled: setting?.enabled ?? true, statusColor: setting?.status_color || "green", source: setting?.source || "orders", message: setting?.message || `${network} orders are being processed.`, estimatedDelivery: { minMinutes, maxMinutes }, lastDelivered: latest ? { orderId: latest.id, customerNumber: maskNumber(latest.customer_number), placedAt: latest.created_at, deliveredAt: latest.updated_at, durationMinutes: durationMinutes(latest.created_at, latest.updated_at) } : null, updatedAt: setting?.updated_at || null }, meta: { version: "1", generatedAt: new Date().toISOString() } });
 });

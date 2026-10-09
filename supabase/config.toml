@@ -23,6 +23,9 @@ verify_jwt = false
 [functions.sync-order-status]
 verify_jwt = false
 
+[functions.delivery-progress]
+verify_jwt = false
+
 [functions.dakazina-sync]
 verify_jwt = false
 
