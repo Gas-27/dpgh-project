@@ -34,6 +34,8 @@ import StorefrontSectionCards from "@/components/StorefrontSectionCards";
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 import HubtelPurchasePanel from "@/components/HubtelPurchasePanel";
+import DigitalServicesCatalog, { type Service } from "@/components/DigitalServicesCatalog";
+import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
 import PublicProductsSection from "@/components/PublicProductsSection";
 import ChatBot from "@/components/ChatBot";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
@@ -512,7 +514,8 @@ export function SubagentStorefront() {
   const [freeDataEnabled, setFreeDataEnabled] = useState(false);
   
   // Bulk Orders
-  const [activeSection, setActiveSection] = useState<"data" | "afa" | "bulk" | "sms" | "services" | "products" | "social-boost">("data");
+  const [activeSection, setActiveSection] = useState<"data" | "afa" | "bulk" | "sms" | "services" | "products" | "social-boost" | "subscription">("data");
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
   useEffect(() => {
     const configured = (store?.theme_config as any)?.default_section;
     if (["data", "afa", "bulk", "sms", "services", "products"].includes(configured)) setActiveSection(configured as typeof activeSection);
@@ -1088,6 +1091,8 @@ const searchOrders = useCallback(async (input?: string) => {
   {activeSection === "products" && <PublicProductsSection storeId={store?.id} storeKind="subagent" />}
   {activeSection === "services" && <HubtelPurchasePanel mode="services" />}
   {activeSection === "vouchers" && <HubtelPurchasePanel mode="instant" />}
+  {activeSection === "subscription" && <DigitalServicesCatalog onBuy={(service) => setSelectedService(service)} />}
+  {selectedService && <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => !open && setSelectedService(null)} />}
   {activeSection === "data" && <>
   <TrackOrderDropdown source="subagent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} />
   <SpinToWinCard target="subagent" />

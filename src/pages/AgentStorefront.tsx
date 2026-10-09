@@ -609,7 +609,7 @@ const AgentStorefront = () => {
   
   // ── Category ──
   const [activeCategory, setActiveCategory] = useState<
-    "data" | "afa" | "vouchers" | "services" | "bulk" | "sms" | "products" | "social-boost"
+    "data" | "afa" | "vouchers" | "services" | "bulk" | "sms" | "products" | "social-boost" | "subscription"
   >("data");
   useEffect(() => {
     const configured = (store?.theme_config as any)?.default_section;
@@ -1682,6 +1682,10 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
             }}
             themeColor={primaryColor}
           />
+        </div>
+      ) : activeCategory === "subscription" ? (
+        <div className="container pb-20">
+          <DigitalServicesCatalog onBuy={(service) => setSelectedService(service)} />
         </div>
       ) : (
         <div className="container pb-20">{renderComingSoon()}</div>
