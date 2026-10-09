@@ -340,13 +340,13 @@ const lookupNumber = isEcg ? (isValidEcgMeter ? trimmedAccount : trimmedEcgPhone
     }
     setBillLookupLoading(true);
     const handle = setTimeout(() => {
-      lookupKorbaUtility({
-        productType: billService === "ecg" ? "ecg" : billService,
-meterNumber: undefined,
-  phoneNumber: isEcg ? trimmedEcgPhone : undefined,
-        accountNumber: !isEcg ? trimmedAccount : undefined,
-        decoderNumber: !isEcg ? trimmedAccount : undefined,
-      })
+        lookupKorbaUtility({
+          productType: billService === "ecg" ? "ecg" : billService,
+          meterNumber: isEcg && isValidEcgMeter ? trimmedAccount : undefined,
+          phoneNumber: isEcg ? trimmedEcgPhone : undefined,
+          accountNumber: !isEcg ? trimmedAccount : undefined,
+          decoderNumber: !isEcg ? trimmedAccount : undefined,
+        })
         .then((response) => {
           if (cancelled) return;
           const record = response as Record<string, unknown>;

@@ -60,9 +60,17 @@ Deno.serve(async (request) => {
       return json({ success: result.success !== false, network_code: network, bundles, raw: result });
     }
     if (operation === "utility_lookup") {
-      const productType = String(body.product_type || "").trim().toLowerCase(); const customerNumber = String(body.customer_number || body.meter_number || body.account_number || body.decoder_number || "").replace(/\s+/g, "");
+      const productType = String(body.product_type || "").trim().toLowerCase();
+      const meterNumber = String(body.meter_number || "").replace(/\s+/g, "");
+      const phoneNumber = String(body.phone_number || "").replace(/\s+/g, "");
+      const customerNumber = String(body.customer_number || meterNumber || phoneNumber || body.account_number || body.decoder_number || "").replace(/\s+/g, "");
       if (!utilityTypes.has(productType) || !customerNumber) return json({ success: false, error: "A supported utility type and customer number are required" }, 400);
-      const result = await korbaRequest<JsonObject>("/utilities_validate_user/", { customer_number: customerNumber, bill_type: utilityBillType(productType), transaction_id: transactionId() });
+      const transaction_id = transactionId();
+      const requestPayload = productType === "ecg"
+        ? { phone_number: phoneNumber || undefined, account_number: String(body.account_number || meterNumber).replace(/\s+/g, "") || undefined }
+        : { customer_number: customerNumber, meter_number: meterNumber || undefined, phone_number: phoneNumber || undefined, bill_type: utilityBillType(productType), transaction_id };
+      const lookupPath = productType === "ecg" ? "/ecg_direct_meter_detail/" : "/utilities_validate_user/";
+      const result = await korbaRequest<JsonObject>(lookupPath, requestPayload);
       return json({ ...result, success: result.success !== false, customer_number: customerNumber });
     }
     if (operation !== "collect" && operation !== "data") return json({ success: false, error: "Unsupported Korba operation" }, 400);
