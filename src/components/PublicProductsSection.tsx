@@ -139,17 +139,35 @@ export default function PublicProductsSection({
   const pageCount = Math.ceil(totalProducts / PAGE_SIZE);
   const sellerPhone = selected?.seller_phone || supportPhone;
   const productImage = selected?.image_urls?.[0];
-  const shareableImage = productImage && /^https?:\/\//i.test(productImage) ? productImage : undefined;
   const sellerMessage = selected
     ? [
         `Hello, I would like to buy ${selected.title} for GHS ${Number(selected.price || 0).toFixed(2)}.`,
         `Details: ${selected.description || "No description provided"}`,
-        shareableImage ? `Product image: ${shareableImage}` : "Product image: available in the product listing",
       ].join("\\n")
     : "";
   const buyLink = sellerPhone
     ? `https://wa.me/${phoneDigits(sellerPhone)}?text=${encodeURIComponent(sellerMessage)}`
     : undefined;
+
+  const contactSeller = async () => {
+    if (!selected || !sellerPhone) return;
+    if (productImage && typeof navigator !== "undefined" && "share" in navigator && "canShare" in navigator) {
+      try {
+        const response = await fetch(productImage);
+        const blob = await response.blob();
+        const extension = blob.type.split("/")[1] || "jpg";
+        const file = new File([blob], `${selected.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.${extension}`, { type: blob.type || "image/jpeg" });
+        const shareData = { title: selected.title, text: sellerMessage, files: [file] };
+        if (navigator.canShare(shareData)) {
+          await navigator.share(shareData);
+          return;
+        }
+      } catch {
+        // Fall back to WhatsApp when file sharing is unavailable or cancelled.
+      }
+    }
+    if (buyLink) window.open(buyLink, "_blank", "noopener,noreferrer");
+  };
 
   return (
     <div className="w-full px-2 pb-20 sm:px-0">
@@ -262,7 +280,9 @@ export default function PublicProductsSection({
                   {sellerPhone && <p className="mt-1 text-sm text-muted-foreground">Seller contact: {sellerPhone}</p>}
                 </div>
                 {buyLink ? (
-                  <Button asChild className="w-full"><a href={buyLink} target="_blank" rel="noreferrer"><Phone className="mr-2 h-4 w-4" /> Contact seller to buy <ExternalLink className="ml-2 h-4 w-4" /></a></Button>
+                  <Button type="button" className="w-full" onClick={contactSeller}>
+                    <Phone className="mr-2 h-4 w-4" /> Contact seller to buy <ExternalLink className="ml-2 h-4 w-4" />
+                  </Button>
                 ) : (
                   <p className="text-sm text-muted-foreground">The seller has not added a contact number yet.</p>
                 )}
