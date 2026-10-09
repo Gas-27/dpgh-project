@@ -143,29 +143,14 @@ export default function PublicProductsSection({
     ? [
         `Hello, I would like to buy ${selected.title} for GHS ${Number(selected.price || 0).toFixed(2)}.`,
         `Details: ${selected.description || "No description provided"}`,
-      ].join("\\n")
+        productImage ? `Product image: ${productImage}` : "Product image: not provided",
+      ].join("\n")
     : "";
   const buyLink = sellerPhone
     ? `https://wa.me/${phoneDigits(sellerPhone)}?text=${encodeURIComponent(sellerMessage)}`
     : undefined;
 
-  const contactSeller = async () => {
-    if (!selected || !sellerPhone) return;
-    if (productImage && typeof navigator !== "undefined" && "share" in navigator && "canShare" in navigator) {
-      try {
-        const response = await fetch(productImage);
-        const blob = await response.blob();
-        const extension = blob.type.split("/")[1] || "jpg";
-        const file = new File([blob], `${selected.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.${extension}`, { type: blob.type || "image/jpeg" });
-        const shareData = { title: selected.title, text: sellerMessage, files: [file] };
-        if (navigator.canShare(shareData)) {
-          await navigator.share(shareData);
-          return;
-        }
-      } catch {
-        // Fall back to WhatsApp when file sharing is unavailable or cancelled.
-      }
-    }
+  const contactSeller = () => {
     if (buyLink) window.open(buyLink, "_blank", "noopener,noreferrer");
   };
 
