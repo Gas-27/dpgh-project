@@ -8,6 +8,7 @@ export type KorbaPurchaseRequest = {
   packageCode?: string;
   meterNumber?: string;
   meterId?: string;
+  meterCategory?: "PREPAID" | "POSTPAID";
   accountNumber?: string;
   phoneNumber?: string;
   orderId?: string;
@@ -68,6 +69,7 @@ export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
     package_code: request.packageCode,
     meter_number: request.meterNumber,
     meter_id: request.meterId,
+    meter_category: request.meterCategory,
     account_number: request.accountNumber,
     phone_number: request.phoneNumber,
     order_id: request.orderId,
