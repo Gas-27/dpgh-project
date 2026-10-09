@@ -1,210 +1,86 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { callbackUrl, korbaRequest, userMessage } from "../_shared/korba.ts";
+import { callbackUrl, korbaRequest, providerError, userMessage } from "../_shared/korba.ts";
 
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-api-version",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Max-Age": "86400",
-  "Content-Type": "application/json",
-};
+const corsHeaders = { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-api-version", "Access-Control-Allow-Methods": "POST, OPTIONS", "Access-Control-Max-Age": "86400", "Content-Type": "application/json" };
+const utilityTypes = new Set(["ecg", "electricity", "water", "gotv", "dstv", "startimes"]);
+const allowedProducts = new Set(["airtime", "data", ...utilityTypes, "bill"]);
 
-function json(body: unknown, status = 200) {
-  return new Response(JSON.stringify(body), { status, headers: corsHeaders });
+type JsonObject = Record<string, unknown>;
+type Debit = { ownerType: string; ownerId: string; amount: number; balance: number };
+function json(body: unknown, status = 200) { return new Response(JSON.stringify(body), { status, headers: corsHeaders }); }
+function transactionId() { return `DP-${crypto.randomUUID()}`; }
+function normalizeNetworkCode(value: string) { const code = value.trim().toUpperCase().replace(/[^A-Z]/g, ""); if (["VOD", "VODAFONE", "TELECEL"].includes(code)) return "TELECEL"; if (["AIR", "AIRTEL", "AIRTELTIGO"].includes(code)) return "AIRTELTIGO"; return code; }
+function dataEndpoint(network: string) { if (network === "MTN") return "/mtn_data_topup/"; if (network === "TELECEL") return "/vodafone_data_topup/"; if (network === "AIRTELTIGO") return "/airteltigo_data_topup/"; if (network === "GLO") return "/new_glo_data_purchase/"; throw new Error(`Unsupported data network: ${network}`); }
+function lookupEndpoint(network: string) { if (network === "MTN") return "/get_mtndata_product_id/"; if (network === "TELECEL") return "/get_vodafonedata_product_id/"; if (network === "AIRTELTIGO") return "/get_airteltigodata_product_id/"; if (network === "GLO") return "/new_glo_data_get_bundle_types/"; throw new Error(`Unsupported data network: ${network}`); }
+function airtimeNetworkCode(network: string) { const code = network.trim().toUpperCase(); if (code === "TELECEL" || code === "VODAFONE") return "VOD"; if (code === "AIRTELTIGO") return "AIR"; return code; }
+function utilityBillType(type: string) { return ({ ecg: "ECG", electricity: "ECG", water: "GWCL", gotv: "GOTV", dstv: "DSTV", startimes: "STARTIMES" } as Record<string, string>)[type] || type.toUpperCase(); }
+function nestedValue(value: unknown, key: string): unknown { if (!value || typeof value !== "object") return undefined; return (value as JsonObject)[key]; }
+function normalizeBundles(result: unknown) {
+  const root = result as JsonObject;
+  const candidate = root.bundles ?? root.results ?? root.data ?? result;
+  const output: JsonObject[] = [];
+  const visit = (value: unknown, group = "") => {
+    if (Array.isArray(value)) return value.forEach((item) => visit(item, group));
+    if (!value || typeof value !== "object") return;
+    const item = value as JsonObject;
+    const name = String(item.name ?? item.bundle_name ?? item.product_name ?? item.description ?? "").trim();
+    const id = item.product_id ?? item.bundle_id ?? item.id ?? item.code;
+    const amount = item.amount ?? item.price ?? item.cost ?? item.value;
+    const hasBundle = id !== undefined && id !== null && (name || amount !== undefined);
+    if (hasBundle) output.push({ name: name || `${group || "Data"} bundle`, amount: Number(amount), price: Number(amount), product_id: item.product_id ?? undefined, bundle_id: item.bundle_id ?? undefined, id, label: name || `${amount} GHS` });
+    const children = item.bundles ?? item.products ?? item.data ?? item.results;
+    if (children) visit(children, name || group);
+  };
+  visit(candidate);
+  return output.filter((item, index, all) => all.findIndex((other) => String(other.id) === String(item.id)) === index);
 }
-
-function transactionId() {
-  return `DP-${crypto.randomUUID()}`;
-}
-
-function normalizeNetworkCode(networkCode: string) {
-  const normalized = networkCode.trim().toUpperCase().replace(/[^A-Z]/g, "");
-  if (normalized === "VOD" || normalized === "VODAFONE") return "TELECEL";
-  if (normalized === "AIR" || normalized === "AIRTEL" || normalized === "AIRTELTIGO") return "AIRTELTIGO";
-  return normalized;
-}
-
-function dataEndpoint(networkCode: string) {
-  if (networkCode === "MTN") return "/mtn_data_topup/";
-  if (networkCode === "TELECEL" || networkCode === "VODAFONE") return "/vodafone_data_topup/";
-  if (networkCode === "AIRTELTIGO" || networkCode === "AIRTEL-TIGO") return "/airteltigo_data_topup/";
-  throw new Error(`Unsupported data network: ${networkCode}`);
-}
-
-function dataLookupEndpoint(networkCode: string) {
-  if (networkCode === "MTN") return "/get_mtndata_product_id/";
-  if (networkCode === "TELECEL" || networkCode === "VODAFONE") return "/get_vodafonedata_product_id/";
-  if (networkCode === "AIRTELTIGO" || networkCode === "AIRTEL-TIGO") return "/get_airteltigodata_product_id/";
-  throw new Error(`Unsupported data network: ${networkCode}`);
-}
-
-function airtimeEndpoint(networkCode: string) {
-  if (["MTN", "VOD", "TELECEL", "AIR", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode)) return "/topup/";
-  throw new Error(`Unsupported airtime network: ${networkCode}`);
-}
-
-function utilityLookupEndpoint(productType: string) {
-  if (productType === "ecg" || productType === "electricity") return "/verify_ecg_meter/";
-  if (productType === "gotv" || productType === "dstv" || productType === "startimes") return "/verify_decoder/";
-  if (productType === "water") return "/verify_water_account/";
-  throw new Error(`Unsupported utility lookup type: ${productType}`);
-}
-
-function serviceEndpoint(productType: string) {
-  if (productType === "ecg" || productType === "electricity") return "/ecg_direct_pay_bill/";
-  if (["water", "gotv", "dstv", "startimes"].includes(productType)) return "/utilities_pay_bill/";
-  return "/collect/";
-}
-
-function walletClient() {
-  const url = Deno.env.get("SUPABASE_URL");
-  const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-  if (!url || !key) throw new Error("Supabase wallet service is not configured");
-  return createClient(url, key, { auth: { persistSession: false } });
-}
-
-async function debitWallet(body: Record<string, unknown>, amount: number) {
-  if (body.wallet_only !== true) return null;
-  const ownerType = String(body.wallet_balance_owner_type || "").toLowerCase();
-  const ownerId = String(body.wallet_balance_owner_id || "");
-  if (!ownerType || !ownerId) throw new Error("Wallet owner is required for wallet purchases");
-  const { data, error } = await walletClient().rpc("debit_purchase_wallet", {
-    p_owner_type: ownerType,
-    p_owner_id: ownerId,
-    p_amount: amount,
-  });
-  if (error) throw new Error(`Wallet debit failed: ${error.message}`);
-  const result = Array.isArray(data) ? data[0] : data;
-  if (!result?.success) throw new Error(result?.message || "Insufficient wallet balance");
-  return { ownerType, ownerId, amount, balance: Number(result.balance ?? 0) };
-}
-
-async function refundWallet(debit: { ownerType: string; ownerId: string; amount: number } | null) {
-  if (!debit) return;
-  const { error } = await walletClient().rpc("credit_purchase_wallet", {
-    p_owner_type: debit.ownerType,
-    p_owner_id: debit.ownerId,
-    p_amount: debit.amount,
-  });
-  if (error) console.error("[korba-gateway] wallet refund failed", error);
-}
+function walletClient() { const url = Deno.env.get("SUPABASE_URL"); const key = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"); if (!url || !key) throw new Error("Supabase wallet service is not configured"); return createClient(url, key, { auth: { persistSession: false } }); }
+async function debitWallet(body: JsonObject, amount: number): Promise<Debit | null> { if (body.wallet_only !== true) return null; const ownerType = String(body.wallet_balance_owner_type || "").toLowerCase(); const ownerId = String(body.wallet_balance_owner_id || ""); if (!ownerType || !ownerId) throw new Error("Wallet owner is required for wallet purchases"); const { data, error } = await walletClient().rpc("debit_purchase_wallet", { p_owner_type: ownerType, p_owner_id: ownerId, p_amount: amount }); if (error) throw new Error(`Wallet debit failed: ${error.message}`); const result = Array.isArray(data) ? data[0] : data; if (!result?.success) throw new Error(result?.message || "Insufficient wallet balance"); return { ownerType, ownerId, amount, balance: Number(result.balance ?? 0) }; }
+async function refundWallet(debit: Debit | null) { if (!debit) return; const { error } = await walletClient().rpc("credit_purchase_wallet", { p_owner_type: debit.ownerType, p_owner_id: debit.ownerId, p_amount: debit.amount }); if (error) console.error("[korba-gateway] wallet refund failed", error); }
 
 Deno.serve(async (request) => {
-  const gatewayRequestId = crypto.randomUUID();
   if (request.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (request.method !== "POST") return json({ error: "Method not allowed" }, 405);
-
-  let debit: { ownerType: string; ownerId: string; amount: number; balance: number } | null = null;
-  let body: Record<string, unknown> = {};
+  let body: JsonObject = {}; let debit: Debit | null = null;
   try {
     body = await request.json();
-    console.log("[korba-gateway] request", JSON.stringify({ request_id: gatewayRequestId, method: request.method, body }));
-    const operation = body.operation;
-    const transaction_id = body.transaction_id || transactionId();
-
-    if (operation === "balance") {
-      return json(await korbaRequest("/get_ova_balance/", {}));
-    }
-    if (operation === "status") {
-      if (!body.transaction_id) return json({ error: "transaction_id is required" }, 400);
-      return json(await korbaRequest("/transaction_status/", { transaction_id: body.transaction_id }));
-    }
-    if (operation === "transactions") {
-      return json(await korbaRequest("/client_transactions/", {}));
-    }
+    const operation = String(body.operation || "");
+    if (operation === "balance") return json(await korbaRequest("/get_ova_balance/", {}));
+    if (operation === "status") { if (!body.transaction_id) return json({ error: "transaction_id is required" }, 400); return json(await korbaRequest("/transaction_status/", { transaction_id: String(body.transaction_id) })); }
+    if (operation === "transactions") return json(await korbaRequest("/client_transactions/", {}));
     if (operation === "add_meter") {
-      const meterNumber = String(body.meter_number || "").trim();
-      const phoneNumber = String(body.phone_number || "").trim();
-      const alias = String(body.alias || body.meter_name || "").trim();
-      const meterCategory = String(body.meter_category || "").trim().toUpperCase();
-      if (!meterNumber || !phoneNumber || !alias || !["PREPAID", "POSTPAID"].includes(meterCategory)) return json({ error: "meter_number, phone_number, alias, and meter_category (PREPAID or POSTPAID) are required" }, 400);
+      const meterNumber = String(body.meter_number || "").trim(), phoneNumber = String(body.phone_number || "").replace(/\s+/g, ""), alias = String(body.alias || body.meter_name || "").trim(), meterCategory = String(body.meter_category || "").trim().toUpperCase();
+      if (!meterNumber || !phoneNumber || !alias || !["PREPAID", "POSTPAID"].includes(meterCategory)) return json({ success: false, error: "meter_number, phone_number, alias, and meter_category (PREPAID or POSTPAID) are required" }, 400);
       return json(await korbaRequest("/ecg_direct_add_meter/", { alias, meter_number: meterNumber, phone_number: phoneNumber, meter_category: meterCategory, account_number: body.account_number ? String(body.account_number) : undefined }));
     }
-    if (operation === "utility_lookup") {
-      const productType = String(body.product_type || "").trim().toLowerCase();
-      const customerNumber = String(body.customer_number || body.meter_number || body.account_number || "").replace(/\s+/g, "");
-      if (!customerNumber) return json({ error: "A meter, account, or decoder number is required" }, 400);
-      const result = await korbaRequest(utilityLookupEndpoint(productType), {
-        meter_number: body.meter_number ? String(body.meter_number) : undefined,
-        account_number: body.account_number ? String(body.account_number) : undefined,
-        decoder_number: body.decoder_number ? String(body.decoder_number) : undefined,
-        customer_number: customerNumber,
-        product_type: productType,
-      });
-      return json({ ...result, success: (result as Record<string, unknown>)?.success !== false, customer_number: customerNumber });
-    }
     if (operation === "lookup") {
-    const networkCode = normalizeNetworkCode(String(body.network_code || ""));
-      const result = await korbaRequest(dataLookupEndpoint(networkCode), {});
-      const bundles = (result as Record<string, unknown>)?.data ?? (result as Record<string, unknown>)?.results ?? result;
-      return json({ success: (result as Record<string, unknown>)?.success !== false, network_code: networkCode, bundles });
+      const network = normalizeNetworkCode(String(body.network_code || ""));
+      const result = await korbaRequest<JsonObject>(lookupEndpoint(network), {});
+      const bundles = normalizeBundles(result);
+      return json({ success: result.success !== false, network_code: network, bundles, raw: result });
     }
-    if (operation !== "collect" && operation !== "data") return json({ error: "Unsupported Korba operation" }, 400);
-
-    const amount = Number(body.amount);
-    const customerNumber = String(body.customer_number || body.phone_number || "").replace(/\s+/g, "");
-    const networkCode = normalizeNetworkCode(String(body.network_code || ""));
-    const productType = String(body.product_type || (body.mode === "services" ? "bill" : "data")).trim().toLowerCase();
-    const allowedProductTypes = new Set(["airtime", "data", "electricity", "ecg", "water", "gotv", "dstv", "startimes", "bill"]);
-    if (!Number.isFinite(amount) || amount <= 0 || amount > 5000) return json({ error: "Enter an amount between GHC 0.01 and GHC 5,000" }, 400);
-    if (!["ecg", "electricity", "water", "gotv", "dstv", "startimes"].includes(productType) && !/^0[235]\d{8}$/.test(customerNumber)) return json({ error: "Enter a valid Ghana phone number" }, 400);
-    if (productType === "ecg" && !body.meter_id) return json({ error: "Verify or register the ECG meter before paying" }, 400);
-    if (["ecg", "electricity", "water", "gotv", "dstv", "startimes"].includes(productType) && !body.meter_number && !body.account_number && !customerNumber) return json({ error: "A meter, account, or customer number is required" }, 400);
-    if (!allowedProductTypes.has(productType)) return json({ error: "Unsupported Korba service type" }, 400);
-    if (!networkCode && productType !== "ecg" && productType !== "water" && !["gotv", "dstv", "startimes"].includes(productType)) return json({ error: "Network or service code is required" }, 400);
-
+    if (operation === "utility_lookup") {
+      const productType = String(body.product_type || "").trim().toLowerCase(); const customerNumber = String(body.customer_number || body.meter_number || body.account_number || body.decoder_number || "").replace(/\s+/g, "");
+      if (!utilityTypes.has(productType) || !customerNumber) return json({ success: false, error: "A supported utility type and customer number are required" }, 400);
+      const result = await korbaRequest<JsonObject>("/utilities_validate_user/", { customer_number: customerNumber, bill_type: utilityBillType(productType), transaction_id: transactionId() });
+      return json({ ...result, success: result.success !== false, customer_number: customerNumber });
+    }
+    if (operation !== "collect" && operation !== "data") return json({ success: false, error: "Unsupported Korba operation" }, 400);
+    const productType = String(body.product_type || (operation === "data" ? "data" : "airtime")).trim().toLowerCase(); const network = normalizeNetworkCode(String(body.network_code || "")); const amount = Number(body.amount); const customerNumber = String(body.customer_number || body.phone_number || "").replace(/\s+/g, ""); const transaction_id = String(body.transaction_id || transactionId());
+    if (!allowedProducts.has(productType)) return json({ success: false, error: "Unsupported Korba service type" }, 400);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 5000) return json({ success: false, error: "Enter an amount between GHC 0.01 and GHC 5,000" }, 400);
+    if (!utilityTypes.has(productType) && !/^0[235]\d{8}$/.test(customerNumber)) return json({ success: false, error: "Enter a valid Ghana phone number" }, 400);
+    if (operation === "data" && !network) return json({ success: false, error: "Network code is required" }, 400);
+    if (productType === "ecg" && (!body.meter_id || !body.meter_number)) return json({ success: false, error: "Verify or register the ECG meter before paying" }, 400);
     debit = await debitWallet(body, amount);
-    const providerPayload = {
-      amount: amount.toFixed(2),
-      customer_number: customerNumber || undefined,
-      recipient_number: customerNumber || undefined,
-      customer_phone_number: body.phone_number ? String(body.phone_number) : customerNumber || undefined,
-      phone_number: body.phone_number ? String(body.phone_number) : customerNumber || undefined,
-      network_code: networkCode || undefined,
-      product_type: productType,
-      product_id: ["MTN", "AIRTELTIGO", "AIRTEL-TIGO"].includes(networkCode) && body.package_code ? String(body.package_code) : undefined,
-      bundle_id: ["TELECEL", "VODAFONE"].includes(networkCode) && body.package_code ? String(body.package_code) : undefined,
-      meter_number: body.meter_number ? String(body.meter_number) : undefined,
-      meter_id: body.meter_id ? String(body.meter_id) : undefined,
-      account_number: body.account_number ? String(body.account_number) : undefined,
-      package_code: body.package_code ? String(body.package_code) : undefined,
-      bill_type: productType === "ecg" ? "ECG" : productType === "water" ? "GWCL" : productType.toUpperCase(),
-      sender_name: String(body.sender_name || "DataPlug Customer"),
-      address: String(body.address || "Ghana"),
-      description: String(body.description || `DataPlug ${productType} purchase`),
-      transaction_id,
-      callback_url: callbackUrl(),
-    };
-    const endpoint = operation === "data"
-      ? dataEndpoint(networkCode)
-      : productType === "airtime"
-        ? airtimeEndpoint(networkCode)
-        : serviceEndpoint(productType);
-    const result = await korbaRequest(endpoint, providerPayload) as { success?: boolean; error_code?: number; error_message?: string; [key: string]: unknown };
-
-    if (result.success === false) {
-      await refundWallet(debit);
-      return json({ ...result, user_message: userMessage(result.error_code), wallet_refunded: Boolean(debit) });
-    }
-    const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-    if (body.order_id) {
-      await supabase.from("orders").update({ status: "processing", fulfillment_status: "pending", api_response: JSON.stringify(result), purchase_provider: "korba", purchase_provider_source: transaction_id }).eq("id", body.order_id);
-    }
-    return json({ ...result, transaction_id });
-  } catch (error) {
-    await refundWallet(debit);
-    const errorDetails = error instanceof Error && "details" in error ? (error as Error & { details?: unknown }).details : undefined;
-    console.error("[korba-gateway] failure", JSON.stringify({ request_id: gatewayRequestId, request_body: body, error: error instanceof Error ? error.message : String(error), details: errorDetails, wallet_refunded: Boolean(debit) }));
-    return json({
-      error: error instanceof Error ? error.message : "Korba request failed",
-      provider_message: errorDetails && typeof errorDetails === "object" && "parsed_body" in errorDetails
-        ? ((errorDetails as { parsed_body?: { detail?: string; error_message?: string; message?: string } }).parsed_body?.detail ||
-          (errorDetails as { parsed_body?: { error_message?: string } }).parsed_body?.error_message ||
-          (errorDetails as { parsed_body?: { message?: string } }).parsed_body?.message)
-        : undefined,
-      request_id: gatewayRequestId,
-      korba_details: errorDetails,
-      wallet_refunded: Boolean(debit),
-    }, 502);
-  }
+    const payload: JsonObject = { amount: amount.toFixed(2), customer_number: customerNumber || undefined, transaction_id, callback_url: callbackUrl(), description: String(body.description || `DataPlug ${productType} purchase`), payer_name: body.payer_name ? String(body.payer_name) : undefined };
+    let endpoint: string;
+    if (operation === "data") { endpoint = dataEndpoint(network); if (["MTN", "AIRTELTIGO"].includes(network)) payload.product_id = String(body.product_id || body.package_code || ""); else payload.bundle_id = String(body.bundle_id || body.package_code || ""); if (!payload.product_id && !payload.bundle_id) return json({ success: false, error: "A bundle identifier is required" }, 400); }
+    else if (productType === "airtime") { endpoint = "/topup/"; payload.network_code = airtimeNetworkCode(network); }
+    else if (productType === "ecg" || productType === "electricity") { endpoint = "/ecg_direct_pay_bill/"; payload.meter_id = String(body.meter_id); payload.meter_number = String(body.meter_number); }
+    else { endpoint = "/utilities_pay_bill/"; payload.bill_type = utilityBillType(productType); payload.sender_name = String(body.sender_name || "DataPlug Customer"); payload.address = String(body.address || "Ghana"); payload.customer_phone_number = body.phone_number ? String(body.phone_number) : undefined; }
+    const result = await korbaRequest<JsonObject>(endpoint, payload);
+    if (result.success === false) { await refundWallet(debit); return json({ ...result, user_message: userMessage(Number(result.error_code)), wallet_refunded: Boolean(debit) }); }
+    return json({ ...result, success: result.success !== false, transaction_id, wallet: debit ? { balance: debit.balance } : undefined });
+  } catch (error) { await refundWallet(debit); const details = error instanceof Error && "details" in error ? (error as Error & { details?: unknown }).details : undefined; return json({ success: false, error: error instanceof Error ? error.message : "Korba request failed", provider_message: providerError((details as JsonObject | undefined)?.parsed_body), wallet_refunded: Boolean(debit) }, 502); }
 });
