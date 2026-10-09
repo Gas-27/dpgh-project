@@ -332,7 +332,8 @@ export default function HubtelPurchasePanel({
     setBillAccountName(null);
     setBillAccountDetail(null);
     setBillSessionId(null);
-    if (!supportsAccountLookup || trimmedAccount.replace(/\D/g, "").length < 5) {
+    const lookupNumber = isEcg && trimmedAccount.length < 5 ? trimmedEcgPhone : trimmedAccount;
+    if (!supportsAccountLookup || lookupNumber.replace(/\D/g, "").length < 5) {
       setBillLookupLoading(false);
       return;
     }
@@ -340,7 +341,8 @@ export default function HubtelPurchasePanel({
     const handle = setTimeout(() => {
       lookupKorbaUtility({
         productType: billService === "ecg" ? "ecg" : billService,
-        meterNumber: isEcg ? trimmedAccount : undefined,
+        meterNumber: isEcg && trimmedAccount.length >= 5 ? trimmedAccount : undefined,
+        phoneNumber: isEcg ? trimmedEcgPhone : undefined,
         accountNumber: !isEcg ? trimmedAccount : undefined,
         decoderNumber: !isEcg ? trimmedAccount : undefined,
       })

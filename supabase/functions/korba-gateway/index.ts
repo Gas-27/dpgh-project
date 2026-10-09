@@ -75,10 +75,10 @@ Deno.serve(async (request) => {
       return json({ success: result.success !== false, network_code: network, bundles, raw: result });
     }
     if (operation === "utility_lookup") {
-      const productType = String(body.product_type || "").trim().toLowerCase(); const customerNumber = String(body.customer_number || body.meter_number || body.account_number || body.decoder_number || "").replace(/\s+/g, "");
+      const productType = String(body.product_type || "").trim().toLowerCase(); const meterNumber = String(body.meter_number || "").replace(/\s+/g, ""); const phoneNumber = String(body.phone_number || "").replace(/\s+/g, ""); const customerNumber = String(body.customer_number || meterNumber || phoneNumber || body.account_number || body.decoder_number || "").replace(/\s+/g, "");
       if (!utilityTypes.has(productType) || !customerNumber) return json({ success: false, error: "A supported utility type and customer number are required" }, 400);
       const transaction_id = transactionId();
-      const requestPayload = { customer_number: customerNumber, bill_type: utilityBillType(productType), transaction_id };
+      const requestPayload = { customer_number: customerNumber, meter_number: meterNumber || undefined, phone_number: phoneNumber || undefined, bill_type: utilityBillType(productType), transaction_id };
       console.log("[korba-gateway] utility lookup request", JSON.stringify({ operation, product_type: productType, path: "/utilities_validate_user/", payload: requestPayload }));
       const result = await korbaRequest<JsonObject>("/utilities_validate_user/", requestPayload);
       const normalized = {

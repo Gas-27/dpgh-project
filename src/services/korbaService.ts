@@ -42,11 +42,12 @@ export async function registerKorbaMeter(input: { alias: string; meterNumber: st
 export async function lookupKorbaUtility(input: {
   productType: "ecg" | "electricity" | "water" | "gotv" | "dstv" | "startimes";
   meterNumber?: string;
+  phoneNumber?: string;
   accountNumber?: string;
   decoderNumber?: string;
 }) {
   const { data, error } = await supabase.functions.invoke("korba-gateway", {
-    body: { operation: "utility_lookup", product_type: input.productType, meter_number: input.meterNumber, account_number: input.accountNumber, decoder_number: input.decoderNumber },
+    body: { operation: "utility_lookup", product_type: input.productType, meter_number: input.meterNumber, phone_number: input.phoneNumber, account_number: input.accountNumber, decoder_number: input.decoderNumber },
   });
   console.log("[v0] Korba utility lookup response", { data, error: error ? { message: error.message, status: error.context?.status } : null });
   if (error) {
