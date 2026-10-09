@@ -354,7 +354,7 @@ const resultRoot = (record.results || record.result || record) as Record<string,
   const dataValue = resultRoot.data || record.data || resultRoot;
   const data = (Array.isArray(dataValue) ? dataValue[0] : dataValue) as Record<string, unknown>;
   const name = record.customer_name ?? record.customerName ?? data.customer_name ?? data.customerName ?? data.nameOnMeter ?? data.account_name ?? data.accountName ?? data.registered_name ?? data.name;
-          const detail = data.display ?? data.description ?? data.package_name ?? data.bouquet ?? data.account_type ?? data.service_name;
+          const detail = record.detail ?? data.display ?? data.description ?? data.package_name ?? data.bouquet ?? data.account_type ?? data.service_name;
   const meterId = record.meter_id ?? record.meterId ?? data.meter_id ?? data.meterId ?? data.customer_id ?? data.customerId ?? data.account_id ?? data.accountId ?? data.id;
   const physicalMeter = record.meter_number ?? record.meterNumber ?? data.meter_number ?? data.meterNumber;
   const meterCategoryValue = record.meter_category ?? record.meterCategory ?? data.meter_category ?? data.meterCategory;
@@ -531,7 +531,9 @@ const resultRoot = (record.results || record.result || record) as Record<string,
                   ? "gotv"
                   : billService === "dstv"
                     ? "dstv"
-                    : "ecg",
+                    : billService === "ghana_water"
+                      ? "water"
+                      : "ecg",
           accountNumber: customer,
           customerNumber: customer,
           phoneNumber: phone || undefined,

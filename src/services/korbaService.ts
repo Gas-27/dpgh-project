@@ -1,7 +1,7 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export type KorbaPurchaseRequest = {
-  productType: "airtime" | "data" | "ecg" | "startimes" | "gotv" | "dstv";
+  productType: "airtime" | "data" | "ecg" | "water" | "startimes" | "gotv" | "dstv";
   amount: number;
   customerNumber: string;
   networkCode: string;
@@ -41,7 +41,7 @@ export async function registerKorbaMeter(input: { alias: string; meterNumber: st
 }
 
 export async function lookupKorbaUtility(input: {
-  productType: "ecg" | "electricity" | "water" | "gotv" | "dstv" | "startimes";
+  productType: "ecg" | "electricity" | "water" | "ghana_water" | "gotv" | "dstv" | "startimes";
   meterNumber?: string;
   phoneNumber?: string;
   accountNumber?: string;
