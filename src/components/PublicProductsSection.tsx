@@ -70,7 +70,6 @@ export default function PublicProductsSection({
     setLoading(true);
 
     const loadProducts = async () => {
-      const now = new Date().toISOString();
       const fields = "id,title,description,price,image_urls,created_at,store_id,store_kind,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at";
       const queryProducts = (query: any) => effectiveSearch
         ? query.or(`title.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%,description.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%`)
@@ -111,19 +110,19 @@ export default function PublicProductsSection({
       // The shared RPC merges agent, subagent, subsubagent, and admin products
       // in the database, ranks active boosts first, and returns only this page.
       // Later pages are not fetched until the user clicks Next.
-      const [{ data: pageRows, error: pageError }, { data: countRows, error: countError }] = await Promise.all([
-        supabase.rpc("marketplace_products_page", { p_search: effectiveSearch, p_page: page, p_page_size: PAGE_SIZE }),
-        supabase.rpc("marketplace_products_page", { p_search: effectiveSearch, p_page: 0, p_page_size: 1 }),
-      ]);
+      const { data: pageRows, error: pageError } = await supabase.rpc("marketplace_products_page", {
+        p_search: effectiveSearch,
+        p_page: page,
+        p_page_size: PAGE_SIZE,
+      });
       if (pageError) throw pageError;
-      if (countError) throw countError;
       const normalizeRpcProduct = (product: any): PublicProduct => ({
         ...product,
         image_urls: Array.isArray(product.image_urls) ? product.image_urls : [],
         store_kind: product.store_kind || "agent",
       });
       const products = await addSellerContacts((pageRows ?? []).map(normalizeRpcProduct));
-      const total = Number((countRows?.[0] as any)?.total_count ?? 0);
+      const total = Number((pageRows?.[0] as any)?.total_count ?? 0);
       if (!cancelled) {
         setGlobalProducts(products);
         setGlobalTotal(total);
@@ -139,8 +138,17 @@ export default function PublicProductsSection({
   const totalProducts = catalog === "store" ? storeTotal : globalTotal;
   const pageCount = Math.ceil(totalProducts / PAGE_SIZE);
   const sellerPhone = selected?.seller_phone || supportPhone;
+  const productImage = selected?.image_urls?.[0];
+  const shareableImage = productImage && /^https?:\/\//i.test(productImage) ? productImage : undefined;
+  const sellerMessage = selected
+    ? [
+        `Hello, I would like to buy ${selected.title} for GHS ${Number(selected.price || 0).toFixed(2)}.`,
+        `Details: ${selected.description || "No description provided"}`,
+        shareableImage ? `Product image: ${shareableImage}` : "Product image: available in the product listing",
+      ].join("\\n")
+    : "";
   const buyLink = sellerPhone
-    ? `https://wa.me/${phoneDigits(sellerPhone)}?text=${encodeURIComponent(`Hello, I would like to buy ${selected?.title ?? "this product"} for GHS ${Number(selected?.price || 0).toFixed(2)}. Description: ${selected?.description || "No description provided"}. Product image: ${selected?.image_urls?.[0] || "No image"}`)}`
+    ? `https://wa.me/${phoneDigits(sellerPhone)}?text=${encodeURIComponent(sellerMessage)}`
     : undefined;
 
   return (
