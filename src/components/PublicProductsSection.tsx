@@ -31,8 +31,11 @@ type PublicProduct = {
 const PAGE_SIZE = 10;
 
 function phoneDigits(value?: string | null) {
-  return (value ?? "").replace(/\D/g, "");
-}
+  const digits = (value ?? "").replace(/\D/g, "");
+  if (digits.startsWith("233")) return digits;
+  if (digits.startsWith("0")) return `233${digits.slice(1)}`;
+  return digits;
+} 
 
 export default function PublicProductsSection({
   supportPhone,
@@ -105,32 +108,27 @@ export default function PublicProductsSection({
         return;
       }
 
-      const base = () => queryProducts(supabase.from("store_products").select(fields, { count: "exact" }).eq("status", "active").eq("available", true));
-      const boostFilter = `and(boost_global.eq.true,boost_global_expires_at.gt.${now}),and(boost_sitewide.eq.true,boost_sitewide_expires_at.gt.${now})`;
-      const boostedIdsResult = await base().or(boostFilter).select("id");
-      const boostedIds = (boostedIdsResult.data ?? []).map((product: any) => product.id);
-      const boostedCount = boostedIds.length;
-      const regularBase = () => {
-        const query = base();
-        return boostedIds.length
-          ? query.not("id", "in", `(${boostedIds.join(",")})`)
-          : query;
-      };
-      const start = page * PAGE_SIZE;
-      const boostedTake = Math.max(0, Math.min(PAGE_SIZE, boostedCount - start));
-      const regularTake = PAGE_SIZE - boostedTake;
-      const boostedPage = boostedTake
-        ? await base().or(boostFilter).order("created_at", { ascending: false }).range(start, start + boostedTake - 1)
-        : { data: [] as PublicProduct[] };
-      const regularOffset = Math.max(0, start - boostedCount);
-      const regularPage = regularTake
-        ? await regularBase().order("created_at", { ascending: false }).range(regularOffset, regularOffset + regularTake - 1)
-        : { data: [] as PublicProduct[] };
-      const regularCountResult = await regularBase().select("id", { count: "exact", head: true });
+      // The All Products catalog combines products posted by agents, subagents,
+      // subsubagents, and admins. Fetch both public sources before paginating so
+      // every source participates in the same ten-item catalog.
+      const storeQuery = queryProducts(supabase.from("store_products").select(fields).eq("status", "active").eq("available", true));
+      const adminQuery = effectiveSearch
+        ? supabase.from("public_store_products").select("id,title,description,price,image_urls,created_at").eq("active", true).or(`title.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%,description.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%`)
+        : supabase.from("public_store_products").select("id,title,description,price,image_urls,created_at").eq("active", true);
+      const [{ data: storeRows }, { data: adminRows }] = await Promise.all([storeQuery, adminQuery]);
+      const allProducts = [
+        ...((storeRows ?? []) as PublicProduct[]),
+        ...((adminRows ?? []) as PublicProduct[]).map((product) => ({ ...product, store_kind: "admin" })),
+      ].sort((left, right) => {
+        const leftBoosted = Boolean((left.boost_global && left.boost_global_expires_at && new Date(left.boost_global_expires_at) > new Date(now)) || (left.boost_sitewide && left.boost_sitewide_expires_at && new Date(left.boost_sitewide_expires_at) > new Date(now)));
+        const rightBoosted = Boolean((right.boost_global && right.boost_global_expires_at && new Date(right.boost_global_expires_at) > new Date(now)) || (right.boost_sitewide && right.boost_sitewide_expires_at && new Date(right.boost_sitewide_expires_at) > new Date(now)));
+        if (leftBoosted !== rightBoosted) return leftBoosted ? -1 : 1;
+        return new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime();
+      });
+      const products = await addSellerContacts(allProducts.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE));
       if (!cancelled) {
-        const products = await addSellerContacts([...((boostedPage.data ?? []) as PublicProduct[]), ...((regularPage.data ?? []) as PublicProduct[])] as PublicProduct[]);
         setGlobalProducts(products);
-        setGlobalTotal(boostedCount + (regularCountResult.count ?? 0));
+        setGlobalTotal(allProducts.length);
         setLoading(false);
       }
     };
@@ -232,13 +230,9 @@ export default function PublicProductsSection({
       </Card>
 
       <Dialog open={!!selected} onOpenChange={(open) => !open && setSelected(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
           {selected && (
             <>
-              <DialogHeader>
-                <DialogTitle>{selected.title}</DialogTitle>
-                <DialogDescription>{selected.description}</DialogDescription>
-              </DialogHeader>
               <div className="space-y-4">
                 <div className="relative overflow-hidden rounded-lg bg-muted">
                   {selected.image_urls?.[image] ? (
@@ -253,6 +247,10 @@ export default function PublicProductsSection({
                     </div>
                   )}
                 </div>
+                <DialogHeader>
+                  <DialogTitle>{selected.title}</DialogTitle>
+                  <DialogDescription>{selected.description}</DialogDescription>
+                </DialogHeader>
                 <div className="rounded-lg border bg-muted/40 p-3">
                   <p className="text-lg font-bold text-primary">GHS {Number(selected.price).toFixed(2)}</p>
                   {sellerPhone && <p className="mt-1 text-sm text-muted-foreground">Seller contact: {sellerPhone}</p>}

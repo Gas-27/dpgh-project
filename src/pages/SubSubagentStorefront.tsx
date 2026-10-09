@@ -500,7 +500,7 @@ export function SubSubagentStorefront() {
 
   // Sub-Subagent Registration
   // ── AFA Packages ──
-  const [activeSection, setActiveSection] = useState<"data" | "afa" | "sms" | "services" | "products" | "social-boost">("data");
+  const [activeSection, setActiveSection] = useState<"data" | "vouchers" | "afa" | "sms" | "services" | "products" | "social-boost">("data");
   useEffect(() => {
     const configured = (store?.theme_config as any)?.default_section;
     if (["data", "afa", "sms", "services", "products"].includes(configured)) setActiveSection(configured as typeof activeSection);
@@ -1093,6 +1093,7 @@ const searchOrders = useCallback(async (input?: string) => {
   {activeSection === "social-boost" && <SocialBoostPurchasePanel walletBalance={0} ownerType="subsubagent" storeId={store?.id} checkoutMode="paystack" />}
   {activeSection === "products" && <PublicProductsSection storeId={store?.id} storeKind="subsubagent" />}
   {activeSection === "services" && <HubtelPurchasePanel mode="services" />}
+  {activeSection === "vouchers" && <HubtelPurchasePanel mode="instant" />}
 {activeSection === "data" && <>
   <TrackOrderDropdown source="subsubagent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} />
   <SpinToWinCard target="subsubagent" />
