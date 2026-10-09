@@ -1,13 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  toHubtelBillService,
-  verifyHubtelMsisdn,
-  getHubtelBillCatalog,
-  type HubtelService,
-} from "@/services/hubtelService";
-import { getKorbaDataBundles, purchaseWithKorba, registerKorbaMeter } from "@/services/korbaService";
+import { toHubtelBillService, verifyHubtelMsisdn } from "@/services/hubtelService";
+import { getKorbaDataBundles, lookupKorbaUtility, purchaseWithKorba, registerKorbaMeter } from "@/services/korbaService";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -201,6 +196,7 @@ export default function HubtelPurchasePanel({
   const [meterCategory, setMeterCategory] = useState<"PREPAID" | "POSTPAID">("PREPAID");
   const [registeredMeterId, setRegisteredMeterId] = useState("");
   const [meterRegistrationLoading, setMeterRegistrationLoading] = useState(false);
+  const [meterRegistrationOpen, setMeterRegistrationOpen] = useState(false);
 
   const normalizedPhone = phone.replace(/\D/g, "");
   const detectedNetwork = normalizedPhone.startsWith("0")
@@ -342,29 +338,24 @@ export default function HubtelPurchasePanel({
     }
     setBillLookupLoading(true);
     const handle = setTimeout(() => {
-      getHubtelBillCatalog({
-        service: billService as HubtelService,
-        accountNumber: trimmedAccount,
-        phoneNumber: isEcg || billService === "ghana_water" ? trimmedEcgPhone : undefined,
+      lookupKorbaUtility({
+        productType: billService === "ecg" ? "ecg" : billService,
+        meterNumber: isEcg ? trimmedAccount : undefined,
+        accountNumber: !isEcg ? trimmedAccount : undefined,
+        decoderNumber: !isEcg ? trimmedAccount : undefined,
       })
         .then((response) => {
           if (cancelled) return;
-          const data = response.data as {
-            Name?: string | null;
-            Display?: string | null;
-            Bouquet?: string | null;
-            SessionId?: string | null;
-            sessionId?: string | null;
-            Data?: Array<{ Display?: string; Value?: string }>;
-          } | undefined;
-          const first = data?.Data?.[0];
-          setBillAccountName(data?.Name || first?.Display || null);
-          setBillAccountDetail(data?.Bouquet || data?.Display || null);
-          const lookupRecord = response as Record<string, unknown>;
-          const lookupData = (lookupRecord.data || {}) as Record<string, unknown>;
-          const meterId = lookupRecord.meter_id || lookupData.meter_id || lookupData.id || lookupData.meterId;
+          const record = response as Record<string, unknown>;
+          const data = (record.data || record.result || record) as Record<string, unknown>;
+          const name = data.name ?? data.customer_name ?? data.customerName ?? data.account_name ?? data.accountName ?? data.registered_name;
+          const detail = data.display ?? data.description ?? data.package_name ?? data.bouquet ?? data.account_type;
+          const meterId = record.meter_id ?? data.meter_id ?? data.meterId ?? data.id;
+          const sessionId = record.session_id ?? data.session_id ?? data.sessionId ?? data.token;
+          setBillAccountName(name ? String(name) : null);
+          setBillAccountDetail(detail ? String(detail) : null);
           if (meterId) setRegisteredMeterId(String(meterId));
-          setBillSessionId(data?.SessionId || data?.sessionId || first?.Value || null);
+          setBillSessionId(sessionId ? String(sessionId) : "verified");
         })
         .catch(() => {
           if (!cancelled) {
@@ -867,14 +858,48 @@ The registered name could not be confirmed. You can still
             </div>
           </div>
           {isEcg && (
-            <div className="grid gap-4 rounded-xl border border-primary/20 bg-primary/5 p-4">
-              <p className="text-sm font-semibold">Register ECG meter</p>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div className="grid gap-2"><Label htmlFor="ecg-meter-name">Meter name</Label><Input id="ecg-meter-name" value={meterName} onChange={(event) => setMeterName(event.target.value)} placeholder="Home meter" /></div>
-                <div className="grid gap-2"><Label htmlFor="ecg-meter-category">Meter category</Label><select id="ecg-meter-category" className="h-10 rounded-md border bg-background px-3 text-sm" value={meterCategory} onChange={(event) => setMeterCategory(event.target.value as "PREPAID" | "POSTPAID")}><option value="PREPAID">Prepaid</option><option value="POSTPAID">Postpaid</option></select></div>
-              </div>
-              <Button type="button" variant="outline" onClick={registerMeter} disabled={meterRegistrationLoading}>{meterRegistrationLoading ? "Registering meter…" : "Register meter"}</Button>
-              {registeredMeterId && <p className="text-xs text-primary">Meter registered and ready for payment.</p>}
+            <div className="rounded-xl border border-primary/20 bg-primary/5">
+              <button
+                type="button"
+                aria-expanded={meterRegistrationOpen}
+                onClick={() => setMeterRegistrationOpen((open) => !open)}
+                className="flex w-full items-center justify-between gap-3 p-4 text-left"
+              >
+                <span>
+                  <span className="block text-sm font-semibold">Register ECG meter</span>
+                  <span className="mt-1 block text-xs text-muted-foreground">Tap to add a meter for future payments.</span>
+                </span>
+                <span aria-hidden="true" className="text-lg text-primary">{meterRegistrationOpen ? "−" : "+"}</span>
+              </button>
+              {meterRegistrationOpen && (
+                <div className="grid gap-4 border-t border-primary/20 p-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="ecg-meter-name">Meter name or alias</Label>
+                    <Input id="ecg-meter-name" value={meterName} onChange={(event) => setMeterName(event.target.value)} placeholder="Home meter" />
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                      <Label htmlFor="ecg-physical-meter-number">Physical meter number</Label>
+                      <Input id="ecg-physical-meter-number" inputMode="numeric" value={account} onChange={(event) => setAccount(event.target.value)} placeholder="Enter meter number" />
+                    </div>
+                    <div className="grid gap-2">
+                      <Label htmlFor="ecg-meter-category">Meter category</Label>
+                      <select id="ecg-meter-category" className="h-10 rounded-md border bg-background px-3 text-sm" value={meterCategory} onChange={(event) => setMeterCategory(event.target.value as "PREPAID" | "POSTPAID")}>
+                        <option value="PREPAID">Prepaid</option>
+                        <option value="POSTPAID">Postpaid</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="ecg-phone-number">ECG phone number</Label>
+                    <Input id="ecg-phone-number" inputMode="tel" value={phone} onChange={(event) => setPhone(event.target.value)} placeholder="024 000 0000" />
+                  </div>
+                  <Button type="button" variant="outline" onClick={registerMeter} disabled={meterRegistrationLoading}>
+                    {meterRegistrationLoading ? "Registering meter…" : "Register meter"}
+                  </Button>
+                  {registeredMeterId && <p className="text-xs text-primary">Meter registered and ready for payment.</p>}
+                </div>
+              )}
             </div>
           )}
           {isEcg && (
