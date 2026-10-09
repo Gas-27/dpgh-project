@@ -108,27 +108,25 @@ export default function PublicProductsSection({
         return;
       }
 
-      // The All Products catalog combines products posted by agents, subagents,
-      // subsubagents, and admins. Fetch both public sources before paginating so
-      // every source participates in the same ten-item catalog.
-      const storeQuery = queryProducts(supabase.from("store_products").select(fields).eq("status", "active").eq("available", true));
-      const adminQuery = effectiveSearch
-        ? supabase.from("public_store_products").select("id,title,description,price,image_urls,created_at").eq("active", true).or(`title.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%,description.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%`)
-        : supabase.from("public_store_products").select("id,title,description,price,image_urls,created_at").eq("active", true);
-      const [{ data: storeRows }, { data: adminRows }] = await Promise.all([storeQuery, adminQuery]);
-      const allProducts = [
-        ...((storeRows ?? []) as PublicProduct[]),
-        ...((adminRows ?? []) as PublicProduct[]).map((product) => ({ ...product, store_kind: "admin" })),
-      ].sort((left, right) => {
-        const leftBoosted = Boolean((left.boost_global && left.boost_global_expires_at && new Date(left.boost_global_expires_at) > new Date(now)) || (left.boost_sitewide && left.boost_sitewide_expires_at && new Date(left.boost_sitewide_expires_at) > new Date(now)));
-        const rightBoosted = Boolean((right.boost_global && right.boost_global_expires_at && new Date(right.boost_global_expires_at) > new Date(now)) || (right.boost_sitewide && right.boost_sitewide_expires_at && new Date(right.boost_sitewide_expires_at) > new Date(now)));
-        if (leftBoosted !== rightBoosted) return leftBoosted ? -1 : 1;
-        return new Date(right.created_at || 0).getTime() - new Date(left.created_at || 0).getTime();
+      // The shared RPC merges agent, subagent, subsubagent, and admin products
+      // in the database, ranks active boosts first, and returns only this page.
+      // Later pages are not fetched until the user clicks Next.
+      const [{ data: pageRows, error: pageError }, { data: countRows, error: countError }] = await Promise.all([
+        supabase.rpc("marketplace_products_page", { p_search: effectiveSearch, p_page: page, p_page_size: PAGE_SIZE }),
+        supabase.rpc("marketplace_products_page", { p_search: effectiveSearch, p_page: 0, p_page_size: 1 }),
+      ]);
+      if (pageError) throw pageError;
+      if (countError) throw countError;
+      const normalizeRpcProduct = (product: any): PublicProduct => ({
+        ...product,
+        image_urls: Array.isArray(product.image_urls) ? product.image_urls : [],
+        store_kind: product.store_kind || "agent",
       });
-      const products = await addSellerContacts(allProducts.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE));
+      const products = await addSellerContacts((pageRows ?? []).map(normalizeRpcProduct));
+      const total = Number((countRows?.[0] as any)?.total_count ?? 0);
       if (!cancelled) {
         setGlobalProducts(products);
-        setGlobalTotal(allProducts.length);
+        setGlobalTotal(total);
         setLoading(false);
       }
     };
