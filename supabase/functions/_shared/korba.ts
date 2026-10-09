@@ -5,7 +5,7 @@ export type KorbaPayload = Record<string, string | number | boolean | null | und
 
 export function korbaBaseUrl() {
   const environment = String(Deno.env.get("KORBA_ENV") || "sandbox").trim().toLowerCase();
-  return environment === "production" || environment === "live" ? PRODUCTION_BASE_URL : SANDBOX_BASE_URL;
+  return ["production", "prod", "live", "live_production"].includes(environment) ? PRODUCTION_BASE_URL : SANDBOX_BASE_URL;
 }
 
 export function callbackUrl() {

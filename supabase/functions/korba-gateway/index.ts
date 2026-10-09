@@ -68,7 +68,7 @@ Deno.serve(async (request) => {
       const transaction_id = transactionId();
       const requestPayload = productType === "ecg"
         ? { phone_number: phoneNumber || undefined, account_number: String(body.account_number || meterNumber).replace(/\s+/g, "") || undefined }
-        : { customer_number: customerNumber, meter_number: meterNumber || undefined, phone_number: phoneNumber || undefined, bill_type: utilityBillType(productType), transaction_id };
+        : { customer_number: customerNumber, account_number: String(body.account_number || customerNumber).replace(/\s+/g, ""), decoder_number: String(body.decoder_number || customerNumber).replace(/\s+/g, ""), meter_number: meterNumber || undefined, phone_number: phoneNumber || undefined, bill_type: utilityBillType(productType), transaction_id };
       const lookupPath = productType === "ecg" ? "/ecg_direct_meter_detail/" : "/utilities_validate_user/";
       const result = await korbaRequest<JsonObject>(lookupPath, requestPayload);
       return json({ ...result, success: result.success !== false, customer_number: customerNumber });
