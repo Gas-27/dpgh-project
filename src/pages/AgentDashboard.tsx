@@ -2373,7 +2373,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     });
   };
 
-  // ─── GUARDS ──────────────────────────────────────────────────��──────────────
+  // ─── GUARDS ──────────────���───────────────────────────────────��──────────────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3"><Zap className="h-10 w-10 text-primary animate-pulse" /><p className="text-muted-foreground font-display">Loading dashboard...</p></div>
@@ -4001,7 +4001,7 @@ handleMobileNumberChange(digits);
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">All API requests require your API key in the Authorization header:</p>
                 <div className="bg-muted p-4 rounded-lg border border-border font-mono text-sm space-y-2">
-                  <div>Authorization: Bearer pk_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</div>
+                  <div>Authorization: Bearer YOUR_API_KEYxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</div>
                 </div>
                 <p className="text-xs text-muted-foreground">Your API key can be found in the <span className="font-semibold">API Key</span> tab above.</p>
               </CardContent>
@@ -4093,7 +4093,7 @@ handleMobileNumberChange(digits);
                     <p className="text-xs text-muted-foreground mb-2">Example Request:</p>
                     <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
 {`curl -X POST "https://api.dataplug.store/functions/v1/purchase" \\
-  -H "Authorization: Bearer pk_live_xxx" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "network": "mtn",
@@ -4131,7 +4131,7 @@ handleMobileNumberChange(digits);
                     <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
                     <span>/get-orders</span>
                   </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-2">Retrieve all orders for the authenticated API user.</p>
+                  <p className="text-sm text-muted-foreground mt-2">Returns the orders placed by the authenticated API user, newest first. API orders are paid from the API wallet; payment_method is always api_wallet.</p>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
@@ -4139,7 +4139,7 @@ handleMobileNumberChange(digits);
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
                       <li>��� <span className="font-mono">limit</span> (integer) - Orders to return (default: 50)</li>
                       <li>• <span className="font-mono">offset</span> (integer) - Orders to skip (default: 0)</li>
-                      <li>• <span className="font-mono">status</span> - Filter by status (pending, processing, completed, failed, delivered)</li>
+                      <li>• <span className="font-mono">status</span> - Filter by order_status: pending, processing, waiting, delivered, completed, failed, refunded</li>
                       <li>• <span className="font-mono">network</span> - Filter by network (mtn, mtn_express, telecel, airteltigo)</li>
                     </ul>
                   </div>
@@ -4148,15 +4148,15 @@ handleMobileNumberChange(digits);
                     <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
 {`# Get all orders (default limit 50)
 curl -X GET "https://api.dataplug.store/functions/v1/get-orders" \\
-  -H "Authorization: Bearer pk_live_xxx"
+  -H "Authorization: Bearer YOUR_API_KEY"
 
 # Get orders filtered by status
 curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed" \\
-  -H "Authorization: Bearer pk_live_xxx"
+  -H "Authorization: Bearer YOUR_API_KEY"
 
 # Get orders with pagination and filters
 curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed&network=mtn&limit=10" \\
-  -H "Authorization: Bearer pk_live_xxx"`}
+  -H "Authorization: Bearer YOUR_API_KEY"`}
                     </pre>
                   </div>
                   <div>
@@ -4209,7 +4209,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                     <p className="text-xs text-muted-foreground mb-2">Example Request:</p>
                     <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
 {`curl -X GET "https://api.dataplug.store/functions/v1/track-order?reference=API_1782860161668" \\
-  -H "Authorization: Bearer pk_live_xxx"`}
+  -H "Authorization: Bearer YOUR_API_KEY"`}
                     </pre>
                   </div>
                   <div>
@@ -4224,7 +4224,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
     "network": "mtn",
     "size_gb": 2,
     "amount": 7.59,
-    "paystack_status": "completed",
+    "payment_method": "completed",
     "fulfillment_status": "completed",
     "created_at": "2026-07-08T10:00:00.000Z",
     "updated_at": "2026-07-08T10:05:00.000Z"
@@ -4263,7 +4263,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                     <p className="text-xs text-muted-foreground mb-2">Example Request:</p>
                     <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
 {`curl -X POST "https://api.dataplug.store/functions/v1/afa-api-registration" \\
-  -H "Authorization: Bearer pk_live_xxx" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
   -d '{
     "fullName": "John Doe",
@@ -4326,6 +4326,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Order status and polling guidance */}
+              <Card className="border-cyan-500/30 bg-cyan-500/5"><CardHeader><CardTitle className="text-lg">Order statuses and polling</CardTitle></CardHeader><CardContent className="space-y-3 text-sm text-muted-foreground"><p><span className="font-mono">pending</span>: accepted and queued. <span className="font-mono">processing</span>: delivery in progress.</p><p><span className="font-mono">waiting</span>: MTN approval for a new recipient number; this one-time process takes 3–10 days, is automatic, and needs no repeat order.</p><p><span className="font-mono">delivered</span> / <span className="font-mono">completed</span>: delivered and final. <span className="font-mono">failed</span>: could not be completed and final. <span className="font-mono">refunded</span>: refunded and final.</p><p>Poll every 30–60 seconds and stop at a final status. For <span className="font-mono">waiting</span>, poll only every few hours. Use <span className="font-mono">fulfillment_status</span> to check delivery; <span className="font-mono">order_status</span> holds the same value and <span className="font-mono">payment_status</span> is backward compatibility only.</p></CardContent></Card>
 
               {/* Error Codes */}
               <Card>
