@@ -240,7 +240,7 @@ async function utilityLookup(body: JsonObject) {
   const isEcg = product === "ecg";
   const accountNumber = compact(body.account_number) || customerNumber;
   const payload = isEcg
-    ? { phone_number: phoneNumber || undefined, account_number: compact(body.account_number || meterNumber) || undefined }
+    ? { meter_number: meterNumber || customerNumber, phone_number: phoneNumber || undefined }
     : {
         customer_number: customerNumber,
         account_number: accountNumber,
@@ -286,23 +286,18 @@ function buildPayment(ctx: PaymentContext): { endpoint: string; payload: JsonObj
   }
 
   if (product === "ecg") {
-    const meterNumber = String(body.meter_number);
-    const customer = customerNumber || meterNumber;
-    Object.assign(payload, {
-      customer_number: customer,
-      recipient_number: customer,
-      customer_phone_number: phone,
-      phone_number: phone,
-      product_type: product,
-      bill_type: "ECG",
+    // Korba expects customer_number to be the customer's registered mobile
+    // number; the meter is identified only by meter_id / meter_number.
+    const ecgPayload: JsonObject = {
+      customer_number: phone,
+      amount: amount.toFixed(2),
+      transaction_id: transactionId,
       meter_id: String(body.meter_id),
-      meter_number: meterNumber,
-      account_number: String(body.account_number || meterNumber),
-      meter_category: String(body.meter_category || "PREPAID").toUpperCase(),
-      sender_name: String(body.sender_name || "DataPlug Customer"),
-      address: String(body.address || "Ghana"),
-    });
-    return { endpoint: "/ecg_direct_pay_bill/", payload };
+      meter_number: String(body.meter_number),
+      callback_url: callbackUrl(),
+      description: String(body.description || "DataPlug ECG purchase"),
+    };
+    return { endpoint: "/ecg_direct_pay_bill/", payload: ecgPayload };
   }
 
   // TV subscriptions and water bills
@@ -328,6 +323,7 @@ async function pay(body: JsonObject, operation: string, state: { debit: Debit | 
   if (!isUtility && !/^0[235]\d{8}$/.test(customerNumber)) return json({ success: false, error: "Enter a valid Ghana phone number" }, 400);
   if (operation === "data" && !network) return json({ success: false, error: "Network code is required" }, 400);
   if (product === "ecg" && (!body.meter_id || !body.meter_number)) return json({ success: false, error: "Verify or register the ECG meter before paying" }, 400);
+  if (product === "ecg" && !/^0[235]\d{8}$/.test(compact(body.phone_number))) return json({ success: false, error: "Enter the registered mobile number for this meter" }, 400);
 
   const payment = buildPayment({ body, operation, product, network, amount, customerNumber, transactionId });
   if ("error" in payment) return json({ success: false, error: payment.error }, 400);
