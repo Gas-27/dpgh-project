@@ -15,6 +15,17 @@ function lookupEndpoint(network: string) { if (network === "MTN") return "/get_m
 function airtimeNetworkCode(network: string) { const code = network.trim().toUpperCase(); if (code === "TELECEL" || code === "VODAFONE") return "VOD"; if (code === "AIRTELTIGO") return "AIR"; return code; }
 function utilityBillType(type: string) { return ({ ecg: "ECG", electricity: "ECG", water: "GWCL", gotv: "GOTV", dstv: "DSTV", startimes: "STARTIMES" } as Record<string, string>)[type] || type.toUpperCase(); }
 function nestedValue(value: unknown, key: string): unknown { if (!value || typeof value !== "object") return undefined; return (value as JsonObject)[key]; }
+function findNested(value: unknown, keys: string[], depth = 0): unknown {
+  if (!value || typeof value !== "object" || depth > 4) return undefined;
+  if (Array.isArray(value)) {
+    for (const item of value) { const found = findNested(item, keys, depth + 1); if (found !== undefined && found !== null && found !== "") return found; }
+    return undefined;
+  }
+  const object = value as JsonObject;
+  for (const key of keys) if (object[key] !== undefined && object[key] !== null && object[key] !== "") return object[key];
+  for (const child of Object.values(object)) { const found = findNested(child, keys, depth + 1); if (found !== undefined && found !== null && found !== "") return found; }
+  return undefined;
+}
 function normalizeBundles(result: unknown) {
   const root = result as JsonObject;
   const candidate = root.bundles ?? root.results ?? root.data ?? result;
@@ -51,7 +62,11 @@ Deno.serve(async (request) => {
     if (operation === "add_meter") {
       const meterNumber = String(body.meter_number || "").trim(), phoneNumber = String(body.phone_number || "").replace(/\s+/g, ""), alias = String(body.alias || body.meter_name || "").trim(), meterCategory = String(body.meter_category || "").trim().toUpperCase();
       if (!meterNumber || !phoneNumber || !alias || !["PREPAID", "POSTPAID"].includes(meterCategory)) return json({ success: false, error: "meter_number, phone_number, alias, and meter_category (PREPAID or POSTPAID) are required" }, 400);
-      return json(await korbaRequest("/ecg_direct_add_meter/", { alias, meter_number: meterNumber, phone_number: phoneNumber, meter_category: meterCategory, account_number: body.account_number ? String(body.account_number) : undefined }));
+      const meterPayload = { alias, meter_number: meterNumber, phone_number: phoneNumber, meter_category: meterCategory, account_number: body.account_number ? String(body.account_number) : undefined };
+      console.log("[korba-gateway] meter registration request", JSON.stringify({ operation, path: "/ecg_direct_add_meter/", payload: meterPayload }));
+      const meterResponse = await korbaRequest<JsonObject>("/ecg_direct_add_meter/", meterPayload);
+      console.log("[korba-gateway] meter registration exact response", JSON.stringify(meterResponse));
+      return json({ ...meterResponse, meter_id: findNested(meterResponse, ["meter_id", "meterId", "id"]), success: meterResponse.success !== false });
     }
     if (operation === "lookup") {
       const network = normalizeNetworkCode(String(body.network_code || ""));
@@ -62,8 +77,20 @@ Deno.serve(async (request) => {
     if (operation === "utility_lookup") {
       const productType = String(body.product_type || "").trim().toLowerCase(); const customerNumber = String(body.customer_number || body.meter_number || body.account_number || body.decoder_number || "").replace(/\s+/g, "");
       if (!utilityTypes.has(productType) || !customerNumber) return json({ success: false, error: "A supported utility type and customer number are required" }, 400);
-      const result = await korbaRequest<JsonObject>("/utilities_validate_user/", { customer_number: customerNumber, bill_type: utilityBillType(productType), transaction_id: transactionId() });
-      return json({ ...result, success: result.success !== false, customer_number: customerNumber });
+      const transaction_id = transactionId();
+      const requestPayload = { customer_number: customerNumber, bill_type: utilityBillType(productType), transaction_id };
+      console.log("[korba-gateway] utility lookup request", JSON.stringify({ operation, product_type: productType, path: "/utilities_validate_user/", payload: requestPayload }));
+      const result = await korbaRequest<JsonObject>("/utilities_validate_user/", requestPayload);
+      const normalized = {
+        ...result,
+        success: result.success !== false,
+        customer_number: customerNumber,
+        customer_name: findNested(result, ["customer_name", "customerName", "account_name", "accountName", "registered_name", "name"]),
+        meter_id: findNested(result, ["meter_id", "meterId", "customer_id", "customerId", "account_id", "accountId"]),
+        session_id: findNested(result, ["session_id", "sessionId", "token", "reference"]),
+      };
+      console.log("[korba-gateway] utility lookup exact response", JSON.stringify({ product_type: productType, customer_number: customerNumber, response: result, normalized }));
+      return json(normalized);
     }
     if (operation !== "collect" && operation !== "data") return json({ success: false, error: "Unsupported Korba operation" }, 400);
     const productType = String(body.product_type || (operation === "data" ? "data" : "airtime")).trim().toLowerCase(); const network = normalizeNetworkCode(String(body.network_code || "")); const amount = Number(body.amount); const customerNumber = String(body.customer_number || body.phone_number || "").replace(/\s+/g, ""); const transaction_id = String(body.transaction_id || transactionId());

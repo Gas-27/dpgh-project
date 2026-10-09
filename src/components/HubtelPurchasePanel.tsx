@@ -348,10 +348,10 @@ export default function HubtelPurchasePanel({
           if (cancelled) return;
           const record = response as Record<string, unknown>;
           const data = (record.data || record.result || record) as Record<string, unknown>;
-          const name = data.name ?? data.customer_name ?? data.customerName ?? data.account_name ?? data.accountName ?? data.registered_name;
-          const detail = data.display ?? data.description ?? data.package_name ?? data.bouquet ?? data.account_type;
-          const meterId = record.meter_id ?? data.meter_id ?? data.meterId ?? data.id;
-          const sessionId = record.session_id ?? data.session_id ?? data.sessionId ?? data.token;
+          const name = record.customer_name ?? record.customerName ?? data.customer_name ?? data.customerName ?? data.account_name ?? data.accountName ?? data.registered_name ?? data.name;
+          const detail = data.display ?? data.description ?? data.package_name ?? data.bouquet ?? data.account_type ?? data.service_name;
+          const meterId = record.meter_id ?? record.meterId ?? data.meter_id ?? data.meterId ?? data.customer_id ?? data.customerId ?? data.account_id ?? data.accountId ?? data.id;
+          const sessionId = record.session_id ?? record.sessionId ?? data.session_id ?? data.sessionId ?? data.token ?? data.reference;
           setBillAccountName(name ? String(name) : null);
           setBillAccountDetail(detail ? String(detail) : null);
           if (meterId) setRegisteredMeterId(String(meterId));
@@ -527,7 +527,7 @@ export default function HubtelPurchasePanel({
           customerNumber: customer,
           phoneNumber: phone || undefined,
           meterNumber: billService === "ecg" ? customer : undefined,
-          meterId: billService === "ecg" ? registeredMeterId || billAccountDetail || undefined : undefined,
+          meterId: billService === "ecg" ? registeredMeterId || undefined : undefined,
           amount: Number(amount),
           networkCode: billService,
           ...wallet,

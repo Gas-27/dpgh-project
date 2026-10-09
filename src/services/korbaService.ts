@@ -48,7 +48,11 @@ export async function lookupKorbaUtility(input: {
   const { data, error } = await supabase.functions.invoke("korba-gateway", {
     body: { operation: "utility_lookup", product_type: input.productType, meter_number: input.meterNumber, account_number: input.accountNumber, decoder_number: input.decoderNumber },
   });
-  if (error) throw new Error("Korba utility lookup failed. Please check the number and try again.");
+  console.log("[v0] Korba utility lookup response", { data, error: error ? { message: error.message, status: error.context?.status } : null });
+  if (error) {
+    const errorBody = error.context instanceof Response ? await error.context.clone().json().catch(() => null) : null;
+    throw new Error(String(errorBody?.error || errorBody?.error_message || "Korba utility lookup failed. Please check the number and try again."));
+  }
   if (!data?.success) throw new Error(String(data?.error_message || data?.message || "The utility number could not be verified."));
   return data;
 }
