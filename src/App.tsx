@@ -328,9 +328,12 @@ return (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               ) : isAgentSubdomain ? (
-                // 🎯 On any agent subdomain, show the agent storefront
+                // 🎯 On any agent subdomain, keep product pages reachable before the storefront fallback.
                 <Routes>
                   <Route path="/become-agent" element={<BecomeAgent />} />
+                  <Route path="/store/:storeName/product/:productId" element={<ProductDetail />} />
+                  <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
+                  <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
                   <Route path="*" element={<AgentStorefront />} />
                 </Routes>
               ) : (

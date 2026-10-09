@@ -33,8 +33,10 @@ const PAGE_SIZE = 10;
 
 function phoneDigits(value?: string | null) {
   const digits = (value ?? "").replace(/\D/g, "");
-  if (digits.startsWith("233")) return digits;
-  if (digits.startsWith("0")) return `233${digits.slice(1)}`;
+  if (!digits) return "";
+  if (digits.startsWith("233")) return digits.slice(0, 12);
+  if (digits.startsWith("0")) return `233${digits.slice(1, 10)}`;
+  if (digits.length === 9) return `233${digits}`;
   return digits;
 } 
 

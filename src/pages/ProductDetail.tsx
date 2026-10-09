@@ -57,7 +57,8 @@ export default function ProductDetail() {
   if (loading) return <main className="mx-auto max-w-3xl p-6"><p className="text-muted-foreground">Loading product...</p></main>;
   if (!product) return <main className="mx-auto max-w-3xl p-6"><p className="text-muted-foreground">Product not found or no longer available.</p></main>;
 
-  const digits = String(store?.whatsapp_number || store?.support_number || "").replace(/\D/g, "");
+  const rawDigits = String(store?.whatsapp_number || store?.support_number || "").replace(/\D/g, "");
+  const digits = rawDigits.startsWith("233") ? rawDigits.slice(0, 12) : rawDigits.startsWith("0") ? `233${rawDigits.slice(1, 10)}` : rawDigits.length === 9 ? `233${rawDigits}` : rawDigits;
   const productUrl = `${window.location.origin}/marketplace/product/${product.id}/${slugify(product.title)}`;
   const message = encodeURIComponent([
     `Hello, I want to buy ${product.title} for GHS ${Number(product.price).toFixed(2)}.`,
