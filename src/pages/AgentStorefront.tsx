@@ -121,6 +121,12 @@ interface DataPackage {
   size_gb: number;
   price: number;
   size_gb_text?: string;
+  bundle_name?: string | null;
+  package_name?: string | null;
+  name?: string | null;
+  title?: string | null;
+  description?: string | null;
+  details?: string | null;
   active?: boolean;
   is_online?: boolean;
 }
@@ -1435,8 +1441,10 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                         <>
                           <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center w-full">
                             {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />}
-                            <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb}GB</p>
+                            <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
                             <p className="text-sm font-bold uppercase" style={{ color: getNetworkLabelColor(networkFilter) }}>{formatNetworkName(networkFilter)}</p>
+                            {(pkg.bundle_name || pkg.package_name || pkg.name || pkg.title) && <p className="text-sm font-semibold text-white">{pkg.bundle_name || pkg.package_name || pkg.name || pkg.title}</p>}
+                            {(pkg.description || pkg.details) && <p className="max-w-xs text-xs leading-relaxed text-white/70">{pkg.description || pkg.details}</p>}
   {showAgentPrice && <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
   <span>Agent price: <strong className="text-cyan-300">{Number(agentSubagentPrices[pkg.id] ?? pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
   </div>}
