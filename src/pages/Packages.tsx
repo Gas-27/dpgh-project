@@ -1208,35 +1208,16 @@ const Packages = () => {
       });
   }, [authUser, isAgent, hasPendingAgentStore]);
 
-  // Auth state — used to gate purchases
-  const [currentUser, setCurrentUser] = useState<any>(null);
-  const [showLoginRequired, setShowLoginRequired] = useState(false);
-
-  // Keep the purchase gate in the page as well as in the payment flow. This
-  // prevents guests from ever opening a payment dialog from the Packages page.
+  // Package purchases are public. Customers pay through the existing Paystack flow.
   const openPackageCheckout = useCallback((pkg: DataPackage) => {
-  if (!currentUser) {
-  setShowLoginRequired(true);
-  return;
-  }
   if (isAgent && agentStoreIdForPayment) {
     toast({ title: "Buy data from your dashboard", description: "Approved agents must purchase data from the Buy Data tab in the Agent Dashboard." });
     navigate("/agent");
     return;
   }
   setPaymentPkg(pkg);
-  }, [currentUser]);
-
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setCurrentUser(session?.user ?? null);
-    });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_ev, session) => {
-      setCurrentUser(session?.user ?? null);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
+  }, [isAgent, agentStoreIdForPayment, navigate, toast]);
+  
   // Paystack returns guests here after a digital-service payment. Verify the reference
   // server-side and keep the confirmation visible instead of leaving the visitor unsure.
   useEffect(() => {
@@ -1941,25 +1922,6 @@ const searchOrders = async (input?: string) => {
       )}
       <PaymentVerifier />
 
-      {/* Login Required Dialog — shown when a guest clicks Buy Now */}
-      <Dialog open={showLoginRequired} onOpenChange={setShowLoginRequired}>
-        <DialogContent className="max-w-sm text-center">
-          <DialogHeader>
-            <DialogTitle className="font-display text-xl">Sign In Required</DialogTitle>
-            <DialogDescription className="text-sm mt-1">
-              You need to be signed in to purchase data. Please log in or create an account to continue.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex flex-col gap-3 pt-2">
-            <Button variant="hero" className="w-full" onClick={() => { setShowLoginRequired(false); navigate("/login"); }}>
-              Sign In
-            </Button>
-            <Button variant="outline" className="w-full" onClick={() => { setShowLoginRequired(false); navigate("/signup"); }}>
-              Create Account
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       <SpinWheelPopup open={showSpinWheel} onOpenChange={setShowSpinWheel} config={spinConfig} />
       
