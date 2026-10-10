@@ -573,7 +573,7 @@ value={quantity}
                 />
                 <p className="mt-1 text-xs text-blue-100/60">
                   Min {min.toLocaleString()} – Max {max.toLocaleString()}
-                  <span className="ml-2 rounded-full bg-blue-500/20 px-2 py-0.5 text-cyan-200">{price.toFixed(3)}/1K</span>
+                  <span className="ml-2 rounded-full bg-blue-500/20 px-2 py-0.5 text-cyan-200">{price.toLocaleString(undefined, { maximumFractionDigits: 0 })}/1K</span>
                 </p>
               </div>
               <div className="rounded-xl border border-blue-400/60 bg-gradient-to-br from-[#08122b] to-[#0e2352] p-4 text-center sm:w-40">
