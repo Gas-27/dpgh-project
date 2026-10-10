@@ -59,6 +59,7 @@ export default function PublicProductsSection({
   const [catalog, setCatalog] = useState<"store" | "global">("store");
   const [selected, setSelected] = useState<PublicProduct | null>(null);
   const [image, setImage] = useState(0);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [effectiveSearch, setEffectiveSearch] = useState("");
   const [page, setPage] = useState(0);
@@ -248,7 +249,10 @@ export default function PublicProductsSection({
               <div className="space-y-4">
                 <div className="relative overflow-hidden rounded-lg bg-muted">
                   {selected.image_urls?.[image] ? (
-                    <img src={selected.image_urls[image]} alt={`${selected.title} image ${image + 1}`} className="max-h-80 w-full object-contain" />
+                    <button type="button" onClick={() => setExpandedImage(selected.image_urls[image])} className="group block w-full cursor-zoom-in" aria-label={`Enlarge ${selected.title} image`}>
+                      <img src={selected.image_urls[image]} alt={`${selected.title} image ${image + 1}`} className="max-h-[32rem] w-full object-contain transition-transform duration-200 group-hover:scale-[1.02]" />
+                      <span className="absolute bottom-3 right-3 rounded-full bg-background/90 px-3 py-1 text-xs font-medium shadow">Tap to enlarge</span>
+                    </button>
                   ) : (
                     <div className="flex h-48 items-center justify-center text-sm text-muted-foreground">No image</div>
                   )}
@@ -280,6 +284,12 @@ export default function PublicProductsSection({
               </div>
             </>
           )}
+        </DialogContent>
+      </Dialog>
+      <Dialog open={!!expandedImage} onOpenChange={(open) => !open && setExpandedImage(null)}>
+        <DialogContent className="max-w-6xl border-0 bg-background/95 p-2 sm:p-4">
+          <DialogTitle className="sr-only">Enlarged product image</DialogTitle>
+          {expandedImage && <img src={expandedImage} alt="Enlarged product" className="max-h-[85vh] w-full object-contain" />}
         </DialogContent>
       </Dialog>
     </div>

@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "product";
@@ -14,6 +15,7 @@ export default function ProductDetail() {
   const [product, setProduct] = useState<any>(null);
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [expandedImage, setExpandedImage] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,7 +94,20 @@ export default function ProductDetail() {
 
   return <main className="mx-auto max-w-4xl p-4 md:p-8">
     <Card><CardContent className="grid gap-6 p-5 md:grid-cols-2 md:p-8">
-      <div className="grid grid-cols-2 gap-3">{(product.image_urls?.length ? product.image_urls : [null]).map((image: string | null, index: number) => image ? <img key={image} src={image} alt={`${product.title} ${index + 1}`} className="aspect-square w-full rounded-xl object-cover" /> : <div key="empty" className="aspect-square rounded-xl bg-muted" />)}</div>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-1">
+        {(product.image_urls?.length ? product.image_urls : [null]).map((image: string | null, index: number) => image ? (
+          <button key={image} type="button" onClick={() => setExpandedImage(image)} className="group relative overflow-hidden rounded-xl bg-muted text-left" aria-label={`View ${product.title} image ${index + 1} full size`}>
+            <img src={image} alt={`${product.title} ${index + 1}`} className="aspect-[4/3] max-h-[34rem] w-full object-contain transition-transform duration-200 group-hover:scale-[1.02]" />
+            <span className="absolute bottom-3 right-3 rounded-full bg-background/90 px-3 py-1 text-xs font-medium shadow">Tap to enlarge</span>
+          </button>
+        ) : <div key="empty" className="aspect-[4/3] rounded-xl bg-muted" />)}
+      </div>
+      <Dialog open={!!expandedImage} onOpenChange={(open) => !open && setExpandedImage(null)}>
+        <DialogContent className="max-w-6xl border-0 bg-background/95 p-2 sm:p-4">
+          <DialogTitle className="sr-only">{product.title} enlarged image</DialogTitle>
+          {expandedImage && <img src={expandedImage} alt={`${product.title} enlarged`} className="max-h-[85vh] w-full object-contain" />}
+        </DialogContent>
+      </Dialog>
       <div className="flex flex-col justify-center gap-4"><p className="text-sm text-muted-foreground">{store?.store_name}</p><h1 className="text-3xl font-bold text-balance">{product.title}</h1><p className="text-2xl font-semibold text-primary">GHS {Number(product.price).toFixed(2)}</p><p className="whitespace-pre-wrap text-muted-foreground">{product.description}</p>{digits ? <Button asChild><a href={`https://wa.me/${digits}?text=${message}`} target="_blank" rel="noopener noreferrer">Buy on WhatsApp</a></Button> : <p className="text-sm text-muted-foreground">Contact the seller for purchase details.</p>}<Button variant="outline" onClick={() => navigate(-1)}>Back to products</Button></div>
     </CardContent></Card>
   </main>;
