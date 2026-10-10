@@ -107,8 +107,12 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   }, []);
 
   useEffect(() => {
-    const preferred = categoryServices.find((item) => item.name.toLowerCase().includes("follower"));
-  const next = services.find((item) => item.category === selectedCategory && item.name === serviceType) ?? preferred ?? orderedCategoryServices[0] ?? services[0] ?? fallbackServices[0];
+    const preferred = categoryServices.find((item) => {
+      const name = item.name.toLowerCase();
+      const platformName = platform.toLowerCase();
+      return name.includes("follower") && (name.includes(platformName) || item.category.toLowerCase().includes(platformName));
+    }) ?? categoryServices.find((item) => item.name.toLowerCase().includes("follower"));
+    const next = preferred ?? orderedCategoryServices[0] ?? services[0] ?? fallbackServices[0];
     setService(next);
     setServiceType(next.name);
     setQuantity(Number(next.min) || 50);
@@ -433,7 +437,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             <button
               type="button"
               key={item}
-              onClick={() => setPlatform(item)}
+              onClick={() => { setPlatform(item); setServiceType(""); }}
               className={`relative rounded-xl border p-3 text-center transition ${platform === item ? "border-cyan-300 bg-blue-500/25 shadow-[0_0_15px_rgba(0,200,255,.35)]" : "border-blue-500/40 bg-[#08122b]"}`}
             >
               {platform === item && (
