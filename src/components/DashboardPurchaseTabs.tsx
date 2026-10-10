@@ -91,7 +91,7 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
       if (!ownerId) { setLoading(false); return; }
       setLoading(true);
       const normalizedOwnerType = ownerType === "sub_subagent" || ownerType === "subsubagent" ? "subsubagent" : ownerType;
-      const { data: history, error } = await supabase.from("korba_transaction_history").select("id, wallet_owner_type, wallet_owner_id, product_type, network_code, package_code, customer_number, amount, transaction_id, provider_reference, status, source, created_at").eq("wallet_owner_type", normalizedOwnerType).eq("wallet_owner_id", ownerId).order("created_at", { ascending: false }).limit(500);
+      const { data: history, error } = await supabase.rpc("get_korba_history", { p_owner_type: normalizedOwnerType, p_owner_id: ownerId });
       if (!active) return;
       if (error) {
         console.error("[v0] Korba transaction history query failed", error);

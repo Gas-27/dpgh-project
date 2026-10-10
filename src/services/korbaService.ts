@@ -60,6 +60,24 @@ export async function lookupKorbaUtility(input: {
   return data;
 }
 
+async function saveKorbaHistory(request: KorbaPurchaseRequest, result: Record<string, unknown>, status: string) {
+  if (!request.walletOnly || !request.walletOwnerId || !request.walletOwnerType) return;
+  const { error } = await supabase.rpc("record_korba_history", {
+    p_owner_type: request.walletOwnerType,
+    p_owner_id: request.walletOwnerId,
+    p_product_type: request.productType,
+    p_network_code: request.networkCode || null,
+    p_package_code: request.packageCode || null,
+    p_customer_number: request.customerNumber,
+    p_amount: request.amount,
+    p_transaction_id: String(result.transaction_id || request.orderId || "") || null,
+    p_provider_reference: String(result.reference || result.provider_reference || result.transaction_id || "") || null,
+    p_status: status,
+    p_source: request.purchaseSource || "dashboard",
+  });
+  if (error) console.error("[v0] Failed to save Korba purchase history", error);
+}
+
 export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
   const requestBody = {
     operation: request.productType === "data" ? "data" : "collect",
@@ -95,6 +113,7 @@ export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
   });
 
   if (error) {
+    await saveKorbaHistory(request, { transaction_id: request.orderId, error: error.message }, "failed");
     const details = errorBody?.korba_details as Record<string, unknown> | undefined;
     const provider = details?.parsed_body as Record<string, unknown> | undefined;
     const message =
@@ -103,8 +122,10 @@ export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
     throw new Error(`${message}${requestId}`);
   }
   if (!data?.success && !data?.transaction_id) {
+    await saveKorbaHistory(request, (data || {}) as Record<string, unknown>, "failed");
     console.error("[v0] Korba purchase returned an unsuccessful response", data);
     throw new Error(String(data?.error_message || data?.message || "The request could not be completed. Please try again."));
   }
+  await saveKorbaHistory(request, (data || {}) as Record<string, unknown>, String(data?.status || "completed"));
   return data;
 }
