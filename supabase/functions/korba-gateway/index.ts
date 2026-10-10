@@ -333,8 +333,8 @@ async function pay(body: JsonObject, operation: string, state: { debit: Debit | 
 
   if (result.success === false) {
     if (body.wallet_only === true && body.wallet_balance_owner_id) {
-      await walletClient().from("korba_transaction_history").insert({
-        wallet_owner_type: String(body.wallet_balance_owner_type || ""),
+      const { error: historyError } = await walletClient().from("korba_transaction_history").insert({
+        wallet_owner_type: String(body.wallet_balance_owner_type || "").toLowerCase().replace(/_/g, ""),
         wallet_owner_id: String(body.wallet_balance_owner_id),
         product_type: product,
         network_code: network || null,
@@ -346,6 +346,7 @@ async function pay(body: JsonObject, operation: string, state: { debit: Debit | 
         status: "failed",
         source: String(body.purchase_source || "dashboard"),
       });
+      if (historyError) console.error("[korba-gateway] failed history insert failed", historyError);
     }
     await refundWallet(state.debit);
     return json({ ...result, error: providerError(result) || userMessage(Number(result.error_code)), user_message: userMessage(Number(result.error_code)), wallet_refunded: Boolean(state.debit) });
@@ -353,7 +354,7 @@ async function pay(body: JsonObject, operation: string, state: { debit: Debit | 
   if (body.wallet_only === true && body.wallet_balance_owner_id) {
     const history = walletClient();
     const { error: historyError } = await history.from("korba_transaction_history").insert({
-      wallet_owner_type: String(body.wallet_balance_owner_type || ""),
+      wallet_owner_type: String(body.wallet_balance_owner_type || "").toLowerCase().replace(/_/g, ""),
       wallet_owner_id: String(body.wallet_balance_owner_id),
       product_type: product,
       network_code: network || null,
