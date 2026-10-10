@@ -90,7 +90,9 @@ const PaymentDialog = ({
 
   // Support both prop patterns
   const isDialogOpen = open ?? isOpen ?? false;
-  const bundleCategory = pkg?.bundle_category || (pkg?.bundle_id?.toLowerCase().includes("midnight") ? "Midnight Bundle" : pkg?.bundle_id?.toLowerCase().includes("kokrokoo") ? "Kokrokoo Bundle" : pkg?.bundle_id?.toLowerCase().includes("social") ? "Social Media Bundle" : pkg?.bundle_id?.toLowerCase().includes("video") ? "Video Bundle" : pkg?.bundle_id?.toLowerCase().includes("idd") ? "IDD Bundle" : "Data Bundle");
+  const bundleIdText = typeof pkg?.bundle_id === "string" ? pkg.bundle_id : String(pkg?.bundle_id ?? "");
+  const bundleIdLower = bundleIdText.toLowerCase();
+  const bundleCategory = pkg?.bundle_category || (bundleIdLower.includes("midnight") ? "Midnight Bundle" : bundleIdLower.includes("kokrokoo") ? "Kokrokoo Bundle" : bundleIdLower.includes("social") ? "Social Media Bundle" : bundleIdLower.includes("video") ? "Video Bundle" : bundleIdLower.includes("idd") ? "IDD Bundle" : "Data Bundle");
   const displayPackageName = packageName || pkg?.bundle_api_name || pkg?.bundle_name || pkg?.package_name || pkg?.name || pkg?.title || (pkg ? (pkg.network === "mtn_mashup" && pkg.size_gb_text ? pkg.size_gb_text : `${pkg.size_gb}GB`) : "");
   const packageInfo = pkg;
   const network = networkProp || pkg?.network || "";
