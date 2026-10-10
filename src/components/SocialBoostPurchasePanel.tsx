@@ -45,7 +45,7 @@ const platformTileBg: Record<string, string> = {
 };
 const fallbackServices: ProviderService[] = [{ service: 1, name: "Followers", category: "TikTok", rate: "0.90", min: "50", max: "50000", average_time: "4 Hours", refill: true, cancel: true }];
 
-export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", storeId = null, canSetPrices = false, checkoutMode = "wallet" }: Props) {
+export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", storeId = null, canSetPrices = false, checkoutMode = "wallet", showHistory = true }: Props) {
   const { toast } = useToast();
   const normalizedOwnerType = ownerType === "sub_subagent" ? "subsubagent" : ownerType;
   const [platform, setPlatform] = useState("TikTok");
