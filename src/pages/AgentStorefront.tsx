@@ -43,6 +43,23 @@ import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
 
 // Utility function to update page metadata dynamically
+const getBundleCategory = (bundleId?: string | null) => {
+  const value = String(bundleId || "").toLowerCase();
+  if (value.includes("midnight")) return "Midnight Bundle";
+  if (value.includes("kokrokoo")) return "Kokrokoo Bundle";
+  if (value.includes("social")) return "Social Media Bundle";
+  if (value.includes("video")) return "Video Bundle";
+  if (value.includes("idd")) return "IDD Bundle";
+  return "Data Bundle";
+};
+
+const getBundleName = (pkg: DataPackage) => {
+  if (pkg.bundle_api_name || pkg.bundle_name || pkg.package_name || pkg.name || pkg.title) {
+    return pkg.bundle_api_name || pkg.bundle_name || pkg.package_name || pkg.name || pkg.title;
+  }
+  return `${formatNetworkName(pkg.network)} ${pkg.size_gb_text || `${pkg.size_gb}GB`} ${getBundleCategory(pkg.bundle_id)}`;
+};
+
 const updatePageMetadata = (storeName: string, description?: string, imageUrl?: string) => {
   try {
     // Update document title
@@ -120,6 +137,9 @@ interface DataPackage {
   network: string;
   size_gb: number;
   price: number;
+  bundle_id?: string | null;
+  bundle_category?: string | null;
+  bundle_api_name?: string | null;
   size_gb_text?: string;
   bundle_name?: string | null;
   package_name?: string | null;
@@ -319,7 +339,7 @@ statusMessage = "Your number is new on our portal.";
   const isRefunded = orderStatus === "refunded";
   const stepLabels = ["Order Placed", "Number Verifying", "Processing", isRefunded ? "Refunded" : "Delivered"];
 
-  // ── Delivered / Refunded state ──
+  // ─��� Delivered / Refunded state ──
   if (currentStep === 4) {
     return (
       <div className="dark-surface space-y-4 rounded-xl bg-slate-950 p-4 text-white">
@@ -487,7 +507,7 @@ statusMessage = "Your number is new on our portal.";
   );
 };
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ────────────────────────────────────────────────────────────────────────��────
 // NOTIFICATION MODAL
 // ───────────────────────────────────────────────────────────────────�����─────────
 const NotificationModal = ({
@@ -1443,8 +1463,8 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                             {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />}
                             <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
                             <p className="text-sm font-bold uppercase" style={{ color: getNetworkLabelColor(networkFilter) }}>{formatNetworkName(networkFilter)} Normal Data</p>
-                            <p className="text-sm font-semibold text-white">{formatNetworkName(networkFilter)} {pkg.size_gb_text || `${pkg.size_gb}GB`} Bundle</p>
-                            <p className="max-w-xs text-xs leading-relaxed text-white/70">{pkg.bundle_id ? `Provider bundle ${pkg.bundle_id} • Standard ${formatNetworkName(networkFilter)} data bundle` : `Standard ${formatNetworkName(networkFilter)} data bundle`}</p>
+                            <p className="text-sm font-semibold text-white">{getBundleName(pkg)}</p>
+                            <p className="max-w-xs text-xs leading-relaxed text-white/70">{getBundleCategory(pkg.bundle_id)}{pkg.bundle_id ? ` • Product ID: ${pkg.bundle_id}` : " • Standard network data bundle"}</p>
   {showAgentPrice && <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
   <span>Agent price: <strong className="text-cyan-300">{Number(agentSubagentPrices[pkg.id] ?? pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
   </div>}

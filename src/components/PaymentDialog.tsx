@@ -23,7 +23,7 @@ interface PaymentDialogProps {
   isOpen?: boolean;
   onOpenChange: (open: boolean) => void;
   packageName?: string;
-  package?: { id: string; network: string; size_gb: number; size_gb_text?: string; user_price?: number; agent_price?: number };
+  package?: { id: string; network: string; size_gb: number; size_gb_text?: string; bundle_id?: string | null; bundle_category?: string | null; bundle_api_name?: string | null; bundle_name?: string | null; package_name?: string | null; name?: string | null; title?: string | null; user_price?: number; agent_price?: number };
   network?: string;
   price: number;
   packageId?: string;
@@ -90,7 +90,8 @@ const PaymentDialog = ({
 
   // Support both prop patterns
   const isDialogOpen = open ?? isOpen ?? false;
-  const displayPackageName = packageName || (pkg ? (pkg.network === "mtn_mashup" && pkg.size_gb_text ? pkg.size_gb_text : `${pkg.size_gb}GB`) : "");
+  const bundleCategory = pkg?.bundle_category || (pkg?.bundle_id?.toLowerCase().includes("midnight") ? "Midnight Bundle" : pkg?.bundle_id?.toLowerCase().includes("kokrokoo") ? "Kokrokoo Bundle" : pkg?.bundle_id?.toLowerCase().includes("social") ? "Social Media Bundle" : pkg?.bundle_id?.toLowerCase().includes("video") ? "Video Bundle" : pkg?.bundle_id?.toLowerCase().includes("idd") ? "IDD Bundle" : "Data Bundle");
+  const displayPackageName = packageName || pkg?.bundle_api_name || pkg?.bundle_name || pkg?.package_name || pkg?.name || pkg?.title || (pkg ? (pkg.network === "mtn_mashup" && pkg.size_gb_text ? pkg.size_gb_text : `${pkg.size_gb}GB`) : "");
   const packageInfo = pkg;
   const network = networkProp || pkg?.network || "";
   const actualPackageId = packageId || pkg?.id || "";
@@ -460,8 +461,11 @@ const PaymentDialog = ({
           phone: normalizedPhone,
           package_id: actualPackageId,
           network,
-          package_name: displayPackageName,
-          size_gb: packageInfo?.size_gb ?? null,
+  package_name: displayPackageName,
+  bundle_category: bundleCategory,
+  bundle_product_id: packageInfo?.bundle_id || null,
+  bundle_details: `${bundleCategory} - ${displayPackageName}`,
+  size_gb: packageInfo?.size_gb ?? null,
           customer_id: checkoutUserId,
           // Preserve the account's real email for records/receipts even though the
           // Paystack `email` field uses the guaranteed-valid phone-based address.
