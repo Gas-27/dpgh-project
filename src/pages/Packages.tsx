@@ -1208,15 +1208,19 @@ const Packages = () => {
       });
   }, [authUser, isAgent, hasPendingAgentStore]);
 
-  // Package purchases are public. Customers pay through the existing Paystack flow.
+  const [showLoginRequired, setShowLoginRequired] = useState(false);
   const openPackageCheckout = useCallback((pkg: DataPackage) => {
+  if (!authUser) {
+    setShowLoginRequired(true);
+    return;
+  }
   if (isAgent && agentStoreIdForPayment) {
     toast({ title: "Buy data from your dashboard", description: "Approved agents must purchase data from the Buy Data tab in the Agent Dashboard." });
     navigate("/agent");
     return;
   }
   setPaymentPkg(pkg);
-  }, [isAgent, agentStoreIdForPayment, navigate, toast]);
+  }, [authUser, isAgent, agentStoreIdForPayment, navigate, toast]);
   
   // Paystack returns guests here after a digital-service payment. Verify the reference
   // server-side and keep the confirmation visible instead of leaving the visitor unsure.
@@ -1906,6 +1910,18 @@ const searchOrders = async (input?: string) => {
 
       <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => { if (!open) setSelectedService(null); }} />
 
+      <Dialog open={showLoginRequired} onOpenChange={setShowLoginRequired}>
+        <DialogContent className="max-w-sm text-center">
+          <DialogHeader>
+            <DialogTitle className="font-display text-xl">Sign In Required</DialogTitle>
+            <DialogDescription className="mt-1 text-sm">Please sign in to purchase Cheap Data packages.</DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col gap-3 pt-2">
+            <Button variant="hero" className="w-full" onClick={() => { setShowLoginRequired(false); navigate("/login"); }}>Sign In</Button>
+            <Button variant="outline" className="w-full" onClick={() => { setShowLoginRequired(false); navigate("/signup"); }}>Create Account</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       {paymentPkg && (
         <PaymentDialog
           open={!!paymentPkg}
