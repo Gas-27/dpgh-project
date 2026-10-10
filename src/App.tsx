@@ -252,7 +252,7 @@ const App = () => {
     if (manifestLink) manifestLink.href = manifest;
     const appleTitle = document.querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]');
     if (appleTitle) appleTitle.content = brand;
-    document.title = "Marketplace Products | Products and Services in Ghana";
+    document.title = "Buy MTN, Telecel & AirtelTigo Data Bundles Instantly";
   }, [hostname]);
 
   // Determine if we are on a subdomain of datastores.shop or agentsstore.shop
