@@ -267,20 +267,14 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
 
   const trackOrder = async () => {
     if (!searchOrder.trim()) return;
-    const { data: authData } = await supabase.auth.getUser();
-    const userId = authData.user?.id;
-    if (!userId) return setOrderStatus("Sign in to track your order");
-    const { data: local, error: localError } = await (supabase as any)
-      .from("social_boost_orders")
-      .select("order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains,selling_amount,base_amount,profit_amount,seller_store_kind")
-      .eq("user_id", userId)
-      .eq("order_number", Number(searchOrder.trim()))
-      .maybeSingle();
+    const { data: local, error: localError } = await (supabase as any).rpc("get_public_social_boost_order", { p_order_number: searchOrder.trim() });
     if (localError || !local) return setOrderStatus(localError?.message ?? "Order not found");
-    const providerOrder = local.provider_order_id ?? searchOrder.trim();
+    const order = Array.isArray(local) ? local[0] : local;
+    if (localError || !order) return setOrderStatus(localError?.message ?? "Order not found");
+    const providerOrder = order.provider_order_id ?? searchOrder.trim();
     const { data, error } = await supabase.functions.invoke("social-boost", { body: { action: "status", order: providerOrder } });
     if (error) return setOrderStatus(error.message);
-    const latest = { ...local, ...(data ?? {}), provider_status: data?.status ?? local.provider_status };
+    const latest = { ...order, ...(data ?? {}), provider_status: data?.status ?? order.provider_status };
     setTrackedOrder(latest);
     setOrderStatus(data?.status ? `Status: ${data.status}` : data?.error ?? "Order status unavailable");
   };

@@ -21,14 +21,21 @@ export default function SocialBoostPricingManager({ ownerId }: { ownerId?: strin
       const { data } = await (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,admin_price_per_1000,default_price_per_1000,max_reseller_price_per_1000").order("category").order("service_name");
       const rows = (data ?? []) as Service[];
       setServices(rows);
-      const { data: user } = await supabase.auth.getUser();
-      if (user.user && rows.length) {
-        const { data: saved } = await (supabase as any).from("social_boost_reseller_pricing").select("service_id,price_per_1000").eq("user_id", user.user.id);
+        const { data: user } = await supabase.auth.getUser();
+      let pricingUserId = user.user?.id ?? null;
+      if (ownerId) {
+        for (const table of ["agent_stores", "subagent_stores", "sub_subagent_stores"]) {
+          const { data: store } = await (supabase as any).from(table).select("user_id,owner_id,created_by").eq("id", ownerId).maybeSingle();
+          if (store) { pricingUserId = store.user_id ?? store.owner_id ?? store.created_by ?? pricingUserId; break; }
+        }
+      }
+      if (pricingUserId && rows.length) {
+        const { data: saved } = await (supabase as any).from("social_boost_reseller_pricing").select("service_id,price_per_1000").eq("user_id", pricingUserId);
         setPrices(Object.fromEntries((saved ?? []).map((row: any) => [row.service_id, Number(row.price_per_1000)])));
       }
     };
     void load();
-  }, []);
+  }, [ownerId]);
   const update = (id: number, value: string) => setPrices((current) => ({ ...current, [id]: Number(value) || 0 }));
   const applyMarkup = () => {
     const percent = Number(markup);
@@ -41,7 +48,14 @@ export default function SocialBoostPricingManager({ ownerId }: { ownerId?: strin
     const invalid = services.find((service) => { const value = prices[service.service_id] ?? service.admin_price_per_1000; return value < service.admin_price_per_1000 || value > service.max_reseller_price_per_1000; });
     if (invalid) return toast({ title: "Price outside allowed range", description: `Prices must stay between the admin default and maximum cap for ${invalid.service_name}.`, variant: "destructive" });
     setSaving(true);
-    const rows = services.map((service) => ({ user_id: data.user.id, service_id: service.service_id, price_per_1000: prices[service.service_id] ?? service.admin_price_per_1000, updated_at: new Date().toISOString() }));
+    let pricingUserId = data.user.id;
+    if (ownerId) {
+      for (const table of ["agent_stores", "subagent_stores", "sub_subagent_stores"]) {
+        const { data: store } = await (supabase as any).from(table).select("user_id,owner_id,created_by").eq("id", ownerId).maybeSingle();
+        if (store) { pricingUserId = store.user_id ?? store.owner_id ?? store.created_by ?? pricingUserId; break; }
+      }
+    }
+    const rows = services.map((service) => ({ user_id: pricingUserId, service_id: service.service_id, price_per_1000: prices[service.service_id] ?? service.admin_price_per_1000, updated_at: new Date().toISOString() }));
     const { error } = await (supabase as any).from("social_boost_reseller_pricing").upsert(rows, { onConflict: "user_id,service_id" });
     setSaving(false);
     toast(error ? { title: "Prices not saved", description: error.message, variant: "destructive" } : { title: "Social Boost prices saved" });
