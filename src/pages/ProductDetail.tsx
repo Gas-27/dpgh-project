@@ -55,6 +55,30 @@ export default function ProductDetail() {
   }, [productId, storeName]);
 
   if (loading) return <main className="mx-auto max-w-3xl p-6"><p className="text-muted-foreground">Loading product...</p></main>;
+  useEffect(() => {
+    if (!product) return;
+    const title = `${product.title} | JustBuyGH Marketplace`;
+    const description = product.description || `Buy ${product.title} on JustBuyGH Marketplace.`;
+    const image = product.image_urls?.[0] || `${window.location.origin}/justbuygh-icon.png`;
+    const url = window.location.href;
+    document.title = title;
+    const tags = [
+      ["property", "og:title", title],
+      ["property", "og:description", description],
+      ["property", "og:image", image],
+      ["property", "og:url", url],
+      ["name", "twitter:title", title],
+      ["name", "twitter:description", description],
+      ["name", "twitter:image", image],
+    ];
+    tags.forEach(([attribute, key, content]) => {
+      const selector = `meta[${attribute}="${key}"]`;
+      const meta = document.querySelector<HTMLMetaElement>(selector) || document.head.appendChild(Object.assign(document.createElement("meta"), { [attribute]: key }));
+      meta.setAttribute(attribute, key);
+      meta.content = content;
+    });
+  }, [product]);
+
   if (!product) return <main className="mx-auto max-w-3xl p-6"><p className="text-muted-foreground">Product not found or no longer available.</p></main>;
 
   const rawDigits = String(store?.whatsapp_number || store?.support_number || "").replace(/\D/g, "");
