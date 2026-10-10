@@ -1264,6 +1264,7 @@ const Packages = () => {
   }, [searchParams, toast]);
 
   const [packages, setPackages] = useState<DataPackage[]>([]);
+  const [catalogNames, setCatalogNames] = useState<Record<string, string>>({});
   const [showApiPrice, setShowApiPrice] = useState(true);
   const [showAgentPrice, setShowAgentPrice] = useState(true);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(() => {
@@ -1364,8 +1365,22 @@ const Packages = () => {
   }, []);
 
   useEffect(() => {
-    // Fetch packages with caching - include size_gb_text for mtn_mashup packages
-    supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active").order("size_gb", { ascending: true })
+  supabase.from("network_bundle_catalog" as any).select("network,amount,name,short_name").eq("active", true)
+  .then(({ data: rows, error }) => {
+    if (error) {
+      console.error("[v0] Failed to fetch bundle catalog:", error);
+      return;
+    }
+    const names: Record<string, string> = {};
+    for (const row of rows ?? []) {
+      const network = row.network === "mtn_express" ? "mtn" : row.network;
+      names[`${network}:${Number(row.amount).toFixed(2)}`] = row.name || row.short_name;
+    }
+    setCatalogNames(names);
+  });
+
+  // Fetch packages with caching - include size_gb_text for mtn_mashup packages
+  supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active").order("size_gb", { ascending: true })
       .then(({ data, error }) => {
         if (error) console.error("[v0] Failed to fetch data packages:", error);
         setPackages(data ?? []);
@@ -1633,7 +1648,8 @@ const searchOrders = async (input?: string) => {
               ) : (
                 <div className="flex flex-col gap-4">
                   {filtered.map((pkg) => {
-                    const packageName = pkg.size_gb_text || `${pkg.size_gb}GB`;
+                    const catalogName = catalogNames[`${pkg.network === "mtn_express" ? "mtn" : pkg.network}:${Number(pkg.price).toFixed(2)}`];
+  const packageName = catalogName || pkg.size_gb_text || `${pkg.size_gb}GB`;
                     const available = pkg.active !== false;
                     return (
                       <Card key={pkg.id} style={{ backgroundColor: "#2f176d", color: "#ffffff" }} className={`package-reference-card border-0 shadow-none ${available ? "" : "opacity-45"}`}>
