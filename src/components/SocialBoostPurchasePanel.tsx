@@ -194,7 +194,7 @@ const basePrice = Number(data?.admin_price_per_1000 ?? service.rate ?? 0);
   const defaultAgentPrice = Number(data?.default_price_per_1000 ?? basePrice);
   let customPrice: number | null = null;
   if (pricingMode === "storefront" && storeId) {
-    const storeTable = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : "subsubagent_stores";
+    const storeTable = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
     const { data: storeRow } = await (supabase as any).from(storeTable).select("user_id").eq("id", storeId).maybeSingle();
     if (storeRow?.user_id) {
       const { data: savedPrice } = await (supabase as any).from("social_boost_reseller_pricing").select("price_per_1000").eq("user_id", storeRow.user_id).eq("service_id", service.service).maybeSingle();
@@ -219,7 +219,7 @@ const basePrice = Number(data?.admin_price_per_1000 ?? service.rate ?? 0);
     };
     void loadConfiguration();
     return () => { mounted = false; };
-  }, [service.service, service.rate]);
+  }, [service.service, service.rate, pricingMode, storeId, normalizedOwnerType]);
 
   useEffect(() => {
     let mounted = true;
