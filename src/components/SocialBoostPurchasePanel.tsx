@@ -175,7 +175,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
 
   useEffect(() => {
     const customPrice = resellerPrices[service.service];
-    if (canSetPrices && customPrice > 0) setPrice(customPrice);
+    if (customPrice > 0) setPrice(customPrice);
   }, [canSetPrices, resellerPrices, service.service]);
 
   const min = Number(service.min) || 10;
