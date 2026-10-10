@@ -1365,7 +1365,7 @@ const Packages = () => {
 
   useEffect(() => {
     // Fetch packages with caching - include size_gb_text for mtn_mashup packages
-    supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_name,package_name,name,title,description,details,price,agent_price,api_price,active").order("size_gb", { ascending: true })
+    supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active").order("size_gb", { ascending: true })
       .then(({ data, error }) => {
         if (error) console.error("[v0] Failed to fetch data packages:", error);
         setPackages(data ?? []);
@@ -1379,7 +1379,7 @@ const Packages = () => {
     async () => {
       const { data, error } = await supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,bundle_name,package_name,name,title,description,details,price,agent_price,api_price,active")
+        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active")
         .order("size_gb", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -1402,7 +1402,7 @@ const Packages = () => {
     const refreshPackages = async () => {
       const { data } = await supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,bundle_name,package_name,name,title,description,details,price,agent_price,api_price,active")
+        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active")
         .order("size_gb", { ascending: true });
       if (data) setPackages(data);
     };
@@ -1640,8 +1640,8 @@ const searchOrders = async (input?: string) => {
                         <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
   <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p>
   <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
-  {(pkg.bundle_name || pkg.package_name || pkg.name || pkg.title) && <p className="text-sm font-semibold text-white">{pkg.bundle_name || pkg.package_name || pkg.name || pkg.title}</p>}
-  {(pkg.description || pkg.details) && <p className="max-w-md text-xs leading-relaxed text-white/70">{pkg.description || pkg.details}</p>}
+  <p className="text-sm font-semibold text-white">{networkConfig[selectedNetwork].label} {packageName} Bundle</p>
+  <p className="max-w-md text-xs leading-relaxed text-white/70">{pkg.bundle_id ? `Provider bundle ${pkg.bundle_id} • Standard ${networkConfig[selectedNetwork].label} data bundle` : `Standard ${networkConfig[selectedNetwork].label} data bundle`}</p>
 <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
   {showApiPrice && <><span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span><span className="text-white/50">|</span></>}
   {showAgentPrice && <><span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span><span className="text-white/50">|</span></>}
