@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack"; showHistory?: boolean };
+type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack"; showHistory?: boolean; pricingMode?: "user" | "storefront" };
 type ProviderService = { service: number; name: string; category: string; rate: string; min: string; max: string; average?: string; average_time?: string; note?: string; notes?: string; refill?: boolean; cancel?: boolean };
 
 const platforms = ["TikTok", "Instagram", "Facebook", "YouTube", "WhatsApp"];
@@ -45,7 +45,7 @@ const platformTileBg: Record<string, string> = {
 };
 const fallbackServices: ProviderService[] = [{ service: 1, name: "Followers", category: "TikTok", rate: "0.90", min: "50", max: "50000", average_time: "4 Hours", refill: true, cancel: true }];
 
-export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", storeId = null, canSetPrices = false, checkoutMode = "wallet", showHistory = true }: Props) {
+export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", storeId = null, canSetPrices = false, checkoutMode = "wallet", showHistory = true, pricingMode = "storefront" }: Props) {
   const { toast } = useToast();
   const normalizedOwnerType = ownerType === "sub_subagent" ? "subsubagent" : ownerType;
   const [platform, setPlatform] = useState("TikTok");
@@ -71,7 +71,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const platformServices = catalog.filter((item) => item.category.toLowerCase().includes(platform.toLowerCase()));
   const services = platformServices.length ? platformServices : catalog;
   const serviceCategories = Array.from(new Set(services.map((item) => item.category.trim()))).filter(Boolean);
-  const selectedCategory = service?.category ?? serviceCategories[0] ?? platform;
+  const selectedCategory = serviceCategories.find((category) => category.toLowerCase().includes(platform.toLowerCase())) ?? service?.category ?? serviceCategories[0] ?? platform;
   const categoryServices = services.filter((item) => item.category === selectedCategory);
   const orderedCategoryServices = [...categoryServices].sort((a, b) => {
     const aFollowers = a.name.toLowerCase().includes("follower") ? 0 : 1;
@@ -190,9 +190,11 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       const data = byId.data ?? (await table.select(columns).ilike("service_name", service.name).ilike("category", service.category).maybeSingle()).data;
       if (!mounted) return;
       const adminPrice = Number(data?.admin_price_per_1000 ?? data?.default_price_per_1000 ?? service.rate ?? 0);
+      const userPrice = Number(data?.default_price_per_1000 ?? service.rate ?? 0);
+      const configuredPrice = pricingMode === "user" ? userPrice : adminPrice;
       if (!Number.isFinite(adminPrice) || adminPrice <= 0) return;
-        setAdminPrices((current) => ({ ...current, [service.service]: adminPrice }));
-        setPrice(adminPrice);
+        setAdminPrices((current) => ({ ...current, [service.service]: configuredPrice }));
+        setPrice(configuredPrice);
         setService((current) => ({
           ...current,
           min: String(data?.min_quantity ?? current.min),
@@ -229,9 +231,9 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
 
   useEffect(() => {
     const customPrice = resellerPrices[service.service];
-    const adminPrice = adminPrices[service.service] || Number(service.rate) || 49;
-    setPrice(customPrice > 0 ? customPrice : adminPrice);
-  }, [adminPrices, resellerPrices, service.service, service.rate]);
+    const defaultPrice = adminPrices[service.service] || Number(service.rate) || 49;
+    setPrice(pricingMode === "storefront" && customPrice > 0 ? customPrice : defaultPrice);
+  }, [adminPrices, resellerPrices, service.service, service.rate, pricingMode]);
 
   const min = Number(service.min) || 10;
   const max = Number(service.max) || 50000;
