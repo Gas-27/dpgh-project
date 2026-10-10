@@ -70,6 +70,12 @@ Deno.serve(async (req) => {
   if (missing.length > 0) return json({ error: "Missing required fields.", missing }, 400);
 
   let chargedAmount = 0;
+  if (action === "services") {
+    const { data: catalog, error: catalogError } = await supabase.from("social_boost_service_pricing").select("service_id,service_name,category,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("category").order("service_id");
+    if (catalogError) return json({ error: "Could not load Social Boost service catalog." }, 500);
+    return json({ services: (catalog ?? []).map((service) => ({ id: service.service_id, name: service.service_name, category: service.category, base_price_per_1000: service.admin_price_per_1000, min_quantity: service.min_quantity, max_quantity: service.max_quantity, average_completion_time: service.average_completion_time, notes: service.notes })) });
+  }
+
   if (action === "add") {
     const quantity = Number(input.quantity);
     if (!Number.isInteger(quantity) || quantity <= 0) return json({ error: "quantity must be a positive integer." }, 400);
