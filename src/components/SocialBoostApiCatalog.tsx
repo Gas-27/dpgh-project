@@ -16,7 +16,9 @@ export default function SocialBoostApiCatalog() {
     let active = true;
     const load = async () => {
       const { data } = await supabase.from("social_boost_service_pricing").select("service_id,service_name,category,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("category").order("service_id");
-      if (active) { setServices((data ?? []) as Service[]); setLoading(false); }
+      const removedServiceNames = new Set(["facebook custom comments ( female )", "facebook custom comments ( male )"]);
+      const visibleServices = (data ?? []).filter((service) => !removedServiceNames.has(String(service.service_name).trim().toLowerCase()));
+      if (active) { setServices(visibleServices as Service[]); setLoading(false); }
     };
     void load();
     return () => { active = false; };

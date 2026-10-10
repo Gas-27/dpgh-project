@@ -141,18 +141,6 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     let next = Array.from(new Map(results.flatMap((result: any) => result.data ?? []).map((item: any) => [item.order_number, item])).values())
       .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 50);
-    if (sync) {
-      next = await Promise.all(next.map(async (item: any) => {
-        if (!item.provider_order_id) return item;
-        const { data: latest } = await supabase.functions.invoke("social-boost", { body: { action: "status", order: item.provider_order_id } });
-        const fields = { provider_status: latest?.status ?? latest?.provider_status ?? item.provider_status, remains: latest?.remains ?? latest?.remaining ?? item.remains, start_count: latest?.start_count ?? item.start_count };
-        const updateQuery = (supabase as any).from("social_boost_orders").update(fields).eq("order_number", item.order_number);
-        if (storeId && item.seller_store_id === storeId) updateQuery.eq("seller_store_id", storeId);
-        else if (userId) updateQuery.eq("user_id", userId);
-        await updateQuery;
-        return { ...item, ...fields };
-      }));
-    }
     setHistory(next);
   };
 
@@ -286,10 +274,12 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
     if (localError || !local) return setOrderStatus(localError?.message ?? "Order not found");
     const order = Array.isArray(local) ? local[0] : local;
     if (localError || !order) return setOrderStatus(localError?.message ?? "Order not found");
-    const providerOrder = order.provider_order_id ?? searchOrder.trim();
-    const { data, error } = await supabase.functions.invoke("social-boost", { body: { action: "status", order: providerOrder } });
-    if (error) return setOrderStatus(error.message);
-    const latest = { ...order, ...(data ?? {}), provider_status: data?.status ?? order.provider_status };
+  const providerOrder = order.provider_order_id ?? searchOrder.trim();
+  const { data, error } = order.provider_order_id
+    ? await supabase.functions.invoke("social-boost", { body: { action: "status", order: providerOrder } })
+    : { data: null, error: null };
+  if (error && !order.provider_status) return setOrderStatus("This order is still being processed. Please try again shortly.");
+  const latest = { ...order, ...(data ?? {}), provider_status: data?.status ?? order.provider_status };
     setTrackedOrder(latest);
     setOrderStatus(data?.status ? `Status: ${data.status}` : data?.error ?? "Order status unavailable");
   };
@@ -419,7 +409,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
         )}
   <div className={`${showHistory ? "" : "hidden"} mt-5 overflow-hidden rounded-xl bg-white text-slate-950`}>
   <div className="border-b bg-[#dddff5] px-3 py-3 font-semibold">My Social Boost History</div>
-  <div className="max-h-80 overflow-auto">
+  <div className="max-h-[22rem] overflow-auto">
   <table className="min-w-[760px] w-full text-left text-sm">
             <thead className="font-semibold"><tr>{["Order", "Date", "Link", "Quantity", "Service", "Status", "Remains", "Price", "Profit"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead>
             <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t"><td className="px-3 py-3">#{item.order_number}</td><td className="px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="max-w-[220px] break-all px-3 py-3 text-blue-700">{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td><td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td><td className="px-3 py-3 text-emerald-700">{item.profit_amount != null ? `GHC ${Number(item.profit_amount).toFixed(2)}` : "—"}</td></tr>) : <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
