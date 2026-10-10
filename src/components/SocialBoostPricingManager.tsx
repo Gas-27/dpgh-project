@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type Service = { service_id: number; service_name: string; category: string; admin_price_per_1000: number; default_price_per_1000: number; max_reseller_price_per_1000: number };
 
-export default function SocialBoostPricingManager() {
+export default function SocialBoostPricingManager({ ownerId }: { ownerId?: string }) {
   const { toast } = useToast();
   const [services, setServices] = useState<Service[]>([]);
   const [prices, setPrices] = useState<Record<number, number>>({});

@@ -47,6 +47,7 @@ const fallbackServices: ProviderService[] = [{ service: 1, name: "Followers", ca
 
 export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", storeId = null, canSetPrices = false, checkoutMode = "wallet" }: Props) {
   const { toast } = useToast();
+  const normalizedOwnerType = ownerType === "sub_subagent" ? "subsubagent" : ownerType;
   const [platform, setPlatform] = useState("TikTok");
   const [catalog, setCatalog] = useState<ProviderService[]>(fallbackServices);
   const [service, setService] = useState(fallbackServices[0]);
@@ -72,7 +73,12 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const serviceCategories = Array.from(new Set(services.map((item) => item.category.trim()))).filter(Boolean);
   const selectedCategory = service?.category ?? serviceCategories[0] ?? platform;
   const categoryServices = services.filter((item) => item.category === selectedCategory);
-  const serviceTypes = Array.from(new Set(categoryServices.map((item) => item.name.trim()))).filter(Boolean);
+  const orderedCategoryServices = [...categoryServices].sort((a, b) => {
+    const aFollowers = a.name.toLowerCase().includes("follower") ? 0 : 1;
+    const bFollowers = b.name.toLowerCase().includes("follower") ? 0 : 1;
+    return aFollowers - bFollowers || a.name.localeCompare(b.name);
+  });
+  const serviceTypes = Array.from(new Set(orderedCategoryServices.map((item) => item.name.trim()))).filter(Boolean);
 
   useEffect(() => {
     let mounted = true;
@@ -100,7 +106,8 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   }, []);
 
   useEffect(() => {
-    const next = services.find((item) => item.category === selectedCategory && item.name === serviceType) ?? categoryServices[0] ?? services[0] ?? fallbackServices[0];
+    const preferred = categoryServices.find((item) => item.name.toLowerCase().includes("follower"));
+  const next = services.find((item) => item.category === selectedCategory && item.name === serviceType) ?? preferred ?? orderedCategoryServices[0] ?? services[0] ?? fallbackServices[0];
     setService(next);
     setServiceType(next.name);
     setQuantity(Number(next.min) || 50);
@@ -192,8 +199,8 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       const { data: authData } = await supabase.auth.getUser();
       if (!mounted) return;
       let pricingUserId = authData.user?.id ?? null;
-      if (storeId && ["agent", "subagent", "subsubagent"].includes(ownerType)) {
-        const table = ownerType === "agent" ? "agent_stores" : ownerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
+if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType)) {
+  const table = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
         const { data: store } = await (supabase as any).from(table).select("*").eq("id", storeId).maybeSingle();
         pricingUserId = store?.user_id ?? store?.owner_id ?? store?.created_by ?? pricingUserId;
       }
@@ -231,7 +238,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
           email: (await supabase.auth.getUser()).data.user?.email || `social_boost_${Date.now()}@datapluggh.com`,
           amount: total,
           callback_url: `${window.location.origin}${window.location.pathname}${window.location.search ? `${window.location.search}&` : "?"}payment=verifying`,
-          metadata: { type: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: ownerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(ownerType) ? ownerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(ownerType) ? storeId : null },
+          metadata: { type: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: normalizedOwnerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? normalizedOwnerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(ownerType) ? storeId : null },
         },
       });
       setBuying(false);

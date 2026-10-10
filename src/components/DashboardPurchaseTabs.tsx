@@ -34,8 +34,8 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
         {canSetPrices && <TabsTrigger value="pricing">Set prices</TabsTrigger>}
         <TabsTrigger value="purchase">Purchase Social Boost</TabsTrigger>
       </TabsList>
-      {canSetPrices && <TabsContent value="pricing"><SocialBoostPricingManager /></TabsContent>}
-      <TabsContent value="purchase"><SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} canSetPrices={false} checkoutMode="wallet" /></TabsContent>
+  {canSetPrices && <TabsContent value="pricing"><SocialBoostPricingManager ownerId={ownerId} /></TabsContent>}
+  <TabsContent value="purchase"><SocialBoostPurchasePanel walletBalance={wallet} ownerType={ownerType} storeId={ownerId} canSetPrices={false} checkoutMode="wallet" /></TabsContent>
       </Tabs>
     </section>;
   }
