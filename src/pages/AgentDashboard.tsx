@@ -592,6 +592,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
   // Tabs and menu state
   const [activeTab, setActiveTab] = useState("overview");
   const [afaTabActive, setAfaTabActive] = useState("overview");
+  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost">("cheap-data");
 
   // API Orders state
   const [apiOrders, setApiOrders] = useState<any[]>([]);
@@ -3969,11 +3970,20 @@ handleMobileNumberChange(digits);
 
           {/* ============================= API DOCS ============================= */}
           <TabsContent value="api-docs" className="mt-0 space-y-6">
-            <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
-              <Button type="button" variant="ghost" onClick={() => setActiveTab("api-key")}>API Key</Button>
-              
-              <Button type="button" variant="secondary" className="bg-background" onClick={() => setActiveTab("api-docs")}>API Docs</Button>
-            </div>
+  <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
+  <Button type="button" variant="ghost" onClick={() => setActiveTab("api-key")}>API Key</Button>
+  <Button type="button" variant={apiDocTab === "cheap-data" ? "secondary" : "ghost"} className={apiDocTab === "cheap-data" ? "bg-background" : ""} onClick={() => setApiDocTab("cheap-data")}>Cheap Data</Button>
+  <Button type="button" variant={apiDocTab === "social-boost" ? "secondary" : "ghost"} className={apiDocTab === "social-boost" ? "bg-background" : ""} onClick={() => setApiDocTab("social-boost")}>Social Boost</Button>
+  </div>
+  {apiDocTab === "social-boost" && <Card className="border-cyan-500/30 bg-cyan-500/5">
+    <CardHeader><CardTitle>Social Boost API</CardTitle><p className="text-sm text-muted-foreground">Create and track TikTok, Instagram, Facebook, YouTube, and WhatsApp boost orders using your API wallet.</p></CardHeader>
+    <CardContent className="space-y-4">
+      <div className="rounded-lg border border-border bg-muted p-3 font-mono text-xs break-all">POST https://api.dataplug.store/functions/v1/social-boost</div>
+      <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`curl "https://api.dataplug.store/functions/v1/social-boost" \\\n  -X POST \\\n  -H "Authorization: Bearer YOUR_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"action":"add","platform":"tiktok","service":"TikTok Followers","link":"https://www.tiktok.com/@username","quantity":1000,"price_per_1000":25,"amount":25}'`}</pre>
+      <p className="text-sm text-muted-foreground">The amount is debited from the API wallet only after the API key is authenticated and the order is created. Use the returned order number with <span className="font-mono">{`{"action":"status","order":"ORDER_NUMBER"}`}</span> to track delivery.</p>
+    </CardContent>
+  </Card>}
+
             {/* Header Card */}
             <Card className="border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
               <CardContent className="p-6">
