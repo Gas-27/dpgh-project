@@ -90,23 +90,21 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
     const load = async () => {
       if (!ownerId) { setLoading(false); return; }
       setLoading(true);
-      const ownerColumn = ownerType === "agent" ? "agent_store_id" : ownerType === "subagent" ? "subagent_store_id" : "sub_subagent_store_id";
-      const { data: ownerOrders, error } = await supabase.from("orders").select("*").eq(ownerColumn, ownerId).order("created_at", { ascending: false }).limit(500);
+      const normalizedOwnerType = ownerType === "sub_subagent" || ownerType === "subsubagent" ? "subsubagent" : ownerType;
+      const { data: history, error } = await supabase.from("korba_transaction_history").select("id, wallet_owner_type, wallet_owner_id, product_type, network_code, package_code, customer_number, amount, transaction_id, provider_reference, status, source, created_at").eq("wallet_owner_type", normalizedOwnerType).eq("wallet_owner_id", ownerId).order("created_at", { ascending: false }).limit(500);
       if (!active) return;
       if (error) {
-        console.error("[v0] Purchase history query failed", error);
+        console.error("[v0] Korba transaction history query failed", error);
         setRows([]);
         setLoading(false);
         return;
       }
       const normalize = (value: unknown) => String(value || "").toLowerCase().replace(/[\s_-]+/g, "");
-      const rows = (ownerOrders || []).filter((row: any) => {
-        const text = JSON.stringify(row).toLowerCase();
-        const product = normalize(row.product_type || row.order_type || row.service_type || row.source || row.network || row.description);
-        const isService = ["ecg", "electricity", "water", "ghanawater", "dstv", "gotv", "startimes", "utility", "subscription", "tv"].some((v) => text.includes(v));
-        if (category === "instant") return !isService && (product.includes("airtime") || product.includes("data") || row.network || row.size_gb || row.size_gb_text);
-        if (category === "services") return ["ecg", "electricity", "water", "ghanawater", "dstv", "gotv", "startimes", "utility", "tv"].some((v) => text.includes(v));
-        return text.includes("subscription");
+      const rows = (history || []).filter((row: any) => {
+        const product = normalize(row.product_type);
+        if (category === "instant") return product === "data" || product === "airtime";
+        if (category === "services") return ["ecg", "electricity", "water", "ghanawater", "dstv", "gotv", "startimes"].includes(product);
+        return product === "subscription";
       });
       setRows(rows);
       setLoading(false);
