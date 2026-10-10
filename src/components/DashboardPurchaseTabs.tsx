@@ -92,7 +92,18 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
       setLoading(true);
       const ownerColumn = ownerType === "agent" ? "agent_store_id" : ownerType === "subagent" ? "subagent_store_id" : "sub_subagent_store_id";
       const { data } = await supabase.from("orders").select("id, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, created_at, source, customer_number, package_id").eq(ownerColumn, ownerId).order("created_at", { ascending: false }).limit(100);
-      if (active) { setRows((data || []).filter((row) => category === "instant" ? !["service", "subscription"].includes(String(row.source || "").toLowerCase()) : String(row.source || "").toLowerCase().includes(category))); setLoading(false); }
+      if (active) {
+        const filtered = (data || []).filter((row) => {
+          const source = String(row.source || "").toLowerCase();
+          const network = String(row.network || "").toLowerCase();
+          const packageId = String(row.package_id || "").toLowerCase();
+          const isService = ["service", "services", "utility", "utilities", "ecg", "water", "tv", "subscription", "subscriptions"].some((value) => source.includes(value) || network.includes(value) || packageId.includes(value));
+          if (category === "instant") return !isService && Boolean(row.network || row.size_gb || row.size_gb_text || ["airtime", "data"].some((value) => source.includes(value)));
+          return category === "subscription" ? source.includes("subscription") || network.includes("subscription") : isService && !source.includes("subscription") && !network.includes("subscription");
+        });
+        setRows(filtered);
+        setLoading(false);
+      }
     };
     void load();
     return () => { active = false; };
