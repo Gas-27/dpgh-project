@@ -90,33 +90,26 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
     const load = async () => {
       if (!ownerId) { setLoading(false); return; }
       setLoading(true);
-      const { data: response, error } = await supabase.functions.invoke("korba-gateway", { body: { operation: "history", wallet_balance_owner_type: ownerType, wallet_balance_owner_id: ownerId } });
-      if (active) {
-        const normalized = (value: unknown) => String(value || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
-        const filtered = ((response?.transactions || []) as any[]).filter((row) => {
-          const product = normalized(row.product_type);
-          if (category === "instant") return product === "data" || product === "airtime";
-          if (category === "services") return ["ecg", "electricity", "water", "ghanawater", "gotv", "dstv", "startimes", "startimes"].includes(product);
-          return product === "subscription" || product.includes("subscription");
-        });
-        if (error) console.error("[v0] Korba history load failed", error);
-  const ownerColumn = ownerType === "agent" ? "agent_store_id" : ownerType === "subagent" ? "subagent_store_id" : "sub_subagent_store_id";
-  const { data: ownerOrders } = await supabase.from("orders").select("id, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, created_at, source, customer_number, package_id, provider_reference, provider_order_id, api_response, order_type, product_type, payment_method").eq(ownerColumn, ownerId).order("created_at", { ascending: false }).limit(500);
-  const legacy = (ownerOrders || []).filter((row: any) => {
-    const text = JSON.stringify(row).toLowerCase();
-    const product = normalized(row.product_type || row.order_type || row.source || row.network);
-    const serviceProduct = ["ecg", "electricity", "water", "ghanawater", "dstv", "gotv", "startimes", "utility", "subscription"].some((value) => text.includes(value));
-    const airtimeProduct = product === "airtime" || text.includes("airtime");
-    const dataProduct = product === "data" || Boolean(row.size_gb || row.size_gb_text) || (Boolean(row.network) && !serviceProduct);
-    if (category === "instant") return !serviceProduct && (airtimeProduct || dataProduct);
-    if (category === "services") return ["ecg", "electricity", "water", "dstv", "gotv", "startimes", "utility"].some((value) => text.includes(value));
-    return korba && text.includes("subscription");
-  });
-  const allRows = [...filtered, ...legacy].filter((row, index, rows) => index === rows.findIndex((candidate) => String(candidate.id || candidate.transaction_id) === String(row.id || row.transaction_id)));
-  setRows(allRows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
-  if (error) console.error("[v0] Korba history endpoint unavailable; showing owner orders", error); 
-  setLoading(false);
+      const ownerColumn = ownerType === "agent" ? "agent_store_id" : ownerType === "subagent" ? "subagent_store_id" : "sub_subagent_store_id";
+      const { data: ownerOrders, error } = await supabase.from("orders").select("*").eq(ownerColumn, ownerId).order("created_at", { ascending: false }).limit(500);
+      if (!active) return;
+      if (error) {
+        console.error("[v0] Purchase history query failed", error);
+        setRows([]);
+        setLoading(false);
+        return;
       }
+      const normalize = (value: unknown) => String(value || "").toLowerCase().replace(/[\s_-]+/g, "");
+      const rows = (ownerOrders || []).filter((row: any) => {
+        const text = JSON.stringify(row).toLowerCase();
+        const product = normalize(row.product_type || row.order_type || row.service_type || row.source || row.network || row.description);
+        const isService = ["ecg", "electricity", "water", "ghanawater", "dstv", "gotv", "startimes", "utility", "subscription", "tv"].some((v) => text.includes(v));
+        if (category === "instant") return !isService && (product.includes("airtime") || product.includes("data") || row.network || row.size_gb || row.size_gb_text);
+        if (category === "services") return ["ecg", "electricity", "water", "ghanawater", "dstv", "gotv", "startimes", "utility", "tv"].some((v) => text.includes(v));
+        return text.includes("subscription");
+      });
+      setRows(rows);
+      setLoading(false);
     };
     void load();
     return () => { active = false; };
