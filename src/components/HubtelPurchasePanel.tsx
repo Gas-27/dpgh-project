@@ -227,9 +227,33 @@ export default function HubtelPurchasePanel({
     }
     setCatalogLoading(true);
     setCatalogError(null);
-    setLiveBundles((current) => ({ ...current, [network]: [] }));
-    getKorbaDataBundles(network)
-      .then((response) => {
+  setLiveBundles((current) => ({ ...current, [network]: [] }));
+  const catalogNetwork = network.toLowerCase() === "airteltigo" ? "airteltigo" : network.toLowerCase();
+  supabase
+  .from("network_bundle_catalog" as any)
+  .select("category,name,short_name,product_id,amount")
+  .eq("network", catalogNetwork)
+  .eq("active", true)
+  .order("amount", { ascending: true })
+  .then(({ data: catalogRows, error: catalogQueryError }) => {
+  if (catalogRows?.length && !catalogQueryError) {
+    setCatalogLoading(false);
+    setLiveBundles((current) => ({
+      ...current,
+      [network]: catalogRows.map((row) => ({
+        name: row.name,
+        category: row.category,
+        price: `₵${Number(row.amount).toFixed(2)}`,
+        value: row.product_id,
+      })),
+    }));
+    return null;
+  }
+  return getKorbaDataBundles(network);
+  })
+  .then((response) => {
+  if (!response) return;
+
         const raw = response.bundles ?? response.data ?? response.result ?? response;
         const flattenBundles = (value: unknown): Record<string, unknown>[] => {
           if (!Array.isArray(value)) return [];
