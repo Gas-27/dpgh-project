@@ -153,14 +153,14 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
 
   useEffect(() => {
     let mounted = true;
-    (supabase as any)
-      .from("social_boost_service_pricing")
-      .select("admin_price_per_1000,default_price_per_1000,max_reseller_price_per_1000,min_quantity,max_quantity,average_completion_time,notes")
-      .eq("service_id", service.service)
-      .maybeSingle()
-      .then(({ data }: any) => {
-        if (!mounted) return;
-        const adminPrice = Number(data?.admin_price_per_1000 || data?.default_price_per_1000 || service.rate || 49);
+    const loadConfiguration = async () => {
+      const table = (supabase as any).from("social_boost_service_pricing");
+      const columns = "service_id,service_name,category,admin_price_per_1000,default_price_per_1000,max_reseller_price_per_1000,min_quantity,max_quantity,average_completion_time,notes";
+      const byId = await table.select(columns).eq("service_id", service.service).maybeSingle();
+      const data = byId.data ?? (await table.select(columns).ilike("service_name", service.name).ilike("category", service.category).maybeSingle()).data;
+      if (!mounted) return;
+      const adminPrice = Number(data?.admin_price_per_1000 ?? data?.default_price_per_1000 ?? service.rate ?? 0);
+      if (!Number.isFinite(adminPrice) || adminPrice <= 0) return;
         setAdminPrices((current) => ({ ...current, [service.service]: adminPrice }));
         setPrice(adminPrice);
         setService((current) => ({
@@ -170,8 +170,9 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
           average_time: data?.average_completion_time ?? current.average_time,
           notes: data?.notes ?? current.notes,
         }));
-        setResellerCaps((current) => ({ ...current, [service.service]: Number(data?.max_reseller_price_per_1000 || 0) }));
-      });
+      setResellerCaps((current) => ({ ...current, [service.service]: Number(data?.max_reseller_price_per_1000 || 0) }));
+    };
+    void loadConfiguration();
     return () => { mounted = false; };
   }, [service.service, service.rate]);
 
@@ -183,8 +184,8 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       let pricingUserId = authData.user?.id ?? null;
       if (storeId && ["agent", "subagent", "subsubagent"].includes(ownerType)) {
         const table = ownerType === "agent" ? "agent_stores" : ownerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
-        const { data: store } = await (supabase as any).from(table).select("user_id").eq("id", storeId).maybeSingle();
-        pricingUserId = store?.user_id ?? pricingUserId;
+        const { data: store } = await (supabase as any).from(table).select("*").eq("id", storeId).maybeSingle();
+        pricingUserId = store?.user_id ?? store?.owner_id ?? store?.created_by ?? pricingUserId;
       }
       if (!pricingUserId) return;
       const { data } = await (supabase as any)
