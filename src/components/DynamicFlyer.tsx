@@ -1,0 +1,121 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Download, Share2, SlidersHorizontal, Copy } from "lucide-react";
+
+export type FlyerPackage = { size_gb: number; price: number };
+export type FlyerPackages = { mtn: FlyerPackage[]; telecel: FlyerPackage[]; airteltigo: FlyerPackage[] };
+type Region = { x: number; y: number; width: number; height: number };
+
+const WIDTH = 720;
+const HEIGHT = 1280;
+const SCALE = 2;
+export const REGIONS: Record<string, Region> = {
+  storeName: { x: 0.2, y: 0.021, width: 0.37, height: 0.046 },
+  accessCode: { x: 0.42, y: 0.494, width: 0.22, height: 0.016 },
+  storeUrl: { x: 0.377, y: 0.812, width: 0.473, height: 0.015 },
+  mtnTable: { x: 0.039, y: 0.241, width: 0.225, height: 0.166 },
+  telecelTable: { x: 0.293, y: 0.241, width: 0.218, height: 0.166 },
+  airteltigoTable: { x: 0.539, y: 0.241, width: 0.199, height: 0.166 },
+};
+
+const px = (region: Region): Region => ({ x: region.x * WIDTH, y: region.y * HEIGHT, width: region.width * WIDTH, height: region.height * HEIGHT });
+
+function fit(ctx: CanvasRenderingContext2D, text: string, maxWidth: number, size: number, min: number, font: string) {
+  let current = size;
+  while (current > min) {
+    ctx.font = font.replace("SIZE", String(current));
+    if (ctx.measureText(text).width <= maxWidth) return current;
+    current -= 1;
+  }
+  return current;
+}
+
+function drawStoreName(ctx: CanvasRenderingContext2D, value: string, region: Region) {
+  const title = value.trim().toUpperCase() || "STORE";
+  const lines = title.length > 14 ? [title.slice(0, Math.ceil(title.length / 2)), title.slice(Math.ceil(title.length / 2))] : [title];
+  const size = fit(ctx, lines.sort((a, b) => b.length - a.length)[0], region.width, 47, 18, "900 italic SIZEpx Montserrat, Arial, sans-serif");
+  ctx.save();
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = `900 italic ${size}px Montserrat, Arial, sans-serif`;
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = "#063578";
+  ctx.shadowColor = "#00aaff";
+  ctx.shadowBlur = 12;
+  lines.forEach((line, index) => {
+    const y = region.y + region.height / 2 + (index - (lines.length - 1) / 2) * (size * 0.82);
+    for (let copy = 6; copy >= 1; copy -= 1) { ctx.strokeStyle = "#063578"; ctx.strokeText(line, region.x + region.width / 2 + copy * 2, y + copy * 2); }
+    ctx.strokeStyle = "#063578";
+    ctx.fillStyle = "#fff";
+    ctx.strokeText(line, region.x + region.width / 2, y);
+    ctx.fillText(line, region.x + region.width / 2, y);
+  });
+  ctx.restore();
+}
+
+function drawRows(ctx: CanvasRenderingContext2D, list: FlyerPackage[], region: Region, color: string) {
+  const rows = [...list].sort((a, b) => a.size_gb - b.size_gb).slice(0, 11);
+  const rowHeight = region.height / 11;
+  const size = Math.max(12, Math.min(17, rowHeight * 0.72));
+  ctx.save();
+  ctx.font = `600 ${size}px Oswald, Arial Narrow, sans-serif`;
+  ctx.textBaseline = "middle";
+  rows.forEach((item, index) => {
+    const y = region.y + rowHeight * index + rowHeight / 2;
+    ctx.textAlign = "left";
+    ctx.fillStyle = "#fff";
+    ctx.fillText(`${item.size_gb}GB`, region.x + region.width * 0.05, y);
+    ctx.textAlign = "right";
+    ctx.fillStyle = color;
+    ctx.fillText(Number(item.price).toFixed(2), region.x + region.width * 0.95, y);
+  });
+  ctx.restore();
+}
+
+export function DynamicFlyer({ storeName, bannerText = "DATA PLUG", accessCode, storeUrl, contactNumber = "", packages }: { storeName: string; bannerText?: string; accessCode: string; storeUrl: string; contactNumber?: string; packages: FlyerPackages }) {
+  const shareMessage = `Get the BEST data deals from ${storeName || "our store"}! 🔥
+MTN • AirtelTigo • Telecel ⚡ Instant Delivery • 24/7 Support
+📲 USSD: *380*455# 🔑 Access Code: ${accessCode || "—"}
+🛒 Shop: ${storeUrl || "—"}
+🔥 More services available: 📶 Data Bundles • Airtime ⚡ ECG Prepaid • AFA Registration 📺 DSTV • GOtv • StarTimes 💧 Water Bill Payments 📱 Social Media Boosting 🎬 Netflix • Canva • Spotify • ChatGPT & more 🎮 Game Hub • Bulk SMS • Marketplace
+💰 Buy • Sell • Earn — All in One Place!
+📞 Contact: ${contactNumber || "—"}`;
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const [calibrate, setCalibrate] = useState(false);
+  const [sample, setSample] = useState(false);
+  const [messageCopied, setMessageCopied] = useState(false);
+  const [regionOverrides, setRegionOverrides] = useState<Record<string, Region>>({});
+  const activeRegions = { ...REGIONS, ...regionOverrides };
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    canvas.width = WIDTH * SCALE;
+    canvas.height = HEIGHT * SCALE;
+    ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
+    if (!image) return;
+    ctx.drawImage(image, 0, 0, WIDTH, HEIGHT);
+    const values = sample ? { name: "DEMO DATA STORE", code: "123456", url: "https://store.example.com", data: { mtn: [{ size_gb: 1, price: 5.5 }, { size_gb: 5, price: 20 }], telecel: [{ size_gb: 2, price: 10 }], airteltigo: [{ size_gb: 3, price: 14 }] } } : { name: storeName, code: accessCode, url: storeUrl, data: packages };
+    const nameRegion = px(activeRegions.storeName);
+    drawStoreName(ctx, values.name, nameRegion);
+    const codeRegion = px(activeRegions.accessCode);
+    ctx.save(); ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.font = `700 ${fit(ctx, values.code || "—", codeRegion.width, 20, 10, "700 SIZEpx Arial, sans-serif")}px Arial, sans-serif`; ctx.fillStyle = "#fff9a5"; ctx.shadowColor = "#ffe600"; ctx.shadowBlur = 6; ctx.fillText(values.code || "—", codeRegion.x + codeRegion.width / 2, codeRegion.y + codeRegion.height / 2); ctx.restore();
+    const urlRegion = px(activeRegions.storeUrl);
+    ctx.save(); ctx.textAlign = "left"; ctx.textBaseline = "middle"; let url = values.url || ""; let urlSize = fit(ctx, url, urlRegion.width, 16, 9, "600 SIZEpx Arial, sans-serif"); if (ctx.measureText(url).width > urlRegion.width) { url = url.replace(/^https?:\/\//, ""); urlSize = fit(ctx, url, urlRegion.width, 16, 9, "600 SIZEpx Arial, sans-serif"); } ctx.font = `600 ${urlSize}px Arial, sans-serif`; ctx.fillStyle = "#fff"; ctx.fillText(url, urlRegion.x, urlRegion.y + urlRegion.height / 2); ctx.restore();
+    drawRows(ctx, values.data.mtn, px(activeRegions.mtnTable), "#ffe600"); drawRows(ctx, values.data.telecel, px(activeRegions.telecelTable), "#fff"); drawRows(ctx, values.data.airteltigo, px(activeRegions.airteltigoTable), "#fff");
+    if (calibrate) { ctx.save(); ctx.lineWidth = 2; Object.entries(activeRegions).forEach(([key, raw], index) => { const r = px(raw); ctx.strokeStyle = ["#ff00cc", "#00ffcc", "#ffff00", "#ff6600", "#66aaff", "#ffffff"][index] || "#fff"; ctx.strokeRect(r.x, r.y, r.width, r.height); ctx.fillStyle = ctx.strokeStyle; ctx.font = "12px monospace"; ctx.fillText(key, r.x, r.y - 3); }); ctx.restore(); }
+  }, [accessCode, activeRegions, calibrate, image, packages, sample, storeName, storeUrl]);
+  useEffect(() => { const img = new Image(); img.crossOrigin = "anonymous"; img.onload = () => setImage(img); img.src = "/flyer-template.png"; }, []);
+  useEffect(() => { void document.fonts?.ready.then(draw); }, [draw]);
+  const download = () => { const canvas = canvasRef.current; if (!canvas) return; const link = document.createElement("a"); link.download = `${(storeName || "store").toLowerCase().replace(/[^a-z0-9]+/g, "-")}-flyer.png`; link.href = canvas.toDataURL("image/png"); link.click(); };
+  const copyMessage = async () => { await navigator.clipboard.writeText(shareMessage); setMessageCopied(true); window.setTimeout(() => setMessageCopied(false), 1800); };
+  const share = async () => { const canvas = canvasRef.current; if (!canvas) return; const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/png")); if (!blob || !navigator.share) { await copyMessage(); return download(); } const file = new File([blob], `${storeName || "store"}-flyer.png`, { type: "image/png" }); if (navigator.canShare?.({ files: [file] })) await navigator.share({ files: [file], title: `${storeName} flyer`, text: shareMessage }); else { await copyMessage(); download(); } };
+  return <Card className="space-y-4 p-4"><div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold">Flyer Generator</h2><p className="text-sm text-muted-foreground">Storefront data is drawn directly into the blank flyer regions.</p></div><div className="flex flex-wrap gap-2"><Button variant="outline" onClick={download}><Download className="mr-2 h-4 w-4" />Download PNG</Button><Button onClick={share}><Share2 className="mr-2 h-4 w-4" />Share</Button><Button variant={sample ? "default" : "outline"} onClick={() => setSample((value) => !value)}>Sample text</Button><Button variant={calibrate ? "default" : "ghost"} size="icon" onClick={() => setCalibrate((value) => !value)} aria-label="Toggle calibration"><SlidersHorizontal className="h-4 w-4" /></Button></div></div><div className="space-y-2"><div className="flex items-center justify-between gap-2"><p className="text-sm font-medium">Share message</p><Button variant="outline" size="sm" onClick={copyMessage}><Copy className="mr-2 h-4 w-4" />{messageCopied ? "Copied" : "Copy message"}</Button></div><textarea readOnly value={shareMessage} rows={10} className="w-full resize-y rounded-md border border-border bg-muted/30 p-3 text-sm leading-relaxed" aria-label="Prefilled flyer share message" /></div><canvas ref={canvasRef} className="mx-auto h-auto w-full max-w-[720px] rounded-lg" aria-label={`${storeName} promotional flyer`} />{calibrate && <><div className="grid gap-2 sm:grid-cols-2">{Object.entries(REGIONS).map(([key, region]) => { const current = activeRegions[key]; return <div key={key} className="rounded-md border border-border p-2"><p className="mb-1 text-xs font-semibold">{key}</p><div className="grid grid-cols-4 gap-1">{(["x", "y", "width", "height"] as const).map((field) => <label key={field} className="text-[10px] text-muted-foreground">{field}<input type="number" step="0.001" value={current[field]} onChange={(event) => { const value = Number(event.target.value); setRegionOverrides((previous) => ({ ...previous, [key]: { ...(previous[key] ?? region), [field]: value } })); }} className="mt-1 w-full rounded border border-border bg-background px-1 py-1 text-xs text-foreground" /></label>)}</div></div>})}</div><pre className="max-h-48 overflow-auto rounded bg-muted p-3 text-xs">{JSON.stringify(activeRegions, null, 2)}</pre></>}</Card>;
+}
+
+export default DynamicFlyer;

@@ -1,0 +1,274 @@
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                                                                              ║
+║                     DATA PLUG STORE - GETTING STARTED                        ║
+║                                                                              ║
+║                    Complete Setup Guide in 5 Minutes                        ║
+║                                                                              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+
+📋 QUICK NAVIGATION
+═══════════════════════════════════════════════════════════════════════════════
+
+  1. Start Here
+     → Read: IMPLEMENTATION_SUMMARY.md
+     → Time: 5 minutes
+
+  2. Get the SQL Commands
+     → Read: QUICK_SQL_REFERENCE.txt
+     → Copy-paste ready SQL
+     → Time: 20 minutes to execute
+
+  3. Detailed Instructions (If Needed)
+     → Read: DATABASE_SETUP_INSTRUCTIONS.md
+     → Complete step-by-step guide
+     → Troubleshooting section included
+
+
+🚀 QUICK START (5 MINUTES)
+═══════════════════════════════════════════════════════════════════════════════
+
+Step 1: What's New?
+   ✅ Users now go to dashboard after signup (not packages page)
+   ✅ Dashboard shows wallet with "Buy Data" button
+   ✅ Top-up reference with copy button
+   ✅ USSD code display with copy button
+   ✅ Access code display with copy button
+   ✅ Payment method selector (Wallet or Paystack)
+
+
+Step 2: What You Need to Do
+   📝 Run 8 SQL commands in Supabase
+   📸 Take 2-3 screenshots
+   ⏱️  Total time: ~20 minutes
+
+
+Step 3: How to Run SQL
+   1. Open Supabase Dashboard
+   2. Go to SQL Editor → New Query
+   3. Copy command from QUICK_SQL_REFERENCE.txt
+   4. Paste into SQL Editor
+   5. Click RUN
+   6. See success ✓
+   7. Take screenshot
+   8. Repeat for next command
+
+
+📋 COMMANDS TO RUN (In Order)
+═══════════════════════════════════════════════════════════════════════════════
+
+Find these in: QUICK_SQL_REFERENCE.txt
+
+  [ ] STEP 1:   Add Video Column
+  [ ] STEP 2A:  Update Top-Up References
+  [ ] STEP 2B:  Verify Update (Take Screenshot 1)
+  [ ] STEP 3:   Create Trigger for New Customers
+  [ ] STEP 4A:  Add USSD & Access Code Columns
+  [ ] STEP 4B:  Set Default Values
+  [ ] STEP 5:   Create Flyer Generator Tables
+  [ ] FINAL:    Verify All Changes (Take Screenshot 2)
+
+
+📸 SCREENSHOTS TO TAKE
+═══════════════════════════════════════════════════════════════════════════════
+
+Screenshot 1 (After STEP 2B):
+   Shows: id, phone_number, topup_reference for 10 customers
+   Expected: All show user1, user2, user3, etc.
+   Send to: Confirm update worked
+
+Screenshot 2 (After Final Verification):
+   Shows: All columns populated
+   Expected: id, phone_number, topup_reference, ussd_code, access_code_zero
+   Send to: Confirm everything set up
+
+
+📁 FILES YOU HAVE
+═══════════════════════════════════════════════════════════════════════════════
+
+GETTING_STARTED.txt (This file)
+   └─ You are here! Quick overview
+
+QUICK_SQL_REFERENCE.txt
+   └─ All SQL commands ready to copy-paste
+   └─ Best place to get commands from
+
+DATABASE_SETUP_INSTRUCTIONS.md
+   └─ Detailed step-by-step guide
+   └─ Why each command does what
+   └─ Troubleshooting tips
+
+IMPLEMENTATION_SUMMARY.md
+   └─ What was built
+   └─ What you need to do
+   └─ Testing guide
+
+SQL_UPDATES.sql
+   └─ All SQL in one file
+   └─ Reference for all updates
+
+SQL_FLYER_GENERATOR.sql
+   └─ Flyer generator tables
+   └─ Customer pricing structure
+
+
+⚙️  HOW TO RUN (DETAILED)
+═══════════════════════════════════════════════════════════════════════════════
+
+1. Login to Supabase
+   - Go to: https://supabase.com
+   - Click: Sign In
+   - Select: Your Project
+
+2. Open SQL Editor
+   - Click: SQL Editor (left sidebar)
+   - Click: New Query (blue button)
+
+3. Copy First Command
+   - Open: QUICK_SQL_REFERENCE.txt
+   - Find: STEP 1: Add Video Column
+   - Copy: The SQL code below it
+   - Paste: Into SQL Editor (Ctrl+V or Cmd+V)
+
+4. Run Command
+   - Click: RUN (blue button)
+   - Wait: For green checkmark ✓
+   - See: Result or "Command executed successfully"
+
+5. Take Screenshot (For STEP 2B and FINAL only)
+   - Press: Print Screen (Windows) or Cmd+Shift+3 (Mac)
+   - Or use: Snip & Sketch (Windows) or Screenshot (Mac)
+   - Save: Screenshot to computer
+   - Remember: Which command you ran
+
+6. Move to Next Command
+   - Click: New Query
+   - Repeat: From step 3
+
+
+⏱️  TIMING
+═══════════════════════════════════════════════════════════════════════════════
+
+Each command takes:
+   - Copy:           30 seconds
+   - Paste:          10 seconds
+   - Run:            5 seconds
+   - Wait for done:  2-5 seconds
+   - Take screenshot: 30 seconds (for 2 of them)
+   - Total per step: ~1-2 minutes
+
+Total for all 8 steps: ~10-15 minutes
+
+
+✅ SUCCESS CHECKLIST
+═══════════════════════════════════════════════════════════════════════════════
+
+After running all SQL:
+   ☑ STEP 1 - Video column added
+   ☑ STEP 2 - Top-up references updated to user<id> format
+   ☑ STEP 2B - Verified (Screenshot 1 saved)
+   ☑ STEP 3 - Trigger created
+   ☑ STEP 4A - USSD & access code columns added
+   ☑ STEP 4B - Default values set
+   ☑ STEP 5 - Flyer tables created
+   ☑ FINAL - Verified (Screenshot 2 saved)
+   ☑ Screenshots sent for confirmation
+
+
+🧪 WHAT TO TEST AFTER
+═══════════════════════════════════════════════════════════════════════════════
+
+1. New Customer Signup
+   - Sign up as new customer
+   - Should go to dashboard (not packages page)
+   - Should see all wallet info
+
+2. Dashboard Features
+   - Click "Buy Data" button → Goes to purchase
+   - Click copy on USSD code → Copies *123#
+   - Click copy on access code → Copies 0
+   - Top-up reference shows in dropdown
+
+3. Payment Method
+   - Click "Buy Data"
+   - Enter phone number
+   - See "Wallet" and "Paystack" options
+   - Choose Wallet or Paystack
+   - Shows available balance
+
+
+⚠️  IMPORTANT NOTES
+═══════════════════════════════════════════════════════════════════════════════
+
+READ BEFORE STARTING:
+   • Make sure you're in the RIGHT database
+   • Backup your database first (if possible)
+   • Run commands in the CORRECT ORDER
+   • Don't skip any steps
+   • Wait for each command to complete before next
+
+IF YOU GET AN ERROR:
+   • "Column already exists" → OK! Don't worry, move to next
+   • "Trigger already exists" → OK! Don't worry, move to next
+   • "Table does not exist" → Check table name spelling
+   • "Permission denied" → Check your Supabase user permissions
+
+IF YOU GET STUCK:
+   • Check DATABASE_SETUP_INSTRUCTIONS.md → Troubleshooting
+   • Look at IMPLEMENTATION_SUMMARY.md → Support section
+   • Read error message carefully
+   • Take screenshot of error
+   • Try running verification query: SELECT * FROM public.customers LIMIT 1;
+
+
+🎯 YOUR NEXT STEPS
+═══════════════════════════════════════════════════════════════════════════════
+
+RIGHT NOW:
+   1. Read QUICK_SQL_REFERENCE.txt
+   2. Open Supabase Dashboard
+   3. Run first command
+   4. See green checkmark ✓
+   5. Run next command
+   6. Continue for all 8
+
+THEN:
+   7. Take 2 verification screenshots
+   8. Send screenshots
+   9. Wait for confirmation
+   10. Deploy code to production
+
+FINALLY:
+   11. Test new customer signup
+   12. Test all dashboard features
+   13. Test payment method selection
+
+
+📞 NEED HELP?
+═══════════════════════════════════════════════════════════════════════════════
+
+Problem                    Solution
+──────────────────────────────────────────────────────────────────────────────
+Don't know where to start  → Read IMPLEMENTATION_SUMMARY.md
+SQL command errors         → Check DATABASE_SETUP_INSTRUCTIONS.md Troubleshooting
+Dashboard not updating     → Check columns exist in database
+USSD code not showing      → Verify ussd_code column has data
+Top-up ref not showing     → Verify topup_reference column has user<id> format
+Copy button not working    → Refresh page and try again
+Payment method not showing → Check buy dialog is loading data
+
+
+═══════════════════════════════════════════════════════════════════════════════
+
+Ready to start?
+
+1. Open: QUICK_SQL_REFERENCE.txt
+2. Copy: First command (STEP 1)
+3. Go to: Supabase SQL Editor
+4. Paste and Run
+5. Take screenshot
+6. Repeat
+
+You've got this! 🚀
+
+═══════════════════════════════════════════════════════════════════════════════

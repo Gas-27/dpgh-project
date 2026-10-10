@@ -1,0 +1,60 @@
+export const SITE_ORIGIN = "https://dataplug.store";
+export const JUSTBUYGH_ORIGIN = "https://justbuygh.com";
+
+export type SeoBrand = "dataplug" | "justbuygh" | "datastores" | "agentsstore";
+
+export function getSeoBrand(hostname = typeof window !== "undefined" ? window.location.hostname : "") : SeoBrand {
+  const host = hostname.toLowerCase().split(":")[0];
+  if (host === "agentsstore.shop" || host.endsWith(".agentsstore.shop")) return "agentsstore";
+  if (host === "datastores.shop" || host.endsWith(".datastores.shop")) return "datastores";
+  if (host === "justbuygh.com" || host === "www.justbuygh.com") return "justbuygh";
+  return "dataplug";
+}
+
+export function getSeoOrigin(hostname = typeof window !== "undefined" ? window.location.hostname : "") {
+  if (!hostname) return SITE_ORIGIN;
+  const host = hostname.toLowerCase().split(":")[0];
+  return host === "localhost" || host === "127.0.0.1" ? SITE_ORIGIN : `https://${host}`;
+}
+
+export function getStorefrontSeo(hostname = typeof window !== "undefined" ? window.location.hostname : "") {
+  const brand = getSeoBrand(hostname);
+  if (brand === "agentsstore") return { siteName: "Agents Store", title: "Discover Digital Services from Independent Agents", description: "Explore trusted digital services, subscriptions, and tools offered by independent agents in one convenient marketplace.", keywords: ["agent marketplace", "digital services", "online subscriptions", "independent agents"] };
+  if (brand === "datastores") return { siteName: "DataStores", title: "Digital Services and Agent Stores Online", description: "Browse digital services and storefronts from trusted agents, with simple access and convenient online purchasing.", keywords: ["digital services marketplace", "agent stores", "online services", "digital subscriptions"] };
+  if (brand === "justbuygh") return { siteName: "JustBuyGH", title: "JustBuyGH | Cheap Data, Airtime, Bills, Subscriptions & Social Boosts in Ghana", description: "JustBuyGH is Ghana's affordable digital services hub for bulk SMS, cheap data, airtime, ECG and DStv payments, games with real rewards, premium subscriptions, and social media boosts.", keywords: ["JustBuyGH", "cheap data Ghana", "buy data online Ghana", "bulk SMS Ghana", "cheap airtime Ghana", "ECG payment Ghana", "DStv payment Ghana", "online games Ghana", "win real money Ghana", "Netflix subscription Ghana", "ChatGPT Pro Ghana", "Canva Pro Ghana", "CapCut Pro Ghana", "Spotify Premium Ghana", "Apple Music Ghana", "social media boost Ghana", "WhatsApp boost Ghana", "Instagram followers Ghana", "TikTok boost Ghana", "YouTube promotion Ghana", "Telegram promotion Ghana"] };
+  return { siteName: "DataPlug Store", title: "DataPlug Ghana | Data, Airtime, Bills, TV Subscriptions & Digital Services", description: "DataPlug Store is Ghana's multipurpose digital services marketplace for affordable MTN, Telecel and AirtelTigo data, airtime, subscriptions, social boosts, ECG payments, DStv, GOtv and StarTimes.", keywords: ["DataPlug Ghana", "digital services Ghana", "buy data online Ghana", "cheap data bundles Ghana", "MTN data bundles Ghana", "Telecel data Ghana", "AirtelTigo data Ghana", "airtime top up Ghana", "ECG payment Ghana", "DStv subscription Ghana", "GOtv subscription Ghana", "StarTimes subscription Ghana", "social boost Ghana", "online subscriptions Ghana", "data reseller Ghana"] };
+}
+
+export const PUBLIC_SEO_PATHS = [
+  "/", "/packages", "/become-agent", "/blog", "/about", "/contact",
+  "/mtn-data-bundles", "/telecel-data-bundles", "/airteltigo-data-bundles", "/cheap-data-bundles-ghana",
+  "/data-reseller-agent-ghana", "/data-api-ghana", "/streaming-data-bundles-ghana", "/student-data-bundles-ghana",
+  "/airtime-top-up-ghana", "/premium-subscription", "/data-agent-business-ghana", "/ussd-data-services-ghana",
+  "/bece-results-checker", "/wassce-results-checker", "/buy-data-online-ghana", "/wholesale-data-bundles-ghana",
+  "/internet-bundles-ghana", "/become-sub-agent", "/afa-bundle-ghana", "/data-bundle-prices-ghana",
+  "/privacy-policy", "/terms", "/refund-policy", "/cookie-policy",
+] as const;
+
+const PRIVATE_PREFIXES = [
+  "/user-dashboard", "/agent-dashboard", "/subagent-dashboard", "/sub-subagent-dashboard", "/dashboard",
+  "/admin", "/admin-only", "/sub-admin", "/login", "/signup", "/reset-password", "/verify-email",
+  "/auth/", "/api/", "/agent-registration-callback", "/subagent-registration", "/sub-subagent-registration",
+  "/subagent-approval-payment", "/verify-subagent-payment", "/pending-approval", "/only-admin",
+];
+
+export function isPrivatePath(pathname: string) {
+  return PRIVATE_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`));
+}
+
+export function isKnownPublicPath(pathname: string) {
+  return PUBLIC_SEO_PATHS.includes(pathname as (typeof PUBLIC_SEO_PATHS)[number]) ||
+    pathname.startsWith("/blog/") || pathname.startsWith("/agent/");
+}
+
+export function shouldNoIndex(pathname: string, search = "") {
+  return isPrivatePath(pathname) || pathname.startsWith("/agent/") || Boolean(search);
+}
+
+export function canonicalUrl(pathname: string) {
+  return `${SITE_ORIGIN}${pathname === "/" ? "/" : pathname.replace(/\/$/, "")}`;
+}

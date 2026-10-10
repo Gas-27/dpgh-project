@@ -1,0 +1,16 @@
+{
+  "name": "JustBuyGH – Cheap Data, Airtime & Digital Services",
+  "short_name": "JustBuyGH",
+  "description": "Buy cheap data, airtime, ECG, premium subscriptions, games and digital services in Ghana.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#05051a",
+  "theme_color": "#06b6f5",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en-GH",
+  "categories": ["utilities", "shopping", "finance"],
+  "icons": [
+    { "src": "/justbuygh-icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

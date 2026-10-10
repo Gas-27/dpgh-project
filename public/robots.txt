@@ -1,14 +1,18 @@
-User-agent: Googlebot
-Allow: /
-
-User-agent: Bingbot
-Allow: /
-
-User-agent: Twitterbot
-Allow: /
-
-User-agent: facebookexternalhit
-Allow: /
-
 User-agent: *
 Allow: /
+Disallow: /user-dashboard
+Disallow: /agent-dashboard
+Disallow: /subagent-dashboard
+Disallow: /sub-subagent-dashboard
+Disallow: /dashboard
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /auth/
+Disallow: /api/
+Disallow: /agent/
+Disallow: /subagent-registration/
+Disallow: /sub-subagent-registration/
+Disallow: /subagent-approval-payment
+Disallow: /verify-subagent-payment
+Disallow: /pending-approval
+Sitemap: https://dataplug.store/sitemap.xml

@@ -1,0 +1,10 @@
+{
+  "version": 1,
+  "config": {
+    "function": {
+      "memory": 256,
+      "timeout": 30,
+      "jwt": "required"
+    }
+  }
+}

@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
+import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Store, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { isValidStoreName, sanitizeStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
 
 // Helper: convert store name to a URL‑safe slug (subdomain)
 const slugify = (name: string) =>
@@ -96,7 +98,11 @@ const AgentOnboarding = () => {
   }, [storeName, checkStoreNameExists]);
 
   const handleStoreNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setStoreName(e.target.value);
+    const safeName = sanitizeStoreName(e.target.value);
+    setStoreName(safeName);
+    if (safeName !== e.target.value) {
+      toast({ title: "Invalid store name", description: STORE_NAME_RULE, variant: "destructive" });
+    }
     if (nameAvailable !== null) setNameAvailable(null);
   };
 
@@ -114,6 +120,11 @@ const AgentOnboarding = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!isValidStoreName(storeName)) {
+      toast({ title: "Invalid store name", description: STORE_NAME_RULE, variant: "destructive" });
+      return;
+    }
 
     // Final verification before insert
     if (nameAvailable !== true) {
@@ -171,7 +182,7 @@ const AgentOnboarding = () => {
 
   // Compute the proposed subdomain for display
   const proposedSlug = storeName.trim() ? slugify(storeName) : "";
-  const storeLink = proposedSlug ? `https://${proposedSlug}.datastores.shop` : "";
+  const storeLink = proposedSlug ? DOMAINS.getAgentStoreUrl(storeName) : "";
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -187,13 +198,16 @@ const AgentOnboarding = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
               <Label>Store Name</Label>
+              <p className="text-xs text-muted-foreground">{STORE_NAME_RULE} Use the normal default text style; decorative or stylized characters are not supported.</p>
               <div className="relative">
                 <Input
                   value={storeName}
                   onChange={handleStoreNameChange}
                   placeholder="e.g. DataKing GH"
                   required
-                  className={nameAvailable === false ? "border-red-500 pr-10" : nameAvailable === true ? "border-green-500 pr-10" : ""}
+                  pattern="[A-Za-z0-9 ]+"
+                  title={STORE_NAME_RULE}
+                  className={`font-sans ${nameAvailable === false ? "border-red-500 pr-10" : nameAvailable === true ? "border-green-500 pr-10" : ""}`}
                 />
                 <div className="absolute right-3 top-1/2 -translate-y-1/2">
                   {isCheckingName && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
@@ -292,7 +306,7 @@ const AgentOnboarding = () => {
               type="submit"
               variant="hero"
               className="w-full"
-              disabled={loading || isCheckingName || nameAvailable !== true}
+              disabled={loading || isCheckingName || nameAvailable !== true || !isValidStoreName(storeName)}
             >
               {loading ? "Submitting..." : "Submit for Approval"}
             </Button>
