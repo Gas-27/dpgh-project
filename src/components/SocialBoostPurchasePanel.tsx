@@ -63,6 +63,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const [buying, setBuying] = useState(false);
   const [orderId, setOrderId] = useState("");
   const [resellerPrices, setResellerPrices] = useState<Record<number, number>>({});
+  const [adminPrices, setAdminPrices] = useState<Record<number, number>>({});
   const [resellerCaps, setResellerCaps] = useState<Record<number, number>>({});
   const [savingPrices, setSavingPrices] = useState(false);
 
@@ -82,7 +83,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   if (!mounted) return;
   const providerServices = Array.isArray(providerResult.data) ? providerResult.data : [];
   const pricingServices = Array.isArray(pricingResult.data) ? pricingResult.data.map((row: any) => ({ service: Number(row.service_id), name: row.service_name, category: row.category, rate: String(row.provider_rate ?? 0), min: String(row.min_quantity ?? 1), max: String(row.max_quantity ?? 100000), average_time: row.average_completion_time ?? "", notes: row.notes ?? "" })) : [];
-  const merged = [...providerServices, ...pricingServices].filter((item, index, list) => list.findIndex((candidate) => Number(candidate.service) === Number(item.service)) === index);
+  const merged = [...pricingServices, ...providerServices].filter((item, index, list) => list.findIndex((candidate) => Number(candidate.service) === Number(item.service)) === index);
   if (merged.length) setCatalog(merged);
   });
     return () => { mounted = false; };
@@ -140,7 +141,9 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       .maybeSingle()
       .then(({ data }: any) => {
         if (!mounted) return;
-        setPrice(Number(data?.admin_price_per_1000 || data?.default_price_per_1000 || service.rate || 49));
+        const adminPrice = Number(data?.admin_price_per_1000 || data?.default_price_per_1000 || service.rate || 49);
+        setAdminPrices((current) => ({ ...current, [service.service]: adminPrice }));
+        setPrice(adminPrice);
         setService((current) => ({
           ...current,
           min: String(data?.min_quantity ?? current.min),
@@ -175,8 +178,9 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
 
   useEffect(() => {
     const customPrice = resellerPrices[service.service];
-    if (customPrice > 0) setPrice(customPrice);
-  }, [canSetPrices, resellerPrices, service.service]);
+    const adminPrice = adminPrices[service.service] || Number(service.rate) || 49;
+    setPrice(customPrice > 0 ? customPrice : adminPrice);
+  }, [adminPrices, resellerPrices, service.service, service.rate]);
 
   const min = Number(service.min) || 10;
   const max = Number(service.max) || 50000;
