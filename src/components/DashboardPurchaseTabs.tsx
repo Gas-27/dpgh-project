@@ -100,7 +100,20 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
           return product === "subscription" || product.includes("subscription");
         });
         if (error) console.error("[v0] Korba history load failed", error);
-        setRows(error ? [] : filtered);
+        if (!error && filtered.length) {
+          setRows(filtered);
+        } else {
+          const ownerColumn = ownerType === "agent" ? "agent_store_id" : ownerType === "subagent" ? "subagent_store_id" : "sub_subagent_store_id";
+          const { data: fallback } = await supabase.from("orders").select("id, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, created_at, source, customer_number, package_id, provider_reference, provider_order_id, api_response").or(`${ownerColumn}.eq.${ownerId}`).order("created_at", { ascending: false }).limit(200);
+          const legacy = (fallback || []).filter((row: any) => {
+            const text = JSON.stringify(row).toLowerCase();
+            const korba = text.includes("korba") || Boolean(row.provider_reference || row.provider_order_id);
+            if (category === "instant") return korba && (text.includes("airtime") || text.includes("data")) && !text.includes("cheap");
+            if (category === "services") return korba && ["ecg", "water", "dstv", "gotv", "startimes", "start time", "utility"].some((value) => text.includes(value));
+            return korba && text.includes("subscription");
+          });
+          setRows(legacy);
+        }
         setLoading(false);
       }
     };
