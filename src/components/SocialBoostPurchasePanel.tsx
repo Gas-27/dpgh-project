@@ -78,11 +78,11 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     let mounted = true;
   Promise.all([
   supabase.functions.invoke("social-boost", { body: { action: "services" } }),
-  (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider_rate,min_quantity,max_quantity,average_completion_time,notes"),
+  (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider_rate,default_price_per_1000,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes"),
   ]).then(([providerResult, pricingResult]) => {
   if (!mounted) return;
   const providerServices = Array.isArray(providerResult.data) ? providerResult.data : [];
-  const pricingServices = Array.isArray(pricingResult.data) ? pricingResult.data.map((row: any) => ({ service: Number(row.service_id), name: row.service_name, category: row.category, rate: String(row.provider_rate ?? 0), min: String(row.min_quantity ?? 1), max: String(row.max_quantity ?? 100000), average_time: row.average_completion_time ?? "", notes: row.notes ?? "" })) : [];
+  const pricingServices = Array.isArray(pricingResult.data) ? pricingResult.data.map((row: any) => ({ service: Number(row.service_id), name: row.service_name, category: row.category, rate: String(row.admin_price_per_1000 ?? row.default_price_per_1000 ?? row.provider_rate ?? 0), min: String(row.min_quantity ?? 1), max: String(row.max_quantity ?? 100000), average_time: row.average_completion_time ?? "", notes: row.notes ?? "" })) : [];
   const merged = [...pricingServices, ...providerServices].filter((item, index, list) => list.findIndex((candidate) => Number(candidate.service) === Number(item.service)) === index);
   if (merged.length) setCatalog(merged);
   });
@@ -133,6 +133,25 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   }, []);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get("reference") || params.get("trxref");
+    if (params.get("payment") !== "verifying" || !reference) return;
+    let mounted = true;
+    let attempts = 0;
+    const findOrder = async () => {
+      const { data } = await (supabase as any).from("social_boost_orders").select("order_number").eq("payment_reference", reference).maybeSingle();
+      if (mounted && data?.order_number) {
+        setOrderId(String(data.order_number));
+        setSearchOrder(String(data.order_number));
+        return;
+      }
+      if (mounted && attempts++ < 10) window.setTimeout(findOrder, 1500);
+    };
+    void findOrder();
+    return () => { mounted = false; };
+  }, []);
+
+  useEffect(() => {
     let mounted = true;
     (supabase as any)
       .from("social_boost_service_pricing")
@@ -160,13 +179,14 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     let mounted = true;
     (async () => {
       const { data: authData } = await supabase.auth.getUser();
-      if (!authData.user || !mounted) return;
-      let pricingUserId = authData.user.id;
+      if (!mounted) return;
+      let pricingUserId = authData.user?.id ?? null;
       if (storeId && ["agent", "subagent", "subsubagent"].includes(ownerType)) {
         const table = ownerType === "agent" ? "agent_stores" : ownerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
         const { data: store } = await (supabase as any).from(table).select("user_id").eq("id", storeId).maybeSingle();
         pricingUserId = store?.user_id ?? pricingUserId;
       }
+      if (!pricingUserId) return;
       const { data } = await (supabase as any)
         .from("social_boost_reseller_pricing")
         .select("service_id,price_per_1000")
@@ -199,7 +219,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
         body: {
           email: (await supabase.auth.getUser()).data.user?.email || `social_boost_${Date.now()}@datapluggh.com`,
           amount: total,
-          callback_url: `${window.location.origin}/social-boost?payment=success`,
+          callback_url: `${window.location.origin}${window.location.pathname}${window.location.search ? `${window.location.search}&` : "?"}payment=verifying`,
           metadata: { type: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: ownerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(ownerType) ? ownerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(ownerType) ? storeId : null },
         },
       });
