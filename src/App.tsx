@@ -287,6 +287,8 @@ return (
                   <Route path="/__custom/agent/:storeName" element={<AgentStorefront />} />
                   <Route path="/__custom/subagent/:storeName" element={<AgentStorefront />} />
                   <Route path="/__custom/subsubagent/:subagentStoreName/:subSubagentStoreName" element={<SubSubagentStorefront />} />
+                  <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
+                  <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
                   <Route path="*" element={<CustomDomainResolver />} />
                 </Routes>
               ) : isSubagentDomain ? (
@@ -322,6 +324,9 @@ return (
                       </AuthGuard>
                     }
                   />
+                  {/* Product pages must be declared before storefront catch-all routes. */}
+                  <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
+                  <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
                   {/* Catch-all routes for storefronts */}
                   <Route path="/:subagentStoreName/store/:subSubagentStoreName" element={<SubSubagentStorefront />} />
                   <Route path="/:storeName" element={<SubagentStorefront />} />

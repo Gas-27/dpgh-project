@@ -144,7 +144,7 @@ export default function PublicProductsSection({
   const sellerPhone = selected?.seller_phone || supportPhone;
   const productImage = selected?.image_urls?.[0];
   const productSlug = selected ? selected.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "product";
-  const productUrl = selected ? `${window.location.origin}/marketplace/product/${selected.id}/${productSlug || "product"}` : "";
+  const productUrl = selected ? new URL(`/marketplace/product/${selected.id}/${productSlug || "product"}`, window.location.origin).toString() : "";
   const sellerMessage = selected
     ? [
         `Hello, I would like to buy ${selected.title} for GHS ${Number(selected.price || 0).toFixed(2)}.`,
