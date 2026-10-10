@@ -191,7 +191,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       const data = byId.data ?? (await table.select(columns).ilike("service_name", service.name).ilike("category", service.category).maybeSingle()).data;
       if (!mounted) return;
       const adminPrice = Number(data?.admin_price_per_1000 ?? data?.default_price_per_1000 ?? service.rate ?? 0);
-      const userPrice = Number(data?.default_price_per_1000 ?? service.rate ?? 0);
+      const userPrice = Number(data?.admin_price_per_1000 ?? service.rate ?? 0);
       const configuredPrice = pricingMode === "user" ? userPrice : adminPrice;
       if (!Number.isFinite(adminPrice) || adminPrice <= 0) return;
         setAdminPrices((current) => ({ ...current, [service.service]: configuredPrice }));
