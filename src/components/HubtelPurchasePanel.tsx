@@ -175,7 +175,7 @@ export default function HubtelPurchasePanel({
     value?: string;
   } | null>(null);
   const [liveBundles, setLiveBundles] = useState<
-    Record<string, { name: string; price: string; value: string }[]>
+    Record<string, { name: string; category: string; price: string; value: string }[]>
   >({});
   const [catalogLoading, setCatalogLoading] = useState(false);
   const [catalogError, setCatalogError] = useState<string | null>(null);
@@ -263,11 +263,12 @@ export default function HubtelPurchasePanel({
             const name = item.name ?? item.display ?? item.description ?? item.product_name ?? item.bundle_name ?? item.package_name ?? item.product_title ?? item.title ?? item.bundle_size ?? item.data_bundle;
             const price = item.amount ?? item.price ?? item.value ?? item.bundle_price;
             const value = item.product_id ?? item.bundle_id ?? item.id ?? item.code ?? item.value;
+            const category = item.category ?? item.bundle_category ?? item.group_name ?? item.group ?? item.type ?? item.product_type ?? (String(name ?? "").match(/midnight|kokrokoo|social|video|idd/i)?.[0] ?? "Normal Data");
             return name && value && Number.isFinite(Number(price))
-              ? { name: String(name), price: `₵${Number(price).toFixed(2)}`, value: String(value) }
+              ? { name: String(name), category: String(category), price: `₵${Number(price).toFixed(2)}`, value: String(value) }
               : null;
           })
-          .filter((item): item is { name: string; price: string; value: string } => Boolean(item));
+          .filter((item): item is { name: string; category: string; price: string; value: string } => Boolean(item));
         if (!cancelled) {
           setCatalogLoading(false);
           if (!bundles.length) {
@@ -666,7 +667,7 @@ const resultRoot = (record.results || record.result || record) as Record<string,
                       }}
                       className="flex min-h-12 items-center justify-between gap-3 rounded-lg border bg-card px-3 py-2 text-left text-sm transition hover:border-primary hover:bg-muted"
                     >
-                      <span className="leading-5">{bundle.name}</span>
+                      <span className="min-w-0 leading-5"><span className="block font-semibold">{bundle.name}</span><span className="block text-xs text-muted-foreground">{bundle.category} • {network} normal data</span></span>
                       <span className="shrink-0 font-semibold text-primary">
                         {bundle.price}
                       </span>
@@ -676,6 +677,7 @@ const resultRoot = (record.results || record.result || record) as Record<string,
               </div>
             ) : (
               <div className="grid gap-4">
+                <p className="text-sm font-semibold text-primary">{network} Airtime</p>
                 <div className="grid gap-2">
                   <Label htmlFor="custom-airtime-amount">
                     Exact airtime amount (GHS)

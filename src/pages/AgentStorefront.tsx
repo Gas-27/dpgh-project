@@ -1465,7 +1465,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                               <div className="min-w-0">
                                 <p className="font-display text-lg font-extrabold leading-tight text-white">{getBundleName(pkg)}</p>
                                 <p className="text-xs font-bold uppercase tracking-wide" style={{ color: getNetworkLabelColor(networkFilter) }}>{getBundleCategory(pkg.bundle_id)} • {formatNetworkName(networkFilter)} Normal Data</p>
-                                <p className="truncate text-[11px] leading-relaxed text-white/70">{pkg.bundle_id ? `Product ID: ${pkg.bundle_id}` : "Standard network data bundle"}</p>
+                                <p className="truncate text-[11px] leading-relaxed text-white/70">Standard {formatNetworkName(networkFilter)} data bundle</p>
                               </div>
                               <p className="shrink-0 text-right text-2xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
                             </div>

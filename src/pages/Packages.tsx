@@ -1636,7 +1636,7 @@ const searchOrders = async (input?: string) => {
                     const packageSize = pkg.size_gb_text || `${pkg.size_gb}GB`;
                     const networkLabel = networkConfig[selectedNetwork].label;
                     const packageName = `${networkLabel} Normal Data • ${packageSize}`;
-                    const packageDetail = pkg.bundle_id ? `Bundle category: ${pkg.bundle_id}` : `${networkLabel} standard data bundle`;
+                    const packageDetail = `${networkLabel} standard data bundle`;
                     const available = pkg.active !== false;
                     return (
                       <Card key={pkg.id} style={{ backgroundColor: "#2f176d", color: "#ffffff" }} className={`package-reference-card border-0 shadow-none ${available ? "" : "opacity-45"}`}>
