@@ -83,8 +83,9 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const platformServices = catalog.filter((item) => item.category.toLowerCase().includes(platform.toLowerCase()));
   const services = platformServices.length ? platformServices : catalog;
   const serviceCategories = Array.from(new Set(services.map((item) => item.category.trim()))).filter(Boolean);
-  const selectedCategory = serviceCategories.find((category) => category.toLowerCase().includes(platform.toLowerCase())) ?? service?.category ?? serviceCategories[0] ?? platform;
-  const categoryServices = services.filter((item) => item.category === selectedCategory);
+  const [selectedCategory, setSelectedCategory] = useState("TikTok");
+  const activeCategory = serviceCategories.includes(selectedCategory) ? selectedCategory : serviceCategories.find((category) => category.toLowerCase().includes(platform.toLowerCase())) ?? service?.category ?? serviceCategories[0] ?? platform;
+  const categoryServices = services.filter((item) => item.category === activeCategory);
   const orderedCategoryServices = [...categoryServices].sort((a, b) => {
     const aFollowers = a.name.toLowerCase().includes("follower") ? 0 : 1;
     const bFollowers = b.name.toLowerCase().includes("follower") ? 0 : 1;
@@ -128,7 +129,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     setService(next);
     setServiceType(next.name);
     setQuantity(Number(next.min) || 50);
-  }, [platform, catalog, selectedCategory]);
+  }, [platform, catalog, activeCategory]);
 
   useEffect(() => {
     if (!serviceTypes.includes(serviceType)) setServiceType(serviceTypes[0] ?? fallbackServices[0].name);
@@ -241,7 +242,7 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
   const total = useMemo(() => Math.round((numericQuantity / 1000) * price * 1000) / 1000, [numericQuantity, price]);
 
   const buy = async () => {
-    const isCustomComments = /comment/i.test(`${service.name} ${selectedCategory}`);
+    const isCustomComments = /comment/i.test(`${service.name} ${activeCategory}`);
     if (!targetLink.trim()) return toast({ title: "Account link required", description: "Enter the social profile or post link to boost.", variant: "destructive" });
     if (isCustomComments && !customComments.trim()) return toast({ title: "Comments required", description: "Enter one comment per line before placing this order.", variant: "destructive" });
     if (!numericQuantity || numericQuantity < min || numericQuantity > max) return toast({ title: "Invalid quantity", description: `This service accepts ${min.toLocaleString()} to ${max.toLocaleString()}.`, variant: "destructive" });
@@ -423,9 +424,9 @@ const noteLines = String(service.notes || service.note || "No additional note ha
   <div className={`${showHistory ? "" : "hidden"} mt-5 overflow-hidden rounded-xl bg-white text-slate-950`}>
   <div className="border-b bg-[#dddff5] px-3 py-3 font-semibold">My Social Boost History</div>
   <div className="max-h-[22rem] overflow-auto">
-  <table className="min-w-[760px] w-full text-left text-sm">
+  <table className="min-w-[1100px] w-full text-left text-sm">
             <thead className="font-semibold"><tr>{["Order", "Date", "Source", "Link", "Quantity", "Service", "Status", "Remains", "Price", "Profit"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead>
-            <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t"><td className="px-3 py-3">#{item.order_number}</td><td className="px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="px-3 py-3">{item.seller_store_kind ? `${item.seller_store_kind} storefront` : item.owner_type === "api" ? "API" : "Wallet"}</td><td className="max-w-[220px] break-all px-3 py-3 text-blue-700">{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td><td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td><td className="px-3 py-3 text-emerald-700">{item.profit_amount != null ? `GHC ${Number(item.profit_amount).toFixed(2)}` : "—"}</td></tr>) : <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
+            <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t align-top"><td className="whitespace-nowrap px-3 py-3">#{item.order_number}</td><td className="whitespace-nowrap px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="whitespace-nowrap px-3 py-3">{item.seller_store_kind ? `${item.seller_store_kind} storefront` : item.owner_type === "api" ? "API" : "Wallet"}</td><td className="max-w-[260px] truncate px-3 py-3 text-blue-700" title={item.target_link}>{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td><td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td><td className="px-3 py-3 text-emerald-700">{item.profit_amount != null ? `GHC ${Number(item.profit_amount).toFixed(2)}` : "—"}</td></tr>) : <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
             </table>
           </div>
   </div>
@@ -490,8 +491,8 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             <span className="flex items-center gap-1.5">Service <Info className="h-3.5 w-3.5 text-cyan-300" /></span>
             <span className="mt-0.5 block text-xs font-normal text-blue-100/60">What do you want to boost?</span>
             <select
-              value={selectedCategory}
-              onChange={(e) => { const next = services.find((item) => item.category === e.target.value) ?? services[0] ?? fallbackServices[0]; setService(next); setServiceType(next.name); }}
+              value={activeCategory}
+              onChange={(e) => { const category = e.target.value; const next = services.find((item) => item.category === category) ?? services[0] ?? fallbackServices[0]; setSelectedCategory(category); setService(next); setServiceType(next.name); }}
               className="mt-2 w-full rounded-xl border border-blue-400/60 bg-[#08122b] px-4 py-3 text-white"
             >
               {serviceCategories.map((category) => <option key={category} value={category}>{category}</option>)}
@@ -520,7 +521,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
           <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-cyan-300"><Link2 className="h-4 w-4" /></span>
           <div className="flex-1 text-sm font-semibold">
             <span className="flex items-center gap-1.5">{platform} account link <Info className="h-3.5 w-3.5 text-cyan-300" /></span>
-            <span className="mt-0.5 block text-xs font-normal text-blue-100/60">Enter your {platform} username or profile link.</span>
+            <span className="mt-0.5 block text-xs font-normal text-blue-100/60">Paste the exact {platform} profile, post, video, or channel link you want to boost. Preview it before purchasing.</span>
             <div className="relative mt-2">
               <Link2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-200/60" />
               <Input
@@ -532,14 +533,16 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             </div>
             {targetLink.trim() && (
               <div className="mt-2 rounded-xl border border-cyan-400/50 bg-[#08122b] p-3">
-                <p className="text-xs text-cyan-200">Account link preview</p>
-                <a href={targetLink.trim()} target="_blank" rel="noreferrer" className="mt-1 block break-all text-sm text-blue-200 underline">{targetLink.trim()}</a>
+                <p className="text-xs font-semibold text-cyan-200">Preview and verify your link</p>
+                <p className="mt-1 text-xs text-blue-100/70">Open the preview and confirm it goes to the exact account, post, video, or channel you want to boost.</p>
+                {/^https?:\/\//i.test(targetLink.trim()) ? <a href={targetLink.trim()} target="_blank" rel="noreferrer" className="mt-2 inline-flex items-center gap-1 text-sm text-blue-200 underline">Open link preview <ArrowRight className="h-3.5 w-3.5" /></a> : <p className="mt-2 text-xs text-amber-200">Use a complete link beginning with https:// so the preview opens the right place.</p>}
+                <p className="mt-2 truncate text-xs text-blue-100/60" title={targetLink.trim()}>{targetLink.trim()}</p>
               </div>
             )}
           </div>
         </div>
 
-        {(/comment/i.test(`${service.name} ${selectedCategory}`)) && (
+        {(/comment/i.test(`${service.name} ${activeCategory}`)) && (
           <div className="space-y-3 rounded-xl border border-fuchsia-400/50 bg-[#08122b] p-4">
             <label className="block text-sm font-semibold">Comment type
               <select value={commentType} onChange={(e) => setCommentType(e.target.value)} className="mt-2 w-full rounded-xl border border-blue-400/60 bg-[#061b43] px-4 py-3 text-white">

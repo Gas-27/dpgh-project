@@ -34,7 +34,10 @@ const removedServiceNames = new Set([
       }
       if (pricingUserId && rows.length) {
         const { data: saved } = await (supabase as any).from("social_boost_reseller_pricing").select("service_id,price_per_1000").eq("user_id", pricingUserId);
-        setPrices(Object.fromEntries((saved ?? []).map((row: any) => [row.service_id, Number(row.price_per_1000)])));
+        setPrices(Object.fromEntries(rows.map((row: Service) => {
+          const savedPrice = (saved ?? []).find((item: any) => Number(item.service_id) === Number(row.service_id));
+          return [row.service_id, Number(savedPrice?.price_per_1000 ?? row.admin_price_per_1000)];
+        })));
       }
     };
     void load();
