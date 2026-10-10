@@ -57,8 +57,8 @@ export default function ProductDetail() {
   if (loading) return <main className="mx-auto max-w-3xl p-6"><p className="text-muted-foreground">Loading product...</p></main>;
   useEffect(() => {
     if (!product) return;
-    const title = `${product.title} | JustBuyGH Marketplace`;
-    const description = product.description || `Buy ${product.title} on JustBuyGH Marketplace.`;
+    const title = product.title;
+    const description = product.description || `Product details for ${product.title}.`;
     const image = product.image_urls?.[0] || `${window.location.origin}/justbuygh-icon.png`;
     const url = window.location.href;
     document.title = title;
