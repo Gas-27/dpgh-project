@@ -19,7 +19,11 @@ export default function SocialBoostPricingManager({ ownerId, ownerType }: { owne
   useEffect(() => {
     const load = async () => {
       const { data } = await (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,admin_price_per_1000,default_price_per_1000,max_reseller_price_per_1000").order("category").order("service_name");
-      const rows = (data ?? []) as Service[];
+const removedServiceNames = new Set([
+        "facebook custom comments ( female )",
+        "facebook custom comments ( male )",
+      ]);
+      const rows = (data ?? []).filter((row: Service) => !removedServiceNames.has(String(row.service_name).trim().toLowerCase())) as Service[];
       setServices(rows);
         const { data: user } = await supabase.auth.getUser();
       let pricingUserId = user.user?.id ?? null;
@@ -34,7 +38,7 @@ export default function SocialBoostPricingManager({ ownerId, ownerType }: { owne
       }
     };
     void load();
-  }, [ownerId]);
+  }, [ownerId, ownerType]);
   const update = (id: number, value: string) => setPrices((current) => ({ ...current, [id]: Number(value) || 0 }));
   const applyMarkup = () => {
     const percent = Number(markup);

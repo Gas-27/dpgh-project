@@ -88,7 +88,8 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   ]).then(([providerResult, pricingResult]) => {
     if (!mounted) return;
     const providerServices = Array.isArray(providerResult.data) ? providerResult.data : [];
-    const pricingServices = Array.isArray(pricingResult.data) ? pricingResult.data.map((row: any) => ({
+    const removedServiceNames = new Set(["facebook custom comments ( female )", "facebook custom comments ( male )"]);
+    const pricingServices = Array.isArray(pricingResult.data) ? pricingResult.data.filter((row: any) => !removedServiceNames.has(String(row.service_name || "").trim().toLowerCase())).map((row: any) => ({
       service: Number(row.service_id),
       name: String(row.service_name || `Service ${row.service_id}`),
       category: String(row.category || "Social Boost"),
