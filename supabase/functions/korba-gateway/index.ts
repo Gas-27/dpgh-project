@@ -332,6 +332,21 @@ async function pay(body: JsonObject, operation: string, state: { debit: Debit | 
   const result = await korbaRequest<JsonObject>(payment.endpoint, payment.payload);
 
   if (result.success === false) {
+    if (body.wallet_only === true && body.wallet_balance_owner_id) {
+      await walletClient().from("korba_transaction_history").insert({
+        wallet_owner_type: String(body.wallet_balance_owner_type || ""),
+        wallet_owner_id: String(body.wallet_balance_owner_id),
+        product_type: product,
+        network_code: network || null,
+        package_code: operation === "data" ? String(body.package_code || body.product_id || body.bundle_id || "") || null : null,
+        customer_number: customerNumber,
+        amount,
+        transaction_id: transactionId,
+        provider_reference: String(result.reference || result.transaction_id || transactionId),
+        status: "failed",
+        source: String(body.purchase_source || "dashboard"),
+      });
+    }
     await refundWallet(state.debit);
     return json({ ...result, error: providerError(result) || userMessage(Number(result.error_code)), user_message: userMessage(Number(result.error_code)), wallet_refunded: Boolean(state.debit) });
   }

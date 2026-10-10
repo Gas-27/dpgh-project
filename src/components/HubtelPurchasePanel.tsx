@@ -152,14 +152,16 @@ export default function HubtelPurchasePanel({
   walletBalance = 0,
   ownerType,
   ownerId,
-}: {
+  purchaseSource = "dashboard",
+  }: {
   mode: Mode;
   orderId?: string;
   walletOnly?: boolean;
   walletBalance?: number;
   ownerType?: string;
   ownerId?: string;
-}) {
+  purchaseSource?: "dashboard" | "storefront";
+  }) {
   const { toast } = useToast();
   const [instantProduct, setInstantProduct] = useState<InstantProduct>("data");
   const [network, setNetwork] = useState("MTN");
@@ -513,6 +515,7 @@ const resultRoot = (record.results || record.result || record) as Record<string,
             return normalized;
           })(),
           packageCode: selectedInstantItem?.value,
+          purchaseSource,
           ...wallet,
         });
       } else {
@@ -542,6 +545,7 @@ const resultRoot = (record.results || record.result || record) as Record<string,
           meterCategory: billService === "ecg" ? meterCategory : undefined,
           amount: Number(amount),
           networkCode: billService,
+          purchaseSource,
           ...wallet,
         });
       }

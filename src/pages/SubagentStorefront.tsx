@@ -1089,8 +1089,8 @@ const searchOrders = useCallback(async (input?: string) => {
   <ActiveTabMaintenance active={activeSection === "vouchers" ? "instant" : activeSection} label={activeSection === "data" ? "Cheap Data" : activeSection === "vouchers" ? "Airtime & Data" : activeSection} onReturn={() => setActiveSection("data")} />
   {activeSection === "social-boost" && <SocialBoostPurchasePanel walletBalance={0} ownerType="subagent" storeId={store?.id} checkoutMode="paystack" />}
   {activeSection === "products" && <PublicProductsSection storeId={store?.id} storeKind="subagent" />}
-  {activeSection === "services" && <HubtelPurchasePanel mode="services" />}
-  {activeSection === "vouchers" && <HubtelPurchasePanel mode="instant" />}
+  {activeSection === "services" && <HubtelPurchasePanel mode="services" ownerType="subagent" ownerId={store?.id} purchaseSource="storefront" />}
+  {activeSection === "vouchers" && <HubtelPurchasePanel mode="instant" ownerType="subagent" ownerId={store?.id} purchaseSource="storefront" />}
   {activeSection === "subscription" && <DigitalServicesCatalog onBuy={(service) => setSelectedService(service)} />}
   {selectedService && <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => !open && setSelectedService(null)} />}
   {activeSection === "data" && <>

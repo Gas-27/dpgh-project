@@ -15,6 +15,7 @@ export type KorbaPurchaseRequest = {
   walletOnly?: boolean;
   walletOwnerType?: string;
   walletOwnerId?: string;
+  purchaseSource?: "dashboard" | "storefront";
 };
 
 export async function getKorbaDataBundles(networkCode: string) {
@@ -76,6 +77,7 @@ export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
     wallet_only: request.walletOnly === true,
     wallet_balance_owner_type: request.walletOwnerType,
     wallet_balance_owner_id: request.walletOwnerId,
+    purchase_source: request.purchaseSource || "dashboard",
   };
   console.log("[v0] Korba purchase request", requestBody);
   const { data, error } = await supabase.functions.invoke("korba-gateway", {

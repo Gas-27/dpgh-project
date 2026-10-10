@@ -1194,9 +1194,9 @@ const searchOrders = useCallback(async (input?: string) => {
   ) : activeCategory === "social-boost" ? (
   <div className="w-full pb-20"><SocialBoostPurchasePanel walletBalance={0} ownerType="agent" storeId={store?.id} checkoutMode="paystack" /></div>
   ) : activeCategory === "services" ? (
-  <div className="container pb-20"><HubtelPurchasePanel mode="services" /></div>
+  <div className="container pb-20"><HubtelPurchasePanel mode="services" ownerType="agent" ownerId={store?.id} purchaseSource="storefront" /></div>
   ) : activeCategory === "vouchers" ? (
-  <div className="container pb-20"><HubtelPurchasePanel mode="instant" /></div>
+  <div className="container pb-20"><HubtelPurchasePanel mode="instant" ownerType="agent" ownerId={store?.id} purchaseSource="storefront" /></div>
       ) : activeCategory === "sms" ? (
         <div className="container pb-20"><Card className="mx-auto max-w-none border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card></div>
       ) : activeCategory === "data" ? (
