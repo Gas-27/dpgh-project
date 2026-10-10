@@ -186,12 +186,13 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     let mounted = true;
     const loadConfiguration = async () => {
       const table = (supabase as any).from("social_boost_service_pricing");
-      const columns = "service_id,service_name,category,admin_price_per_1000,default_price_per_1000,max_reseller_price_per_1000,min_quantity,max_quantity,average_completion_time,notes";
+      const columns = "service_id,service_name,category,admin_price_per_1000,base_price_per_1000,default_price_per_1000,max_reseller_price_per_1000,min_quantity,max_quantity,average_completion_time,notes";
       const byId = await table.select(columns).eq("service_id", service.service).maybeSingle();
       const data = byId.data ?? (await table.select(columns).ilike("service_name", service.name).ilike("category", service.category).maybeSingle()).data;
       if (!mounted) return;
-const basePrice = Number(data?.admin_price_per_1000 ?? service.rate ?? 0);
-  const defaultAgentPrice = Number(data?.default_price_per_1000 ?? basePrice);
+const userPrice = Number(data?.admin_price_per_1000 ?? service.rate ?? 0);
+  const basePrice = Number(data?.base_price_per_1000) > 0 ? Number(data?.base_price_per_1000) : userPrice;
+  const defaultAgentPrice = Number(data?.default_price_per_1000) > 0 ? Number(data?.default_price_per_1000) : basePrice;
   let customPrice: number | null = null;
   if (pricingMode === "storefront" && storeId) {
     const storeTable = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
@@ -203,8 +204,8 @@ const basePrice = Number(data?.admin_price_per_1000 ?? service.rate ?? 0);
       if (Number.isFinite(candidate) && candidate >= basePrice && (!maximum || candidate <= maximum)) customPrice = candidate;
     }
   }
-  const configuredPrice = pricingMode === "user" ? basePrice : customPrice ?? (Number.isFinite(defaultAgentPrice) && defaultAgentPrice > 0 ? defaultAgentPrice : basePrice);
-  const adminPrice = basePrice;
+  const configuredPrice = pricingMode === "user" || !storeId ? userPrice : customPrice ?? defaultAgentPrice;
+  const adminPrice = userPrice;
       if (!Number.isFinite(adminPrice) || adminPrice <= 0) return;
         setAdminPrices((current) => ({ ...current, [service.service]: configuredPrice }));
         setPrice(configuredPrice);
@@ -242,12 +243,6 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
     return () => { mounted = false; };
   }, [canSetPrices, ownerType, storeId]);
 
-  useEffect(() => {
-    const customPrice = resellerPrices[service.service];
-    const defaultPrice = adminPrices[service.service] || Number(service.rate) || 49;
-    setPrice(pricingMode === "storefront" && customPrice > 0 ? customPrice : defaultPrice);
-  }, [adminPrices, resellerPrices, service.service, service.rate, pricingMode]);
-
   const min = Number(service.min) || 10;
   const max = Number(service.max) || 50000;
   const numericQuantity = typeof quantity === "number" ? quantity : 0;
@@ -266,7 +261,7 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
           email: (await supabase.auth.getUser()).data.user?.email || `social_boost_${Date.now()}@datapluggh.com`,
           amount: total,
           callback_url: `${window.location.origin}${window.location.pathname}${window.location.search ? `${window.location.search}&` : "?"}payment=verifying`,
-          metadata: { type: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: normalizedOwnerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? normalizedOwnerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(ownerType) ? storeId : null },
+          metadata: { type: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: normalizedOwnerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? normalizedOwnerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? storeId : null },
         },
       });
       setBuying(false);
