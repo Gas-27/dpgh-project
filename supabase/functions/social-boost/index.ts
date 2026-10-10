@@ -69,13 +69,19 @@ Deno.serve(async (req) => {
   const missing = REQUIRED_FIELDS[action].filter((field) => asFormValue(input[field]) === null);
   if (missing.length > 0) return json({ error: "Missing required fields.", missing }, 400);
 
+  let chargedAmount = 0;
   if (action === "add") {
-    const amount = Number(input.amount);
-    const pricePer1000 = Number(input.price_per_1000);
     const quantity = Number(input.quantity);
-    if (!Number.isFinite(amount) || amount <= 0 || !Number.isFinite(pricePer1000) || pricePer1000 <= 0 || !Number.isInteger(quantity) || quantity <= 0) {
-      return json({ error: "add requires positive amount, price_per_1000, and integer quantity." }, 400);
-    }
+    if (!Number.isInteger(quantity) || quantity <= 0) return json({ error: "quantity must be a positive integer." }, 400);
+    const serviceLookup = String(input.service);
+    const { data: configuredService } = await supabase.from("social_boost_service_pricing").select("service_id,service_name,admin_price_per_1000,default_price_per_1000,min_quantity,max_quantity").or(`service_id.eq.${serviceLookup},service_name.ilike.${serviceLookup}`).maybeSingle();
+    const pricePer1000 = Number(configuredService?.admin_price_per_1000 ?? 0);
+    const minimum = Number(configuredService?.min_quantity ?? 1);
+    const maximum = Number(configuredService?.max_quantity ?? 1000000);
+    if (!configuredService || !Number.isFinite(pricePer1000) || pricePer1000 <= 0) return json({ error: "Service is not available for API ordering." }, 400);
+    if (quantity < minimum || quantity > maximum) return json({ error: `quantity must be between ${minimum} and ${maximum}.` }, 400);
+    const amount = Math.round((quantity / 1000) * pricePer1000 * 100) / 100;
+    chargedAmount = amount;
     const walletBalance = Number(apiUser.api_wallet ?? apiUser.wallet ?? 0);
     if (walletBalance < amount) return json({ error: "Insufficient API wallet balance.", balance: walletBalance, required: amount }, 402);
 
@@ -84,7 +90,7 @@ Deno.serve(async (req) => {
       owner_type: "api",
       owner_store_id: null,
       platform: String(input.platform ?? "social"),
-      service: String(input.service),
+      service: String(configuredService.service_id),
       target_link: String(input.link),
       quantity,
       price_per_1000: pricePer1000,
@@ -132,9 +138,17 @@ Deno.serve(async (req) => {
     // Preserve non-JSON provider responses without exposing the API key.
   }
 
-  if (!upstream.ok) {
-    return json({ error: "Social Boost provider request failed.", status: upstream.status, details: payload }, upstream.status);
+  if (!upstream.ok || (payload && typeof payload === "object" && "error" in payload)) {
+    if (action === "add" && input.order) {
+      const { data: current } = await supabase.from("api_users").select("api_wallet").eq("id", apiUser.id).maybeSingle();
+      await supabase.from("api_users").update({ api_wallet: Number(current?.api_wallet ?? 0) + chargedAmount }).eq("id", apiUser.id);
+      await supabase.from("social_boost_orders").update({ status: "failed", error_message: String((payload as { error?: unknown })?.error ?? "Provider request failed") }).eq("order_number", input.order);
+    }
+    return json({ error: "Social Boost provider request failed.", status: upstream.status, details: payload }, upstream.ok ? 502 : upstream.status);
   }
 
+  if (action === "add" && input.order) {
+    await supabase.from("social_boost_orders").update({ provider_order_id: String((payload as { order?: unknown })?.order ?? ""), status: "processing" }).eq("order_number", input.order);
+  }
   return json(payload, upstream.status);
 });
