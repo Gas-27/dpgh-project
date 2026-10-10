@@ -92,12 +92,14 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
       setLoading(true);
       const { data: response, error } = await supabase.functions.invoke("korba-gateway", { body: { operation: "history", wallet_balance_owner_type: ownerType, wallet_balance_owner_id: ownerId } });
       if (active) {
+        const normalized = (value: unknown) => String(value || "").trim().toLowerCase().replace(/[\s_-]+/g, "");
         const filtered = ((response?.transactions || []) as any[]).filter((row) => {
-          const product = String(row.product_type || "").toLowerCase();
+          const product = normalized(row.product_type);
           if (category === "instant") return product === "data" || product === "airtime";
-          if (category === "services") return ["ecg", "water", "gotv", "dstv", "startimes"].includes(product);
-          return product === "subscription";
+          if (category === "services") return ["ecg", "electricity", "water", "ghanawater", "gotv", "dstv", "startimes", "startimes"].includes(product);
+          return product === "subscription" || product.includes("subscription");
         });
+        if (error) console.error("[v0] Korba history load failed", error);
         setRows(error ? [] : filtered);
         setLoading(false);
       }
