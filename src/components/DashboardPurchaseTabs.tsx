@@ -101,13 +101,15 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
         });
         if (error) console.error("[v0] Korba history load failed", error);
   const ownerColumn = ownerType === "agent" ? "agent_store_id" : ownerType === "subagent" ? "subagent_store_id" : "sub_subagent_store_id";
-  const { data: ownerOrders } = await supabase.from("orders").select("id, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, created_at, source, customer_number, package_id, provider_reference, provider_order_id, api_response").eq(ownerColumn, ownerId).order("created_at", { ascending: false }).limit(200);
+  const { data: ownerOrders } = await supabase.from("orders").select("id, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, created_at, source, customer_number, package_id, provider_reference, provider_order_id, api_response, order_type, product_type, payment_method").eq(ownerColumn, ownerId).order("created_at", { ascending: false }).limit(500);
   const legacy = (ownerOrders || []).filter((row: any) => {
     const text = JSON.stringify(row).toLowerCase();
-    const product = normalized(row.product_type || row.source || row.network);
-    const korba = text.includes("korba") || Boolean(row.provider_reference || row.provider_order_id);
-    if (category === "instant") return korba && (product === "airtime" || product === "data" || text.includes("airtime") || text.includes("korba_data") || text.includes("korba-airtime"));
-    if (category === "services") return korba && ["ecg", "electricity", "water", "dstv", "gotv", "startimes", "utility"].some((value) => text.includes(value));
+    const product = normalized(row.product_type || row.order_type || row.source || row.network);
+    const serviceProduct = ["ecg", "electricity", "water", "ghanawater", "dstv", "gotv", "startimes", "utility", "subscription"].some((value) => text.includes(value));
+    const airtimeProduct = product === "airtime" || text.includes("airtime");
+    const dataProduct = product === "data" || Boolean(row.size_gb || row.size_gb_text) || (Boolean(row.network) && !serviceProduct);
+    if (category === "instant") return !serviceProduct && (airtimeProduct || dataProduct);
+    if (category === "services") return ["ecg", "electricity", "water", "dstv", "gotv", "startimes", "utility"].some((value) => text.includes(value));
     return korba && text.includes("subscription");
   });
   const allRows = [...filtered, ...legacy].filter((row, index, rows) => index === rows.findIndex((candidate) => String(candidate.id || candidate.transaction_id) === String(row.id || row.transaction_id)));
