@@ -1365,7 +1365,7 @@ const Packages = () => {
 
   useEffect(() => {
     // Fetch packages with caching - include size_gb_text for mtn_mashup packages
-    supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_name,package_name,name,title,description,details,price,agent_price,api_price,active").order("size_gb", { ascending: true })
+    supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active").order("size_gb", { ascending: true })
       .then(({ data, error }) => {
         if (error) console.error("[v0] Failed to fetch data packages:", error);
         setPackages(data ?? []);
@@ -1379,7 +1379,7 @@ const Packages = () => {
     async () => {
       const { data, error } = await supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,bundle_name,package_name,name,title,description,details,price,agent_price,api_price,active")
+        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active")
         .order("size_gb", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -1402,7 +1402,7 @@ const Packages = () => {
     const refreshPackages = async () => {
       const { data } = await supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,bundle_name,package_name,name,title,description,details,price,agent_price,api_price,active")
+        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active")
         .order("size_gb", { ascending: true });
       if (data) setPackages(data);
     };
