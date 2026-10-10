@@ -335,6 +335,23 @@ async function pay(body: JsonObject, operation: string, state: { debit: Debit | 
     await refundWallet(state.debit);
     return json({ ...result, error: providerError(result) || userMessage(Number(result.error_code)), user_message: userMessage(Number(result.error_code)), wallet_refunded: Boolean(state.debit) });
   }
+  if (body.wallet_only === true && body.wallet_balance_owner_id) {
+    const history = walletClient();
+    const { error: historyError } = await history.from("korba_transaction_history").insert({
+      wallet_owner_type: String(body.wallet_balance_owner_type || ""),
+      wallet_owner_id: String(body.wallet_balance_owner_id),
+      product_type: product,
+      network_code: network || null,
+      package_code: operation === "data" ? String(body.package_code || body.product_id || body.bundle_id || "") || null : null,
+      customer_number: customerNumber,
+      amount,
+      transaction_id: transactionId,
+      provider_reference: String(result.reference || result.transaction_id || transactionId),
+      status: String(result.status || "pending"),
+      source: String(body.purchase_source || "dashboard"),
+    });
+    if (historyError) console.error("[korba-gateway] history insert failed", historyError);
+  }
   return json({ ...result, success: true, transaction_id: transactionId, wallet: state.debit ? { balance: state.debit.balance } : undefined });
 }
 
@@ -358,8 +375,16 @@ Deno.serve(async (request) => {
       case "status":
         if (!body.transaction_id) return json({ error: "transaction_id is required" }, 400);
         return json(await korbaRequest("/transaction_status/", { transaction_id: String(body.transaction_id) }));
-      case "transactions":
-        return json(await korbaRequest("/client_transactions/", {}));
+  case "transactions":
+  return json(await korbaRequest("/client_transactions/", {}));
+  case "history": {
+    const ownerType = String(body.wallet_balance_owner_type || "");
+    const ownerId = String(body.wallet_balance_owner_id || "");
+    if (!ownerType || !ownerId) return json({ success: false, error: "History owner is required" }, 400);
+    const { data, error } = await walletClient().from("korba_transaction_history").select("id, product_type, network_code, package_code, customer_number, amount, transaction_id, provider_reference, status, source, created_at").eq("wallet_owner_type", ownerType).eq("wallet_owner_id", ownerId).order("created_at", { ascending: false }).limit(200);
+    if (error) return json({ success: false, error: error.message }, 500);
+    return json({ success: true, transactions: data || [] });
+  }
       case "add_meter":
         return await addMeter(body);
       case "lookup":

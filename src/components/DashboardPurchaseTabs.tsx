@@ -90,19 +90,15 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
     const load = async () => {
       if (!ownerId) { setLoading(false); return; }
       setLoading(true);
-      const ownerColumn = ownerType === "agent" ? "agent_store_id" : ownerType === "subagent" ? "subagent_store_id" : "sub_subagent_store_id";
-      const { data } = await supabase.from("orders").select("id, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, created_at, source, customer_number, package_id, provider_reference, provider_order_id").eq(ownerColumn, ownerId).order("created_at", { ascending: false }).limit(100);
+      const { data: response, error } = await supabase.functions.invoke("korba-gateway", { body: { operation: "history", wallet_balance_owner_type: ownerType, wallet_balance_owner_id: ownerId } });
       if (active) {
-        const filtered = (data || []).filter((row) => {
-          const source = String(row.source || "").toLowerCase();
-          const network = String(row.network || "").toLowerCase();
-          const packageId = String(row.package_id || "").toLowerCase();
-          const hasKorbaReference = Boolean(String(row.provider_reference || row.provider_order_id || "").trim());
-          const isService = ["service", "services", "utility", "utilities", "ecg", "water", "tv", "subscription", "subscriptions"].some((value) => source.includes(value) || network.includes(value) || packageId.includes(value));
-          if (category === "instant") return hasKorbaReference && !isService && Boolean(row.network || row.size_gb || row.size_gb_text || ["airtime", "data"].some((value) => source.includes(value)));
-          return category === "subscription" ? source.includes("subscription") || network.includes("subscription") : isService && !source.includes("subscription") && !network.includes("subscription");
+        const filtered = ((response?.transactions || []) as any[]).filter((row) => {
+          const product = String(row.product_type || "").toLowerCase();
+          if (category === "instant") return product === "data" || product === "airtime";
+          if (category === "services") return ["ecg", "water", "gotv", "dstv", "startimes"].includes(product);
+          return product === "subscription";
         });
-        setRows(filtered);
+        setRows(error ? [] : filtered);
         setLoading(false);
       }
     };
@@ -111,7 +107,7 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
   }, [ownerId, ownerType, category]);
   if (loading) return <p className="py-8 text-center text-sm text-muted-foreground">Loading purchase history...</p>;
   if (!rows.length) return <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">No purchases found for this section yet.</p>;
-  return <div className="overflow-x-auto rounded-xl border border-border"><table className="w-full text-sm"><thead className="bg-muted/50"><tr><th className="p-3 text-left">Date</th><th className="p-3 text-left">Purchase</th><th className="p-3 text-left">Recipient</th><th className="p-3 text-left">Amount</th><th className="p-3 text-left">Status</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-border"><td className="p-3">{new Date(row.created_at).toLocaleString()}</td><td className="p-3">{row.network || row.source || "Purchase"}{row.size_gb_text || row.size_gb ? ` · ${row.size_gb_text || `${row.size_gb}GB`}` : ""}</td><td className="p-3">{row.customer_number || "—"}</td><td className="p-3">GHC {Number(row.selling_price ?? row.amount ?? 0).toFixed(2)}</td><td className="p-3 capitalize">{String(row.fulfillment_status || row.status || "pending").replaceAll("_", " ")}</td></tr>)}</tbody></table></div>;
+  return <div className="overflow-x-auto rounded-xl border border-border"><table className="w-full text-sm"><thead className="bg-muted/50"><tr><th className="p-3 text-left">Date</th><th className="p-3 text-left">Purchase</th><th className="p-3 text-left">Recipient</th><th className="p-3 text-left">Amount</th><th className="p-3 text-left">Status</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-border"><td className="p-3">{new Date(row.created_at).toLocaleString()}</td><td className="p-3">{row.network_code || row.product_type || "Purchase"}{row.package_code ? ` · ${row.package_code}` : ""}</td><td className="p-3">{row.customer_number || "—"}</td><td className="p-3">GHC {Number(row.amount ?? 0).toFixed(2)}</td><td className="p-3 capitalize">{String(row.status || "pending").replaceAll("_", " ")}</td></tr>)}</tbody></table></div>;
 }
 
 function WalletBanner({ balance, label }: { balance: number; label: string }) {
