@@ -100,21 +100,20 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
           return product === "subscription" || product.includes("subscription");
         });
         if (error) console.error("[v0] Korba history load failed", error);
-        if (!error && filtered.length) {
-          setRows(filtered);
-        } else {
-          const ownerColumn = ownerType === "agent" ? "agent_store_id" : ownerType === "subagent" ? "subagent_store_id" : "sub_subagent_store_id";
-          const { data: fallback } = await supabase.from("orders").select("id, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, created_at, source, customer_number, package_id, provider_reference, provider_order_id, api_response").or(`${ownerColumn}.eq.${ownerId}`).order("created_at", { ascending: false }).limit(200);
-          const legacy = (fallback || []).filter((row: any) => {
-            const text = JSON.stringify(row).toLowerCase();
-            const korba = text.includes("korba") || Boolean(row.provider_reference || row.provider_order_id);
-            if (category === "instant") return korba && (text.includes("airtime") || text.includes("data")) && !text.includes("cheap");
-            if (category === "services") return korba && ["ecg", "water", "dstv", "gotv", "startimes", "start time", "utility"].some((value) => text.includes(value));
-            return korba && text.includes("subscription");
-          });
-          setRows(legacy);
-        }
-        setLoading(false);
+  const ownerColumn = ownerType === "agent" ? "agent_store_id" : ownerType === "subagent" ? "subagent_store_id" : "sub_subagent_store_id";
+  const { data: ownerOrders } = await supabase.from("orders").select("id, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, created_at, source, customer_number, package_id, provider_reference, provider_order_id, api_response").eq(ownerColumn, ownerId).order("created_at", { ascending: false }).limit(200);
+  const legacy = (ownerOrders || []).filter((row: any) => {
+    const text = JSON.stringify(row).toLowerCase();
+    const product = normalized(row.product_type || row.source || row.network);
+    const korba = text.includes("korba") || Boolean(row.provider_reference || row.provider_order_id);
+    if (category === "instant") return korba && (product === "airtime" || product === "data" || text.includes("airtime") || text.includes("korba_data") || text.includes("korba-airtime"));
+    if (category === "services") return korba && ["ecg", "electricity", "water", "dstv", "gotv", "startimes", "utility"].some((value) => text.includes(value));
+    return korba && text.includes("subscription");
+  });
+  const allRows = [...filtered, ...legacy].filter((row, index, rows) => index === rows.findIndex((candidate) => String(candidate.id || candidate.transaction_id) === String(row.id || row.transaction_id)));
+  setRows(allRows.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()));
+  if (error) console.error("[v0] Korba history endpoint unavailable; showing owner orders", error); 
+  setLoading(false);
       }
     };
     void load();
@@ -122,7 +121,7 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
   }, [ownerId, ownerType, category]);
   if (loading) return <p className="py-8 text-center text-sm text-muted-foreground">Loading purchase history...</p>;
   if (!rows.length) return <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">No purchases found for this section yet.</p>;
-  return <div className="overflow-x-auto rounded-xl border border-border"><table className="w-full text-sm"><thead className="bg-muted/50"><tr><th className="p-3 text-left">Date</th><th className="p-3 text-left">Purchase</th><th className="p-3 text-left">Recipient</th><th className="p-3 text-left">Amount</th><th className="p-3 text-left">Status</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-border"><td className="p-3">{new Date(row.created_at).toLocaleString()}</td><td className="p-3">{row.network_code || row.product_type || "Purchase"}{row.package_code ? ` · ${row.package_code}` : ""}</td><td className="p-3">{row.customer_number || "—"}</td><td className="p-3">GHC {Number(row.amount ?? 0).toFixed(2)}</td><td className="p-3 capitalize">{String(row.status || "pending").replaceAll("_", " ")}</td></tr>)}</tbody></table></div>;
+  return <div className="overflow-x-auto rounded-xl border border-border"><table className="w-full text-sm"><thead className="bg-muted/50"><tr><th className="p-3 text-left">Date</th><th className="p-3 text-left">Purchase</th><th className="p-3 text-left">Recipient</th><th className="p-3 text-left">Amount</th><th className="p-3 text-left">Status</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-border"><td className="p-3">{new Date(row.created_at).toLocaleString()}</td><td className="p-3">{row.network_code || row.product_type || row.network || row.source || "Purchase"}{row.package_code || row.size_gb_text || row.size_gb ? ` · ${row.package_code || row.size_gb_text || `${row.size_gb}GB`}` : ""}</td><td className="p-3">{row.customer_number || row.phone_number || "—"}</td><td className="p-3">GHC {Number(row.amount ?? row.selling_price ?? 0).toFixed(2)}</td><td className="p-3 capitalize">{String(row.status || row.fulfillment_status || "pending").replaceAll("_", " ")}</td></tr>)}</tbody></table></div>;
 }
 
 function WalletBanner({ balance, label }: { balance: number; label: string }) {
