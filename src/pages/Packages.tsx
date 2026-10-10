@@ -1633,15 +1633,18 @@ const searchOrders = async (input?: string) => {
               ) : (
                 <div className="flex flex-col gap-4">
                   {filtered.map((pkg) => {
-                    const packageName = pkg.size_gb_text || `${pkg.size_gb}GB`;
+                    const packageSize = pkg.size_gb_text || `${pkg.size_gb}GB`;
+                    const networkLabel = networkConfig[selectedNetwork].label;
+                    const packageName = `${networkLabel} Normal Data • ${packageSize}`;
+                    const packageDetail = pkg.bundle_id ? `Bundle category: ${pkg.bundle_id}` : `${networkLabel} standard data bundle`;
                     const available = pkg.active !== false;
                     return (
                       <Card key={pkg.id} style={{ backgroundColor: "#2f176d", color: "#ffffff" }} className={`package-reference-card border-0 shadow-none ${available ? "" : "opacity-45"}`}>
                         <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
-  <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p>
-  <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
-  <p className="text-sm font-semibold text-white">{networkConfig[selectedNetwork].label} {packageName} Bundle</p>
-  <p className="max-w-md text-xs leading-relaxed text-white/70">{pkg.bundle_id ? `Provider bundle ${pkg.bundle_id} • Standard ${networkConfig[selectedNetwork].label} data bundle` : `Standard ${networkConfig[selectedNetwork].label} data bundle`}</p>
+  <p className="font-display text-2xl font-extrabold leading-tight text-white">{packageName}</p>
+  <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>Bundle category: Normal Data</p>
+  <p className="text-sm font-semibold text-white">{networkLabel} bundle details</p>
+  <p className="max-w-md text-xs leading-relaxed text-white/70">{packageDetail}</p>
 <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
   {showApiPrice && <><span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span><span className="text-white/50">|</span></>}
   {showAgentPrice && <><span>Agent price: <strong className="text-cyan-300">{Number(pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span><span className="text-white/50">|</span></>}
