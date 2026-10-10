@@ -77,14 +77,24 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   useEffect(() => {
     let mounted = true;
   Promise.all([
-  supabase.functions.invoke("social-boost", { body: { action: "services" } }),
-  (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider_rate,default_price_per_1000,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes"),
+    supabase.functions.invoke("social-boost", { body: { action: "services" } }),
+    (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider_rate,default_price_per_1000,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes"),
   ]).then(([providerResult, pricingResult]) => {
-  if (!mounted) return;
-  const providerServices = Array.isArray(providerResult.data) ? providerResult.data : [];
-  const pricingServices = Array.isArray(pricingResult.data) ? pricingResult.data.map((row: any) => ({ service: Number(row.service_id), name: row.service_name, category: row.category, rate: String(row.admin_price_per_1000 ?? row.default_price_per_1000 ?? row.provider_rate ?? 0), min: String(row.min_quantity ?? 1), max: String(row.max_quantity ?? 100000), average_time: row.average_completion_time ?? "", notes: row.notes ?? "" })) : [];
-  const merged = [...pricingServices, ...providerServices].filter((item, index, list) => list.findIndex((candidate) => Number(candidate.service) === Number(item.service)) === index);
-  if (merged.length) setCatalog(merged);
+    if (!mounted) return;
+    const providerServices = Array.isArray(providerResult.data) ? providerResult.data : [];
+    const pricingServices = Array.isArray(pricingResult.data) ? pricingResult.data.map((row: any) => ({
+      service: Number(row.service_id),
+      name: String(row.service_name || `Service ${row.service_id}`),
+      category: String(row.category || "Social Boost"),
+      rate: String(Number(row.admin_price_per_1000) > 0 ? row.admin_price_per_1000 : Number(row.default_price_per_1000) > 0 ? row.default_price_per_1000 : row.provider_rate ?? 0),
+      min: String(row.min_quantity ?? 1),
+      max: String(row.max_quantity ?? 100000),
+      average_time: String(row.average_completion_time || "Provider estimate"),
+      notes: String(row.notes || "No additional note has been configured for this service."),
+    })) : [];
+    const configuredIds = new Set(pricingServices.map((item) => Number(item.service)));
+    const merged = [...pricingServices, ...providerServices.filter((item: any) => !configuredIds.has(Number(item.service)))];
+    if (merged.length) setCatalog(merged);
   });
     return () => { mounted = false; };
   }, []);
