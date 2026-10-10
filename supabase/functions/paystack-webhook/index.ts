@@ -105,7 +105,11 @@ Deno.serve(async (req) => {
     // SOCIAL BOOST PAYMENT HANDLER
     // =====================================
     if (paymentType === "social_boost") {
-      const { data: existingOrder } = await supabaseClient.from("social_boost_orders").select("id,provider_order_id,provider_status").eq("payment_reference", reference).maybeSingle();
+      const { data: existingOrder, error: existingOrderError } = await supabaseClient.from("social_boost_orders").select("id,provider_order_id,provider_status,profit_credited_at").eq("payment_reference", reference).maybeSingle();
+      if (existingOrderError) {
+        console.error("[SOCIAL BOOST] Existing order lookup failed:", existingOrderError);
+        return new Response(JSON.stringify({ error: "Social Boost order lookup failed" }), { status: 500, headers: corsHeaders });
+      }
       const baseAmount = Number(metadata?.base_amount || 0);
       const sellingAmount = Number(metadata?.selling_amount || Number(amount) / 100);
       if (existingOrder?.provider_order_id || existingOrder?.provider_status === "processing") {

@@ -64,7 +64,11 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Missing required Social Boost payment fields" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const adminClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
-      const { data: serviceRow } = await adminClient.from("social_boost_service_pricing").select("admin_price_per_1000,base_price_per_1000,default_price_per_1000,max_reseller_price_per_1000,min_quantity,max_quantity").eq("service_id", serviceId).maybeSingle();
+      const { data: serviceRow, error: serviceError } = await adminClient.from("social_boost_service_pricing").select("admin_price_per_1000,base_price_per_1000,default_price_per_1000,max_reseller_price_per_1000,min_quantity,max_quantity").eq("service_id", serviceId).maybeSingle();
+      if (serviceError) {
+        console.error("[SOCIAL BOOST] Service pricing lookup failed:", serviceError);
+        return new Response(JSON.stringify({ error: "Unable to load Social Boost pricing" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const minQuantity = Number(serviceRow?.min_quantity ?? 1);
       const maxQuantity = Number(serviceRow?.max_quantity ?? 100000000);
       if (quantity < minQuantity || quantity > maxQuantity) return new Response(JSON.stringify({ error: "Invalid Social Boost quantity" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
@@ -79,12 +83,17 @@ Deno.serve(async (req) => {
       let sellingPrice = userPrice;
       if (sellerKind && sellerStoreId) {
         const table = sellerKind === "agent" ? "agent_stores" : sellerKind === "subagent" ? "subagent_stores" : "sub_subagent_stores";
-        const { data: storeRow } = await adminClient.from(table).select("user_id").eq("id", sellerStoreId).maybeSingle();
+        const { data: storeRow, error: storeError } = await adminClient.from(table).select("user_id").eq("id", sellerStoreId).maybeSingle();
+        if (storeError) {
+          console.error("[SOCIAL BOOST] Storefront lookup failed:", storeError);
+          return new Response(JSON.stringify({ error: "Unable to load storefront pricing" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
         if (!storeRow) return new Response(JSON.stringify({ error: "Storefront not found" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         basePrice = agentBasePrice;
         sellingPrice = defaultAgentPrice;
         if (storeRow.user_id) {
-          const { data: customPrice } = await adminClient.from("social_boost_reseller_pricing").select("price_per_1000").eq("user_id", storeRow.user_id).eq("service_id", serviceId).maybeSingle();
+          const { data: customPrice, error: customPriceError } = await adminClient.from("social_boost_reseller_pricing").select("price_per_1000").eq("user_id", storeRow.user_id).eq("service_id", serviceId).maybeSingle();
+          if (customPriceError) console.error("[SOCIAL BOOST] Custom storefront price lookup failed:", customPriceError);
           const candidate = Number(customPrice?.price_per_1000);
           if (Number.isFinite(candidate) && candidate >= agentBasePrice && (!maxResellerPrice || candidate <= maxResellerPrice)) sellingPrice = candidate;
         }
