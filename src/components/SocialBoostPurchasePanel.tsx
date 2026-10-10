@@ -121,23 +121,31 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const loadHistory = async (sync = true) => {
     const { data: authData } = await supabase.auth.getUser();
     const userId = authData.user?.id;
-    if (!userId) {
+    if (!userId && !storeId) {
       setHistory([]);
       return;
     }
-    const { data } = await (supabase as any)
-      .from("social_boost_orders")
-      .select("order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains,selling_amount,base_amount,profit_amount,seller_store_kind")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(50);
-    let next = data ?? [];
+    const orderFields = "order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains,selling_amount,base_amount,profit_amount,seller_store_kind,seller_store_id";
+    const queries = [];
+    if (userId) {
+      queries.push((supabase as any).from("social_boost_orders").select(orderFields).eq("user_id", userId).order("created_at", { ascending: false }).limit(50));
+    }
+    if (storeId) {
+      queries.push((supabase as any).from("social_boost_orders").select(orderFields).eq("seller_store_id", storeId).order("created_at", { ascending: false }).limit(50));
+    }
+    const results = await Promise.all(queries);
+    let next = Array.from(new Map(results.flatMap((result: any) => result.data ?? []).map((item: any) => [item.order_number, item])).values())
+      .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      .slice(0, 50);
     if (sync) {
       next = await Promise.all(next.map(async (item: any) => {
         if (!item.provider_order_id) return item;
         const { data: latest } = await supabase.functions.invoke("social-boost", { body: { action: "status", order: item.provider_order_id } });
         const fields = { provider_status: latest?.status ?? latest?.provider_status ?? item.provider_status, remains: latest?.remains ?? latest?.remaining ?? item.remains, start_count: latest?.start_count ?? item.start_count };
-        await (supabase as any).from("social_boost_orders").update(fields).eq("order_number", item.order_number).eq("user_id", userId);
+        const updateQuery = (supabase as any).from("social_boost_orders").update(fields).eq("order_number", item.order_number);
+        if (storeId && item.seller_store_id === storeId) updateQuery.eq("seller_store_id", storeId);
+        else if (userId) updateQuery.eq("user_id", userId);
+        await updateQuery;
         return { ...item, ...fields };
       }));
     }
