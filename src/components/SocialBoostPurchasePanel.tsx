@@ -141,13 +141,13 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       setHistory([]);
       return;
     }
-    const orderFields = "order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains,selling_amount,base_amount,profit_amount,seller_store_kind,seller_store_id";
+    const orderFields = "order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains,selling_amount,base_amount,profit_amount,owner_type,owner_store_id,seller_store_kind,seller_store_id,payment_reference";
     const queries = [];
     if (userId) {
-      queries.push((supabase as any).from("social_boost_orders").select(orderFields).eq("user_id", userId).order("created_at", { ascending: false }).limit(50));
+      queries.push((supabase as any).from("social_boost_orders").select(orderFields).eq("user_id", userId).order("created_at", { ascending: false }).limit(100));
     }
     if (storeId) {
-      queries.push((supabase as any).from("social_boost_orders").select(orderFields).eq("seller_store_id", storeId).order("created_at", { ascending: false }).limit(50));
+      queries.push((supabase as any).from("social_boost_orders").select(orderFields).or(`owner_store_id.eq.${storeId},seller_store_id.eq.${storeId}`).order("created_at", { ascending: false }).limit(100));
     }
     const results = await Promise.all(queries);
     let next = Array.from(new Map(results.flatMap((result: any) => result.data ?? []).map((item: any) => [item.order_number, item])).values())
@@ -424,8 +424,8 @@ const noteLines = String(service.notes || service.note || "No additional note ha
   <div className="border-b bg-[#dddff5] px-3 py-3 font-semibold">My Social Boost History</div>
   <div className="max-h-[22rem] overflow-auto">
   <table className="min-w-[760px] w-full text-left text-sm">
-            <thead className="font-semibold"><tr>{["Order", "Date", "Link", "Quantity", "Service", "Status", "Remains", "Price", "Profit"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead>
-            <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t"><td className="px-3 py-3">#{item.order_number}</td><td className="px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="max-w-[220px] break-all px-3 py-3 text-blue-700">{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td><td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td><td className="px-3 py-3 text-emerald-700">{item.profit_amount != null ? `GHC ${Number(item.profit_amount).toFixed(2)}` : "—"}</td></tr>) : <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
+            <thead className="font-semibold"><tr>{["Order", "Date", "Source", "Link", "Quantity", "Service", "Status", "Remains", "Price", "Profit"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead>
+            <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t"><td className="px-3 py-3">#{item.order_number}</td><td className="px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="px-3 py-3">{item.seller_store_kind ? `${item.seller_store_kind} storefront` : item.owner_type === "api" ? "API" : "Wallet"}</td><td className="max-w-[220px] break-all px-3 py-3 text-blue-700">{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td><td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td><td className="px-3 py-3 text-emerald-700">{item.profit_amount != null ? `GHC ${Number(item.profit_amount).toFixed(2)}` : "—"}</td></tr>) : <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
             </table>
           </div>
   </div>
