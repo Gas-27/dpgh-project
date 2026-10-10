@@ -9,7 +9,7 @@ import { useToast } from "@/hooks/use-toast";
 
 type Service = { service_id: number; service_name: string; category: string; admin_price_per_1000: number; default_price_per_1000: number; max_reseller_price_per_1000: number };
 
-export default function SocialBoostPricingManager({ ownerId }: { ownerId?: string }) {
+export default function SocialBoostPricingManager({ ownerId, ownerType }: { ownerId?: string; ownerType?: string }) {
   const { toast } = useToast();
   const [services, setServices] = useState<Service[]>([]);
   const [prices, setPrices] = useState<Record<number, number>>({});
@@ -24,10 +24,9 @@ export default function SocialBoostPricingManager({ ownerId }: { ownerId?: strin
         const { data: user } = await supabase.auth.getUser();
       let pricingUserId = user.user?.id ?? null;
       if (ownerId) {
-        for (const table of ["agent_stores", "subagent_stores", "sub_subagent_stores"]) {
-          const { data: store } = await (supabase as any).from(table).select("user_id,owner_id,created_by").eq("id", ownerId).maybeSingle();
-          if (store) { pricingUserId = store.user_id ?? store.owner_id ?? store.created_by ?? pricingUserId; break; }
-        }
+        const table = ownerType === "agent" ? "agent_stores" : ownerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
+        const { data: store } = await (supabase as any).from(table).select("user_id,owner_id,created_by").eq("id", ownerId).maybeSingle();
+        pricingUserId = store?.user_id ?? store?.owner_id ?? store?.created_by ?? pricingUserId;
       }
       if (pricingUserId && rows.length) {
         const { data: saved } = await (supabase as any).from("social_boost_reseller_pricing").select("service_id,price_per_1000").eq("user_id", pricingUserId);
