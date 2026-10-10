@@ -49,6 +49,17 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const { toast } = useToast();
   const resolvedPurchaseSource = purchaseSource ?? (checkoutMode === "wallet" ? "Dashboard" : ["agent", "subagent", "subsubagent"].includes(ownerType) ? "Storefront" : "Packages page");
   const normalizedOwnerType = ownerType === "sub_subagent" ? "subsubagent" : ownerType;
+  const getDeliveryMessage = (serviceName: string) => {
+    const normalized = serviceName.toLowerCase();
+    if (normalized.includes("comment")) return "Your comments are on their way.";
+    if (normalized.includes("reaction")) return "Your reactions are on their way.";
+    if (normalized.includes("like")) return "Your likes are on their way.";
+    if (normalized.includes("member")) return "Your members are on their way.";
+    if (normalized.includes("view")) return "Your views are on their way.";
+    if (normalized.includes("subscriber")) return "Your subscribers are on their way.";
+    if (normalized.includes("follow")) return "Your followers are on their way.";
+    return "Your order is on its way.";
+  };
   const [platform, setPlatform] = useState("TikTok");
   const [catalog, setCatalog] = useState<ProviderService[]>(fallbackServices);
   const [service, setService] = useState(fallbackServices[0]);
@@ -369,7 +380,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-emerald-300" />
             <div>
               <h2 className="font-bold">Social Boost purchase successful</h2>
-              <p className="mt-1 text-sm text-emerald-100/90">Your Social Boost purchase was made through the {resolvedPurchaseSource}. Your followers are on their way. Keep this order number and use it to track your purchase.</p>
+              <p className="mt-1 text-sm text-emerald-100/90">Your Social Boost purchase was made through the {resolvedPurchaseSource}. {getDeliveryMessage(service.name)} Keep this order number and use it to track your purchase.</p>
               <p className="mt-3 text-lg font-black tracking-wide">Order #{orderId}</p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Purchase source: {resolvedPurchaseSource}</p>
               <Button type="button" size="sm" className="mt-3 bg-emerald-500 text-emerald-950 hover:bg-emerald-400" onClick={() => { setSearchOrder(orderId); document.getElementById("social-boost-track-order")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
