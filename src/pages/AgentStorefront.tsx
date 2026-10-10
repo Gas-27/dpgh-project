@@ -1459,24 +1459,13 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                         </>
                       ) : (
                         <>
-                          <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center w-full">
+                          <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-2 px-5 py-6 text-center w-full">
                             {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />}
-                            <div className="flex w-full items-center justify-between gap-3 text-left">
-                              <div className="min-w-0">
-                                <p className="font-display text-lg font-extrabold leading-tight text-white">{getBundleName(pkg)}</p>
-                                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: getNetworkLabelColor(networkFilter) }}>{getBundleCategory(pkg.bundle_id)} • {formatNetworkName(networkFilter)} Normal Data</p>
-                                <p className="truncate text-[11px] leading-relaxed text-white/70">Standard {formatNetworkName(networkFilter)} data bundle</p>
-                              </div>
-                              <p className="shrink-0 text-right text-2xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
-                            </div>
-  {showAgentPrice && <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
-  <span>Agent price: <strong className="text-cyan-300">{Number(agentSubagentPrices[pkg.id] ?? pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
-  </div>}
-                            <div className="leading-tight">
-                              <p className="text-sm font-semibold text-white/75">Your price (user price):</p>
-                              <p className="text-2xl font-extrabold text-white">GHC{Number(price).toFixed(2)}</p>
-                            </div>
-                            <Button variant="outline" size="lg" disabled={isInactive} className="mt-1 h-9 w-full rounded-full border-white/30 bg-white/10 text-sm font-bold text-white hover:bg-white/20 hover:text-white" onClick={() => !isInactive && setPaymentPkg(pkg)}>{isInactive ? "Not Available" : "Buy Now"}</Button>
+                            <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
+                            <p className="text-sm font-bold uppercase" style={{ color: getNetworkLabelColor(networkFilter) }}>{formatNetworkName(networkFilter)}</p>
+                            <p className="text-sm font-semibold text-white/80">User price: <strong className="text-cyan-300">GHC {Number(price).toFixed(2)}</strong></p>
+                            {showAgentPrice && <p className="text-xs text-white/60">Agent price: GHC {Number(agentSubagentPrices[pkg.id] ?? pkg.agent_price ?? pkg.price).toFixed(2)}</p>}
+                            <Button variant="outline" size="lg" disabled={isInactive} className="mt-2 h-10 w-full rounded-full border-white/30 bg-white/10 text-sm font-bold text-white hover:bg-white/20 hover:text-white" onClick={() => !isInactive && setPaymentPkg(pkg)}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                           </CardContent>
                         </>
                       )}

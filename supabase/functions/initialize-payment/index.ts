@@ -70,7 +70,7 @@ Deno.serve(async (req) => {
       if (quantity < minQuantity || quantity > maxQuantity) return new Response(JSON.stringify({ error: "Invalid Social Boost quantity" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const basePrice = Number(serviceRow?.admin_price_per_1000 ?? serviceRow?.default_price_per_1000 ?? 0);
       if (!Number.isFinite(basePrice) || basePrice <= 0) return new Response(JSON.stringify({ error: "Social Boost base price is not configured" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      let sellingPrice = basePrice;
+      let sellingPrice = Number(serviceRow?.default_price_per_1000 ?? basePrice) > 0 ? Number(serviceRow?.default_price_per_1000 ?? basePrice) : basePrice;
       const sellerKind = ["agent", "subagent", "subsubagent"].includes(String(metadata.seller_store_kind)) ? String(metadata.seller_store_kind) : null;
       const sellerStoreId = typeof metadata.seller_store_id === "string" ? metadata.seller_store_id : null;
       if (sellerKind && sellerStoreId) {

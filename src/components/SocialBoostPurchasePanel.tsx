@@ -190,9 +190,21 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       const byId = await table.select(columns).eq("service_id", service.service).maybeSingle();
       const data = byId.data ?? (await table.select(columns).ilike("service_name", service.name).ilike("category", service.category).maybeSingle()).data;
       if (!mounted) return;
-      const adminPrice = Number(data?.admin_price_per_1000 ?? data?.default_price_per_1000 ?? service.rate ?? 0);
-      const userPrice = Number(data?.admin_price_per_1000 ?? service.rate ?? 0);
-      const configuredPrice = pricingMode === "user" ? userPrice : adminPrice;
+const basePrice = Number(data?.admin_price_per_1000 ?? service.rate ?? 0);
+  const defaultAgentPrice = Number(data?.default_price_per_1000 ?? basePrice);
+  let customPrice: number | null = null;
+  if (pricingMode === "storefront" && storeId) {
+    const storeTable = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : "subsubagent_stores";
+    const { data: storeRow } = await (supabase as any).from(storeTable).select("user_id").eq("id", storeId).maybeSingle();
+    if (storeRow?.user_id) {
+      const { data: savedPrice } = await (supabase as any).from("social_boost_reseller_pricing").select("price_per_1000").eq("user_id", storeRow.user_id).eq("service_id", service.service).maybeSingle();
+      const candidate = Number(savedPrice?.price_per_1000);
+      const maximum = Number(data?.max_reseller_price_per_1000 ?? 0);
+      if (Number.isFinite(candidate) && candidate >= basePrice && (!maximum || candidate <= maximum)) customPrice = candidate;
+    }
+  }
+  const configuredPrice = pricingMode === "user" ? basePrice : customPrice ?? (Number.isFinite(defaultAgentPrice) && defaultAgentPrice > 0 ? defaultAgentPrice : basePrice);
+  const adminPrice = basePrice;
       if (!Number.isFinite(adminPrice) || adminPrice <= 0) return;
         setAdminPrices((current) => ({ ...current, [service.service]: configuredPrice }));
         setPrice(configuredPrice);
