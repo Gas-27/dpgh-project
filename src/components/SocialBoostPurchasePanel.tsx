@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack" };
+type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack"; showHistory?: boolean };
 type ProviderService = { service: number; name: string; category: string; rate: string; min: string; max: string; average?: string; average_time?: string; note?: string; notes?: string; refill?: boolean; cancel?: boolean };
 
 const platforms = ["TikTok", "Instagram", "Facebook", "YouTube", "WhatsApp"];
@@ -415,7 +415,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             </table>
           </div>
         )}
-  <div className="mt-5 overflow-hidden rounded-xl bg-white text-slate-950">
+  <div className={`${showHistory ? "" : "hidden"} mt-5 overflow-hidden rounded-xl bg-white text-slate-950`}>
   <div className="border-b bg-[#dddff5] px-3 py-3 font-semibold">My Social Boost History</div>
   <div className="max-h-80 overflow-auto">
   <table className="min-w-[760px] w-full text-left text-sm">
@@ -423,10 +423,9 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t"><td className="px-3 py-3">#{item.order_number}</td><td className="px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="max-w-[220px] break-all px-3 py-3 text-blue-700">{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td><td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td><td className="px-3 py-3 text-emerald-700">{item.profit_amount != null ? `GHC ${Number(item.profit_amount).toFixed(2)}` : "—"}</td></tr>) : <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
             </table>
           </div>
-        </div>
-      </div>
-
-      {/* Select Platform */}
+  </div>
+  
+  {/* Select Platform */}
       <div className="rounded-2xl border border-blue-500/60 bg-[#061b43] p-4">
         <h2 className="flex items-center gap-1.5 font-bold">
           Select Platform <Info className="h-4 w-4 text-cyan-300" />
@@ -637,6 +636,7 @@ value={quantity}
           <Sparkles className="h-5 w-5 text-cyan-300" />
           <span><b className="block">Trusted Service</b><small className="text-blue-100/50">Thousands of happy users</small></span>
         </span>
+      </div>
       </div>
     </section>
   );
