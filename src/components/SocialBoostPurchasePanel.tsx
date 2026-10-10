@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 
-type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack"; showHistory?: boolean; pricingMode?: "user" | "storefront" };
+type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack"; showHistory?: boolean; pricingMode?: "user" | "storefront"; purchaseSource?: "Dashboard" | "Packages page" | "Storefront" };
 type ProviderService = { service: number; name: string; category: string; rate: string; min: string; max: string; average?: string; average_time?: string; note?: string; notes?: string; refill?: boolean; cancel?: boolean };
 
 const platforms = ["TikTok", "Instagram", "Facebook", "YouTube", "WhatsApp"];
@@ -45,8 +45,9 @@ const platformTileBg: Record<string, string> = {
 };
 const fallbackServices: ProviderService[] = [{ service: 1, name: "Followers", category: "TikTok", rate: "0.90", min: "50", max: "50000", average_time: "4 Hours", refill: true, cancel: true }];
 
-export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", storeId = null, canSetPrices = false, checkoutMode = "wallet", showHistory = true, pricingMode = "storefront" }: Props) {
+export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", storeId = null, canSetPrices = false, checkoutMode = "wallet", showHistory = true, pricingMode = "storefront", purchaseSource }: Props) {
   const { toast } = useToast();
+  const resolvedPurchaseSource = purchaseSource ?? (checkoutMode === "wallet" ? "Dashboard" : ["agent", "subagent", "subsubagent"].includes(ownerType) ? "Storefront" : "Packages page");
   const normalizedOwnerType = ownerType === "sub_subagent" ? "subsubagent" : ownerType;
   const [platform, setPlatform] = useState("TikTok");
   const [catalog, setCatalog] = useState<ProviderService[]>(fallbackServices);
@@ -226,7 +227,7 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
   const min = Number(service.min) || 10;
   const max = Number(service.max) || 50000;
   const numericQuantity = typeof quantity === "number" ? quantity : 0;
-  const total = useMemo(() => Math.round((numericQuantity / 1000) * price * 100) / 100, [numericQuantity, price]);
+  const total = useMemo(() => Math.round((numericQuantity / 1000) * price * 1000) / 1000, [numericQuantity, price]);
 
   const buy = async () => {
     const isCustomComments = /comment/i.test(`${service.name} ${selectedCategory}`);
@@ -368,8 +369,9 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-emerald-300" />
             <div>
               <h2 className="font-bold">Social Boost purchase successful</h2>
-              <p className="mt-1 text-sm text-emerald-100/90">Your order has been placed. Keep this order number and use it to track your purchase.</p>
+              <p className="mt-1 text-sm text-emerald-100/90">Your Social Boost purchase was made through the {resolvedPurchaseSource}. Your followers are on their way. Keep this order number and use it to track your purchase.</p>
               <p className="mt-3 text-lg font-black tracking-wide">Order #{orderId}</p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Purchase source: {resolvedPurchaseSource}</p>
               <Button type="button" size="sm" className="mt-3 bg-emerald-500 text-emerald-950 hover:bg-emerald-400" onClick={() => { setSearchOrder(orderId); document.getElementById("social-boost-track-order")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
                 Track this order
               </Button>
@@ -560,14 +562,14 @@ value={quantity}
                 />
                 <p className="mt-1 text-xs text-blue-100/60">
                   Min {min.toLocaleString()} – Max {max.toLocaleString()}
-                  <span className="ml-2 rounded-full bg-blue-500/20 px-2 py-0.5 text-cyan-200">{price.toFixed(0)}/1K</span>
+                  <span className="ml-2 rounded-full bg-blue-500/20 px-2 py-0.5 text-cyan-200">{price.toFixed(3)}/1K</span>
                 </p>
               </div>
               <div className="rounded-xl border border-blue-400/60 bg-gradient-to-br from-[#08122b] to-[#0e2352] p-4 text-center sm:w-40">
                 <p className="flex items-center justify-center gap-1.5 text-xs font-semibold text-blue-100/70">
                   <span className="flex h-5 w-5 items-center justify-center rounded-full bg-cyan-500 text-[10px] text-white">$</span> Price
                 </p>
-                <p className="mt-1 text-2xl font-black">{total.toFixed(0)} GHS</p>
+                <p className="mt-1 text-2xl font-black">{total.toFixed(3)} GHS</p>
               </div>
             </div>
           </div>
