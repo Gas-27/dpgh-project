@@ -54,7 +54,6 @@ export default function ProductDetail() {
     return () => { cancelled = true; };
   }, [productId, storeName]);
 
-  if (loading) return <main className="mx-auto max-w-3xl p-6"><p className="text-muted-foreground">Loading product...</p></main>;
   useEffect(() => {
     if (!product) return;
     const title = product.title;
@@ -79,6 +78,7 @@ export default function ProductDetail() {
     });
   }, [product]);
 
+  if (loading) return <main className="mx-auto max-w-3xl p-6"><p className="text-muted-foreground">Loading product...</p></main>;
   if (!product) return <main className="mx-auto max-w-3xl p-6"><p className="text-muted-foreground">Product not found or no longer available.</p></main>;
 
   const rawDigits = String(store?.whatsapp_number || store?.support_number || "").replace(/\D/g, "");
