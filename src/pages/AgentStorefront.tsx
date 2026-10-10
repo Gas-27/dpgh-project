@@ -1461,10 +1461,14 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                         <>
                           <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center w-full">
                             {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />}
-                            <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
-                            <p className="text-sm font-bold uppercase" style={{ color: getNetworkLabelColor(networkFilter) }}>{formatNetworkName(networkFilter)} Normal Data</p>
-                            <p className="text-sm font-semibold text-white">{getBundleName(pkg)}</p>
-                            <p className="max-w-xs text-xs leading-relaxed text-white/70">{getBundleCategory(pkg.bundle_id)}{pkg.bundle_id ? ` • Product ID: ${pkg.bundle_id}` : " • Standard network data bundle"}</p>
+                            <div className="flex w-full items-center justify-between gap-3 text-left">
+                              <div className="min-w-0">
+                                <p className="font-display text-lg font-extrabold leading-tight text-white">{getBundleName(pkg)}</p>
+                                <p className="text-xs font-bold uppercase tracking-wide" style={{ color: getNetworkLabelColor(networkFilter) }}>{getBundleCategory(pkg.bundle_id)} • {formatNetworkName(networkFilter)} Normal Data</p>
+                                <p className="truncate text-[11px] leading-relaxed text-white/70">{pkg.bundle_id ? `Product ID: ${pkg.bundle_id}` : "Standard network data bundle"}</p>
+                              </div>
+                              <p className="shrink-0 text-right text-2xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
+                            </div>
   {showAgentPrice && <div className="flex items-center justify-center gap-3 text-sm font-semibold text-white/75">
   <span>Agent price: <strong className="text-cyan-300">{Number(agentSubagentPrices[pkg.id] ?? pkg.agent_price ?? pkg.price).toFixed(2)}</strong></span>
   </div>}
