@@ -152,6 +152,7 @@ const UserDashboard = () => {
   const [buySimLookupError, setBuySimLookupError] = useState(false);
   const [topupReference, setTopupReference] = useState<string>("");
   const [showApiWalletTopup, setShowApiWalletTopup] = useState(false);
+  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost">("cheap-data");
   const [orderFilter, setOrderFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
   const [totalOrders, setTotalOrders] = useState(0);
   const [topupHistory, setTopupHistory] = useState<any[]>([]);
@@ -2010,8 +2011,21 @@ case "api-key":
     </div>
   );
 
-  const renderApiDocs = () => (
-    <div className="space-y-6">
+const renderApiDocs = () => (
+  <div className="space-y-6">
+  <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1">
+    <Button type="button" variant={apiDocTab === "cheap-data" ? "secondary" : "ghost"} className={apiDocTab === "cheap-data" ? "bg-background" : ""} onClick={() => setApiDocTab("cheap-data")}>Cheap Data</Button>
+    <Button type="button" variant={apiDocTab === "social-boost" ? "secondary" : "ghost"} className={apiDocTab === "social-boost" ? "bg-background" : ""} onClick={() => setApiDocTab("social-boost")}>Social Boost</Button>
+  </div>
+  {apiDocTab === "social-boost" && <Card className="border-cyan-500/30 bg-cyan-500/5">
+    <CardHeader><CardTitle>Social Boost API</CardTitle><p className="text-sm text-muted-foreground">Use your API wallet to create and track TikTok Followers, Instagram Followers, and other Social Boost orders.</p></CardHeader>
+    <CardContent className="space-y-4">
+      <div className="rounded-lg border border-border bg-muted p-3 font-mono text-xs break-all">POST https://api.dataplug.store/functions/v1/social-boost</div>
+      <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`curl "https://api.dataplug.store/functions/v1/social-boost" \\\n  -X POST \\\n  -H "Authorization: Bearer YOUR_API_KEY" \\\n  -H "Content-Type: application/json" \\\n  -d '{"action":"add","platform":"instagram","service":"Instagram Followers","link":"https://instagram.com/username","quantity":1000,"price_per_1000":25,"amount":25}'`}</pre>
+      <p className="text-sm text-muted-foreground">The request checks your API wallet, creates the order, and debits the purchase amount. Use <span className="font-mono">{`{"action":"status","order":"ORDER_NUMBER"}`}</span> to check delivery status.</p>
+    </CardContent>
+  </Card>}
+  {apiDocTab === "cheap-data" && <>
       {/* Header Card */}
       <Card className="border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
         <CardContent className="p-6">
@@ -2412,6 +2426,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           </CardContent>
         </Card>
       </div>
+      </>}
     </div>
   );
 

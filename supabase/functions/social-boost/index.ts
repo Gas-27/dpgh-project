@@ -35,8 +35,8 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Use POST for Social Boost requests." }, 405);
 
-  const apiKey = Deno.env.get("EXOBOOST_API_KEY");
-  if (!apiKey) return json({ error: "Social Boost is not configured." }, 500);
+  const providerApiKey = Deno.env.get("EXOBOOST_API_KEY");
+  if (!providerApiKey) return json({ error: "Social Boost is not configured." }, 500);
 
   let input: Record<string, unknown>;
   try {
@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
     input.order = order.order_number;
   }
 
-  const body = new URLSearchParams({ key: apiKey, action });
+  const body = new URLSearchParams({ key: providerApiKey, action });
   for (const [field, value] of Object.entries(input)) {
     if (field === "action" || field === "key") continue;
     const formValue = asFormValue(value);
