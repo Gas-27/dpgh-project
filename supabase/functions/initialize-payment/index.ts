@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
         return !terminalStatuses.includes(providerStatus) && !terminalStatuses.includes(status);
       });
       if (hasActiveDuplicate) {
-        return new Response(JSON.stringify({ code: "duplicate_order", error: "You cannot place a new Social Boost order for the same account and the same service while an earlier one is still processing. Wait until your Social Boost order is completed or failed before ordering again for that same account and service." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        return new Response(JSON.stringify({ code: "duplicate_order", error: "NOTICE: Another order for the same link and service is not permitted while an active Social Boost order is processing. Please wait for it to be completed before ordering again. If a duplicate order is created, the system will cancel one of the orders." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const userPrice = Number(serviceRow?.admin_price_per_1000 ?? 0);
       const agentBasePrice = Number(serviceRow?.base_price_per_1000 ?? 0) > 0 ? Number(serviceRow?.base_price_per_1000) : userPrice;

@@ -1,5 +1,5 @@
 export const SOCIAL_BOOST_DUPLICATE_NOTICE =
-  "You cannot place a new Social Boost order for the same account and the same service while an earlier one is still processing. Wait until your Social Boost order is completed or failed before ordering again for that same account and service.";
+  "NOTICE: Another order for the same link and service is not permitted while an active Social Boost order is processing. Please wait for it to be completed before ordering again. If a duplicate order is created, the system will cancel one of the orders.";
 
 export const getSocialBoostDeliveryMessage = (serviceName?: string | null) => {
   const normalized = String(serviceName ?? "").toLowerCase();
