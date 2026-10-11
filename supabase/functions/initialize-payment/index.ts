@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
           user_id: sessionUserId,
           customer_id: sessionUserId,
         };
-    if (!isStorefrontPurchase && !sessionUserId) {
+    if (!isStorefrontPurchase && metadata?.type !== "social_boost" && !sessionUserId) {
       return new Response(JSON.stringify({ error: "Please sign in again before starting this payment." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     console.log("[PAYMENT] Payment type:", metadata?.type, "storefront:", isStorefrontPurchase);
@@ -60,13 +60,27 @@ Deno.serve(async (req) => {
     if (metadata?.type === "social_boost" || metadata?.kind === "social_boost") {
       const serviceId = Number(metadata.service_id);
       const quantity = Number(metadata.quantity);
-      const userId = String(metadata.user_id || sessionUserId || "").trim();
+      let userId = String(metadata.user_id || sessionUserId || "").trim();
       const targetLink = String(metadata.target_link || "").trim();
       const isValidUserId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId);
-      if (!isValidUserId || !Number.isInteger(serviceId) || !Number.isInteger(quantity) || quantity <= 0 || !targetLink || !email) {
-        return new Response(JSON.stringify({ error: "Please sign in and provide a valid Social Boost service, link, and quantity." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!Number.isInteger(serviceId) || !Number.isInteger(quantity) || quantity <= 0 || !targetLink || !email) {
+        return new Response(JSON.stringify({ error: "Provide a valid Social Boost service, link, quantity, and email." }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
       const adminClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+
+      if (!isValidUserId) {
+        const { data: guestUser, error: guestUserError } = await adminClient.auth.admin.createUser({
+          email,
+          password: `${crypto.randomUUID()}-${crypto.randomUUID()}`,
+          email_confirm: true,
+          user_metadata: { guest_social_boost: true },
+        });
+        if (guestUserError || !guestUser.user) {
+          console.error("[SOCIAL BOOST] Guest customer creation failed:", guestUserError);
+          return new Response(JSON.stringify({ error: "Unable to create the guest customer record." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        userId = guestUser.user.id;
+      }
       const { data: serviceRow, error: serviceError } = await adminClient.from("social_boost_service_pricing").select("admin_price_per_1000,base_price_per_1000,default_price_per_1000,max_reseller_price_per_1000,min_quantity,max_quantity").eq("service_id", serviceId).maybeSingle();
       if (serviceError) {
         console.error("[SOCIAL BOOST] Service pricing lookup failed:", serviceError);

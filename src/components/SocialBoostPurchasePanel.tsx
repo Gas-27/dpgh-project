@@ -270,20 +270,16 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
     if (!numericQuantity || numericQuantity < min || numericQuantity > max) return toast({ title: "Invalid quantity", description: `This service accepts ${min.toLocaleString()} to ${max.toLocaleString()}.`, variant: "destructive" });
     const providerComments = customComments.trim().split(/\r?\n/).map((line) => line.trim()).filter(Boolean).join("\n");
     setBuying(true);
-    const { data: authData, error: authError } = await supabase.auth.getUser();
+    const { data: authData } = await supabase.auth.getUser();
     const currentUser = authData.user;
-    if (authError || !currentUser?.id) {
-      setBuying(false);
-      return toast({ title: "Sign in required", description: "Please sign in before purchasing a Social Boost service.", variant: "destructive" });
-    }
 
     if (checkoutMode === "paystack") {
       const { data, error } = await supabase.functions.invoke("initialize-payment", {
         body: {
-          email: currentUser.email || `social_boost_${Date.now()}@datapluggh.com`,
+          email: currentUser?.email || `social_boost_${Date.now()}@datapluggh.com`,
           amount: total,
           callback_url: `${window.location.origin}${window.location.pathname}${window.location.search ? `${window.location.search}&` : "?"}payment=verifying`,
-          metadata: { type: "social_boost", user_id: currentUser.id, platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: normalizedOwnerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? normalizedOwnerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? storeId : null },
+          metadata: { type: "social_boost", ...(currentUser?.id ? { user_id: currentUser.id } : {}), platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: normalizedOwnerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? normalizedOwnerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? storeId : null },
         },
       });
       setBuying(false);
