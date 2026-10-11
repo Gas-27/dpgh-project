@@ -167,17 +167,32 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     const params = new URLSearchParams(window.location.search);
     const reference = params.get("reference") || params.get("trxref");
     if (params.get("payment") !== "verifying" || !reference) return;
+
     let mounted = true;
     let attempts = 0;
+    const maxAttempts = 40;
     const findOrder = async () => {
-      const { data } = await (supabase as any).from("social_boost_orders").select("order_number").eq("payment_reference", reference).maybeSingle();
-      if (mounted && data?.order_number) {
+      const { data, error } = await (supabase as any)
+        .from("social_boost_orders")
+        .select("order_number,provider_order_id,provider_status,payment_reference")
+        .eq("payment_reference", reference)
+        .maybeSingle();
+
+      if (!mounted) return;
+      if (data?.order_number) {
         setOrderId(String(data.order_number));
         setSearchOrder(String(data.order_number));
+        await loadHistory(false);
         return;
       }
-      if (mounted && attempts++ < 10) window.setTimeout(findOrder, 1500);
+
+      // Paystack redirects before the webhook has necessarily finished. Keep
+      // the customer on a neutral pending state instead of showing a failure.
+      if (error && attempts === 0) console.log("[v0] Social Boost payment lookup pending:", error.message);
+      attempts += 1;
+      if (attempts < maxAttempts) window.setTimeout(findOrder, 2000);
     };
+
     void findOrder();
     return () => { mounted = false; };
   }, []);
