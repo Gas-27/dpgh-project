@@ -128,7 +128,10 @@ Deno.serve(async (req) => {
       const baseAmount = Math.round((quantity / 1000) * basePrice * 100) / 100;
       const sellingAmount = Math.round((quantity / 1000) * sellingPrice * 100) / 100;
       const feeAmount = Math.round(sellingAmount * (PAYSTACK_FEE_PERCENT / 100) * 100) / 100;
-      const socialMetadata = { ...metadata, type: "social_boost", user_id: userId, provider_service_id: String(serviceId), target_link: targetLink, quantity, base_amount: baseAmount, selling_amount: sellingAmount, profit_amount: Math.max(0, sellingAmount - baseAmount), fee_amount: feeAmount };
+      // Paystack truncates metadata at the first emoji (4-byte character), which breaks the JSON and makes the webhook see {}.
+      const stripEmoji = (value: unknown) => typeof value === "string" ? value.replace(/[\u{10000}-\u{10FFFF}\uFE0F\u200D]/gu, "").replace(/\s+/g, " ").trim() : value;
+      const rawSocialMetadata = { ...metadata, type: "social_boost", user_id: userId, provider_service_id: String(serviceId), target_link: targetLink, quantity, base_amount: baseAmount, selling_amount: sellingAmount, profit_amount: Math.max(0, sellingAmount - baseAmount), fee_amount: feeAmount };
+      const socialMetadata = Object.fromEntries(Object.entries(rawSocialMetadata).map(([key, value]) => [key, key === "comments" ? value : stripEmoji(value)]));
       const socialReference = `SB_${Date.now()}_${crypto.randomUUID().replace(/-/g, "").slice(0, 8)}`;
       const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", { method: "POST", headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ email, reference: socialReference, amount: Math.round((sellingAmount + feeAmount) * 100), currency: "GHS", callback_url, metadata: socialMetadata }) });
       const result = await paystackRes.json();
