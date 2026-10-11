@@ -96,7 +96,9 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   useEffect(() => {
     let mounted = true;
   Promise.all([
-    supabase.functions.invoke("social-boost", { body: { action: "services" } }),
+    checkoutMode === "wallet"
+      ? supabase.functions.invoke("social-boost", { body: { action: "services" } })
+      : Promise.resolve({ data: [] }),
     (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider_rate,default_price_per_1000,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes"),
   ]).then(([providerResult, pricingResult]) => {
     if (!mounted) return;
