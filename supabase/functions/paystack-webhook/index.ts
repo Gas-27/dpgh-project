@@ -96,10 +96,16 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ message: "Event ignored" }), { status: 200, headers: corsHeaders });
     }
 
-    const { reference, metadata, amount } = payload.data;
-    const paymentType = metadata?.type;
+  const { reference, amount } = payload.data;
+  const rawMetadata = payload.data?.metadata;
+  const metadata = typeof rawMetadata === "string"
+    ? (() => { try { return JSON.parse(rawMetadata); } catch { return {}; } })()
+    : rawMetadata && typeof rawMetadata === "object"
+      ? rawMetadata
+      : {};
+  const paymentType = String(metadata?.type || metadata?.payment_type || "").trim().toLowerCase();
 
-    console.log(`Processing payment: ${reference}, type: ${paymentType}`);
+  console.log("Processing payment:", reference, "type:", paymentType, "metadata:", metadata);
 
     // =====================================
     // SOCIAL BOOST PAYMENT HANDLER
@@ -128,7 +134,7 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ success: true, already_processed: true, reference }), { status: 200, headers: corsHeaders });
       }
       const providerKey = Deno.env.get("EXOBOOST_API_KEY");
-      const providerService = String(metadata?.service_id || "");
+      const providerService = String(metadata?.provider_service_id || metadata?.service_id || "").trim();
       const providerLink = String(metadata?.target_link || "");
       const providerQuantity = Number(metadata?.quantity || 0);
       if (!providerKey || !providerService || !providerLink || !Number.isInteger(providerQuantity) || providerQuantity <= 0) {
