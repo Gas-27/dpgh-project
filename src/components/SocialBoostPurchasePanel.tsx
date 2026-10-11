@@ -81,8 +81,20 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const [resellerCaps, setResellerCaps] = useState<Record<number, number>>({});
   const [savingPrices, setSavingPrices] = useState(false);
 
+  const historyTotals = useMemo(() => history.reduce((totals, item) => ({
+    sales: totals.sales + Number(item.selling_amount ?? 0),
+    profit: totals.profit + Number(item.profit_amount ?? 0),
+  }), { sales: 0, profit: 0 }), [history]);
+  const getHistorySource = (item: any) => {
+    if (item.seller_store_kind) return `${item.seller_store_kind} storefront`;
+    if (String(item.owner_type ?? "").toLowerCase() === "api") return "API wallet";
+    if (["agent", "subagent", "subsubagent"].includes(String(item.owner_type ?? "").toLowerCase())) return `${item.owner_type} wallet`;
+    return "Dashboard wallet";
+  };
+
   const platformServices = catalog.filter((item) => item.category.toLowerCase().includes(platform.toLowerCase()));
-  const services = platformServices.length ? platformServices : catalog;
+
+    const services = platformServices.length ? platformServices : catalog;
   const serviceCategories = Array.from(new Set(services.map((item) => item.category.trim()))).filter(Boolean);
   const [selectedCategory, setSelectedCategory] = useState("TikTok");
   const activeCategory = serviceCategories.includes(selectedCategory) ? selectedCategory : serviceCategories.find((category) => category.toLowerCase().includes(platform.toLowerCase())) ?? service?.category ?? serviceCategories[0] ?? platform;
@@ -147,8 +159,16 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     }
     const orderFields = "order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains,selling_amount,base_amount,profit_amount,owner_type,owner_store_id,seller_store_kind,seller_store_id,payment_reference";
     const queries = [];
+    const ownerIds = new Set(userId ? [userId] : []);
     if (userId) {
-      queries.push((supabase as any).from("social_boost_orders").select(orderFields).eq("user_id", userId).order("created_at", { ascending: false }).limit(100));
+      const { data: apiUsers } = await (supabase as any).from("api_users").select("id,identity_id").or(`identity_id.eq.${userId},id.eq.${userId}`);
+      (apiUsers ?? []).forEach((apiUser: any) => {
+        if (apiUser.id) ownerIds.add(String(apiUser.id));
+        if (apiUser.identity_id) ownerIds.add(String(apiUser.identity_id));
+      });
+    }
+    if (ownerIds.size) {
+      queries.push((supabase as any).from("social_boost_orders").select(orderFields).in("user_id", Array.from(ownerIds)).order("created_at", { ascending: false }).limit(200));
     }
     if (storeId) {
       queries.push((supabase as any).from("social_boost_orders").select(orderFields).or(`owner_store_id.eq.${storeId},seller_store_id.eq.${storeId}`).order("created_at", { ascending: false }).limit(100));
@@ -492,12 +512,19 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             </table>
           </div>
         )}
-  <div className={`${showHistory ? "" : "hidden"} mt-5 overflow-hidden rounded-xl bg-white text-slate-950`}>
-  <div className="border-b bg-[#dddff5] px-3 py-3 font-semibold">My Social Boost History</div>
+  <div id="social-boost-history" className={`${showHistory ? "" : "hidden"} mt-5 overflow-hidden rounded-xl bg-white text-slate-950`}>
+  <div className="border-b bg-[#dddff5] px-3 py-3 font-semibold">
+    <div>My Social Boost History</div>
+    <div className="mt-1 text-xs font-normal text-slate-600">Dashboard wallet, API wallet, and storefront purchases are shown here.</div>
+  </div>
+  <div className="grid gap-3 border-b bg-slate-50 p-3 sm:grid-cols-2">
+    <div className="rounded-lg border border-slate-200 bg-white p-3"><div className="text-xs font-medium uppercase tracking-wide text-slate-500">Sales shown</div><div className="mt-1 text-lg font-bold">GHC {historyTotals.sales.toFixed(2)}</div></div>
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3"><div className="text-xs font-medium uppercase tracking-wide text-emerald-700">Your profit</div><div className="mt-1 text-lg font-bold text-emerald-800">GHC {historyTotals.profit.toFixed(2)}</div></div>
+  </div>
   <div className="max-h-[22rem] overflow-auto">
   <table className="min-w-[1100px] w-full text-left text-sm">
             <thead className="font-semibold"><tr>{["Order", "Date", "Source", "Link", "Quantity", "Service", "Status", "Remains", "Price", "Profit"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead>
-            <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t align-top"><td className="whitespace-nowrap px-3 py-3">#{item.order_number}</td><td className="whitespace-nowrap px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="whitespace-nowrap px-3 py-3">{item.seller_store_kind ? `${item.seller_store_kind} storefront` : item.owner_type === "api" ? "API" : "Wallet"}</td><td className="max-w-[260px] truncate px-3 py-3 text-blue-700" title={item.target_link}>{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td><td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td><td className="px-3 py-3 text-emerald-700">{item.profit_amount != null ? `GHC ${Number(item.profit_amount).toFixed(2)}` : "—"}</td></tr>) : <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
+            <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t align-top"><td className="whitespace-nowrap px-3 py-3">#{item.order_number}</td><td className="whitespace-nowrap px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="whitespace-nowrap px-3 py-3">{getHistorySource(item)}</td><td className="max-w-[260px] truncate px-3 py-3 text-blue-700" title={item.target_link}>{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td><td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td><td className="px-3 py-3 text-emerald-700">{item.profit_amount != null ? `GHC ${Number(item.profit_amount).toFixed(2)}` : "—"}</td></tr>) : <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
             </table>
           </div>
   </div>
