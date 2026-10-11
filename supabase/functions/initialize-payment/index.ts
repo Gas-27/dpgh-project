@@ -71,7 +71,7 @@ Deno.serve(async (req) => {
       if (!isValidUserId) {
         const { data: guestUser, error: guestUserError } = await adminClient.auth.admin.createUser({
           email,
-          password: `${crypto.randomUUID()}-${crypto.randomUUID()}`,
+          password: crypto.randomUUID(),
           email_confirm: true,
           user_metadata: { guest_social_boost: true },
         });
