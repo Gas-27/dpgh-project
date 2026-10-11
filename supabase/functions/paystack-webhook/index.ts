@@ -103,7 +103,14 @@ Deno.serve(async (req) => {
     : rawMetadata && typeof rawMetadata === "object"
       ? rawMetadata
       : {};
-  const paymentType = String(metadata?.type || metadata?.payment_type || "").trim().toLowerCase();
+  const declaredPaymentType = String(metadata?.type || metadata?.payment_type || "").trim().toLowerCase();
+  const isSocialBoostMetadata = Boolean(
+    !metadata?.package_id &&
+    (metadata?.service_id || metadata?.provider_service_id) &&
+    metadata?.target_link &&
+    Number(metadata?.quantity) > 0
+  );
+  const paymentType = declaredPaymentType || (isSocialBoostMetadata ? "social_boost" : "");
 
   console.log("Processing payment:", reference, "type:", paymentType, "metadata:", metadata);
 
