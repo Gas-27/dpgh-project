@@ -148,6 +148,18 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Social Boost payment metadata is incomplete" }), { status: 400, headers: corsHeaders });
       }
 
+      const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+      const userId = String(metadata?.user_id || "").trim();
+      const sellerStoreId = String(metadata?.seller_store_id || "").trim();
+      if (!uuidPattern.test(userId)) {
+        console.error("[SOCIAL BOOST] Missing or invalid user_id in Paystack metadata", { reference, userId });
+        return new Response(JSON.stringify({ error: "Social Boost customer identity is missing" }), { status: 400, headers: corsHeaders });
+      }
+      if (sellerStoreId && !uuidPattern.test(sellerStoreId)) {
+        console.error("[SOCIAL BOOST] Invalid seller_store_id in Paystack metadata", { reference, sellerStoreId });
+        return new Response(JSON.stringify({ error: "Social Boost storefront identity is invalid" }), { status: 400, headers: corsHeaders });
+      }
+
       const providerResponse = await fetch("https://exosupplier.com/api/v2", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
@@ -156,24 +168,12 @@ Deno.serve(async (req) => {
       const providerPayload = await providerResponse.json().catch(() => ({}));
       const providerOrderId = providerPayload?.order ? String(providerPayload.order) : null;
       const providerStatus = providerResponse.ok && providerOrderId ? "processing" : "failed";
-      const userId = String(metadata?.user_id || "").trim();
-      const sellerStoreId = String(metadata?.seller_store_id || "").trim();
       const rawOwnerType = String(metadata?.owner_type || metadata?.seller_store_kind || "user").trim().toLowerCase();
       const normalizedOwnerType = rawOwnerType === "subsubagent" || rawOwnerType === "sub-subagent" ? "sub_subagent" : rawOwnerType;
       const ownerType = ["user", "agent", "subagent", "sub_subagent"].includes(normalizedOwnerType) ? normalizedOwnerType : "user";
       const platform = String(metadata?.platform || "Social Boost").trim();
       const serviceName = String(metadata?.service_name || providerService).trim();
       const orderNumber = Number(String(reference).replace(/\D/g, "").slice(-9));
-
-      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
-        console.error("[SOCIAL BOOST] Missing or invalid user_id in Paystack metadata", { reference, userId });
-        return new Response(JSON.stringify({ error: "Social Boost customer identity is missing" }), { status: 400, headers: corsHeaders });
-      }
-
-      if (sellerStoreId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sellerStoreId)) {
-        console.error("[SOCIAL BOOST] Invalid seller_store_id in Paystack metadata", { reference, sellerStoreId });
-        return new Response(JSON.stringify({ error: "Social Boost storefront identity is invalid" }), { status: 400, headers: corsHeaders });
-      }
 
       const { error: socialError } = await supabaseClient.from("social_boost_orders").insert({
         user_id: userId,
