@@ -524,7 +524,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
   </div>
   <div className="grid gap-3 border-b bg-slate-50 p-3 sm:grid-cols-2">
     <div className="rounded-lg border border-slate-200 bg-white p-3"><div className="text-xs font-medium uppercase tracking-wide text-slate-500">Sales shown</div><div className="mt-1 text-lg font-bold">GHC {historyTotals.sales.toFixed(2)}</div></div>
-    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3"><div className="text-xs font-medium uppercase tracking-wide text-emerald-700">Your profit added to MyWallet</div><div className="mt-1 text-lg font-bold text-emerald-800">GHC {historyTotals.profit.toFixed(2)}</div><div className="mt-1 text-xs text-emerald-700">Completed Social Boost profits are credited directly to your wallet.</div></div>
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3"><div className="text-xs font-medium uppercase tracking-wide text-emerald-700">Your profit is credited to your wallet</div><div className="mt-1 text-lg font-bold text-emerald-800">GHC {historyTotals.profit.toFixed(2)}</div><div className="mt-1 text-xs text-emerald-700">This amount has already been added directly to your wallet.</div></div>
   </div>
   <div className="max-h-[22rem] overflow-auto">
   <table className="min-w-[1100px] w-full text-left text-sm">
