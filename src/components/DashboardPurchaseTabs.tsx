@@ -121,7 +121,20 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
   }, [ownerId, ownerType, category]);
   if (loading) return <p className="py-8 text-center text-sm text-muted-foreground">Loading purchase history...</p>;
   if (!rows.length) return <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">No purchases found for this section yet.</p>;
-  return <div className="overflow-x-auto rounded-xl border border-border"><table className="w-full text-sm"><thead className="bg-muted/50"><tr><th className="p-3 text-left">Date</th><th className="p-3 text-left">Purchase</th><th className="p-3 text-left">Recipient</th><th className="p-3 text-left">Amount</th><th className="p-3 text-left">Status</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-border"><td className="p-3">{new Date(row.created_at).toLocaleString()}</td><td className="p-3">{row.network_code || row.product_type || row.network || row.source || "Purchase"}{row.package_code || row.size_gb_text || row.size_gb ? ` · ${row.package_code || row.size_gb_text || `${row.size_gb}GB`}` : ""}</td><td className="p-3">{row.customer_number || row.phone_number || "—"}</td><td className="p-3">GHC {Number(row.amount ?? row.selling_price ?? 0).toFixed(2)}</td><td className="p-3 capitalize">{String(row.status || row.fulfillment_status || "pending").replaceAll("_", " ")}</td></tr>)}</tbody></table></div>;
+
+  const commissionRate = (row: any) => {
+    const product = String(row.product_type || row.service_type || row.network || row.source || "").toLowerCase().replace(/[\s_-]+/g, "");
+    if (category === "instant") return 0.013;
+    if (product.includes("gotv") || product.includes("dstv")) return 0.0023;
+    if (product.includes("startime") || product.includes("startimes")) return 0.0015;
+    if (product.includes("ecg") || product.includes("electricity")) return 0.005;
+    if (product.includes("water") || product.includes("gwcl") || product.includes("ghanawater")) return 0.0024;
+    return 0;
+  };
+  const isCompleted = (row: any) => String(row.status || row.fulfillment_status || "pending").toLowerCase().replace(/[\s_-]+/g, "") === "completed";
+  const commissionFor = (row: any) => isCompleted(row) ? Number(row.amount ?? row.selling_price ?? 0) * commissionRate(row) : 0;
+
+  return <div className="overflow-x-auto rounded-xl border border-border"><table className="w-full text-sm"><thead className="bg-muted/50"><tr><th className="p-3 text-left">Date</th><th className="p-3 text-left">Purchase</th><th className="p-3 text-left">Recipient</th><th className="p-3 text-left">Amount</th><th className="p-3 text-left">Commission</th><th className="p-3 text-left">Status</th></tr></thead><tbody>{rows.map((row) => <tr key={row.id} className="border-t border-border"><td className="p-3">{new Date(row.created_at).toLocaleString()}</td><td className="p-3">{row.network_code || row.product_type || row.network || row.source || "Purchase"}{row.package_code || row.size_gb_text || row.size_gb ? ` · ${row.package_code || row.size_gb_text || `${row.size_gb}GB`}` : ""}</td><td className="p-3">{row.customer_number || row.phone_number || "—"}</td><td className="p-3">GHC {Number(row.amount ?? row.selling_price ?? 0).toFixed(2)}</td><td className="p-3 font-medium text-emerald-600">{isCompleted(row) ? `GHC ${commissionFor(row).toFixed(2)}` : "—"}</td><td className="p-3 capitalize">{String(row.status || row.fulfillment_status || "pending").replaceAll("_", " ")}</td></tr>)}</tbody></table></div>;
 }
 
 function WalletBanner({ balance, label }: { balance: number; label: string }) {
