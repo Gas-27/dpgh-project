@@ -158,7 +158,9 @@ Deno.serve(async (req) => {
       const providerStatus = providerResponse.ok && providerOrderId ? "processing" : "failed";
       const userId = String(metadata?.user_id || "").trim();
       const sellerStoreId = String(metadata?.seller_store_id || "").trim();
-      const ownerType = String(metadata?.owner_type || metadata?.seller_store_kind || "user").trim();
+      const rawOwnerType = String(metadata?.owner_type || metadata?.seller_store_kind || "user").trim().toLowerCase();
+      const normalizedOwnerType = rawOwnerType === "subsubagent" || rawOwnerType === "sub-subagent" ? "sub_subagent" : rawOwnerType;
+      const ownerType = ["user", "agent", "subagent", "sub_subagent"].includes(normalizedOwnerType) ? normalizedOwnerType : "user";
       const platform = String(metadata?.platform || "Social Boost").trim();
       const serviceName = String(metadata?.service_name || providerService).trim();
       const orderNumber = Number(String(reference).replace(/\D/g, "").slice(-9));
