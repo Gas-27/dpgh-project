@@ -24,6 +24,16 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import SocialBoostSuccessDialog from "@/components/SocialBoostSuccessDialog";
+import {
+  SOCIAL_BOOST_DUPLICATE_NOTICE,
+  TRACK_ORDER_EVENT,
+  TRACK_ORDER_STORAGE_KEY,
+  getSocialBoostDeliveryMessage,
+  isSocialBoostOrderActive,
+  socialBoostOrderNumberFromReference,
+  socialBoostServiceLabel,
+} from "@/lib/socialBoostMessages";
 
 type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack"; showHistory?: boolean; pricingMode?: "user" | "storefront"; purchaseSource?: "Dashboard" | "Packages page" | "Storefront" };
 type ProviderService = { service: number; name: string; category: string; rate: string; min: string; max: string; average?: string; average_time?: string; note?: string; notes?: string; refill?: boolean; cancel?: boolean };
@@ -49,17 +59,8 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const { toast } = useToast();
   const resolvedPurchaseSource = purchaseSource ?? (checkoutMode === "wallet" ? "Dashboard" : ["agent", "subagent", "subsubagent"].includes(ownerType) ? "Storefront" : "Packages page");
   const normalizedOwnerType = ownerType === "sub_subagent" ? "subsubagent" : ownerType;
-  const getDeliveryMessage = (serviceName: string) => {
-    const normalized = serviceName.toLowerCase();
-    if (normalized.includes("comment")) return "Your comments are on their way.";
-    if (normalized.includes("reaction")) return "Your reactions are on their way.";
-    if (normalized.includes("like")) return "Your likes are on their way.";
-    if (normalized.includes("member")) return "Your members are on their way.";
-    if (normalized.includes("view")) return "Your views are on their way.";
-    if (normalized.includes("subscriber")) return "Your subscribers are on their way.";
-    if (normalized.includes("follow")) return "Your followers are on their way.";
-    return "Your order is on its way.";
-  };
+  const [purchasedServiceName, setPurchasedServiceName] = useState("");
+  const [walletSuccessOpen, setWalletSuccessOpen] = useState(false);
   const [platform, setPlatform] = useState("TikTok");
   const [catalog, setCatalog] = useState<ProviderService[]>(fallbackServices);
   const [service, setService] = useState(fallbackServices[0]);
@@ -160,6 +161,25 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   };
 
   useEffect(() => {
+    const runTrack = (orderNumber: string) => {
+      setSearchOrder(orderNumber);
+      void trackOrder(orderNumber);
+    };
+    const stored = window.sessionStorage.getItem(TRACK_ORDER_STORAGE_KEY);
+    if (stored) {
+      window.sessionStorage.removeItem(TRACK_ORDER_STORAGE_KEY);
+      runTrack(stored);
+    }
+    const onTrack = (event: Event) => {
+      const orderNumber = String((event as CustomEvent).detail ?? "");
+      window.sessionStorage.removeItem(TRACK_ORDER_STORAGE_KEY);
+      if (orderNumber) runTrack(orderNumber);
+    };
+    window.addEventListener(TRACK_ORDER_EVENT, onTrack);
+    return () => window.removeEventListener(TRACK_ORDER_EVENT, onTrack);
+  }, []);
+
+  useEffect(() => {
     void loadHistory();
     const timer = window.setInterval(() => void loadHistory(), 30000);
     return () => window.clearInterval(timer);
@@ -173,17 +193,18 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     let mounted = true;
     let attempts = 0;
     const maxAttempts = 40;
+    const derivedOrderNumber = socialBoostOrderNumberFromReference(reference);
     const findOrder = async () => {
-      const { data, error } = await (supabase as any)
-        .from("social_boost_orders")
-        .select("order_number,provider_order_id,provider_status,payment_reference")
-        .eq("payment_reference", reference)
-        .maybeSingle();
+      const { data, error } = derivedOrderNumber
+        ? await (supabase as any).rpc("get_public_social_boost_order", { p_order_number: String(derivedOrderNumber) })
+        : { data: null, error: null };
+      const order = Array.isArray(data) ? data[0] : data;
 
       if (!mounted) return;
-      if (data?.order_number) {
-        setOrderId(String(data.order_number));
-        setSearchOrder(String(data.order_number));
+      if (order?.order_number) {
+        setOrderId(String(order.order_number));
+        setSearchOrder(String(order.order_number));
+        setPurchasedServiceName(socialBoostServiceLabel(order.service));
         await loadHistory(false);
         return;
       }
@@ -272,6 +293,10 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
     if (!numericQuantity || numericQuantity < min || numericQuantity > max) return toast({ title: "Invalid quantity", description: `This service accepts ${min.toLocaleString()} to ${max.toLocaleString()}.`, variant: "destructive" });
     const providerComments = customComments.trim().split(/\r?\n/).map((line) => line.trim()).filter(Boolean).join("\n");
     setBuying(true);
+    if (await hasActiveDuplicate()) {
+      setBuying(false);
+      return toast({ title: "Order still processing", description: SOCIAL_BOOST_DUPLICATE_NOTICE, variant: "destructive" });
+    }
     const { data: authData } = await supabase.auth.getUser();
     const currentUser = authData.user;
 
@@ -285,7 +310,8 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
         },
       });
       setBuying(false);
-      if (error || !data?.authorization_url) return toast({ title: "Payment could not start", description: error?.message ?? "Paystack did not return a checkout link.", variant: "destructive" });
+      if (data?.code === "duplicate_order") return toast({ title: "Order still processing", description: data.error ?? SOCIAL_BOOST_DUPLICATE_NOTICE, variant: "destructive" });
+      if (error || !data?.authorization_url) return toast({ title: "Payment could not start", description: error?.message ?? data?.error ?? "Paystack did not return a checkout link.", variant: "destructive" });
       window.location.assign(data.authorization_url);
       return;
     }
@@ -304,13 +330,31 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
     setBuying(false);
     if (error) return toast({ title: "Wallet purchase failed", description: error.message, variant: "destructive" });
     setOrderId(String(data?.order_number ?? data?.id ?? ""));
+    setPurchasedServiceName(service.name);
+    setWalletSuccessOpen(true);
     await loadHistory();
-    toast({ title: "Social Boost order placed", description: `Order #${data?.order_number ?? data?.id} sent to the provider. Your wallet was charged.` });
   };
 
-  const trackOrder = async () => {
-    if (!searchOrder.trim()) return;
-    const { data: local, error: localError } = await (supabase as any).rpc("get_public_social_boost_order", { p_order_number: searchOrder.trim() });
+  const hasActiveDuplicate = async () => {
+    const normalizeLink = (value: string) => value.trim().toLowerCase().replace(/\/+$/, "");
+    const link = normalizeLink(targetLink);
+    const matches = history.filter((item) => {
+      const sameService = String(item.service ?? "").split(":")[0] === String(service.service);
+      return sameService && normalizeLink(String(item.target_link ?? "")) === link && isSocialBoostOrderActive(item);
+    });
+    for (const item of matches) {
+      if (!item.provider_order_id) return true;
+      const { data } = await supabase.functions.invoke("social-boost", { body: { action: "status", order: String(item.provider_order_id) } });
+      if (!data?.status) return true;
+      if (isSocialBoostOrderActive({ provider_status: data.status })) return true;
+    }
+    return false;
+  };
+
+  const trackOrder = async (orderNumber?: string) => {
+    const lookup = (orderNumber ?? searchOrder).trim();
+    if (!lookup) return;
+    const { data: local, error: localError } = await (supabase as any).rpc("get_public_social_boost_order", { p_order_number: lookup });
     if (localError || !local) return setOrderStatus(localError?.message ?? "Order not found");
     const order = Array.isArray(local) ? local[0] : local;
     if (localError || !order) return setOrderStatus(localError?.message ?? "Order not found");
@@ -408,7 +452,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             <CheckCircle2 className="mt-0.5 h-6 w-6 shrink-0 text-emerald-300" />
             <div>
               <h2 className="font-bold">Social Boost purchase successful</h2>
-              <p className="mt-1 text-sm text-emerald-100/90">Your Social Boost purchase was made through the {resolvedPurchaseSource}. {getDeliveryMessage(service.name)} Keep this order number and use it to track your purchase.</p>
+              <p className="mt-1 text-sm text-emerald-100/90">Your Social Boost purchase was made through the {resolvedPurchaseSource}. {getSocialBoostDeliveryMessage(purchasedServiceName || service.name)} Keep this order number and use it to track your purchase.</p>
               <p className="mt-3 text-lg font-black tracking-wide">Order #{orderId}</p>
               <p className="mt-1 text-xs font-semibold uppercase tracking-[0.16em] text-emerald-200/80">Purchase source: {resolvedPurchaseSource}</p>
               <Button type="button" size="sm" className="mt-3 bg-emerald-500 text-emerald-950 hover:bg-emerald-400" onClick={() => { setSearchOrder(orderId); document.getElementById("social-boost-track-order")?.scrollIntoView({ behavior: "smooth", block: "center" }); }}>
@@ -434,7 +478,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-200/60" />
               <Input aria-label="Order ID" value={searchOrder} onChange={(e) => setSearchOrder(e.target.value)} placeholder="Enter Order ID" className="border-blue-500/70 bg-[#08122b] pl-9" />
             </div>
-            <Button onClick={trackOrder} className="shrink-0 bg-gradient-to-r from-cyan-500 to-blue-600 font-semibold hover:opacity-90">Check Status</Button>
+            <Button onClick={() => void trackOrder()} className="shrink-0 bg-gradient-to-r from-cyan-500 to-blue-600 font-semibold hover:opacity-90">Check Status</Button>
           </div>
         </div>
         {orderStatus && <p className="mt-3 text-sm text-cyan-200">{orderStatus}</p>}
@@ -459,7 +503,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
   </div>
   
   {/* Select Platform */}
-      <div className="rounded-2xl border border-blue-500/60 bg-[#061b43] p-4">
+      <div id="social-boost-order-form" className="scroll-mt-4 rounded-2xl border border-blue-500/60 bg-[#061b43] p-4">
         <h2 className="flex items-center gap-1.5 font-bold">
           Select Platform <Info className="h-4 w-4 text-cyan-300" />
         </h2>
@@ -645,6 +689,8 @@ value={quantity}
           <CheckCircle2 className="absolute bottom-3 right-3 z-10 h-9 w-9 text-cyan-300" />
         </div>
 
+        <p className="rounded-xl border border-amber-400/50 bg-amber-950/30 p-3 text-sm font-semibold text-amber-100" role="note">{SOCIAL_BOOST_DUPLICATE_NOTICE}</p>
+
         {/* Purchase */}
         <Button type="button" onClick={buy} disabled={buying} className="group h-14 w-full bg-gradient-to-r from-cyan-500 via-blue-600 to-fuchsia-600 text-base font-black hover:opacity-90 sm:text-lg">
           {buying ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShoppingCart className="mr-2 h-5 w-5" />}
@@ -652,6 +698,23 @@ value={quantity}
           <ArrowRight className="ml-2 h-5 w-5 transition group-hover:translate-x-1" />
         </Button>
       </div>
+
+      <SocialBoostSuccessDialog
+        open={walletSuccessOpen}
+        orderNumber={orderId}
+        serviceName={purchasedServiceName}
+        onClose={() => setWalletSuccessOpen(false)}
+        onNewOrder={() => {
+          setWalletSuccessOpen(false);
+          window.setTimeout(() => document.getElementById("social-boost-order-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+        }}
+        onTrack={() => {
+          setWalletSuccessOpen(false);
+          setSearchOrder(orderId);
+          void trackOrder(orderId);
+          window.setTimeout(() => document.getElementById("social-boost-track-order")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+        }}
+      />
 
       {/* Trust footer */}
       <div className="grid grid-cols-2 gap-3 rounded-2xl border border-blue-500/60 bg-[#061b43] p-4 text-xs sm:grid-cols-4">

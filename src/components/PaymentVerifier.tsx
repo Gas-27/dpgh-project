@@ -11,6 +11,14 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SocialBoostSuccessDialog from "@/components/SocialBoostSuccessDialog";
+import {
+  TRACK_ORDER_EVENT,
+  TRACK_ORDER_STORAGE_KEY,
+  isSocialBoostReference,
+  socialBoostOrderNumberFromReference,
+  socialBoostServiceLabel,
+} from "@/lib/socialBoostMessages";
 
 const PaymentVerifier = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,6 +26,7 @@ const PaymentVerifier = () => {
   const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying");
   const [message, setMessage] = useState("Verifying your payment...");
   const [open, setOpen] = useState(false);
+  const [socialBoost, setSocialBoost] = useState<{ orderNumber: string | number | null; serviceName: string | null } | null>(null);
 
   useEffect(() => {
     const payment = searchParams.get("payment");
@@ -25,9 +34,54 @@ const PaymentVerifier = () => {
 
     if (payment === "verifying" && reference) {
       setOpen(true);
-      verifyPayment(reference);
+      if (isSocialBoostReference(reference)) {
+        void verifySocialBoost(reference);
+      } else {
+        verifyPayment(reference);
+      }
     }
   }, [searchParams]);
+
+  const verifySocialBoost = async (reference: string) => {
+    const derivedOrderNumber = socialBoostOrderNumberFromReference(reference);
+    const findOrder = async () => {
+      if (!derivedOrderNumber) return null;
+      const { data, error } = await (supabase as any).rpc("get_public_social_boost_order", { p_order_number: String(derivedOrderNumber) });
+      if (error) return null;
+      return Array.isArray(data) ? data[0] ?? null : data ?? null;
+    };
+    const showOrder = (order: any) => {
+      setSocialBoost({
+        orderNumber: order?.order_number ?? derivedOrderNumber,
+        serviceName: socialBoostServiceLabel(order?.service) || null,
+      });
+      setStatus("success");
+    };
+
+    try {
+      // The webhook creates the order after Paystack redirects, so wait for it.
+      for (let attempt = 0; attempt < 15; attempt += 1) {
+        const order = await findOrder();
+        if (order) return showOrder(order);
+        await new Promise((resolve) => window.setTimeout(resolve, 1500));
+      }
+
+      const { data, error } = await supabase.functions.invoke("verify-payment", { body: { reference } });
+      if (!error && (data?.success || data?.payment_confirmed)) {
+        const order = await findOrder();
+        return showOrder(order);
+      }
+    } catch (err) {
+      console.log("[v0] Social Boost verification pending:", err);
+    }
+
+    setStatus("error");
+    setMessage(
+      derivedOrderNumber
+        ? `Your payment is still being confirmed. Your order number will be ${derivedOrderNumber}. Please check Track Order shortly.`
+        : "Payment is still processing. Please check your orders shortly.",
+    );
+  };
 
   const verifyPayment = async (reference: string) => {
     const orderExists = async () => {
@@ -102,7 +156,35 @@ const PaymentVerifier = () => {
     setSearchParams(newParams, { replace: true });
   };
 
+  const handleTrack = () => {
+    const orderNumber = socialBoost?.orderNumber;
+    if (orderNumber) {
+      window.sessionStorage.setItem(TRACK_ORDER_STORAGE_KEY, String(orderNumber));
+      window.dispatchEvent(new CustomEvent(TRACK_ORDER_EVENT, { detail: String(orderNumber) }));
+    }
+    handleClose();
+    window.setTimeout(() => document.getElementById("social-boost-track-order")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+  };
+
+  const handleNewOrder = () => {
+    handleClose();
+    window.setTimeout(() => document.getElementById("social-boost-order-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+  };
+
   if (!open) return null;
+
+  if (socialBoost && status === "success") {
+    return (
+      <SocialBoostSuccessDialog
+        open
+        orderNumber={socialBoost.orderNumber}
+        serviceName={socialBoost.serviceName}
+        onTrack={handleTrack}
+        onNewOrder={handleNewOrder}
+        onClose={handleClose}
+      />
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>

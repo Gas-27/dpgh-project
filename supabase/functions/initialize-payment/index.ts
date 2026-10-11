@@ -99,6 +99,18 @@ Deno.serve(async (req) => {
       const minQuantity = Number(serviceRow?.min_quantity ?? 1);
       const maxQuantity = Number(serviceRow?.max_quantity ?? 100000000);
       if (quantity < minQuantity || quantity > maxQuantity) return new Response(JSON.stringify({ error: "Invalid Social Boost quantity" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const normalizeTarget = (value: string) => value.trim().toLowerCase().replace(/\/+$/, "");
+      const terminalStatuses = ["completed", "complete", "canceled", "cancelled", "failed", "refunded", "partial"];
+      const { data: sameServiceOrders } = await adminClient.from("social_boost_orders").select("target_link,provider_status,status").eq("user_id", userId).like("service", `${serviceId}:%`).order("created_at", { ascending: false }).limit(50);
+      const hasActiveDuplicate = (sameServiceOrders ?? []).some((order: { target_link: string | null; provider_status: string | null; status: string | null }) => {
+        if (normalizeTarget(String(order.target_link ?? "")) !== normalizeTarget(targetLink)) return false;
+        const providerStatus = String(order.provider_status ?? "").trim().toLowerCase();
+        const status = String(order.status ?? "").trim().toLowerCase();
+        return !terminalStatuses.includes(providerStatus) && !terminalStatuses.includes(status);
+      });
+      if (hasActiveDuplicate) {
+        return new Response(JSON.stringify({ code: "duplicate_order", error: "You cannot place a new Social Boost order for the same account and the same service while an earlier one is still processing. Wait until your Social Boost order is completed or failed before ordering again for that same account and service." }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
       const userPrice = Number(serviceRow?.admin_price_per_1000 ?? 0);
       const agentBasePrice = Number(serviceRow?.base_price_per_1000 ?? 0) > 0 ? Number(serviceRow?.base_price_per_1000) : userPrice;
       const defaultAgentPrice = Number(serviceRow?.default_price_per_1000 ?? 0) > 0 ? Number(serviceRow?.default_price_per_1000) : agentBasePrice;
