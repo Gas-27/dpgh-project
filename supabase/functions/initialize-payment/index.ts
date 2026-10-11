@@ -75,11 +75,21 @@ Deno.serve(async (req) => {
           email_confirm: true,
           user_metadata: { guest_social_boost: true },
         });
-        if (guestUserError || !guestUser.user) {
+
+        if (guestUser.user) {
+          userId = guestUser.user.id;
+        } else if (guestUserError?.message?.toLowerCase().includes("already registered")) {
+          const { data: users, error: usersError } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
+          const existingUser = users.users.find((user) => user.email?.toLowerCase() === email.toLowerCase());
+          if (usersError || !existingUser) {
+            console.error("[SOCIAL BOOST] Existing guest lookup failed:", usersError || guestUserError);
+            return new Response(JSON.stringify({ error: "Unable to find the guest customer record." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          }
+          userId = existingUser.id;
+        } else {
           console.error("[SOCIAL BOOST] Guest customer creation failed:", guestUserError);
           return new Response(JSON.stringify({ error: "Unable to create the guest customer record." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
         }
-        userId = guestUser.user.id;
       }
       const { data: serviceRow, error: serviceError } = await adminClient.from("social_boost_service_pricing").select("admin_price_per_1000,base_price_per_1000,default_price_per_1000,max_reseller_price_per_1000,min_quantity,max_quantity").eq("service_id", serviceId).maybeSingle();
       if (serviceError) {
@@ -118,7 +128,7 @@ Deno.serve(async (req) => {
       const baseAmount = Math.round((quantity / 1000) * basePrice * 100) / 100;
       const sellingAmount = Math.round((quantity / 1000) * sellingPrice * 100) / 100;
       const feeAmount = Math.round(sellingAmount * (PAYSTACK_FEE_PERCENT / 100) * 100) / 100;
-      const socialMetadata = { ...metadata, type: "social_boost", user_id: userId, target_link: targetLink, base_amount: baseAmount, selling_amount: sellingAmount, profit_amount: Math.max(0, sellingAmount - baseAmount), fee_amount: feeAmount };
+      const socialMetadata = { ...metadata, type: "social_boost", user_id: userId, provider_service_id: String(serviceId), target_link: targetLink, quantity, base_amount: baseAmount, selling_amount: sellingAmount, profit_amount: Math.max(0, sellingAmount - baseAmount), fee_amount: feeAmount };
       const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", { method: "POST", headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ email, amount: Math.round((sellingAmount + feeAmount) * 100), currency: "GHS", callback_url, metadata: socialMetadata }) });
       const result = await paystackRes.json();
       if (!result.status) return new Response(JSON.stringify({ error: result.message || "Social Boost payment initialization failed" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
