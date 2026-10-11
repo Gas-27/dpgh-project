@@ -512,7 +512,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
         {/* Service */}
         <div className="flex items-start gap-3">
           <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-cyan-300"><User className="h-4 w-4" /></span>
-          <label className="flex-1 text-sm font-semibold">
+          <label className="min-w-0 flex-1 text-sm font-semibold">
             <span className="flex items-center gap-1.5">Service <Info className="h-3.5 w-3.5 text-cyan-300" /></span>
             <span className="mt-0.5 block text-xs font-normal text-blue-100/60">What do you want to boost?</span>
             <select
@@ -528,7 +528,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
         {/* Type */}
         <div className="flex items-start gap-3">
           <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-cyan-300"><Layers className="h-4 w-4" /></span>
-          <label className="flex-1 text-sm font-semibold">
+          <label className="min-w-0 flex-1 text-sm font-semibold">
             <span className="flex items-center gap-1.5">Type <Info className="h-3.5 w-3.5 text-cyan-300" /></span>
             <span className="mt-0.5 block text-xs font-normal text-blue-100/60">Choose a service category</span>
             <select
@@ -544,13 +544,13 @@ const noteLines = String(service.notes || service.note || "No additional note ha
         {/* Account link */}
         <div className="flex items-start gap-3">
           <span className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-blue-500/20 text-cyan-300"><Link2 className="h-4 w-4" /></span>
-          <div className="flex-1 text-sm font-semibold">
+          <div className="min-w-0 flex-1 text-sm font-semibold overflow-hidden">
             <span className="flex items-center gap-1.5">{platform} account link <Info className="h-3.5 w-3.5 text-cyan-300" /></span>
             <span className="mt-0.5 block text-xs font-normal text-blue-100/60">Paste the exact {platform} profile, post, video, or channel link you want to boost. Preview it before purchasing.</span>
             <div className="relative mt-2">
               <Link2 className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-200/60" />
               <Input
-                className="border-blue-400/60 bg-[#08122b] pl-9"
+                className="min-w-0 w-full max-w-full border-blue-400/60 bg-[#08122b] pl-9"
                 value={targetLink}
                 onChange={(e) => setTargetLink(e.target.value)}
                 placeholder={`e.g. https://www.${platform.toLowerCase()}.com/@yourusername`}
