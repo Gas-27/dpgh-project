@@ -143,22 +143,44 @@ Deno.serve(async (req) => {
       const providerPayload = await providerResponse.json().catch(() => ({}));
       const providerOrderId = providerPayload?.order ? String(providerPayload.order) : null;
       const providerStatus = providerResponse.ok && providerOrderId ? "processing" : "failed";
+      const userId = String(metadata?.user_id || "").trim();
+      const sellerStoreId = String(metadata?.seller_store_id || "").trim();
+      const ownerType = String(metadata?.owner_type || metadata?.seller_store_kind || "user").trim();
+      const platform = String(metadata?.platform || "Social Boost").trim();
+      const serviceName = String(metadata?.service_name || providerService).trim();
+      const orderNumber = Number(String(reference).replace(/\D/g, "").slice(-9));
+
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(userId)) {
+        console.error("[SOCIAL BOOST] Missing or invalid user_id in Paystack metadata", { reference, userId });
+        return new Response(JSON.stringify({ error: "Social Boost customer identity is missing" }), { status: 400, headers: corsHeaders });
+      }
+
+      if (sellerStoreId && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(sellerStoreId)) {
+        console.error("[SOCIAL BOOST] Invalid seller_store_id in Paystack metadata", { reference, sellerStoreId });
+        return new Response(JSON.stringify({ error: "Social Boost storefront identity is invalid" }), { status: 400, headers: corsHeaders });
+      }
+
       const { error: socialError } = await supabaseClient.from("social_boost_orders").insert({
-        user_id: metadata?.user_id || metadata?.customer_id || null,
-        order_number: Number(String(reference).replace(/\D/g, "").slice(-9)) || null,
+        user_id: userId,
+        owner_type: ownerType,
+        owner_store_id: sellerStoreId || null,
+        platform,
+        service: `${providerService}:${serviceName}`,
         target_link: providerLink,
         quantity: providerQuantity,
-        service: `${providerService}:${metadata?.service_name || ""}`,
+        price_per_1000: providerQuantity > 0 ? sellingAmount / (providerQuantity / 1000) : sellingAmount,
         amount: sellingAmount,
-        base_amount: baseAmount,
+        payment_method: "paystack",
+        status: providerOrderId ? "processing" : "failed",
+        order_number: Number.isFinite(orderNumber) && orderNumber > 0 ? orderNumber : null,
         selling_amount: sellingAmount,
+        base_amount: baseAmount,
         profit_amount: Math.max(0, sellingAmount - baseAmount),
         seller_store_kind: metadata?.seller_store_kind || null,
-        seller_store_id: metadata?.seller_store_id || null,
+        seller_store_id: sellerStoreId || null,
         payment_reference: reference,
         provider_order_id: providerOrderId,
         provider_status: providerStatus,
-        provider_response: providerPayload,
       });
       if (socialError && !String(socialError.message).toLowerCase().includes("duplicate")) return new Response(JSON.stringify({ error: "Could not record Social Boost payment" }), { status: 500, headers: corsHeaders });
       if (!providerOrderId) return new Response(JSON.stringify({ error: "Payment succeeded but Social Boost provider rejected the order" }), { status: 502, headers: corsHeaders });

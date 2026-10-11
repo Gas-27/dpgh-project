@@ -276,7 +276,7 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
           email: (await supabase.auth.getUser()).data.user?.email || `social_boost_${Date.now()}@datapluggh.com`,
           amount: total,
           callback_url: `${window.location.origin}${window.location.pathname}${window.location.search ? `${window.location.search}&` : "?"}payment=verifying`,
-          metadata: { type: "social_boost", platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: normalizedOwnerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? normalizedOwnerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? storeId : null },
+          metadata: { type: "social_boost", user_id: (await supabase.auth.getUser()).data.user?.id, platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: normalizedOwnerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? normalizedOwnerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? storeId : null },
         },
       });
       setBuying(false);
