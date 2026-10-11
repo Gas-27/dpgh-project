@@ -114,6 +114,11 @@ Deno.serve(async (req) => {
 
   console.log("Processing payment:", reference, "type:", paymentType, "metadata:", metadata);
 
+  if (String(reference).startsWith("SB_") && paymentType !== "social_boost") {
+    console.error("[SOCIAL BOOST] Paystack sent no Social Boost metadata for reference:", reference, "raw metadata:", JSON.stringify(rawMetadata ?? null));
+    return new Response(JSON.stringify({ error: "Social Boost metadata missing" }), { status: 200, headers: corsHeaders });
+  }
+
     // =====================================
     // SOCIAL BOOST PAYMENT HANDLER
     // =====================================
