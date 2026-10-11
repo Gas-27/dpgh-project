@@ -215,9 +215,14 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     const maxAttempts = 40;
     const derivedOrderNumber = socialBoostOrderNumberFromReference(reference);
     const findOrder = async () => {
-      const { data, error } = derivedOrderNumber
-        ? await (supabase as any).rpc("get_public_social_boost_order", { p_order_number: String(derivedOrderNumber) })
-        : { data: null, error: null };
+      const { data: byReference, error: referenceError } = await (supabase as any)
+        .from("social_boost_orders")
+        .select("order_number,service,provider_status,status")
+        .eq("payment_reference", reference)
+        .maybeSingle();
+      const { data, error } = byReference || !derivedOrderNumber
+        ? { data: byReference, error: referenceError }
+        : await (supabase as any).rpc("get_public_social_boost_order", { p_order_number: String(derivedOrderNumber) });
       const order = Array.isArray(data) ? data[0] : data;
 
       if (!mounted) return;

@@ -178,9 +178,9 @@ Deno.serve(async (req) => {
       const ownerType = ["user", "agent", "subagent", "sub_subagent"].includes(normalizedOwnerType) ? normalizedOwnerType : "user";
       const platform = String(metadata?.platform || "Social Boost").trim();
       const serviceName = String(metadata?.service_name || providerService).trim();
-      const orderNumber = Number(String(reference).replace(/\D/g, "").slice(-9));
-
-      const { error: socialError } = await supabaseClient.from("social_boost_orders").insert({
+  // Let the database sequence assign the public Social Boost order number.
+  // Payment references are private provider identifiers and must never become tracking codes.
+  const { error: socialError } = await supabaseClient.from("social_boost_orders").insert({
         user_id: userId,
         owner_type: ownerType,
         owner_store_id: sellerStoreId || null,
@@ -192,8 +192,7 @@ Deno.serve(async (req) => {
         amount: sellingAmount,
         payment_method: "paystack",
         status: providerOrderId ? "processing" : "failed",
-        order_number: Number.isFinite(orderNumber) && orderNumber > 0 ? orderNumber : null,
-        selling_amount: sellingAmount,
+              selling_amount: sellingAmount,
         base_amount: baseAmount,
         profit_amount: Math.max(0, sellingAmount - baseAmount),
         seller_store_kind: metadata?.seller_store_kind || null,
