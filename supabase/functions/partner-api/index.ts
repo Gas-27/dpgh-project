@@ -33,10 +33,10 @@ async function apiUser(request: Request) {
   if (!key) return null;
   const { data, error } = await supabase
     .from("api_users")
-    .select("id, is_active, api_wallet")
+    .select("id, active, api_wallet")
     .eq("api_key", key)
     .maybeSingle();
-  if (error || !data || data.is_active === false) return null;
+  if (error || !data || data.active === false) return null;
   return data;
 }
 
