@@ -21,8 +21,20 @@ export default function AdminSocialBoostOrders() {
 
   const load = useCallback(async (sync = true) => {
     setLoading(true);
-    const { data } = await (supabase as any).from("social_boost_orders").select("id,order_number,created_at,target_link,amount,selling_amount,base_amount,profit_amount,owner_type,owner_store_id,seller_store_kind,seller_store_id,payment_reference,start_count,quantity,service,provider_status,remains,provider_order_id").order("created_at", { ascending: false }).limit(1000);
-    let next = data ?? [];
+    const columns = "id,order_number,created_at,target_link,amount,selling_amount,base_amount,profit_amount,owner_type,owner_store_id,seller_store_kind,seller_store_id,payment_reference,start_count,quantity,service,provider_status,remains,provider_order_id";
+    const pageSize = 1000;
+    const pages: any[][] = [];
+    for (let from = 0; ; from += pageSize) {
+      const { data, error } = await (supabase as any)
+        .from("social_boost_orders")
+        .select(columns)
+        .order("created_at", { ascending: false })
+        .range(from, from + pageSize - 1);
+      if (error) break;
+      pages.push(data ?? []);
+      if (!data || data.length < pageSize) break;
+    }
+    let next = pages.flat();
     if (sync && next.some((order: any) => order.provider_order_id && !terminalStatuses.has(String(order.provider_status ?? "").toLowerCase()))) {
       setSyncing(true);
       next = await Promise.all(next.map(async (order: any) => {
@@ -47,7 +59,7 @@ export default function AdminSocialBoostOrders() {
     void load(true);
   }, [load]);
 
-  return <div className="space-y-4"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Social Boost Orders</h2><p className="text-sm text-muted-foreground">Live provider status, exact remaining quantity, and start count. Use Refresh when you want to sync provider status.</p></div><Button variant="outline" onClick={() => void load()} disabled={loading || syncing}><RefreshCw className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />{syncing ? "Syncing…" : "Refresh"}</Button></div><div className="overflow-x-auto rounded-xl border"><Table className="min-w-[1250px]"><TableHeader><TableRow className="bg-[#dddff5]"><TableHead>Date</TableHead><TableHead>Order</TableHead><TableHead>Source</TableHead><TableHead>Link</TableHead><TableHead>Charge</TableHead><TableHead>Start count</TableHead><TableHead>Quantity</TableHead><TableHead>Service</TableHead><TableHead>Status</TableHead><TableHead>Remains</TableHead></TableRow></TableHeader><TableBody>{loading ? <TableRow><TableCell colSpan={10}>Loading live order data…</TableCell></TableRow> : orders.map((order) => <TableRow key={order.order_number}><TableCell className="whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="whitespace-nowrap">#{order.order_number}</TableCell><TableCell className="whitespace-nowrap">{order.seller_store_kind ? `${order.seller_store_kind} storefront` : order.owner_type === "api" ? "API" : order.payment_reference ? "Paystack" : "Wallet"}</TableCell><TableCell className="max-w-[260px] truncate text-blue-600" title={order.target_link}>{order.target_link}</TableCell><TableCell className="whitespace-nowrap">{Number(order.amount ?? order.selling_amount ?? 0).toFixed(2)}</TableCell><TableCell>{order.start_count ?? "—"}</TableCell><TableCell>{order.quantity}</TableCell><TableCell>{order.service}</TableCell><TableCell>{order.provider_status ?? "Processing"}</TableCell><TableCell>{order.remains ?? order.quantity}</TableCell></TableRow>)}</TableBody></Table></div></div>;
+  return <div className="space-y-4"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Social Boost Orders</h2><p className="text-sm text-muted-foreground">Live provider status, exact remaining quantity, and start count. Use Refresh when you want to sync provider status.</p></div><Button variant="outline" onClick={() => void load()} disabled={loading || syncing}><RefreshCw className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />{syncing ? "Syncing…" : "Refresh"}</Button></div><div className="overflow-x-auto rounded-xl border"><Table className="min-w-[1250px]"><TableHeader><TableRow className="bg-[#dddff5]"><TableHead>Date</TableHead><TableHead>Order</TableHead><TableHead>Source</TableHead><TableHead>Link</TableHead><TableHead>Charge</TableHead><TableHead>Start count</TableHead><TableHead>Quantity</TableHead><TableHead>Service</TableHead><TableHead>Status</TableHead><TableHead>Remains</TableHead></TableRow></TableHeader><TableBody>{loading ? <TableRow><TableCell colSpan={10}>Loading live order data…</TableCell></TableRow> : orders.map((order) => <TableRow key={order.order_number}><TableCell className="whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="whitespace-nowrap">#{order.order_number}</TableCell><TableCell className="whitespace-nowrap">{order.owner_type === "api" ? "API" : order.seller_store_kind ? `${order.seller_store_kind} storefront` : order.payment_reference ? "Paystack" : "Wallet"}</TableCell><TableCell className="max-w-[260px] truncate text-blue-600" title={order.target_link}>{order.target_link}</TableCell><TableCell className="whitespace-nowrap">{Number(order.amount ?? order.selling_amount ?? 0).toFixed(2)}</TableCell><TableCell>{order.start_count ?? "—"}</TableCell><TableCell>{order.quantity}</TableCell><TableCell>{order.service}</TableCell><TableCell>{order.provider_status ?? "Processing"}</TableCell><TableCell>{order.remains ?? order.quantity}</TableCell></TableRow>)}</TableBody></Table></div></div>;
 }
 
 export async function refreshSocialBoostOrderStatus(order: any) {

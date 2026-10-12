@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { publicSupabase } from "@/integrations/supabase/public-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { ChevronDown } from "lucide-react";
 
 export type PartnerServicesDocVariant = "data-airtime" | "utilities";
 
@@ -186,6 +188,7 @@ function NetworkBundleTabs() {
 }
 
 function DataAirtimeDocs() {
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
   return (
     <Card className="border-cyan-500/30 bg-cyan-500/5">
       <CardHeader>
@@ -200,10 +203,18 @@ function DataAirtimeDocs() {
       <CardContent className="space-y-5">
         <SharedBasics rows={DATA_AIRTIME_RATES} />
 
-        <Section title="2. Choose a network and see its bundle format">
-          <p>Each network has its own package names and product IDs. Select a network to see the exact fields your integration should display and send.</p>
-          <NetworkBundleTabs />
-        </Section>
+        <Collapsible open={catalogueOpen} onOpenChange={setCatalogueOpen}>
+          <Section title="2. Choose a network and see its bundle format">
+            <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-border bg-muted p-3 text-left font-medium">
+              <span>Open the complete MTN, Telecel and AirtelTigo instant-data catalogue</span>
+              <ChevronDown className={`size-4 transition-transform ${catalogueOpen ? "rotate-180" : ""}`} />
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3 flex flex-col gap-3">
+              <p>Each network has its own package names and product IDs. Select a network to see the exact fields your integration should display and send.</p>
+              <NetworkBundleTabs />
+            </CollapsibleContent>
+          </Section>
+        </Collapsible>
 
         <Section title="3. Get the live data catalogue (which package to send)">
           <p>
