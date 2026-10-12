@@ -8,9 +8,9 @@ import { supabase } from '@/integrations/supabase/client';
  * - AFA_WEBHOOK_SECRET: Secret for validating webhook signatures
  */
 
-const AFA_API_KEY = import.meta.env.VITE_AFA_API_KEY || '';
-const AFA_API_URL = import.meta.env.VITE_AFA_API_URL || 'https://api.afa-provider.com';
-const AFA_WEBHOOK_SECRET = import.meta.env.VITE_AFA_WEBHOOK_SECRET || '';
+const AFA_API_KEY = process.env.AFA_API_KEY || '';
+const AFA_API_URL = process.env.AFA_API_URL || 'https://api.afa-provider.com';
+const AFA_WEBHOOK_SECRET = process.env.AFA_WEBHOOK_SECRET || '';
 
 interface AFARegistrationRequest {
   customer_name: string;
@@ -52,28 +52,11 @@ export const registerAFA = async (
       };
     }
 
-    // Call AFA provider API
-    const response = await fetch(`${AFA_API_URL}/register`, {
+    // Provider credentials stay server-side; the browser calls only our same-origin endpoint.
+    const response = await fetch('/api/afa/register', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${AFA_API_KEY}`,
-        'X-Store-ID': storeId,
-        'X-Store-Type': storeType,
-      },
-      body: JSON.stringify({
-        name: data.customer_name,
-        phone: data.customer_phone,
-        id_number: data.customer_id,
-        dob: data.date_of_birth,
-        town: data.town,
-        occupation: data.occupation,
-        region: data.region,
-        crop: data.crop,
-        package_id: data.package_id,
-        amount: data.amount,
-        timestamp: new Date().toISOString(),
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ data, storeId, storeType }),
     });
 
     if (!response.ok) {
