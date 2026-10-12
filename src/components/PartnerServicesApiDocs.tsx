@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Badge } from "@/components/ui/badge";
+import { publicSupabase } from "@/integrations/supabase/public-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export type PartnerServicesDocVariant = "data-airtime" | "utilities";
@@ -112,28 +113,49 @@ function Errors() {
   );
 }
 
-const NETWORK_BUNDLES = {
-  mtn: [
-    ["GHS 0.5 (20.73 MB)", "17.79 MB", "RACT_Data_GHC 0.5_Others", "Data Bundles", "0.50"],
-    ["GHS 3 (8683.07 MB)", "8683.07 MB", "NACT_Midnight_GHC3_Others", "Midnight Bundles", "3.00"],
-  ],
-  telecel: [
-    ["400MB Hourly", "400MB", "BDLHRBOOST2", "HOURLY", "2.00"],
-  ],
-  airteltigo: [
-    ["Sika Kokoo 1.1GB", "1.1GB", "db_Sika_Kokoo_10", "Sika Kokoo", "10.00"],
-  ],
-} as const;
+type Bundle = {
+  network: "mtn" | "telecel" | "airteltigo";
+  name: string;
+  short_name: string | null;
+  product_id: string;
+  category: string;
+  amount: number;
+};
 
-type Network = keyof typeof NETWORK_BUNDLES;
+type Network = Bundle["network"];
 
 function NetworkBundleTabs() {
   const [network, setNetwork] = useState<Network>("mtn");
-  const bundles = NETWORK_BUNDLES[network];
+  const [bundles, setBundles] = useState<Bundle[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function loadBundles() {
+      const catalogueClient = publicSupabase as any;
+      const { data, error: queryError } = await catalogueClient
+        .from("network_bundle_catalog")
+        .select("network, name, short_name, product_id, category, amount")
+        .eq("active", true)
+        .in("network", ["mtn", "telecel", "airteltigo"])
+        .order("network")
+        .order("category")
+        .order("amount");
+      if (cancelled) return;
+      if (queryError) setError("The live bundle catalogue could not be loaded.");
+      else setBundles((data ?? []) as Bundle[]);
+      setLoading(false);
+    }
+    void loadBundles();
+    return () => { cancelled = true; };
+  }, []);
+
+  const networkBundles = bundles.filter((bundle) => bundle.network === network);
   return (
     <div className="space-y-3 rounded-lg border border-border bg-background p-3">
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Normal data networks">
-        {(Object.keys(NETWORK_BUNDLES) as Network[]).map((item) => (
+        {(["mtn", "telecel", "airteltigo"] as Network[]).map((item) => (
           <button
             key={item}
             type="button"
@@ -149,12 +171,15 @@ function NetworkBundleTabs() {
       <p className="text-xs text-muted-foreground">
         These are live-catalogue examples for <Mono>{network}</Mono>. Use the GET catalogue request below to receive every active bundle for this network; packages can change without an API version change.
       </p>
-      <div className="overflow-x-auto rounded-lg border border-border">
+      {loading && <p className="text-sm text-muted-foreground">Loading every active {network} bundle…</p>}
+      {error && <p className="text-sm text-destructive">{error} Use the live catalogue endpoint below to retrieve the current bundles.</p>}
+      {!loading && !error && networkBundles.length === 0 && <p className="text-sm text-muted-foreground">No active bundles are currently listed for this network.</p>}
+      {!loading && networkBundles.length > 0 && <div className="overflow-x-auto rounded-lg border border-border">
         <table className="w-full min-w-[760px] text-left text-sm">
           <thead className="bg-muted"><tr><th className="p-2">Name</th><th className="p-2">Short name</th><th className="p-2">Product ID to send</th><th className="p-2">Category</th><th className="p-2">Price (GHS)</th></tr></thead>
-          <tbody>{bundles.map(([name, shortName, productId, category, amount]) => <tr key={productId} className="border-t border-border"><td className="p-2 font-medium">{name}</td><td className="p-2">{shortName}</td><td className="p-2 font-mono text-xs">{productId}</td><td className="p-2">{category}</td><td className="p-2">{amount}</td></tr>)}</tbody>
+          <tbody>{networkBundles.map((bundle) => <tr key={bundle.product_id} className="border-t border-border"><td className="p-2 font-medium">{bundle.name}</td><td className="p-2">{bundle.short_name || "—"}</td><td className="p-2 font-mono text-xs">{bundle.product_id}</td><td className="p-2">{bundle.category}</td><td className="p-2">{bundle.amount.toFixed(2)}</td></tr>)}</tbody>
         </table>
-      </div>
+      </div>}
       <p className="text-xs text-muted-foreground">Display <Mono>name</Mono> and <Mono>short_name</Mono> to your customer. Keep <Mono>product_id</Mono> in your server-side order and send it exactly as shown, including spaces, underscores and letter case.</p>
     </div>
   );
