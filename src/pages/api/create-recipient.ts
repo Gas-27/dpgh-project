@@ -10,12 +10,6 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  console.log("[CREATE-RECIPIENT] Incoming request:", {
-    method: req.method,
-    url: req.url,
-    headers: req.headers,
-  });
-
   if (req.method !== "POST") {
     console.error("[CREATE-RECIPIENT] Invalid method:", req.method);
     return res.status(405).json({ error: "Method not allowed" });
@@ -32,12 +26,6 @@ export default async function handler(
       bank_name,
       userId,
     } = req.body;
-
-    console.log("[CREATE-RECIPIENT] Request received:", {
-      account_holder_name,
-      provider_type,
-      mobile_money_network,
-    });
 
     // Validate required fields
     if (!account_holder_name || !provider_type || !userId) {
@@ -101,8 +89,6 @@ export default async function handler(
       };
     }
 
-    console.log("[CREATE-RECIPIENT] Creating Paystack recipient:", paystackPayload);
-
     const paystackRes = await fetch(
       "https://api.paystack.co/transferrecipient",
       {
@@ -144,13 +130,13 @@ export default async function handler(
       });
     }
 
-    console.log("[CREATE-RECIPIENT] Paystack response:", paystackResult);
-
     if (!paystackResult.status) {
-      console.error("[CREATE-RECIPIENT] Paystack error:", paystackResult);
+      console.error("[CREATE-RECIPIENT] Paystack rejected recipient creation", {
+        status: paystackRes.status,
+      });
       return res.status(400).json({
         success: false,
-        error: `Failed to create recipient: ${paystackResult.message}`,
+        error: "Payment service rejected the recipient details",
       });
     }
 
