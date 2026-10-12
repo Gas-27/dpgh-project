@@ -7,7 +7,8 @@
  *
  * Auth: `x-api-key: <key>` or `Authorization: Bearer <key>`
  *
- *   GET  /partner-services                       catalogue, commission rates and wallet balance
+ *   GET  /partner-services[?network=mtn]         normal (instant, Korba) data catalogue grouped by network and
+ *                                                category, commission rates and wallet balance
  *   POST /partner-services { action: "lookup" }  verify an ECG meter, TV decoder or water account
  *   POST /partner-services { action: "purchase" } buy a service (requires an idempotency-key header)
  *
@@ -108,14 +109,26 @@ async function gateway(body: JsonObject) {
   return (data || {}) as JsonObject;
 }
 
-async function catalogue(user: { api_wallet: number | null }) {
-  const { data, error } = await supabase
+async function catalogue(user: { api_wallet: number | null }, networkFilter?: string | null) {
+  // network_bundle_catalog is the same Korba-sourced instant (normal) data catalogue the
+  // dashboard "Instant Data" screen sells from. Cheap Data packages are NOT in this table.
+  let query = supabase
     .from("network_bundle_catalog")
     .select("network, category, name, short_name, product_id, amount")
-    .eq("active", true)
-    .order("network")
-    .order("amount");
+    .eq("active", true);
+  if (networkFilter) query = query.eq("network", normalizeNetwork(networkFilter));
+  const { data, error } = await query.order("network").order("category").order("amount");
   if (error) throw new RequestError("Unable to load catalogue", 500);
+
+  const grouped: Record<string, Record<string, JsonObject[]>> = {};
+  for (const row of data ?? []) {
+    const bundle = { name: row.name, short_name: row.short_name, product_id: row.product_id, amount: Number(row.amount) };
+    ((grouped[row.network] ??= {})[row.category] ??= []).push(bundle);
+  }
+  const dataCatalogue = Object.entries(grouped).map(([network, categories]) => ({
+    network,
+    categories: Object.entries(categories).map(([category, bundles]) => ({ category, bundles })),
+  }));
 
   const services = Object.entries(COMMISSION_RATES).map(([service, rate]) => ({
     service_type: service,
@@ -129,7 +142,13 @@ async function catalogue(user: { api_wallet: number | null }) {
           ? ["recipient (meter number)", "phone_number (registered mobile)", "amount"]
           : ["recipient (decoder, smart card or account number)", "amount"],
   }));
-  return { wallet_balance: Number(user.api_wallet ?? 0), services, data_bundles: data };
+  return {
+    wallet_balance: Number(user.api_wallet ?? 0),
+    services,
+    airtime_networks: ["mtn", "telecel", "airteltigo"],
+    data_catalogue: dataCatalogue,
+    data_bundles: data,
+  };
 }
 
 async function lookup(body: JsonObject) {
@@ -179,8 +198,9 @@ async function purchase(body: JsonObject, userId: string, idempotencyKey: string
   }
 
   if (service === "data") {
-    productId = body.product_id ? String(body.product_id) : null;
-    if (!productId) throw new RequestError("product_id is required for data purchases");
+    const suppliedId = body.product_id ?? body.bundle_id ?? body.package_code;
+    productId = suppliedId ? String(suppliedId).trim() : null;
+    if (!productId) throw new RequestError("product_id is required for data purchases. Copy it exactly from the catalogue (GET /partner-services?network=mtn)");
     const { data: bundle, error } = await supabase
       .from("network_bundle_catalog")
       .select("product_id, name, amount")
@@ -188,7 +208,7 @@ async function purchase(body: JsonObject, userId: string, idempotencyKey: string
       .eq("product_id", productId)
       .eq("active", true)
       .maybeSingle();
-    if (error || !bundle) throw new RequestError("Unknown or inactive bundle product_id");
+    if (error || !bundle) throw new RequestError(`No active ${network} bundle with product_id "${productId}". Fetch the catalogue and send the product_id for the same network.`);
     amount = Number(bundle.amount);
     productName = bundle.name;
   } else {
@@ -266,7 +286,7 @@ Deno.serve(async (request) => {
     const user = await authenticate(request);
     if (!user) return respond({ error: "Invalid or inactive API key" }, 401);
 
-    if (request.method === "GET") return respond({ success: true, ...(await catalogue(user)) });
+    if (request.method === "GET") return respond({ success: true, ...(await catalogue(user, new URL(request.url).searchParams.get("network"))) });
     if (request.method !== "POST") return respond({ error: "Method not allowed" }, 405);
 
     const body = (await request.json()) as JsonObject;

@@ -117,22 +117,48 @@ function DataAirtimeDocs() {
         <p className="text-sm text-muted-foreground">
           Sell instant MTN, Telecel and AirtelTigo data bundles and airtime from your own website or app. Orders are paid from your API wallet and you earn 1.5% commission on every sale.
         </p>
+        <p className="rounded-lg border border-border bg-muted p-3 text-sm text-muted-foreground">
+          This is the same <strong className="text-foreground">instant (normal) data</strong> that is sold on the Instant Data screen of the dashboard, delivered through our Korba connection. It is a separate product from Cheap Data: Cheap Data packages and their order endpoint are documented in the other API tabs and cannot be bought through this endpoint.
+        </p>
       </CardHeader>
       <CardContent className="space-y-5">
         <SharedBasics rows={DATA_AIRTIME_RATES} />
 
-        <Section title="2. Get the live catalogue and your wallet balance">
+        <Section title="2. Get the live data catalogue (which package to send)">
           <p>
-            A GET request returns your wallet balance, every active data bundle with its <Mono>product_id</Mono> and price, and the commission rate for every service. Always use the returned <Mono>product_id</Mono> and price; do not hardcode them.
+            Normal data is not ordered by a size name like &quot;1GB&quot;. Every bundle has a <Mono>product_id</Mono> and you must send that exact value. Call the catalogue first, optionally filtered with <Mono>?network=mtn</Mono>, <Mono>?network=telecel</Mono> or <Mono>?network=airteltigo</Mono>. Bundles are grouped by network and then by category (for example MTN Data Bundles, Midnight Bundles, Social Media Bundles; Telecel HOURLY, DAILY, WEEKLY, MONTHLY; AirtelTigo BigTime, Sika Kokoo, Fuse).
           </p>
-          <Code>{`GET ${ENDPOINT}\n\nResponse:\n{\n  "success": true,\n  "wallet_balance": 250.5,\n  "services": [{ "service_type": "data", "commission_rate": 0.015, "commission_percent": 1.5, "requires": ["network", "product_id", "recipient"] }],\n  "data_bundles": [{ "network": "mtn", "name": "MTN 1GB", "product_id": "1GB", "amount": 4.5 }]\n}`}</Code>
+          <Code>{`GET ${ENDPOINT}?network=mtn\n\nResponse:\n{\n  "success": true,\n  "wallet_balance": 250.5,\n  "airtime_networks": ["mtn", "telecel", "airteltigo"],\n  "data_catalogue": [\n    {\n      "network": "mtn",\n      "categories": [\n        {\n          "category": "Data Bundles",\n          "bundles": [\n            { "name": "GHS 0.5 (20.73 MB)", "short_name": "17.79 MB", "product_id": "RACT_Data_GHC 0.5_Others", "amount": 0.5 }\n          ]\n        },\n        {\n          "category": "Midnight Bundles",\n          "bundles": [\n            { "name": "GHS 3 (8683.07 MB)", "short_name": "8683.07 MB", "product_id": "NACT_Midnight_GHC3_Others", "amount": 3 }\n          ]\n        }\n      ]\n    }\n  ],\n  "data_bundles": [ /* the same bundles as a flat list, each with network and category */ ],\n  "services": [{ "service_type": "data", "commission_rate": 0.015, "commission_percent": 1.5 }]\n}`}</Code>
+          <div className="overflow-x-auto rounded-lg border border-border">
+            <table className="w-full min-w-[520px] text-left text-sm">
+              <thead className="bg-muted">
+                <tr>
+                  <th className="p-2">Field</th>
+                  <th className="p-2">Meaning</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr className="border-t border-border"><td className="p-2 font-mono">network</td><td className="p-2">The network the bundle belongs to. A <Mono>product_id</Mono> only works with its own network.</td></tr>
+                <tr className="border-t border-border"><td className="p-2 font-mono">category</td><td className="p-2">The package family, used to group bundles on your own storefront.</td></tr>
+                <tr className="border-t border-border"><td className="p-2 font-mono">name / short_name</td><td className="p-2">The label to show your customer. Display only, never send it when buying.</td></tr>
+                <tr className="border-t border-border"><td className="p-2 font-mono">product_id</td><td className="p-2"><strong className="text-foreground">The value you send to buy.</strong> Copy it exactly, including spaces, case and underscores.</td></tr>
+                <tr className="border-t border-border"><td className="p-2 font-mono">amount</td><td className="p-2">Price in GHS charged to your API wallet.</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs">
+            Real identifiers look like <Mono>RACT_Data_GHC 0.5_Others</Mono> (MTN), <Mono>BDLHRBOOST2</Mono> (Telecel 400MB hourly) and <Mono>db_Sika_Kokoo_10</Mono> (AirtelTigo 1.1GB). Bundles can be added or removed at any time, so refresh the catalogue regularly instead of hardcoding IDs.
+          </p>
         </Section>
 
         <Section title="3. Buy a data bundle">
           <p>
-            <Mono>network</Mono> is <Mono>mtn</Mono>, <Mono>telecel</Mono> or <Mono>airteltigo</Mono>. The price is taken from the catalogue, so any <Mono>amount</Mono> you send for data is ignored. Recipients are Ghana numbers such as <Mono>0241234567</Mono> or <Mono>233241234567</Mono>.
+            Send <Mono>network</Mono> (<Mono>mtn</Mono>, <Mono>telecel</Mono> or <Mono>airteltigo</Mono>), the bundle <Mono>product_id</Mono> and the <Mono>recipient</Mono> number. The price is always taken from the catalogue, so any <Mono>amount</Mono> you send for data is ignored. Recipients are Ghana numbers such as <Mono>0241234567</Mono> or <Mono>233241234567</Mono>.
           </p>
-          <Code>{`POST ${ENDPOINT}\nidempotency-key: order-10045\n\n{\n  "action": "purchase",\n  "service_type": "data",\n  "network": "mtn",\n  "product_id": "1GB",\n  "recipient": "0241234567"\n}`}</Code>
+          <Code>{`POST ${ENDPOINT}\nidempotency-key: order-10045\n\n{\n  "action": "purchase",\n  "service_type": "data",\n  "network": "mtn",\n  "product_id": "RACT_Data_GHC 0.5_Others",\n  "recipient": "0241234567"\n}`}</Code>
+          <p className="text-xs">
+            If the <Mono>product_id</Mono> does not exist for that network you get a <Mono>400</Mono> before any money is taken, for example when an MTN ID is sent with <Mono>network: &quot;telecel&quot;</Mono>.
+          </p>
         </Section>
 
         <Section title="4. Buy airtime">
@@ -143,12 +169,12 @@ function DataAirtimeDocs() {
         </Section>
 
         <Section title="5. Successful response">
-          <Code>{`{\n  "success": true,\n  "purchase": {\n    "id": "0b6f...",\n    "service_type": "data",\n    "network": "mtn",\n    "recipient": "0241234567",\n    "amount": 4.5,\n    "status": "completed",\n    "provider_reference": "KB123456",\n    "commission_rate": 0.015,\n    "commission_amount": 0.0675,\n    "created_at": "2026-10-12T10:00:00Z"\n  },\n  "wallet_balance": 246.0675\n}`}</Code>
+          <Code>{`{\n  "success": true,\n  "purchase": {\n    "id": "0b6f...",\n    "service_type": "data",\n    "network": "mtn",\n    "recipient": "0241234567",\n    "amount": 0.5,\n    "status": "completed",\n    "provider_reference": "KB123456",\n    "commission_rate": 0.015,\n    "commission_amount": 0.0075,\n    "created_at": "2026-10-12T10:00:00Z"\n  },\n  "wallet_balance": 250.0075\n}`}</Code>
         </Section>
 
         <Section title="6. Integration flow for your website">
           <ol className="list-decimal space-y-1 pl-5">
-            <li>Call the catalogue on your server and show bundles with your own resale price.</li>
+            <li>Call the catalogue on your server, show each bundle&apos;s <Mono>name</Mono> grouped by <Mono>category</Mono> with your own resale price, and keep its <Mono>product_id</Mono> behind the scenes.</li>
             <li>When a customer pays you, generate a unique order ID and send the purchase request with it as the <Mono>idempotency-key</Mono>.</li>
             <li>Mark the order delivered when <Mono>success</Mono> is true. On any error the API wallet is not charged, or is refunded automatically.</li>
             <li>Top up your API wallet from your dashboard before it runs low.</li>
