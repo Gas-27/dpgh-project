@@ -27,6 +27,13 @@ export const DOMAINS = {
       .replace(/[^a-z0-9]/g, "");       // Remove ALL non-alphanumeric characters
   },
   
+  // Returns the store's purchased custom domain URL, or null when none is active
+  customDomainUrl: (domain?: string | null, status?: string | null): string | null => {
+    const host = (domain || "").trim().replace(/^https?:\/\//, "").replace(/\/$/, "");
+    if (!host || !status || status === "not_configured" || status === "disabled") return null;
+    return `https://${host}`;
+  },
+
   // Get full agent store URL (subdomain)
   getAgentStoreUrl: (storeName: string) => {
     const slug = DOMAINS.sanitizeStoreName(storeName);

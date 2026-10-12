@@ -1031,7 +1031,7 @@ const searchOrders = useCallback(async (input?: string) => {
                     className="block w-full rounded-lg px-3 py-2 font-mono text-sm font-semibold break-all"
                     style={{ color: primaryColor, backgroundColor: `${primaryColor}15`, border: `1px solid ${primaryColor}30` }}
                   >
-                    {DOMAINS.getSubagentStoreUrl(store.store_name).replace('https://', '')}
+                    {(DOMAINS.customDomainUrl((store as any).custom_domain, (store as any).custom_domain_status) ?? DOMAINS.getSubagentStoreUrl(store.store_name)).replace('https://', '')}
                   </code>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0 w-full sm:w-auto">
@@ -1040,7 +1040,7 @@ const searchOrders = useCallback(async (input?: string) => {
                     className="flex-1 sm:flex-auto rounded-full bg-white text-slate-900 font-semibold hover:bg-slate-100"
                     style={{ backgroundColor: primaryColor, color: primaryForeground }}
                     onClick={() => {
-                      const url = DOMAINS.getSubagentStoreUrl(store.store_name);
+                      const url = (DOMAINS.customDomainUrl((store as any).custom_domain, (store as any).custom_domain_status) ?? DOMAINS.getSubagentStoreUrl(store.store_name));
                       if (navigator.share) {
                         navigator.share({
                           title: `${store.store_name} - Data Store`,
@@ -1064,7 +1064,7 @@ const searchOrders = useCallback(async (input?: string) => {
                     variant="outline"
                     className="flex-1 rounded-lg border-2 border-cyan-600 bg-cyan-50 font-semibold text-cyan-900 hover:bg-cyan-100 sm:flex-auto"
                     onClick={() => {
-                      const url = DOMAINS.getSubagentStoreUrl(store.store_name);
+                      const url = (DOMAINS.customDomainUrl((store as any).custom_domain, (store as any).custom_domain_status) ?? DOMAINS.getSubagentStoreUrl(store.store_name));
                       navigator.clipboard.writeText(url);
                       toast({
                         title: "Link copied!",

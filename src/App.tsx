@@ -207,14 +207,25 @@ const CustomDomainResolver = () => {
           .in("status", ["pending", "active", "verified"])
           .maybeSingle();
         const storeId = pendingDomain?.store_id || pendingDomain?.agent_store_id;
-        if (storeId) {
+        const kind = pendingDomain?.store_kind || "agent";
+        if (storeId && kind === "subsubagent") {
           const { data: store } = await supabase
-            .from("agent_stores")
+            .from("sub_subagent_stores")
+            .select("store_name, subagent_stores(store_name)")
+            .eq("id", storeId)
+            .maybeSingle();
+          const parent = (store as any)?.subagent_stores?.store_name;
+          if (store?.store_name && parent) {
+            resolved = { store_kind: "subsubagent", store_name: store.store_name, parent_store_name: parent };
+          }
+        } else if (storeId) {
+          const { data: store } = await supabase
+            .from(kind === "subagent" ? "subagent_stores" : "agent_stores")
             .select("store_name")
             .eq("id", storeId)
             .maybeSingle();
           if (store?.store_name) {
-            resolved = { store_kind: pendingDomain?.store_kind || "agent", store_name: store.store_name };
+            resolved = { store_kind: kind, store_name: store.store_name };
           }
         }
       }
