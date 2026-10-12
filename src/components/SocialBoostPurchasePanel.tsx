@@ -178,6 +178,32 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
       .slice(0, 50);
     setHistory(next);
+    if (!sync) return;
+    const finalStatuses = new Set(["completed", "complete", "delivered", "canceled", "cancelled", "failed", "failure"]);
+    const pending = next.filter((item: any) => item.provider_order_id && !finalStatuses.has(String(item.provider_status ?? "").toLowerCase()));
+    if (!pending.length) return;
+    const updates = await Promise.all(pending.map(async (item: any) => {
+      try {
+        const { data: latest, error } = await supabase.functions.invoke("social-boost", { body: { action: "status", order: item.provider_order_id } });
+        if (error || !latest || latest.error) return null;
+        const fields = {
+          provider_status: String(latest.status ?? item.provider_status ?? "processing"),
+          start_count: latest.start_count == null ? null : Number(latest.start_count),
+          remains: latest.remains == null ? null : Number(latest.remains),
+        };
+        await (supabase as any).rpc("update_social_boost_order_status", {
+          p_provider_order_id: String(item.provider_order_id),
+          p_status: fields.provider_status,
+          p_start_count: fields.start_count,
+          p_remains: fields.remains,
+        });
+        return [item.order_number, fields] as const;
+      } catch {
+        return null;
+      }
+    }));
+    const byOrder = new Map(updates.filter(Boolean) as Array<readonly [number, any]>);
+    if (byOrder.size) setHistory((current: any[]) => current.map((item) => byOrder.has(item.order_number) ? { ...item, ...byOrder.get(item.order_number) } : item));
   };
 
   useEffect(() => {
