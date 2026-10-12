@@ -520,6 +520,39 @@ const resultRoot = (record.results || record.result || record) as Record<string,
     }
     setBusy(true);
     try {
+      if (purchaseSource === "storefront") {
+        const billService = mode === "instant" ? null : toHubtelBillService(service);
+        const productType = mode === "instant"
+          ? instantProduct
+          : ({ ecg: "ecg", startimes: "startimes", gotv: "gotv", dstv: "dstv", ghana_water: "water" } as Record<string, string>)[billService || ""];
+        const amountToPay = mode === "instant" && instantProduct === "airtime" ? Number(customAirtimeAmount) : Number(amount);
+        const { data, error } = await supabase.functions.invoke("initialize-payment", {
+          body: {
+            email: "",
+            phone: phone || customer,
+            amount: amountToPay,
+            callback_url: window.location.href,
+            metadata: {
+              type: "storefront_korba_purchase",
+              product_type: productType,
+              amount: amountToPay,
+              customer_number: customer,
+              phone_number: phone || customer,
+              network_code: network.toUpperCase().replace(/[^A-Z]/g, ""),
+              package_code: selectedInstantItem?.value,
+              meter_id: registeredMeterId || undefined,
+              meter_number: mode === "services" && productType === "ecg" ? customer : undefined,
+              meter_category: mode === "services" && productType === "ecg" ? meterCategory : undefined,
+              seller_store_kind: ownerType,
+              seller_store_id: ownerId,
+            },
+          },
+        });
+        if (error || !data?.authorization_url) throw new Error(data?.error || "Could not start Paystack payment.");
+        window.location.href = data.authorization_url;
+        return;
+      }
+
       const wallet = walletOnly
         ? {
             walletOnly: true,

@@ -54,6 +54,59 @@ Deno.serve(async (req) => {
       });
     }
 
+    // =====================================
+    // PAYSTACK STOREFRONT -> KORBA PAYMENT
+    // =====================================
+    if (metadata?.type === "storefront_korba_purchase") {
+      const productType = String(metadata.product_type || "").toLowerCase();
+      const supportedProducts = ["data", "airtime", "ecg", "water", "startimes", "gotv", "dstv"];
+      const purchaseAmount = Number(metadata.amount ?? requestedAmount);
+      const customerNumber = String(metadata.customer_number || "").replace(/\s+/g, "");
+      const sellerStoreId = String(metadata.seller_store_id || "").trim();
+      const sellerStoreKind = String(metadata.seller_store_kind || "").trim().toLowerCase();
+      const isUtility = ["ecg", "water", "startimes", "gotv", "dstv"].includes(productType);
+      const jsonError = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+
+      if (!supportedProducts.includes(productType)) return jsonError("Unsupported Korba product");
+      if (!Number.isFinite(purchaseAmount) || purchaseAmount <= 0 || purchaseAmount > 5000) return jsonError("Enter an amount between GHC 0.01 and GHC 5,000");
+      if (!customerNumber) return jsonError("Customer number is required");
+      if (!isUtility && !/^0[235]\d{8}$/.test(customerNumber)) return jsonError("Enter a valid Ghana phone number");
+      if (productType === "data" && (!metadata.network_code || !metadata.package_code)) return jsonError("Select a data bundle");
+      if (productType === "ecg" && (!metadata.meter_id || !metadata.meter_number || !metadata.phone_number)) return jsonError("Verify the ECG meter before paying");
+      if (!["agent", "subagent", "subsubagent"].includes(sellerStoreKind) || !sellerStoreId) return jsonError("Storefront information is missing");
+
+      const adminClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const storeTable = sellerStoreKind === "agent" ? "agent_stores" : sellerStoreKind === "subagent" ? "subagent_stores" : "sub_subagent_stores";
+      const { data: store, error: storeError } = await adminClient.from(storeTable).select("id").eq("id", sellerStoreId).maybeSingle();
+      if (storeError || !store) return jsonError("Storefront not found", 404);
+
+      const feeAmount = Math.round(purchaseAmount * (PAYSTACK_FEE_PERCENT / 100) * 100) / 100;
+      const payerEmail = typeof email === "string" && /^\S+@\S+\.\S+$/.test(email) ? email : `${customerNumber}@guest.dataplug.app`;
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: payerEmail,
+          amount: Math.round((purchaseAmount + feeAmount) * 100),
+          currency: "GHS",
+          callback_url,
+          metadata: {
+            ...metadata,
+            type: "storefront_korba_purchase",
+            amount: purchaseAmount,
+            fee_amount: feeAmount,
+            customer_number: customerNumber,
+            seller_store_kind: sellerStoreKind,
+            seller_store_id: sellerStoreId,
+            purchase_source: "storefront",
+          },
+        }),
+      });
+      const result = await paystackRes.json();
+      if (!result.status) return jsonError(result.message || "Payment initialization failed");
+      return new Response(JSON.stringify({ authorization_url: result.data.authorization_url, reference: result.data.reference, amount: purchaseAmount + feeAmount }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     // ==========================
     // SOCIAL BOOST PAYMENT
     // ==========================

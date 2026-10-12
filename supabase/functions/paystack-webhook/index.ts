@@ -119,10 +119,75 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "Social Boost metadata missing" }), { status: 200, headers: corsHeaders });
   }
 
-    // =====================================
-    // SOCIAL BOOST PAYMENT HANDLER
-    // =====================================
-    if (paymentType === "social_boost") {
+  // =====================================
+  // PAYSTACK STOREFRONT -> KORBA PAYMENT
+  // =====================================
+  if (paymentType === "storefront_korba_purchase") {
+    const productType = String(metadata?.product_type || "").toLowerCase();
+    const purchaseAmount = Number(metadata?.amount || 0);
+    const feeAmount = Number(metadata?.fee_amount || 0);
+    const paidAmount = Number(amount) / 100;
+    const customerNumber = String(metadata?.customer_number || "").replace(/\s+/g, "");
+    const sellerStoreId = String(metadata?.seller_store_id || "").trim();
+    const sellerStoreKind = String(metadata?.seller_store_kind || "").trim().toLowerCase();
+    const supportedProducts = ["data", "airtime", "ecg", "water", "startimes", "gotv", "dstv"];
+
+    if (!supportedProducts.includes(productType) || !Number.isFinite(purchaseAmount) || purchaseAmount <= 0 || !customerNumber || !sellerStoreId || !["agent", "subagent", "subsubagent"].includes(sellerStoreKind) || paidAmount + 0.01 < purchaseAmount + feeAmount) {
+      return new Response(JSON.stringify({ error: "Invalid Korba storefront payment metadata" }), { status: 400, headers: corsHeaders });
+    }
+
+    const { data: existing } = await supabaseClient.from("korba_transaction_history").select("id, status").eq("transaction_id", reference).maybeSingle();
+    if (existing) return new Response(JSON.stringify({ success: true, already_processed: true, reference, status: existing.status }), { status: 200, headers: corsHeaders });
+
+    const korbaResponse = await fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/korba-gateway`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}` },
+      body: JSON.stringify({
+        operation: productType === "data" ? "data" : "collect",
+        product_type: productType,
+        amount: purchaseAmount,
+        customer_number: customerNumber,
+        phone_number: metadata?.phone_number || customerNumber,
+        network_code: metadata?.network_code || "",
+        package_code: metadata?.package_code || "",
+        meter_id: metadata?.meter_id || "",
+        meter_number: metadata?.meter_number || "",
+        meter_category: metadata?.meter_category || "",
+        account_number: metadata?.account_number || customerNumber,
+        transaction_id: reference,
+        purchase_source: "storefront",
+        wallet_only: false,
+      }),
+    });
+    const korbaResult = await korbaResponse.json().catch(() => ({}));
+    const status = korbaResponse.ok && korbaResult.success !== false ? String(korbaResult.status || "pending") : "failed";
+    const providerReference = String(korbaResult.reference || korbaResult.transaction_id || reference);
+
+    const { error: historyError } = await supabaseClient.from("korba_transaction_history").insert({
+      wallet_owner_type: sellerStoreKind,
+      wallet_owner_id: sellerStoreId,
+      product_type: productType,
+      network_code: metadata?.network_code || null,
+      package_code: metadata?.package_code || null,
+      customer_number: customerNumber,
+      amount: purchaseAmount,
+      transaction_id: reference,
+      provider_reference: providerReference,
+      status,
+      source: "storefront",
+    });
+    if (historyError) console.error("[STOREFRONT KORBA] History insert failed:", historyError);
+
+    if (status === "failed") {
+      await fetch("https://api.paystack.co/refund", { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" }, body: JSON.stringify({ transaction: reference }) }).catch((error) => console.error("[STOREFRONT KORBA] Refund failed:", error));
+    }
+    return new Response(JSON.stringify({ success: status !== "failed", reference, status, korba: korbaResult }), { status: 200, headers: corsHeaders });
+  }
+
+  // =====================================
+  // SOCIAL BOOST PAYMENT HANDLER
+  // =====================================
+  if (paymentType === "social_boost") {
       const { data: existingOrder, error: existingOrderError } = await supabaseClient.from("social_boost_orders").select("id,provider_order_id,provider_status,profit_credited_at").eq("payment_reference", reference).maybeSingle();
       if (existingOrderError) {
         console.error("[SOCIAL BOOST] Existing order lookup failed:", existingOrderError);
