@@ -104,8 +104,18 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
     setChecking(true);
     try {
-      // Promo-code eligibility is independent of purchase volume. The atomic
-      // claimed_at update below enforces one-time use when Claim is pressed.
+      const { data: eligibility, error: eligibilityError } = await supabase.rpc("check_promo_claim_eligibility", {
+        p_code_id: code.id,
+        p_phone: normalizePhone(phone),
+      });
+      if (eligibilityError) {
+        setCodeError("We could not check this code's conditions. Please try again.");
+        return;
+      }
+      if (!(eligibility as any)?.eligible) {
+        setCodeError((eligibility as any)?.message || "This number does not meet the conditions for this code.");
+        return;
+      }
       setCanClaim(true);
       setEligibilityChecked(true);
     } finally {
@@ -160,6 +170,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
 
       const { data: claimed, error: codeClaimError } = await supabase.rpc("claim_promo_code", {
         p_code_id: validatedCode.id,
+        p_phone: normalizedPhone,
       });
       if (codeClaimError) {
         await supabase.from("orders").delete().eq("id", createdOrder.id);

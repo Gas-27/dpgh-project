@@ -29,8 +29,10 @@ import {
   SOCIAL_BOOST_DUPLICATE_NOTICE,
   TRACK_ORDER_EVENT,
   TRACK_ORDER_STORAGE_KEY,
+  formatRefundDestination,
   getSocialBoostDeliveryMessage,
   isSocialBoostOrderActive,
+  isSocialBoostOrderCancelled,
   socialBoostOrderNumberFromReference,
   socialBoostServiceLabel,
 } from "@/lib/socialBoostMessages";
@@ -81,10 +83,12 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const [resellerCaps, setResellerCaps] = useState<Record<number, number>>({});
   const [savingPrices, setSavingPrices] = useState(false);
 
-  const historyTotals = useMemo(() => history.reduce((totals, item) => ({
+  const cancelledHistory = useMemo(() => history.filter((item) => isSocialBoostOrderCancelled(item)), [history]);
+  const activeHistory = useMemo(() => history.filter((item) => !isSocialBoostOrderCancelled(item)), [history]);
+  const historyTotals = useMemo(() => activeHistory.reduce((totals, item) => ({
     sales: totals.sales + Number(item.selling_amount ?? 0),
     profit: totals.profit + Number(item.profit_amount ?? 0),
-  }), { sales: 0, profit: 0 }), [history]);
+  }), { sales: 0, profit: 0 }), [activeHistory]);
   const getHistorySource = (item: any) => {
     if (item.seller_store_kind) return `${item.seller_store_kind} storefront`;
     if (String(item.owner_type ?? "").toLowerCase() === "api") return "API wallet";
@@ -157,7 +161,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       setHistory([]);
       return;
     }
-    const orderFields = "order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains,selling_amount,base_amount,profit_amount,owner_type,owner_store_id,seller_store_kind,seller_store_id,payment_reference";
+    const orderFields = "order_number,created_at,target_link,quantity,service,provider_order_id,provider_status,start_count,remains,selling_amount,base_amount,profit_amount,owner_type,owner_store_id,seller_store_kind,seller_store_id,payment_reference,refunded_at,refund_amount,refund_destination";
     const queries = [];
     const ownerIds = new Set(userId ? [userId] : []);
     if (userId) {
@@ -204,6 +208,8 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     }));
     const byOrder = new Map(updates.filter(Boolean) as Array<readonly [number, any]>);
     if (byOrder.size) setHistory((current: any[]) => current.map((item) => byOrder.has(item.order_number) ? { ...item, ...byOrder.get(item.order_number) } : item));
+    // A newly cancelled order is refunded by the database; reload to show the refund.
+    if (Array.from(byOrder.values()).some((fields) => isSocialBoostOrderCancelled(fields))) await loadHistory(false);
   };
 
   useEffect(() => {
@@ -539,8 +545,25 @@ const noteLines = String(service.notes || service.note || "No additional note ha
               <thead className="bg-[#dddff5] font-semibold">
                 <tr>{["Date", "Link", "Start count", "Quantity", "Service", "Status", "Remains"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr>
               </thead>
-              <tbody><tr className="border-t"><td className="px-3 py-3">{new Date(trackedOrder.created_at).toLocaleString()}</td><td className="max-w-[240px] break-all px-3 py-3 text-blue-700">{trackedOrder.target_link}</td><td className="px-3 py-3">{trackedOrder.start_count ?? "—"}</td><td className="px-3 py-3">{trackedOrder.quantity}</td><td className="px-3 py-3">{trackedOrder.service}</td><td className="px-3 py-3">{trackedOrder.status ?? trackedOrder.provider_status ?? "Processing"}</td><td className="px-3 py-3">{trackedOrder.remains ?? trackedOrder.remaining ?? trackedOrder.quantity}</td></tr></tbody>
+              <tbody><tr className="border-t"><td className="px-3 py-3">{new Date(trackedOrder.created_at).toLocaleString()}</td><td className="max-w-[240px] break-all px-3 py-3 text-blue-700">{trackedOrder.target_link}</td><td className="px-3 py-3">{trackedOrder.start_count ?? "—"}</td><td className="px-3 py-3">{trackedOrder.quantity}</td><td className="px-3 py-3">{trackedOrder.service}</td><td className="px-3 py-3">{isSocialBoostOrderCancelled(trackedOrder) ? (trackedOrder.is_storefront_order ? "Cancelled - contact store owner" : "Cancelled - refunded") : trackedOrder.status ?? trackedOrder.provider_status ?? "Processing"}</td><td className="px-3 py-3">{trackedOrder.remains ?? trackedOrder.remaining ?? trackedOrder.quantity}</td></tr></tbody>
             </table>
+          </div>
+        )}
+        {trackedOrder && isSocialBoostOrderCancelled(trackedOrder) && (
+          <div className="mt-3 rounded-xl border border-amber-400/70 bg-amber-950/40 p-4 text-sm text-amber-50" role="alert">
+            <p className="font-bold">This Social Boost order was cancelled.</p>
+            {trackedOrder.is_storefront_order ? (
+              <p className="mt-1">
+                Please contact the store owner{trackedOrder.store_name ? ` (${trackedOrder.store_name})` : ""} for your refund.
+                {trackedOrder.store_contact ? <> Store owner number: <a href={`tel:${trackedOrder.store_contact}`} className="font-black underline">{trackedOrder.store_contact}</a></> : " The store owner number is not available, so please use the contact details on this store."}
+              </p>
+            ) : (
+              <p className="mt-1">
+                {trackedOrder.refunded_at
+                  ? `GHC ${Number(trackedOrder.refund_amount ?? 0).toFixed(2)} has been refunded to ${trackedOrder.refund_destination === "api_wallet" ? "the API wallet" : "the wallet"} used for this order.`
+                  : "Your refund is being processed and will be returned to the wallet used for this order."}
+              </p>
+            )}
           </div>
         )}
   <div id="social-boost-history" className={`${showHistory ? "" : "hidden"} mt-5 overflow-hidden rounded-xl bg-white text-slate-950`}>
@@ -555,9 +578,36 @@ const noteLines = String(service.notes || service.note || "No additional note ha
   <div className="max-h-[22rem] overflow-auto">
   <table className="min-w-[1100px] w-full text-left text-sm">
             <thead className="font-semibold"><tr>{["Order", "Date", "Source", "Link", "Quantity", "Service", "Status", "Remains", "Price", "Profit"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead>
-            <tbody>{history.length ? history.map((item) => <tr key={item.order_number} className="border-t align-top"><td className="whitespace-nowrap px-3 py-3">#{item.order_number}</td><td className="whitespace-nowrap px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="whitespace-nowrap px-3 py-3">{getHistorySource(item)}</td><td className="max-w-[260px] truncate px-3 py-3 text-blue-700" title={item.target_link}>{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td><td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td><td className="px-3 py-3 text-emerald-700">{item.profit_amount != null ? `GHC ${Number(item.profit_amount).toFixed(2)}` : "—"}</td></tr>) : <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
+            <tbody>{activeHistory.length ? activeHistory.map((item) => <tr key={item.order_number} className="border-t align-top"><td className="whitespace-nowrap px-3 py-3">#{item.order_number}</td><td className="whitespace-nowrap px-3 py-3">{new Date(item.created_at).toLocaleString()}</td><td className="whitespace-nowrap px-3 py-3">{getHistorySource(item)}</td><td className="max-w-[260px] truncate px-3 py-3 text-blue-700" title={item.target_link}>{item.target_link}</td><td className="px-3 py-3">{item.quantity}</td><td className="px-3 py-3">{item.service}</td><td className="px-3 py-3">{item.provider_status ?? "Processing"}</td><td className="px-3 py-3">{item.remains ?? item.quantity}</td><td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td><td className="px-3 py-3 text-emerald-700">{item.profit_amount != null ? `GHC ${Number(item.profit_amount).toFixed(2)}` : "—"}</td></tr>) : <tr><td colSpan={10} className="px-3 py-6 text-center text-slate-500">No social boost orders yet.</td></tr>}</tbody>
             </table>
           </div>
+  </div>
+
+  <div id="social-boost-cancelled-refunds" className={`${showHistory ? "" : "hidden"} mt-5 overflow-hidden rounded-xl bg-white text-slate-950`}>
+    <div className="border-b bg-amber-100 px-3 py-3 font-semibold">
+      <div>Cancelled &amp; Refunded Social Boost Orders</div>
+      <div className="mt-1 text-xs font-normal text-slate-600">Cancelled dashboard orders are refunded to your wallet. Cancelled storefront orders are refunded to the store owner, who refunds the customer.</div>
+    </div>
+    <div className="max-h-[22rem] overflow-auto">
+      <table className="min-w-[900px] w-full text-left text-sm">
+        <thead className="font-semibold"><tr>{["Order", "Date", "Source", "Link", "Quantity", "Service", "Amount", "Refund", "Refunded to"].map((heading) => <th key={heading} className="px-3 py-3">{heading}</th>)}</tr></thead>
+        <tbody>
+          {cancelledHistory.length ? cancelledHistory.map((item) => (
+            <tr key={item.order_number} className="border-t align-top">
+              <td className="whitespace-nowrap px-3 py-3">#{item.order_number}</td>
+              <td className="whitespace-nowrap px-3 py-3">{new Date(item.created_at).toLocaleString()}</td>
+              <td className="whitespace-nowrap px-3 py-3">{getHistorySource(item)}</td>
+              <td className="max-w-[260px] truncate px-3 py-3 text-blue-700" title={item.target_link}>{item.target_link}</td>
+              <td className="px-3 py-3">{item.quantity}</td>
+              <td className="px-3 py-3">{item.service}</td>
+              <td className="px-3 py-3">{item.selling_amount != null ? `GHC ${Number(item.selling_amount).toFixed(2)}` : "—"}</td>
+              <td className="px-3 py-3 font-semibold text-emerald-700">{item.refunded_at ? `GHC ${Number(item.refund_amount ?? 0).toFixed(2)}` : "Processing"}</td>
+              <td className="px-3 py-3">{item.refunded_at ? formatRefundDestination(item.refund_destination) : "Pending"}</td>
+            </tr>
+          )) : <tr><td colSpan={9} className="px-3 py-6 text-center text-slate-500">No cancelled or refunded Social Boost orders.</td></tr>}
+        </tbody>
+      </table>
+    </div>
   </div>
   
   {/* Select Platform */}

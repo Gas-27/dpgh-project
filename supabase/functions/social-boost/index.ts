@@ -138,5 +138,14 @@ Deno.serve(async (req) => {
   if (action === "add" && input.order) {
     await supabase.from("social_boost_orders").update({ provider_order_id: String((payload as { order?: unknown })?.order ?? ""), status: "processing" }).eq("order_number", input.order);
   }
+  if (action === "status" && payload && typeof payload === "object" && typeof (payload as { status?: unknown }).status === "string") {
+    // Saving the live provider status lets the database trigger refund cancelled orders.
+    const live = payload as { status: string; start_count?: unknown; remains?: unknown };
+    await supabase.from("social_boost_orders").update({
+      provider_status: live.status,
+      start_count: live.start_count == null ? null : Number(live.start_count),
+      remains: live.remains == null ? null : Number(live.remains),
+    }).eq("provider_order_id", String(input.order));
+  }
   return json(payload, upstream.status);
 });

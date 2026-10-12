@@ -1,5 +1,15 @@
 export const SOCIAL_BOOST_DUPLICATE_NOTICE =
-  "NOTICE: Another order for the same link and service is not permitted while an active Social Boost order is processing. Please wait for it to be completed before ordering again. If a duplicate order is created, the system will cancel one of the orders.";
+  "NOTICE: Make sure you do not have another order for the same link and service is not permitted while an active Social Boost order is processing. Please wait for it to be completed or cancelled or failed before ordering again. If an order becomes a duplicate, the system will cancel one of the orders.";
+
+export const isSocialBoostOrderCancelled = (order: { provider_status?: string | null }) =>
+  ["canceled", "cancelled"].includes(String(order.provider_status ?? "").trim().toLowerCase());
+
+export const formatRefundDestination = (destination?: string | null) => {
+  if (destination === "store_owner_wallet") return "Store owner wallet";
+  if (destination === "api_wallet") return "API wallet";
+  if (destination === "wallet") return "Your wallet";
+  return "Pending";
+};
 
 export const getSocialBoostDeliveryMessage = (serviceName?: string | null) => {
   const normalized = String(serviceName ?? "").toLowerCase();
