@@ -11,8 +11,9 @@
  *   POST /partner-services { action: "lookup" }  verify an ECG meter, TV decoder or water account
  *   POST /partner-services { action: "purchase" } buy a service (requires an idempotency-key header)
  *
- * Commission rates (kept in the database by public.purchase_commission_rate):
- *   data, airtime 1.3% | gotv, dstv 0.23% | startimes 0.15% | ecg 0.5% | water 0.24%
+ * API commission rates (mirrored in the database by public.api_purchase_commission_rate,
+ * which is what actually credits the wallet):
+ *   data, airtime 1.5% | gotv, dstv 0.25% | startimes 0.18% | ecg 0.6% | water 0.25%
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
@@ -26,13 +27,13 @@ const CORS_HEADERS = {
 };
 
 const COMMISSION_RATES: Record<string, number> = {
-  data: 0.013,
-  airtime: 0.013,
-  gotv: 0.0023,
-  dstv: 0.0023,
-  startimes: 0.0015,
-  ecg: 0.005,
-  water: 0.0024,
+  data: 0.015,
+  airtime: 0.015,
+  gotv: 0.0025,
+  dstv: 0.0025,
+  startimes: 0.0018,
+  ecg: 0.006,
+  water: 0.0025,
 };
 
 const SERVICE_ALIASES: Record<string, string> = {
