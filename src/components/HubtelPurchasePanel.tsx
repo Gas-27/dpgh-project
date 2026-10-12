@@ -199,6 +199,15 @@ export default function HubtelPurchasePanel({
   const [registeredMeterId, setRegisteredMeterId] = useState("");
   const [meterRegistrationLoading, setMeterRegistrationLoading] = useState(false);
   const [meterRegistrationOpen, setMeterRegistrationOpen] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const reference = params.get("reference") || params.get("trxref");
+    if (purchaseSource === "storefront" && reference) {
+      setPaymentSuccess(true);
+    }
+  }, [purchaseSource]);
 
   const normalizedPhone = phone.replace(/\D/g, "");
   const detectedNetwork = normalizedPhone.startsWith("0")
@@ -641,10 +650,16 @@ const resultRoot = (record.results || record.result || record) as Record<string,
   }
 
   if (mode === "instant") {
-    return (
-      <>
-        <Card className="storefront-light-form mx-auto w-full max-w-4xl overflow-hidden border-primary/25 shadow-sm">
-          <CardHeader>
+  return (
+  <>
+  {paymentSuccess && (
+    <div className="mx-auto mb-4 w-full max-w-4xl rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-200" role="status">
+      <p className="font-semibold">Payment successful</p>
+      <p className="text-sm">Your purchase service is on its way.</p>
+    </div>
+  )}
+  <Card className="storefront-light-form mx-auto w-full max-w-4xl overflow-hidden border-primary/25 shadow-sm">
+  <CardHeader>
             <CardTitle>Airtime & Instant Data</CardTitle>
             <CardDescription>
               Choose a product, network, and bundle to continue.
@@ -882,8 +897,15 @@ The registered name could not be confirmed. You can still
   }
 
   return (
-    <Card className="storefront-light-form mx-auto w-full max-w-5xl border-primary/25 shadow-sm">
-      <CardHeader className="text-center">
+  <>
+  {paymentSuccess && (
+    <div className="mx-auto mb-4 w-full max-w-5xl rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-200" role="status">
+      <p className="font-semibold">Payment successful</p>
+      <p className="text-sm">Your purchase service is on its way.</p>
+    </div>
+  )}
+  <Card className="storefront-light-form mx-auto w-full max-w-5xl border-primary/25 shadow-sm">
+  <CardHeader className="text-center">
         <CardTitle className="text-3xl">Pay Bills & Utilities</CardTitle>
         <CardDescription>
           Top up ECG, settle Ghana Water, or renew TV subscriptions instantly.
@@ -1068,7 +1090,8 @@ The registered name could not be confirmed. You can still
             </div>
           </dl>
         </aside>
-      </CardContent>
-    </Card>
+  </CardContent>
+  </Card>
+  </>
   );
-}
+  }
