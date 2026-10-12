@@ -1,3 +1,6 @@
+"use client";
+
+import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -109,6 +112,54 @@ function Errors() {
   );
 }
 
+const NETWORK_BUNDLES = {
+  mtn: [
+    ["GHS 0.5 (20.73 MB)", "17.79 MB", "RACT_Data_GHC 0.5_Others", "Data Bundles", "0.50"],
+    ["GHS 3 (8683.07 MB)", "8683.07 MB", "NACT_Midnight_GHC3_Others", "Midnight Bundles", "3.00"],
+  ],
+  telecel: [
+    ["400MB Hourly", "400MB", "BDLHRBOOST2", "HOURLY", "2.00"],
+  ],
+  airteltigo: [
+    ["Sika Kokoo 1.1GB", "1.1GB", "db_Sika_Kokoo_10", "Sika Kokoo", "10.00"],
+  ],
+} as const;
+
+type Network = keyof typeof NETWORK_BUNDLES;
+
+function NetworkBundleTabs() {
+  const [network, setNetwork] = useState<Network>("mtn");
+  const bundles = NETWORK_BUNDLES[network];
+  return (
+    <div className="space-y-3 rounded-lg border border-border bg-background p-3">
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="Normal data networks">
+        {(Object.keys(NETWORK_BUNDLES) as Network[]).map((item) => (
+          <button
+            key={item}
+            type="button"
+            role="tab"
+            aria-selected={network === item}
+            onClick={() => setNetwork(item)}
+            className={`rounded-md border px-3 py-2 text-sm font-medium capitalize transition-colors ${network === item ? "border-primary bg-primary text-primary-foreground" : "border-border bg-muted text-muted-foreground hover:text-foreground"}`}
+          >
+            {item === "airteltigo" ? "AirtelTigo" : item === "mtn" ? "MTN" : "Telecel"}
+          </button>
+        ))}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        These are live-catalogue examples for <Mono>{network}</Mono>. Use the GET catalogue request below to receive every active bundle for this network; packages can change without an API version change.
+      </p>
+      <div className="overflow-x-auto rounded-lg border border-border">
+        <table className="w-full min-w-[760px] text-left text-sm">
+          <thead className="bg-muted"><tr><th className="p-2">Name</th><th className="p-2">Short name</th><th className="p-2">Product ID to send</th><th className="p-2">Category</th><th className="p-2">Price (GHS)</th></tr></thead>
+          <tbody>{bundles.map(([name, shortName, productId, category, amount]) => <tr key={productId} className="border-t border-border"><td className="p-2 font-medium">{name}</td><td className="p-2">{shortName}</td><td className="p-2 font-mono text-xs">{productId}</td><td className="p-2">{category}</td><td className="p-2">{amount}</td></tr>)}</tbody>
+        </table>
+      </div>
+      <p className="text-xs text-muted-foreground">Display <Mono>name</Mono> and <Mono>short_name</Mono> to your customer. Keep <Mono>product_id</Mono> in your server-side order and send it exactly as shown, including spaces, underscores and letter case.</p>
+    </div>
+  );
+}
+
 function DataAirtimeDocs() {
   return (
     <Card className="border-cyan-500/30 bg-cyan-500/5">
@@ -124,7 +175,12 @@ function DataAirtimeDocs() {
       <CardContent className="space-y-5">
         <SharedBasics rows={DATA_AIRTIME_RATES} />
 
-        <Section title="2. Get the live data catalogue (which package to send)">
+        <Section title="2. Choose a network and see its bundle format">
+          <p>Each network has its own package names and product IDs. Select a network to see the exact fields your integration should display and send.</p>
+          <NetworkBundleTabs />
+        </Section>
+
+        <Section title="3. Get the live data catalogue (which package to send)">
           <p>
             Normal data is not ordered by a size name like &quot;1GB&quot;. Every bundle has a <Mono>product_id</Mono> and you must send that exact value. Call the catalogue first, optionally filtered with <Mono>?network=mtn</Mono>, <Mono>?network=telecel</Mono> or <Mono>?network=airteltigo</Mono>. Bundles are grouped by network and then by category (for example MTN Data Bundles, Midnight Bundles, Social Media Bundles; Telecel HOURLY, DAILY, WEEKLY, MONTHLY; AirtelTigo BigTime, Sika Kokoo, Fuse).
           </p>
