@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { supabase } from "@/integrations/supabase/client";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
+import PartnerServicesApiDocs from "@/components/PartnerServicesApiDocs";
   import { VerificationOrdersCard } from "@/components/VerificationOrdersCard";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
@@ -593,7 +594,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
   // Tabs and menu state
   const [activeTab, setActiveTab] = useState("overview");
   const [afaTabActive, setAfaTabActive] = useState("overview");
-  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost">("cheap-data");
+  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities">("cheap-data");
 
   // API Orders state
   const [apiOrders, setApiOrders] = useState<any[]>([]);
@@ -3971,11 +3972,15 @@ handleMobileNumberChange(digits);
 
           {/* ============================= API DOCS ============================= */}
           <TabsContent value="api-docs" className="mt-0 space-y-6">
-  <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
+  <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1 sm:grid-cols-5">
   <Button type="button" variant="ghost" onClick={() => setActiveTab("api-key")}>API Key</Button>
   <Button type="button" variant={apiDocTab === "cheap-data" ? "secondary" : "ghost"} className={apiDocTab === "cheap-data" ? "bg-background" : ""} onClick={() => setApiDocTab("cheap-data")}>Cheap Data</Button>
   <Button type="button" variant={apiDocTab === "social-boost" ? "secondary" : "ghost"} className={apiDocTab === "social-boost" ? "bg-background" : ""} onClick={() => setApiDocTab("social-boost")}>Social Boost</Button>
+  <Button type="button" variant={apiDocTab === "data-airtime" ? "secondary" : "ghost"} className={apiDocTab === "data-airtime" ? "bg-background" : ""} onClick={() => setApiDocTab("data-airtime")}>Data &amp; Airtime</Button>
+  <Button type="button" variant={apiDocTab === "utilities" ? "secondary" : "ghost"} className={apiDocTab === "utilities" ? "bg-background" : ""} onClick={() => setApiDocTab("utilities")}>Utilities</Button>
   </div>
+  {apiDocTab === "data-airtime" && <PartnerServicesApiDocs variant="data-airtime" />}
+  {apiDocTab === "utilities" && <PartnerServicesApiDocs variant="utilities" />}
   {apiDocTab === "social-boost" && <Card className="border-cyan-500/30 bg-cyan-500/5">
   <CardHeader><CardTitle>Social Boost API</CardTitle><p className="text-sm text-muted-foreground">Source DataPlug Social Boost services from your own website or application. Your customers can purchase through your integration using your API wallet.</p></CardHeader>
   <CardContent className="space-y-5">
