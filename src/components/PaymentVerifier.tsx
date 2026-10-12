@@ -56,36 +56,41 @@ const PaymentVerifier = () => {
       return Array.isArray(data) ? data[0] ?? null : data ?? null;
     };
     const showOrder = (order: any) => {
+      // Only show the persisted public order number. Never turn a private Paystack
+      // reference into a tracking number or expose it in the success UI.
+      if (!order?.order_number) return false;
       setSocialBoost({
-        orderNumber: order?.order_number ?? derivedOrderNumber,
-        serviceName: socialBoostServiceLabel(order?.service) || null,
+        orderNumber: order.order_number,
+        serviceName: socialBoostServiceLabel(order.service) || null,
       });
       setStatus("success");
+      const cleanParams = new URLSearchParams(searchParams);
+      cleanParams.delete("payment");
+      cleanParams.delete("reference");
+      cleanParams.delete("trxref");
+      setSearchParams(cleanParams, { replace: true });
+      return true;
     };
 
     try {
       // The webhook creates the order after Paystack redirects, so wait for it.
       for (let attempt = 0; attempt < 15; attempt += 1) {
         const order = await findOrder();
-        if (order) return showOrder(order);
+        if (order && showOrder(order)) return;
         await new Promise((resolve) => window.setTimeout(resolve, 1500));
       }
 
       const { data, error } = await supabase.functions.invoke("verify-payment", { body: { reference } });
       if (!error && (data?.success || data?.payment_confirmed)) {
         const order = await findOrder();
-        return showOrder(order);
+        if (order && showOrder(order)) return;
       }
     } catch (err) {
       console.log("[v0] Social Boost verification pending:", err);
     }
 
     setStatus("error");
-    setMessage(
-      derivedOrderNumber
-        ? `Your payment is still being confirmed. Your order number will be ${derivedOrderNumber}. Please check Track Order shortly.`
-        : "Payment is still processing. Please check your orders shortly.",
-    );
+    setMessage("Your payment is still being confirmed. Please check Track Order shortly. Your order number will appear there after confirmation.");
   };
 
   const verifyPayment = async (reference: string) => {

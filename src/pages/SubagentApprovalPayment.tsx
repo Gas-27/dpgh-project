@@ -89,28 +89,22 @@ export default function SubagentApprovalPayment() {
 
     setPaymentProcessing(true);
     try {
-      const response = await fetch("https://api.paystack.co/transaction/initialize", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${import.meta.env.VITE_PAYSTACK_SECRET_KEY}`
-        },
-        body: JSON.stringify({
+      const { data, error } = await supabase.functions.invoke("initialize-payment", {
+        body: {
           email: registration.email || `subagent-${registration.id}@dataplyug.com`,
-          amount: Math.round(registration.fee_amount * 100),
+          amount: registration.fee_amount,
+          callback_url: `${window.location.origin}/subagent-approval-payment/${registration.id}?payment=verifying`,
           metadata: {
             subagent_registration_id: registration.id,
             agent_store_id: agent.id,
             type: "subagent_registration_fee",
-            base_amount: registration.fee_amount
-          }
-        })
+            base_amount: registration.fee_amount,
+          },
+        },
       });
 
-      const data = await response.json();
-
-      if (!data.status) {
-        throw new Error(data.message || "Payment initialization failed");
+      if (error || !data?.authorization_url) {
+        throw new Error(error?.message || data?.message || data?.error || "Payment initialization failed");
       }
 
       // Update registration with payment reference
