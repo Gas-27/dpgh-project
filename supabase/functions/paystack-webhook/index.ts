@@ -160,10 +160,15 @@ Deno.serve(async (req) => {
       }),
     });
     const korbaResult = await korbaResponse.json().catch(() => ({}));
-    const status = korbaResponse.ok && korbaResult.success !== false ? String(korbaResult.status || "pending") : "failed";
+    const providerStatus = String(korbaResult.status || korbaResult.payment_status || korbaResult.transaction_status || "").toLowerCase();
+    const status = !korbaResponse.ok || korbaResult.success === false
+      ? "failed"
+      : ["pending", "processing", "queued", "in_queue", "in-queue", "waiting"].includes(providerStatus)
+        ? "pending"
+        : "completed";
     const providerReference = String(korbaResult.reference || korbaResult.transaction_id || reference);
 
-    const { error: historyError } = await supabaseClient.from("korba_transaction_history").insert({
+    const { data: historyRow, error: historyError } = await supabaseClient.from("korba_transaction_history").insert({
       wallet_owner_type: sellerStoreKind,
       wallet_owner_id: sellerStoreId,
       product_type: productType,
@@ -175,8 +180,13 @@ Deno.serve(async (req) => {
       provider_reference: providerReference,
       status,
       source: "storefront",
-    });
-    if (historyError) console.error("[STOREFRONT KORBA] History insert failed:", historyError);
+    }).select("id").single();
+    if (historyError) {
+      console.error("[STOREFRONT KORBA] History insert failed:", historyError);
+    } else if (historyRow?.id && status === "completed") {
+      const { error: commissionError } = await supabaseClient.rpc("credit_purchase_commission", { p_history_id: historyRow.id });
+      if (commissionError) console.error("[STOREFRONT KORBA] Commission credit failed:", commissionError);
+    }
 
     if (status === "failed") {
       await fetch("https://api.paystack.co/refund", { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" }, body: JSON.stringify({ transaction: reference }) }).catch((error) => console.error("[STOREFRONT KORBA] Refund failed:", error));
