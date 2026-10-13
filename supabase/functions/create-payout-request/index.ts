@@ -293,7 +293,7 @@ Deno.serve(async (req) => {
         };
       }
 
-      console.log(`[CREATE-PAYOUT] Creating Paystack recipient:`, JSON.stringify(paystackPayload));
+      console.log(`[CREATE-PAYOUT] Creating Paystack recipient`);
 
       const paystackRes = await fetch("https://api.paystack.co/transferrecipient", {
         method: "POST",
@@ -319,7 +319,7 @@ Deno.serve(async (req) => {
       }
 
       if (!paystackResult.status) {
-        console.error(`[CREATE-PAYOUT] Paystack error:`, paystackResult);
+        console.error(`[CREATE-PAYOUT] Paystack rejected recipient creation`, { status: paystackRes.status });
         return new Response(JSON.stringify({
           success: false,
           error: `Failed to create recipient: ${paystackResult.message}`,
