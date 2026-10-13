@@ -241,11 +241,28 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Social Boost storefront identity is invalid" }), { status: 400, headers: corsHeaders });
       }
 
-      const providerResponse = await fetch("https://exosupplier.com/api/v2", {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-        body: new URLSearchParams({ key: providerKey, action: "add", service: providerService, link: providerLink, quantity: String(providerQuantity), ...(metadata?.comments ? { type: String(metadata.comment_type || "Average Quality Comments"), comments: String(metadata.comments) } : {}) }),
-      });
+      const providerBody = new URLSearchParams({ key: providerKey, action: "add", service: providerService, link: providerLink, quantity: String(providerQuantity), ...(metadata?.comments ? { type: String(metadata.comment_type || "Average Quality Comments"), comments: String(metadata.comments) } : {}) });
+      let providerResponse: Response | null = null;
+      let providerNetworkError: unknown = null;
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        try {
+          providerResponse = await fetch("https://exosupplier.com/api/v2", {
+            method: "POST",
+            headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+            body: providerBody,
+          });
+          const retryableStatus = providerResponse.status === 408 || providerResponse.status === 425 || providerResponse.status === 429 || providerResponse.status >= 500;
+          if (!retryableStatus || attempt === 3) break;
+          await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+        } catch (error) {
+          providerNetworkError = error;
+          if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+        }
+      }
+      if (!providerResponse) {
+        console.error("[SOCIAL BOOST] ExoBoost unreachable after retries", { reference, error: String(providerNetworkError ?? "unknown") });
+        return new Response(JSON.stringify({ error: "Payment succeeded but Social Boost delivery is pending retry", reference }), { status: 202, headers: corsHeaders });
+      }
       const providerPayload = await providerResponse.json().catch(() => ({}));
       const providerOrderId = providerPayload?.order ? String(providerPayload.order) : null;
       const providerStatus = providerResponse.ok && providerOrderId ? "processing" : "failed";

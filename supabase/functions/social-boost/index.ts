@@ -124,15 +124,29 @@ Deno.serve(async (req) => {
     if (formValue !== null) body.set(field, formValue);
   }
 
-  let upstream: Response;
-  try {
-    upstream = await fetch(EXOBOOST_API_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
-      body,
-    });
-  } catch {
-    return json({ error: "Social Boost provider could not be reached." }, 502);
+  let upstream: Response | null = null;
+  let lastNetworkError: unknown = null;
+  for (let attempt = 1; attempt <= 3; attempt += 1) {
+    try {
+      upstream = await fetch(EXOBOOST_API_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
+        body,
+      });
+      const retryableStatus = upstream.status === 408 || upstream.status === 425 || upstream.status === 429 || upstream.status >= 500;
+      if (!retryableStatus || attempt === 3) break;
+      await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+    } catch (error) {
+      lastNetworkError = error;
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+    }
+  }
+  if (!upstream) {
+    if (action === "add" && input.order) {
+      await supabase.from("social_boost_orders").update({ status: "pending", error_message: "Provider request could not be completed after 3 attempts; retry required." }).eq("order_number", input.order);
+    }
+    console.error(JSON.stringify({ event: "provider_unreachable_after_retries", order: input.order ?? null, error: String(lastNetworkError ?? "unknown") }));
+    return json({ error: "Social Boost provider could not be reached. The order was preserved for retry." }, 502);
   }
 
   const text = await upstream.text();
