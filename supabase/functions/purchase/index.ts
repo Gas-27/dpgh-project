@@ -463,6 +463,50 @@ Deno.serve(async (req) => {
       requestBody = config.buildRequest(cleanedPhone, size_gb, networkKey, normalizedNetwork, orderReference, bundleId);
     }
 
+    // Reserve the API wallet and create the local order before contacting the
+    // provider. This prevents provider fulfillment when payment persistence
+    // fails and makes the local order the source of truth for reconciliation.
+    const { data: reservedOrder, error: reserveOrderError } = await supabase
+      .from("orders")
+      .insert({
+        customer_number: cleanedPhone,
+        network: normalizedNetwork,
+        size_gb,
+        size_gb_text: size_gb_text || null,
+        package_id: packageData.id,
+        amount: finalPrice,
+        order_status: "processing",
+        fulfillment_status: "processing",
+        payment_method: "api_wallet",
+        paystack_reference: null,
+        provider_reference: null,
+        purchase_provider: provider,
+        purchase_provider_source: "api",
+        fulfillment_provider: provider,
+        api_response: "API wallet reserved; provider request pending",
+        api_user: apiUser.id,
+        agent_store_id: null,
+        subagent_store_id: null,
+        selling_price: finalPrice,
+        base_price: finalPrice,
+        profit: 0,
+      })
+      .select("id")
+      .single();
+    if (reserveOrderError || !reservedOrder) {
+      return new Response(JSON.stringify({ error: "Failed to create order record before provider fulfillment" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    const { data: debitedRows, error: debitError } = await supabase
+      .from("api_users")
+      .update({ wallet: walletBalance - finalPrice })
+      .eq("id", apiUser.id)
+      .gte("wallet", finalPrice)
+      .select("id");
+    if (debitError || !debitedRows?.length) {
+      await supabase.from("orders").update({ order_status: "failed", fulfillment_status: "failed", api_response: "API wallet reservation failed" }).eq("id", reservedOrder.id);
+      return new Response(JSON.stringify({ error: "API wallet reservation failed. Please retry." }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
     console.log(`[PURCHASE] Sending to ${provider}:`, JSON.stringify(requestBody));
 
     // ============================================
@@ -493,8 +537,10 @@ Deno.serve(async (req) => {
       }
     } catch (err) {
       console.error(`[PURCHASE] API call failed:`, err);
+      await supabase.from("api_users").update({ wallet: walletBalance }).eq("id", apiUser.id);
+      await supabase.from("orders").update({ order_status: "failed", fulfillment_status: "failed", api_response: (err as Error).message }).eq("id", reservedOrder.id);
       return new Response(
-        JSON.stringify({ error: "Provider API request failed", details: (err as Error).message }),
+        JSON.stringify({ error: "Provider API request failed; wallet refunded", details: (err as Error).message }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -505,92 +551,13 @@ Deno.serve(async (req) => {
     const isSuccess = apiRes.ok && (parsedData?.success !== false);
     const providerReference = parsedData?.reference || parsedData?.data?.reference || null;
 
-    // ============================================
-    // STEP 11: Atomic Transaction - Create Order & Deduct Wallet
-    // ============================================
-    // A successful provider API response means the order was accepted,
-    // not that the bundle has reached the customer. The provider webhook or
-    // status-sync worker must be the only code that changes this to delivered.
+    // The order and wallet reservation already exist. Only update the local
+    // record after the provider response; never create or charge after fulfillment.
+    const orderId = reservedOrder.id;
     const orderStatus = isSuccess ? "processing" : "failed";
     const fulfillmentStatus = isSuccess ? "processing" : "failed";
-
-    // Start a transaction
-    const { data: order, error: orderError } = await supabase
-      .from("orders")
-      .insert({
-        customer_number: cleanedPhone,
-        network: normalizedNetwork,
-        size_gb: size_gb,
-        size_gb_text: size_gb_text || null,
-        package_id: packageData.id,
-        amount: finalPrice,
-        order_status: orderStatus,
-        fulfillment_status: fulfillmentStatus,
-        payment_method: "api_wallet",
-        paystack_reference: null,
-        provider_reference: providerReference,
-        purchase_provider: provider,
-        purchase_provider_source: "api",
-        fulfillment_provider: provider,
-        api_response: apiData,
-        api_user: apiUser.id,  // <-- ADDED: Link order to API user
-        agent_store_id: null,
-        subagent_store_id: null,
-        selling_price: finalPrice,
-        base_price: finalPrice,
-        profit: 0,
-        created_at: new Date().toISOString(),
-      })
-      .select()
-      .single();
-
-    if (orderError) {
-      console.error(`[PURCHASE] Failed to create order:`, orderError);
-      return new Response(
-        JSON.stringify({ error: "Failed to create order record" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    const orderId = order.id;
-    console.log(`[PURCHASE] Order created: ${orderId}, Status: ${orderStatus}, API User: ${apiUser.id}`);
-
-    // ============================================
-    // STEP 12: Deduct from Wallet (only if successful)
-    // ============================================
-    if (isSuccess) {
-      const newBalance = walletBalance - finalPrice;
-
-      const { error: walletError } = await supabase
-        .from("api_users")
-        .update({ wallet: newBalance })
-        .eq("id", apiUser.id);
-
-      if (walletError) {
-        console.error(`[PURCHASE] Failed to update wallet:`, walletError);
-        // CRITICAL: Order succeeded but wallet update failed
-        // Mark order as failed and flag for admin review
-        await supabase
-          .from("orders")
-          .update({
-            order_status: "failed",
-            fulfillment_status: "failed",
-            admin_notes: "Wallet deduction failed after successful provider order. Needs manual review."
-          })
-          .eq("id", orderId);
-
-        return new Response(
-          JSON.stringify({
-            error: "Payment succeeded but wallet update failed. Please contact support.",
-            order_id: orderId,
-            provider_reference: providerReference
-          }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
-      console.log(`[PURCHASE] Wallet deducted: ${finalPrice}, New balance: ${newBalance}`);
-    }
+    await supabase.from("orders").update({ order_status: orderStatus, fulfillment_status: fulfillmentStatus, provider_reference: providerReference, api_response: apiData }).eq("id", orderId);
+    if (!isSuccess) await supabase.from("api_users").update({ wallet: walletBalance }).eq("id", apiUser.id);
 
     // ============================================
     // STEP 13: Return Response
