@@ -45,12 +45,9 @@ const PaymentVerifier = () => {
   const verifySocialBoost = async (reference: string) => {
     const derivedOrderNumber = socialBoostOrderNumberFromReference(reference);
     const findOrder = async () => {
-      const { data: byReference } = await (supabase as any)
-        .from("social_boost_orders")
-        .select("order_number,service,provider_status,status")
-        .eq("payment_reference", reference)
-        .maybeSingle();
-      if (byReference) return byReference;
+      const { data: byReference } = await (supabase as any).rpc("get_public_social_boost_order_by_reference", { p_reference: reference });
+      const referenceOrder = Array.isArray(byReference) ? byReference[0] ?? null : byReference ?? null;
+      if (referenceOrder) return referenceOrder;
       if (!derivedOrderNumber) return null;
       const { data } = await (supabase as any).rpc("get_public_social_boost_order", { p_order_number: String(derivedOrderNumber) });
       return Array.isArray(data) ? data[0] ?? null : data ?? null;

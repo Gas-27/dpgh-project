@@ -247,13 +247,10 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     const maxAttempts = 40;
     const derivedOrderNumber = socialBoostOrderNumberFromReference(reference);
     const findOrder = async () => {
-      const { data: byReference, error: referenceError } = await (supabase as any)
-        .from("social_boost_orders")
-        .select("order_number,service,provider_status,status")
-        .eq("payment_reference", reference)
-        .maybeSingle();
-      const { data, error } = byReference || !derivedOrderNumber
-        ? { data: byReference, error: referenceError }
+      const { data: byReference, error: referenceError } = await (supabase as any).rpc("get_public_social_boost_order_by_reference", { p_reference: reference });
+      const referenceOrder = Array.isArray(byReference) ? byReference[0] ?? null : byReference ?? null;
+      const { data, error } = referenceOrder || !derivedOrderNumber
+        ? { data: referenceOrder, error: referenceError }
         : await (supabase as any).rpc("get_public_social_boost_order", { p_order_number: String(derivedOrderNumber) });
       const order = Array.isArray(data) ? data[0] : data;
 
@@ -363,7 +360,7 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
           email: currentUser?.email || `social_boost_${Date.now()}@datapluggh.com`,
           amount: total,
           callback_url: `${window.location.origin}${window.location.pathname}${window.location.search ? `${window.location.search}&` : "?"}payment=verifying`,
-          metadata: { type: "social_boost", ...(currentUser?.id ? { user_id: currentUser.id } : {}), platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: normalizedOwnerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? normalizedOwnerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? storeId : null },
+          metadata: { type: "social_boost", user_id: currentUser?.id ?? crypto.randomUUID(), platform, service_id: service.service, service_name: service.name, target_link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { comment_type: commentType, comments: providerComments } : {}), owner_type: normalizedOwnerType, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? normalizedOwnerType : null, seller_store_id: ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType) ? storeId : null },
         },
       });
       setBuying(false);
