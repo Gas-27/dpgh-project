@@ -229,11 +229,12 @@ Deno.serve(async (req) => {
       }
 
       const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-      const userId = String(metadata?.user_id || "").trim();
+      const rawUserId = String(metadata?.user_id || "").trim();
+      const userId = uuidPattern.test(rawUserId) ? rawUserId : null;
       const sellerStoreId = String(metadata?.seller_store_id || "").trim();
-      if (!uuidPattern.test(userId)) {
-        console.error("[SOCIAL BOOST] Missing or invalid user_id in Paystack metadata", { reference, userId });
-        return new Response(JSON.stringify({ error: "Social Boost customer identity is missing" }), { status: 400, headers: corsHeaders });
+      if (rawUserId && !userId) {
+        console.error("[SOCIAL BOOST] Invalid user_id in Paystack metadata", { reference });
+        return new Response(JSON.stringify({ error: "Social Boost customer identity is invalid" }), { status: 400, headers: corsHeaders });
       }
       if (sellerStoreId && !uuidPattern.test(sellerStoreId)) {
         console.error("[SOCIAL BOOST] Invalid seller_store_id in Paystack metadata", { reference, sellerStoreId });
