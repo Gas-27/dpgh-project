@@ -378,21 +378,23 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
       window.location.assign(data.authorization_url);
       return;
     }
-    const { data: provider, error: providerError } = await supabase.functions.invoke("social-boost", { body: { action: "add", service: service.service, link: targetLink.trim(), quantity: numericQuantity, ...(isCustomComments ? { type: commentType, comments: providerComments } : {}) } });
-    if (providerError || !provider?.order) {
-      setBuying(false);
-      return toast({ title: "Social Boost provider rejected the order", description: providerError?.message ?? provider?.error ?? "The provider did not return an order ID.", variant: "destructive" });
-    }
-    const { data, error } = await (supabase as any).rpc("purchase_social_boost", {
+    const { data: walletOrder, error: walletError } = await (supabase as any).rpc("purchase_social_boost", {
       p_platform: platform,
       p_service: `${service.service}:${service.name}`,
       p_target_link: targetLink.trim(),
       p_quantity: numericQuantity,
-      p_provider_order_id: String(provider.order),
+      p_provider_order_id: null,
     });
+    if (walletError || !walletOrder?.order_number) {
+      setBuying(false);
+      return toast({ title: "Wallet purchase failed", description: walletError?.message ?? "Your wallet could not be charged.", variant: "destructive" });
+    }
+    const { data: provider, error: providerError } = await supabase.functions.invoke("social-boost", { body: { action: "add", service: service.service, link: targetLink.trim(), quantity: numericQuantity, wallet_order_number: walletOrder.order_number, payment_method: "wallet", ...(isCustomComments ? { type: commentType, comments: providerComments } : {}) } });
     setBuying(false);
-    if (error) return toast({ title: "Wallet purchase failed", description: error.message, variant: "destructive" });
-    setOrderId(String(data?.order_number ?? data?.id ?? ""));
+    if (providerError || !provider?.order) {
+      return toast({ title: "Social Boost provider rejected the order", description: providerError?.message ?? provider?.error ?? "Your wallet order is being reviewed because the provider did not return an order ID.", variant: "destructive" });
+    }
+    setOrderId(String(walletOrder.order_number));
     setPurchasedServiceName(service.name);
     setWalletSuccessOpen(true);
     await loadHistory();

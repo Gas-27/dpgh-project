@@ -69,16 +69,17 @@ Deno.serve(async (req) => {
   // Direct provider orders are only allowed for API-wallet callers. Regular
   // customer purchases must go through Paystack so the webhook can verify the
   // payment before sending anything to ExoBoost.
-  if (action === "add" && !isApiUser) {
-    console.warn(JSON.stringify({
-      event: "unpaid_add_blocked",
-      userId: actorUserId,
-      service: String(input.service),
-      quantity: Number(input.quantity),
-    }));
+  const walletOrderNumber = typeof input.wallet_order_number === "string" ? input.wallet_order_number.trim() : "";
+  const isWalletHandoff = action === "add" && !isApiUser && input.payment_method === "wallet" && Boolean(walletOrderNumber);
+  if (action === "add" && !isApiUser && !isWalletHandoff) {
+    console.warn(JSON.stringify({ event: "unpaid_add_blocked", userId: actorUserId, service: String(input.service), quantity: Number(input.quantity) }));
     return json({ error: "Payment is required before creating a Social Boost order." }, 402);
   }
-
+  if (isWalletHandoff) {
+    const { data: walletOrder } = await supabase.from("social_boost_orders").select("order_number, user_id, provider_order_id, status").eq("order_number", walletOrderNumber).eq("user_id", actorUserId).maybeSingle();
+    if (!walletOrder || walletOrder.provider_order_id || ["failed", "cancelled", "refunded"].includes(String(walletOrder.status))) return json({ error: "Wallet order is invalid or already processed." }, 409);
+    input.order = walletOrder.order_number;
+  }
   let chargedAmount = 0;
   if (action === "services") {
     const { data: catalog, error: catalogError } = await supabase.from("social_boost_service_pricing").select("service_id,service_name,category,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("category").order("service_id");
@@ -86,7 +87,7 @@ Deno.serve(async (req) => {
     return json({ services: (catalog ?? []).map((service) => ({ id: service.service_id, name: service.service_name, category: service.category, base_price_per_1000: service.admin_price_per_1000, min_quantity: service.min_quantity, max_quantity: service.max_quantity, average_completion_time: service.average_completion_time, notes: service.notes })) });
   }
 
-  if (action === "add") {
+  if (action === "add" && !isWalletHandoff) {
     const quantity = Number(input.quantity);
     if (!Number.isInteger(quantity) || quantity <= 0) return json({ error: "quantity must be a positive integer." }, 400);
     const serviceLookup = String(input.service);
@@ -113,8 +114,11 @@ Deno.serve(async (req) => {
     chargedAmount = amount;
   }
 
+  const providerInput = { ...input };
+  delete providerInput.wallet_order_number;
+  delete providerInput.payment_method;
   const body = new URLSearchParams({ key: providerApiKey, action });
-  for (const [field, value] of Object.entries(input)) {
+  for (const [field, value] of Object.entries(providerInput)) {
     if (field === "action" || field === "key") continue;
     const formValue = asFormValue(value);
     if (formValue !== null) body.set(field, formValue);
@@ -141,15 +145,23 @@ Deno.serve(async (req) => {
 
   if (!upstream.ok || (payload && typeof payload === "object" && "error" in payload)) {
     if (action === "add" && input.order) {
-      const { data: current } = await supabase.from("api_users").select("api_wallet").eq("id", apiUser.id).maybeSingle();
-      await supabase.from("api_users").update({ api_wallet: Number(current?.api_wallet ?? 0) + chargedAmount }).eq("id", apiUser.id);
+      if (!isWalletHandoff && apiUser) {
+        const { data: current } = await supabase.from("api_users").select("api_wallet").eq("id", apiUser.id).maybeSingle();
+        await supabase.from("api_users").update({ api_wallet: Number(current?.api_wallet ?? 0) + chargedAmount }).eq("id", apiUser.id);
+      }
       await supabase.from("social_boost_orders").update({ status: "failed", error_message: String((payload as { error?: unknown })?.error ?? "Provider request failed") }).eq("order_number", input.order);
     }
     return json({ error: "Social Boost provider request failed.", status: upstream.status, details: payload }, upstream.ok ? 502 : upstream.status);
   }
 
   if (action === "add" && input.order) {
-    await supabase.from("social_boost_orders").update({ provider_order_id: String((payload as { order?: unknown })?.order ?? ""), status: "processing" }).eq("order_number", input.order);
+    const providerOrderId = (payload as { order?: unknown })?.order;
+    if (typeof providerOrderId !== "string" && typeof providerOrderId !== "number") {
+      await supabase.from("social_boost_orders").update({ status: "failed", error_message: "Provider did not return an order ID" }).eq("order_number", input.order);
+      return json({ error: "Provider accepted the request without an order ID." }, 502);
+    }
+    const { error: saveError } = await supabase.from("social_boost_orders").update({ provider_order_id: String(providerOrderId), status: "processing" }).eq("order_number", input.order);
+    if (saveError) return json({ error: "Provider order created but could not be saved locally.", provider_order_id: String(providerOrderId) }, 500);
   }
   if (action === "status" && payload && typeof payload === "object" && typeof (payload as { status?: unknown }).status === "string") {
     // Saving the live provider status lets the database trigger refund cancelled orders.
