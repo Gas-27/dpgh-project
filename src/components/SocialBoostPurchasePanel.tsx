@@ -20,10 +20,12 @@ import {
   Users,
   Zap,
 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import SocialBoostSuccessDialog from "@/components/SocialBoostSuccessDialog";
 import {
   SOCIAL_BOOST_DUPLICATE_NOTICE,
@@ -37,7 +39,7 @@ import {
   socialBoostServiceLabel,
 } from "@/lib/socialBoostMessages";
 
-type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack"; showHistory?: boolean; pricingMode?: "user" | "storefront"; purchaseSource?: "Dashboard" | "Packages page" | "Storefront" };
+type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack"; showHistory?: boolean; pricingMode?: "user" | "storefront"; purchaseSource?: "Dashboard" | "Packages page" | "Storefront"; requireAuth?: boolean };
 type ProviderService = { service: number; name: string; category: string; rate: string; min: string; max: string; average?: string; average_time?: string; note?: string; notes?: string; refill?: boolean; cancel?: boolean };
 
 const platforms = ["TikTok", "Instagram", "Facebook", "YouTube", "WhatsApp"];
@@ -57,8 +59,10 @@ const platformTileBg: Record<string, string> = {
 };
 const fallbackServices: ProviderService[] = [{ service: 1, name: "Followers", category: "TikTok", rate: "0.90", min: "50", max: "50000", average_time: "4 Hours", refill: true, cancel: true }];
 
-export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", storeId = null, canSetPrices = false, checkoutMode = "wallet", showHistory = true, pricingMode = "storefront", purchaseSource }: Props) {
+export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", storeId = null, canSetPrices = false, checkoutMode = "wallet", showHistory = true, pricingMode = "storefront", purchaseSource, requireAuth = false }: Props) {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const resolvedPurchaseSource = purchaseSource ?? (checkoutMode === "wallet" ? "Dashboard" : ["agent", "subagent", "subsubagent"].includes(ownerType) ? "Storefront" : "Packages page");
   const normalizedOwnerType = ownerType === "sub_subagent" ? "subsubagent" : ownerType;
   const [purchasedServiceName, setPurchasedServiceName] = useState("");
@@ -342,6 +346,10 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
   const total = useMemo(() => Math.round((numericQuantity / 1000) * price * 1000) / 1000, [numericQuantity, price]);
 
   const buy = async () => {
+    if (requireAuth && !user) {
+      navigate("/login", { state: { from: "/packages" } });
+      return;
+    }
     const isCustomComments = /comment/i.test(`${service.name} ${activeCategory}`);
     if (!targetLink.trim()) return toast({ title: "Account link required", description: "Enter the social profile or post link to boost.", variant: "destructive" });
     if (isCustomComments && !customComments.trim()) return toast({ title: "Comments required", description: "Enter one comment per line before placing this order.", variant: "destructive" });
@@ -800,7 +808,7 @@ value={quantity}
         {/* Purchase */}
         <Button type="button" onClick={buy} disabled={buying} className="group h-14 w-full bg-gradient-to-r from-cyan-500 via-blue-600 to-fuchsia-600 text-base font-black hover:opacity-90 sm:text-lg">
           {buying ? <Loader2 className="mr-2 h-5 w-5 animate-spin" /> : <ShoppingCart className="mr-2 h-5 w-5" />}
-          Purchase Now
+          {requireAuth && !user ? "Sign in to purchase" : "Purchase Now"}
           <ArrowRight className="ml-2 h-5 w-5 transition group-hover:translate-x-1" />
         </Button>
       </div>
