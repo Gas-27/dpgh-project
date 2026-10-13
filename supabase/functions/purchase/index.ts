@@ -84,7 +84,7 @@ const NETWORK_CONFIGS: Record<string, NetworkConfig> = {
       networkKey: networkKey,
       ...(orderId && { "order_reference": orderId }),
     }),
-    apiKeyEnvVar: ********,
+    apiKeyEnvVar: "SPENDLESS_API_KEY",
   },
 
  ghdataconnect: {
@@ -125,7 +125,7 @@ const NETWORK_CONFIGS: Record<string, NetworkConfig> = {
         ...(orderId && { "incoming_api_ref": orderId })
       };
     },
-    apiKeyEnvVar: ********
+    apiKeyEnvVar: "DAKAZINA_API_KEY"
   },
 
   datahubnet: {
@@ -154,7 +154,7 @@ const NETWORK_CONFIGS: Record<string, NetworkConfig> = {
       "network": networkKey,
       ...(orderId && { "external_reference": orderId }),
     }),
-    apiKeyEnvVar: ********,
+apiKeyEnvVar: "ORISJAY_API_KEY",
   },
 
 };
