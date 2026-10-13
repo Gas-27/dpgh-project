@@ -66,6 +66,19 @@ Deno.serve(async (req) => {
   const missing = REQUIRED_FIELDS[action].filter((field) => asFormValue(input[field]) === null);
   if (missing.length > 0) return json({ error: "Missing required fields.", missing }, 400);
 
+  // Direct provider orders are only allowed for API-wallet callers. Regular
+  // customer purchases must go through Paystack so the webhook can verify the
+  // payment before sending anything to ExoBoost.
+  if (action === "add" && !isApiUser) {
+    console.warn(JSON.stringify({
+      event: "unpaid_add_blocked",
+      userId: actorUserId,
+      service: String(input.service),
+      quantity: Number(input.quantity),
+    }));
+    return json({ error: "Payment is required before creating a Social Boost order." }, 402);
+  }
+
   let chargedAmount = 0;
   if (action === "services") {
     const { data: catalog, error: catalogError } = await supabase.from("social_boost_service_pricing").select("service_id,service_name,category,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("category").order("service_id");
