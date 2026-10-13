@@ -1279,22 +1279,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    const { data: existingOrder } = await supabaseClient
-      .from("orders")
-      .select("id, fulfillment_status")
-      .eq("paystack_reference", reference)
-      .maybeSingle();
-
-    if (existingOrder) {
-      console.log(`[PAYSTACK] Reference ${reference} already processed as order ${existingOrder.id}; skipping duplicate webhook.`);
-      return new Response(JSON.stringify({ message: "Payment already processed", order_id: existingOrder.id, duplicate: true }), { status: 200, headers: corsHeaders });
-    }
-
     const orderData: Record<string, unknown> = {
       customer_number: phone, package_id, network, size_gb: sizeGb,
-      ...(!agent_store_id && !subagent_store_id && !subsubagent_store_id && metadata?.user_id
-        ? { user_id: metadata.user_id, customer_id: metadata.customer_id || metadata.user_id }
-        : {}),
       ...(!agent_store_id && !subagent_store_id && !subsubagent_store_id && metadata?.user_id
         ? { user_id: metadata.user_id, customer_id: metadata.customer_id || metadata.user_id }
         : {}),
