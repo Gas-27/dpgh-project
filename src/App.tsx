@@ -17,6 +17,7 @@ import RouteSeoGuard from "@/components/RouteSeoGuard";
 import RouteErrorBoundary from "@/components/RouteErrorBoundary";
 import { ThemeProvider, ThemeToggle } from "@/components/ThemeProvider";
 import SocialBoost from "./pages/SocialBoost";
+import PaymentVerifier from "@/components/PaymentVerifier";
 
 // Wraps React.lazy so that a stale-deploy chunk failure (old bundle requesting
 // chunk filenames that no longer exist -> server returns index.html with a
@@ -285,6 +286,7 @@ return (
         <NotificationPrompt />
         <BrowserRouter>
           <RouteSeoGuard />
+          <PaymentVerifier />
           <AuthProvider>
             <PasswordRecoveryRedirect />
             <RouteErrorBoundary>

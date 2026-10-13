@@ -104,7 +104,7 @@ const PaymentVerifier = () => {
 
     const showSuccess = () => {
       setStatus("success");
-      setMessage("Payment confirmed! Your data is being processed and will be delivered shortly.");
+      setMessage("Your purchase was successful and will be delivered immediately.");
     };
 
     try {
@@ -216,9 +216,14 @@ const PaymentVerifier = () => {
           )}
           <p className="text-center text-foreground">{message}</p>
           {status !== "verifying" && (
-            <Button variant="hero" onClick={handleClose}>
-              Continue
-            </Button>
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+              <Button variant="hero" onClick={handleClose}>
+                Continue
+              </Button>
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+            </div>
           )}
         </div>
       </DialogContent>

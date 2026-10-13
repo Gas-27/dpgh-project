@@ -38,6 +38,13 @@ export default function SocialBoostSuccessDialog({ open, orderNumber, serviceNam
           >
             New order
           </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-3 h-10 text-sm font-semibold text-white/70 underline-offset-4 transition hover:text-white hover:underline"
+          >
+            Cancel
+          </button>
         </div>
       </DialogContent>
     </Dialog>
