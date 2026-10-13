@@ -121,29 +121,10 @@ Deno.serve(async (req) => {
       }
       const adminClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
 
-      if (!isValidUserId) {
-        const { data: guestUser, error: guestUserError } = await adminClient.auth.admin.createUser({
-          email,
-          password: crypto.randomUUID(),
-          email_confirm: true,
-          user_metadata: { guest_social_boost: true },
-        });
-
-        if (guestUser.user) {
-          userId = guestUser.user.id;
-        } else if (guestUserError?.message?.toLowerCase().includes("already registered")) {
-          const { data: users, error: usersError } = await adminClient.auth.admin.listUsers({ perPage: 1000 });
-          const existingUser = users.users.find((user) => user.email?.toLowerCase() === email.toLowerCase());
-          if (usersError || !existingUser) {
-            console.error("[SOCIAL BOOST] Existing guest lookup failed:", usersError || guestUserError);
-            return new Response(JSON.stringify({ error: "Unable to find the guest customer record." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-          }
-          userId = existingUser.id;
-        } else {
-          console.error("[SOCIAL BOOST] Guest customer creation failed:", guestUserError);
-          return new Response(JSON.stringify({ error: "Unable to create the guest customer record." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-        }
-      }
+      // Guest checkouts keep the payer email only in Paystack/order metadata.
+      // Never create or reuse an Auth user from a payment email; doing so can
+      // make a customer's account appear to change after a Social Boost purchase.
+      if (!isValidUserId) userId = "";
       const { data: serviceRow, error: serviceError } = await adminClient.from("social_boost_service_pricing").select("admin_price_per_1000,base_price_per_1000,default_price_per_1000,max_reseller_price_per_1000,min_quantity,max_quantity").eq("service_id", serviceId).maybeSingle();
       if (serviceError) {
         console.error("[SOCIAL BOOST] Service pricing lookup failed:", serviceError);
