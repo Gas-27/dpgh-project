@@ -561,10 +561,13 @@ const noteLines = String(service.notes || service.note || "No additional note ha
           <div className="mt-3 rounded-xl border border-amber-400/70 bg-amber-950/40 p-4 text-sm text-amber-50" role="alert">
             <p className="font-bold">This Social Boost order was cancelled.</p>
             {trackedOrder.is_storefront_order ? (
-              <p className="mt-1">
-                Please contact the store owner{trackedOrder.store_name ? ` (${trackedOrder.store_name})` : ""} for your refund.
-                {trackedOrder.store_contact ? <> Store owner number: <a href={`tel:${trackedOrder.store_contact}`} className="font-black underline">{trackedOrder.store_contact}</a></> : " The store owner number is not available, so please use the contact details on this store."}
-              </p>
+              <>
+                <p className="mt-1">
+                  Please contact the store owner{trackedOrder.store_name ? ` (${trackedOrder.store_name})` : ""} for your refund.
+                  {trackedOrder.store_contact ? <> Store owner number: <a href={`tel:${trackedOrder.store_contact}`} className="font-black underline">{trackedOrder.store_contact}</a></> : " The store owner number is not available, so please use the contact details on this store."}
+                </p>
+                <p className="mt-2 text-xs text-amber-100/90">Orders may be cancelled when another order for the same link is still processing or when a technical issue prevents fulfillment. You can retry after the active order is completed, cancelled, or failed.</p>
+              </>
             ) : (
               <p className="mt-1">
                 {trackedOrder.refunded_at
@@ -572,6 +575,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
                   : "Your refund is being processed and will be returned to the wallet used for this order."}
               </p>
             )}
+            {!trackedOrder.is_storefront_order && <p className="mt-2 text-xs text-amber-100/90">Orders may be cancelled when another order for the same link is still processing or when a technical issue prevents fulfillment. You can retry after the active order is completed, cancelled, or failed.</p>}
           </div>
         )}
   <div id="social-boost-history" className={`${showHistory ? "" : "hidden"} mt-5 overflow-hidden rounded-xl bg-white text-slate-950`}>
