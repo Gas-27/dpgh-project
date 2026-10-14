@@ -54,9 +54,12 @@ function readCredentials() {
 
 function fixieHttpClient() {
   const proxyUrl = Deno.env.get("FIXIE_URL")?.trim();
-  if (!proxyUrl) return undefined;
+  if (!proxyUrl) throw new Error("FIXIE_URL is not configured");
 
   const proxy = new URL(proxyUrl);
+  if (!/^https?:$/.test(proxy.protocol)) {
+    throw new Error("FIXIE_URL must use an HTTP or HTTPS proxy");
+  }
   const username = decodeURIComponent(proxy.username);
   const password = decodeURIComponent(proxy.password);
   proxy.username = "";
