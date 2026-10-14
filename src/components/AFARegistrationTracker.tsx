@@ -30,11 +30,11 @@ interface Registration {
 }
 
 function getStage(registration: Registration): 0 | 1 | 2 | 3 {
-  // Admin can mark as completed early — always show approved if status is set
-  if (registration.registration_status === "completed") return 3;
-  const minsAgo  = (Date.now() - new Date(registration.created_at).getTime()) / (1000 * 60);
+  // Public tracking must never show approval before the full 96-hour review window.
+  const minsAgo = (Date.now() - new Date(registration.created_at).getTime()) / (1000 * 60);
+  const approvalWindowMinutes = STAGE_MTN_APPROVED_HOURS * 60;
+  if (minsAgo >= approvalWindowMinutes) return 3; // 5,760 minutes / 96 hours
   const hoursAgo = minsAgo / 60;
-  if (hoursAgo >= STAGE_MTN_APPROVED_HOURS) return 3;  // 96 h: MTN Approved
   if (minsAgo  >= STAGE_SENT_TO_MTN_MINS)   return 2;  // 40 min: Sent to MTN
   if (minsAgo  >= STAGE_SENT_TO_AGENT_MINS) return 1;  // 10 min: Sent to Agent
   return 0; // still in "Registration Placed"

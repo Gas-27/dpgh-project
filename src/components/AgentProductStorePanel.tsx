@@ -45,6 +45,8 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
 
   const activePaid = expiresAt ? new Date(expiresAt) > new Date() : false;
   const paidPostsUsed = Math.max(0, products.length - (freePostUsed ? 1 : 0));
+  const productPostingLocked = Boolean(expiresAt) && !activePaid;
+
   const includedRemaining = activePaid ? Math.max(0, paidLimit - paidPostsUsed) : (freePostUsed ? 0 : 1);
   const remaining = Math.max(0, includedRemaining);
   const needsExtraCharge = remaining === 0;
@@ -56,10 +58,15 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
       supabase.from("store_products").select("id,title,description,price,image_urls,status,available,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at").eq("store_id", storeId).order("created_at", { ascending: false }),
       supabase.from("store_product_entitlements").select("free_post_used,paid_post_limit,paid_post_expires_at,plan_type").eq("store_id", storeId).maybeSingle(),
     ]);
-    setProducts((rows || []) as Product[]);
+    const entitlementExpiresAt = entitlement?.paid_post_expires_at || null;
+    const entitlementActive = entitlementExpiresAt ? new Date(entitlementExpiresAt) > new Date() : false;
+    if (entitlementExpiresAt && !entitlementActive) {
+      await supabase.from("store_products").update({ status: "inactive", available: false, updated_at: new Date().toISOString() }).eq("store_id", storeId).eq("status", "active");
+    }
+    setProducts(((rows || []) as Product[]).map((product) => entitlementExpiresAt && !entitlementActive ? { ...product, status: "inactive", available: false } : product));
     setFreePostUsed(Boolean(entitlement?.free_post_used));
     setPaidLimit(Number(entitlement?.paid_post_limit || 0));
-    setExpiresAt(entitlement?.paid_post_expires_at || null);
+    setExpiresAt(entitlementExpiresAt);
     setPlanType((entitlement?.plan_type as PlanType) || null);
     setLoading(false);
   }
@@ -98,6 +105,10 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
 
   async function toggleProduct(product: Product) {
     const enabled = product.status !== "active" || !product.available;
+    if (enabled && productPostingLocked) {
+      toast({ title: "Plan expired", description: "Renew the weekly or monthly product plan before enabling products.", variant: "destructive" });
+      return;
+    }
     const { error } = await supabase.from("store_products").update({ status: enabled ? "active" : "inactive", available: enabled, updated_at: new Date().toISOString() }).eq("id", product.id).eq("store_id", storeId);
     if (error) toast({ title: "Could not update product", description: error.message, variant: "destructive" }); else await load();
   }
