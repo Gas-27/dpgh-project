@@ -199,9 +199,22 @@ Deno.serve(async (req) => {
         .is("refunded_at", null);
     }
 
+    console.error(JSON.stringify({
+      event: "provider_add_failed",
+      order: input.order ?? null,
+      http_status: upstream.status,
+      provider_error: providerError,
+      retryable: transient,
+    }));
     return json(
-      { error: "Social Boost provider request failed; retry required." },
-      upstream.status >= 400 ? upstream.status : 502,
+      {
+        error: transient
+          ? "Social Boost provider is temporarily unavailable. The order remains pending for retry."
+          : "Social Boost provider rejected the order. It could not be refunded automatically.",
+        provider_message: providerError || null,
+        retryable: transient,
+      },
+      transient ? 503 : upstream.status >= 400 ? upstream.status : 422,
     );
   }
 
@@ -254,6 +267,15 @@ Deno.serve(async (req) => {
     }
   }
 
-  if (action === "status" && payload && typeof payload === "object" && typeof (payload as { status?: unknown }).status === "string") { const live = payload as { status: string; start_count?: unknown; remains?: unknown }; await supabase.from("social_boost_orders").update({ provider_status: live.status, start_count: live.start_count == null ? null : Number(live.start_count), remains: live.remains == null ? null : Number(live.remains) }).eq("provider_order_id", String(input.order)); }
+  if (action === "status" && payload && typeof payload === "object" && typeof (payload as { status?: unknown }).status === "string") {
+    const live = payload as { status: string; start_count?: unknown; remains?: unknown };
+    const providerStatus = live.status.trim().toLowerCase();
+    const localStatus = ["completed", "complete", "delivered"].includes(providerStatus)
+      ? "completed"
+      : ["canceled", "cancelled", "failed", "failure"].includes(providerStatus)
+        ? "failed"
+        : "processing";
+    await supabase.from("social_boost_orders").update({ status: localStatus, provider_status: live.status, start_count: live.start_count == null ? null : Number(live.start_count), remains: live.remains == null ? null : Number(live.remains) }).eq("provider_order_id", String(input.order));
+  }
   return json(payload, upstream.status);
 });

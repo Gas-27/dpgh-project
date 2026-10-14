@@ -433,10 +433,20 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
       setBuying(false);
       return toast({ title: "Wallet purchase failed", description: walletError?.message ?? "Your wallet could not be charged.", variant: "destructive" });
     }
-    const { data: provider, error: providerError } = await supabase.functions.invoke("social-boost", { body: { action: "add", service: service.service, link: targetLink.trim(), quantity: numericQuantity, wallet_order_number: walletOrder.order_number, payment_method: "wallet", ...(isCustomComments ? { type: commentType, comments: providerComments } : {}) } });
+    let provider: any = null;
+    let providerError: any = null;
+    const providerBody = { action: "add", service: service.service, link: targetLink.trim(), quantity: numericQuantity, wallet_order_number: walletOrder.order_number, payment_method: "wallet", ...(isCustomComments ? { type: commentType, comments: providerComments } : {}) };
+    for (let attempt = 1; attempt <= 3; attempt += 1) {
+      const result = await supabase.functions.invoke("social-boost", { body: providerBody });
+      provider = result.data;
+      providerError = result.error;
+      if (!providerError && provider?.order) break;
+      if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 1500));
+    }
     setBuying(false);
     if (providerError || !provider?.order) {
-      return toast({ title: "Social Boost provider rejected the order", description: providerError?.message ?? provider?.error ?? "Your wallet order is being reviewed because the provider did not return an order ID.", variant: "destructive" });
+      await loadHistory();
+      return toast({ title: "Order saved for delivery", description: providerError?.message ?? provider?.error ?? "The provider did not return an order ID yet. Your wallet order remains pending and can be retried.", variant: "destructive" });
     }
     setOrderId(String(walletOrder.order_number));
     setPurchasedServiceName(service.name);
