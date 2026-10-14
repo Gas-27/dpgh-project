@@ -133,6 +133,9 @@ Deno.serve(async (req) => {
       const minQuantity = Number(serviceRow?.min_quantity ?? 1);
       const maxQuantity = Number(serviceRow?.max_quantity ?? 100000000);
       if (quantity < minQuantity || quantity > maxQuantity) return new Response(JSON.stringify({ error: "Invalid Social Boost quantity" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: linkError, error: linkCheckError } = await adminClient.rpc("validate_social_boost_link", { p_platform: String(metadata.platform || ""), p_link: targetLink });
+      if (linkCheckError) console.error("[SOCIAL BOOST] Link validation failed to run:", linkCheckError);
+      if (typeof linkError === "string" && linkError) return new Response(JSON.stringify({ error: linkError }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const normalizeTarget = (value: string) => value.trim().toLowerCase().replace(/\/+$/, "");
       const terminalStatuses = ["completed", "complete", "canceled", "cancelled", "failed", "refunded", "partial"];
       const { data: sameServiceOrders } = await adminClient.from("social_boost_orders").select("target_link,provider_status,status").eq("user_id", userId).like("service", `${serviceId}:%`).order("created_at", { ascending: false }).limit(50);
