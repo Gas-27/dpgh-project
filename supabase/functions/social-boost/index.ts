@@ -15,7 +15,7 @@ const REQUIRED_FIELDS: Record<string, string[]> = {
 
 // Provider errors that are NOT the customer's fault (our key, our supplier balance, rate limits,
 // outages). These keep the order pending so it can be retried instead of refunding the customer.
-const RETRYABLE_PROVIDER_ERRORS = /api key|not enough funds|insufficient|balance|rate limit|too many|maintenance|temporar|try again|timeout|timed out|server error|unauthori[sz]ed|forbidden/i;
+const RETRYABLE_PROVIDER_ERRORS = /not enough funds|insufficient|balance temporarily|rate limit|too many requests|maintenance|temporar|try again|timeout|timed out|server error|service unavailable|bad gateway|gateway timeout/i;
 
 function json(data: unknown, status = 200) { return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 function asFormValue(value: unknown) { if (typeof value === "string" || typeof value === "number") return String(value); return null; }
@@ -74,9 +74,12 @@ Deno.serve(async (req) => {
   const isWalletHandoff = action === "add" && !isApiUser && input.payment_method === "wallet" && Boolean(walletOrderNumber);
   if (action === "add" && !isApiUser && !isWalletHandoff) return json({ error: "Payment is required before creating a Social Boost order." }, 402);
   if (isWalletHandoff) {
-    const { data: walletOrder } = await supabase.from("social_boost_orders").select("order_number, user_id, provider_order_id, status").eq("order_number", walletOrderNumber).eq("user_id", actorUserId).maybeSingle();
+    const { data: walletOrder } = await supabase.from("social_boost_orders").select("order_number, user_id, provider_order_id, status, service, target_link, quantity").eq("order_number", walletOrderNumber).eq("user_id", actorUserId).maybeSingle();
     if (!walletOrder || walletOrder.provider_order_id || ["failed", "cancelled", "refunded"].includes(String(walletOrder.status))) return json({ error: "Wallet order is invalid or already processed." }, 409);
     input.order = walletOrder.order_number;
+    input.service = String(walletOrder.service).split(":", 1)[0].trim();
+    input.link = String(walletOrder.target_link);
+    input.quantity = Number(walletOrder.quantity);
   }
   let chargedAmount = 0;
   if (action === "services") {
@@ -156,7 +159,7 @@ Deno.serve(async (req) => {
         .is("provider_order_id", null);
     }
     console.error(JSON.stringify({ event: "provider_unreachable_after_retries", order: input.order ?? null, error: String(lastNetworkError ?? "unknown") }));
-    return json({ error: "Social Boost provider could not be reached. The order was preserved for retry." }, 502);
+    return json({ error: "ExoBoost is temporarily unavailable. The order was preserved for retry.", retryable: true }, 503);
   }
   const text = await upstream.text();
   let payload: unknown = text;
@@ -174,7 +177,7 @@ Deno.serve(async (req) => {
     if (action === "add" && input.order) {
       const transient =
         upstream.status >= 500 ||
-        [401, 403, 408, 425, 429].includes(upstream.status) ||
+        [408, 425, 429].includes(upstream.status) ||
         RETRYABLE_PROVIDER_ERRORS.test(providerError);
 
       if (!transient) {
