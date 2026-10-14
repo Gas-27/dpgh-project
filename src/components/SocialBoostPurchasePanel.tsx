@@ -345,15 +345,62 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
   const numericQuantity = typeof quantity === "number" ? quantity : 0;
   const total = useMemo(() => Math.round((numericQuantity / 1000) * price * 1000) / 1000, [numericQuantity, price]);
 
+  const validateBeforePayment = () => {
+    const link = targetLink.trim();
+    if (!link) return "Enter the social profile or post link to boost.";
+    if (link.length > 500) return "This link is too long.";
+    if (/\s/.test(link)) return "The link must not contain spaces.";
+
+    let url: URL;
+    try {
+      url = new URL(link);
+    } catch {
+      return "Enter a full link that starts with https://.";
+    }
+
+    if (!["http:", "https:"].includes(url.protocol) || !url.hostname.includes(".")) {
+      return "Enter a valid social-media link starting with https://.";
+    }
+
+    const hostname = url.hostname.toLowerCase();
+    const domains: Record<string, string[]> = {
+      TikTok: ["tiktok.com"],
+      Instagram: ["instagram.com"],
+      Facebook: ["facebook.com", "fb.com", "fb.watch", "fb.me"],
+      YouTube: ["youtube.com", "youtu.be"],
+      WhatsApp: ["whatsapp.com", "wa.me"],
+    };
+    const matchesPlatform = (domains[platform] ?? []).some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+    if (!matchesPlatform) return `This link does not belong to ${platform}. Paste a ${platform} link.`;
+
+    const minimum = Number(service.min) || 1;
+    const maximum = Number(service.max) || 100000000;
+    if (!Number.isInteger(numericQuantity) || numericQuantity < minimum || numericQuantity > maximum) {
+      return `This service accepts ${minimum.toLocaleString()} to ${maximum.toLocaleString()}.`;
+    }
+
+    if (!Number.isFinite(total) || total <= 0) return "The order price could not be calculated. Please select the service again.";
+    if (/comment/i.test(`${service.name} ${activeCategory}`) && !customComments.trim()) return "Enter one comment per line before placing this order.";
+    return null;
+  };
+
   const buy = async () => {
     if (requireAuth && !user) {
       navigate("/login", { state: { from: "/packages" } });
       return;
     }
+    const validationError = validateBeforePayment();
+    if (validationError) {
+      const isCommentError = /comment/i.test(validationError);
+      const isQuantityError = /accepts|quantity|price/i.test(validationError);
+      toast({
+        title: isCommentError ? "Comments required" : isQuantityError ? "Check your quantity" : "Check your link",
+        description: validationError,
+        variant: "destructive",
+      });
+      return;
+    }
     const isCustomComments = /comment/i.test(`${service.name} ${activeCategory}`);
-    if (!targetLink.trim()) return toast({ title: "Account link required", description: "Enter the social profile or post link to boost.", variant: "destructive" });
-    if (isCustomComments && !customComments.trim()) return toast({ title: "Comments required", description: "Enter one comment per line before placing this order.", variant: "destructive" });
-    if (!numericQuantity || numericQuantity < min || numericQuantity > max) return toast({ title: "Invalid quantity", description: `This service accepts ${min.toLocaleString()} to ${max.toLocaleString()}.`, variant: "destructive" });
     const providerComments = customComments.trim().split(/\r?\n/).map((line) => line.trim()).filter(Boolean).join("\n");
     setBuying(true);
     if (await hasActiveDuplicate()) {
