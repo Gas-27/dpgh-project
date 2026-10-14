@@ -346,42 +346,45 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
   const total = useMemo(() => Math.round((numericQuantity / 1000) * price * 1000) / 1000, [numericQuantity, price]);
 
   const validateBeforePayment = () => {
+    const warnings: string[] = [];
     const link = targetLink.trim();
-    if (!link) return "Enter the social profile or post link to boost.";
-    if (link.length > 500) return "This link is too long.";
-    if (/\s/.test(link)) return "The link must not contain spaces.";
+    if (!link) warnings.push("No social media link was entered.");
+    if (link.length > 500) warnings.push("The link is longer than 500 characters.");
+    if (/\s/.test(link)) warnings.push("The link contains spaces.");
 
-    let url: URL;
+    let url: URL | null = null;
     try {
       url = new URL(link);
     } catch {
-      return "Enter a full link that starts with https://.";
+      warnings.push("The link is not a complete web link starting with https://.");
     }
 
-    if (!["http:", "https:"].includes(url.protocol) || !url.hostname.includes(".")) {
-      return "Enter a valid social-media link starting with https://.";
+    if (url && (!["http:", "https:"].includes(url.protocol) || !url.hostname.includes("."))) {
+      warnings.push("The link does not look like a valid social media link.");
     }
 
-    const hostname = url.hostname.toLowerCase();
-    const domains: Record<string, string[]> = {
-      TikTok: ["tiktok.com"],
-      Instagram: ["instagram.com"],
-      Facebook: ["facebook.com", "fb.com", "fb.watch", "fb.me"],
-      YouTube: ["youtube.com", "youtu.be"],
-      WhatsApp: ["whatsapp.com", "wa.me"],
-    };
-    const matchesPlatform = (domains[platform] ?? []).some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
-    if (!matchesPlatform) return `This link does not belong to ${platform}. Paste a ${platform} link.`;
+    if (url) {
+      const hostname = url.hostname.toLowerCase();
+      const domains: Record<string, string[]> = {
+        TikTok: ["tiktok.com"],
+        Instagram: ["instagram.com"],
+        Facebook: ["facebook.com", "fb.com", "fb.watch", "fb.me"],
+        YouTube: ["youtube.com", "youtu.be"],
+        WhatsApp: ["whatsapp.com", "wa.me"],
+      };
+      const matchesPlatform = (domains[platform] ?? []).some((domain) => hostname === domain || hostname.endsWith(`.${domain}`));
+      if (!matchesPlatform) warnings.push(`This link does not appear to belong to ${platform}.`);
+    }
 
     const minimum = Number(service.min) || 1;
     const maximum = Number(service.max) || 100000000;
     if (!Number.isInteger(numericQuantity) || numericQuantity < minimum || numericQuantity > maximum) {
-      return `This service accepts ${minimum.toLocaleString()} to ${maximum.toLocaleString()}.`;
+      warnings.push(`This service normally accepts ${minimum.toLocaleString()} to ${maximum.toLocaleString()}.`);
     }
 
-    if (!Number.isFinite(total) || total <= 0) return "The order price could not be calculated. Please select the service again.";
-    if (/comment/i.test(`${service.name} ${activeCategory}`) && !customComments.trim()) return "Enter one comment per line before placing this order.";
-    return null;
+    if (!Number.isFinite(total) || total <= 0) warnings.push("The order price could not be calculated correctly.");
+    if (/comment/i.test(`${service.name} ${activeCategory}`) && !customComments.trim()) warnings.push("No comment text was entered for this comment service.");
+    return warnings;
   };
 
   const buy = async () => {
@@ -389,16 +392,10 @@ if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType
       navigate("/login", { state: { from: "/packages" } });
       return;
     }
-    const validationError = validateBeforePayment();
-    if (validationError) {
-      const isCommentError = /comment/i.test(validationError);
-      const isQuantityError = /accepts|quantity|price/i.test(validationError);
-      toast({
-        title: isCommentError ? "Comments required" : isQuantityError ? "Check your quantity" : "Check your link",
-        description: validationError,
-        variant: "destructive",
-      });
-      return;
+    const validationWarnings = validateBeforePayment();
+    if (validationWarnings.length > 0) {
+      const proceed = window.confirm(`Please review this order before paying:\n\n${validationWarnings.join("\n")}\n\nIf you continue, the provider may reject the order and the order may be refunded. Continue anyway?`);
+      if (!proceed) return;
     }
     const isCustomComments = /comment/i.test(`${service.name} ${activeCategory}`);
     const providerComments = customComments.trim().split(/\r?\n/).map((line) => line.trim()).filter(Boolean).join("\n");
