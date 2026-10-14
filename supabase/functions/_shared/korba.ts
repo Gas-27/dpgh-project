@@ -52,14 +52,34 @@ function readCredentials() {
   return { clientId: Number.isFinite(numericClientId) ? numericClientId : clientId, clientKey, secretKey };
 }
 
+function fixieHttpClient() {
+  const proxyUrl = Deno.env.get("FIXIE_URL")?.trim();
+  if (!proxyUrl) return undefined;
+
+  const proxy = new URL(proxyUrl);
+  const username = decodeURIComponent(proxy.username);
+  const password = decodeURIComponent(proxy.password);
+  proxy.username = "";
+  proxy.password = "";
+
+  return Deno.createHttpClient({
+    proxy: {
+      url: proxy.toString(),
+      ...(username || password ? { basicAuth: { username, password } } : {}),
+    },
+  });
+}
+
 async function send(baseUrl: string, path: string, payload: KorbaPayload) {
   const { clientId, clientKey, secretKey } = readCredentials();
   const body = { ...payload, client_id: clientId };
   const signature = await hmacSha256(secretKey, canonicalize(body));
+  const client = fixieHttpClient();
   const response = await fetch(`${baseUrl}${path}`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `HMAC ${clientKey}:${signature}` },
     body: JSON.stringify(body),
+    ...(client ? { client } : {}),
   });
   const raw = await response.text();
   let parsed: Record<string, unknown>;
