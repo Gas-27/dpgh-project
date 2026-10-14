@@ -168,23 +168,51 @@ Deno.serve(async (req) => {
 
   if (!upstream.ok || (payload && typeof payload === "object" && "error" in payload)) {
     if (action === "add" && input.order) {
-      if (!isWalletHandoff && apiUser) {
-        const { data: current } = await supabase.from("api_users").select("api_wallet").eq("id", apiUser.id).maybeSingle();
-        await supabase.from("api_users").update({ api_wallet: Number(current?.api_wallet ?? 0) + chargedAmount }).eq("id", apiUser.id);
-      }
-      await supabase.from("social_boost_orders").update({ status: "failed", error_message: String((payload as { error?: unknown })?.error ?? "Provider request failed") }).eq("order_number", input.order);
+      await supabase
+        .from("social_boost_orders")
+        .update({
+          status: "pending",
+          error_message: String(
+            (payload as { error?: unknown })?.error ??
+              "Provider request failed; retry required.",
+          ),
+        })
+        .eq("order_number", input.order)
+        .is("provider_order_id", null);
     }
-    return json({ error: "Social Boost provider request failed.", status: upstream.status, details: payload }, upstream.ok ? 502 : upstream.status);
+    return json(
+      { error: "Social Boost provider request failed; retry required." },
+      upstream.status >= 400 ? upstream.status : 502,
+    );
   }
 
   if (action === "add" && input.order) {
     const providerOrderId = (payload as { order?: unknown })?.order;
     if (typeof providerOrderId !== "string" && typeof providerOrderId !== "number") {
-      await supabase.from("social_boost_orders").update({ status: "failed", error_message: "Provider did not return an order ID" }).eq("order_number", input.order);
-      return json({ error: "Provider accepted the request without an order ID." }, 502);
+      await supabase
+        .from("social_boost_orders")
+        .update({
+          status: "pending",
+          error_message: "Provider did not return an order ID; retry required.",
+        })
+        .eq("order_number", input.order)
+        .is("provider_order_id", null);
+      return json({ error: "Provider did not return an order ID; order saved for retry." }, 502);
     }
-    const { error: saveError } = await supabase.from("social_boost_orders").update({ provider_order_id: String(providerOrderId), status: "processing" }).eq("order_number", input.order);
-    if (saveError) return json({ error: "Provider order created but could not be saved locally.", provider_order_id: String(providerOrderId) }, 500);
+    const { error: saveError } = await supabase
+      .from("social_boost_orders")
+      .update({
+        provider_order_id: String(providerOrderId),
+        status: "processing",
+        provider_status: "processing",
+        error_message: null,
+      })
+      .eq("order_number", input.order)
+      .is("provider_order_id", null);
+    if (saveError) {
+      console.error(JSON.stringify({ event: "provider_order_id_save_failed", order: input.order, provider_order_id: String(providerOrderId), error: saveError.message }));
+      return json({ error: "Provider order was created but local status needs reconciliation.", provider_order_id: String(providerOrderId) }, 500);
+    }
   }
   if (action === "status" && payload && typeof payload === "object" && typeof (payload as { status?: unknown }).status === "string") {
     // Saving the live provider status lets the database trigger refund cancelled orders.
