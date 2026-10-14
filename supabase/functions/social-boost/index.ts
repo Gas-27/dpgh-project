@@ -117,6 +117,10 @@ Deno.serve(async (req) => {
   const providerInput = { ...input };
   delete providerInput.wallet_order_number;
   delete providerInput.payment_method;
+  if (action === "add" && typeof providerInput.service === "string") {
+    const serviceId = providerInput.service.split(":", 1)[0].trim();
+    if (/^\d+$/.test(serviceId)) providerInput.service = serviceId;
+  }
   const body = new URLSearchParams({ key: providerApiKey, action });
   for (const [field, value] of Object.entries(providerInput)) {
     if (field === "action" || field === "key") continue;
@@ -127,11 +131,14 @@ Deno.serve(async (req) => {
   let upstream: Response | null = null;
   let lastNetworkError: unknown = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15000);
     try {
       upstream = await fetch(EXOBOOST_API_URL, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
         body,
+        signal: controller.signal,
       });
       const retryableStatus = upstream.status === 408 || upstream.status === 425 || upstream.status === 429 || upstream.status >= 500;
       if (!retryableStatus || attempt === 3) break;
@@ -139,6 +146,8 @@ Deno.serve(async (req) => {
     } catch (error) {
       lastNetworkError = error;
       if (attempt < 3) await new Promise((resolve) => setTimeout(resolve, attempt * 750));
+    } finally {
+      clearTimeout(timeout);
     }
   }
   if (!upstream) {
