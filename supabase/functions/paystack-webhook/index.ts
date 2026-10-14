@@ -263,8 +263,31 @@ Deno.serve(async (req) => {
         console.error("[SOCIAL BOOST] ExoBoost unreachable after retries", { reference, error: String(providerNetworkError ?? "unknown") });
         return new Response(JSON.stringify({ error: "Payment succeeded but Social Boost delivery is pending retry", reference }), { status: 202, headers: corsHeaders });
       }
-      const providerPayload = await providerResponse.json().catch(() => ({}));
+      const providerText = await providerResponse.text();
+      let providerPayload: any = {};
+      try {
+        providerPayload = JSON.parse(providerText);
+      } catch {
+        providerPayload = { error: providerText.slice(0, 300) };
+      }
       const providerOrderId = providerPayload?.order ? String(providerPayload.order) : null;
+      const providerMessage = String(providerPayload?.error || providerPayload?.message || "").trim();
+      const retryableProviderFailure = !providerOrderId && (
+        providerResponse.status >= 500 ||
+        [408, 425, 429].includes(providerResponse.status) ||
+        /api key|not enough funds|insufficient|balance|rate limit|too many|maintenance|temporar|try again|timeout|timed out|server error|unauthori[sz]ed|forbidden/i.test(providerMessage)
+      );
+      if (!providerOrderId && retryableProviderFailure) {
+        console.error("[SOCIAL BOOST] ExoBoost delivery was retryable; asking Paystack to retry webhook", {
+          reference,
+          status: providerResponse.status,
+          message: providerMessage,
+        });
+        return new Response(JSON.stringify({ error: "Social Boost delivery is temporarily unavailable. Retry required." }), {
+          status: 503,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const providerStatus = providerResponse.ok && providerOrderId ? "processing" : "failed";
       const rawOwnerType = String(metadata?.owner_type || metadata?.seller_store_kind || "user").trim().toLowerCase();
       const normalizedOwnerType = rawOwnerType === "subsubagent" || rawOwnerType === "sub-subagent" ? "sub_subagent" : rawOwnerType;
