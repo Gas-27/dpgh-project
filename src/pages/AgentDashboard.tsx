@@ -5036,7 +5036,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                 </div>
 
                 {/* Balance + Stats */}
-  <VerificationOrdersCard orders={dateFilteredOrders} onView={() => { setOrderSearch(" "); document.getElementById("agent-orders")?.scrollIntoView({ behavior: "smooth" }); }} />
+  <VerificationOrdersCard orders={dateFilteredOrders} actorRole="agent" onCancelled={() => window.location.reload()} onView={() => { setOrderSearch(" "); document.getElementById("agent-orders")?.scrollIntoView({ behavior: "smooth" }); }} />
   <div id="agent-orders" className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card className="border-border">
                     <CardContent className="pt-6">

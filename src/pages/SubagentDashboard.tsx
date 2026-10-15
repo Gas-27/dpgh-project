@@ -4212,7 +4212,7 @@ handleMobileNumberChange(digits);
               </CardContent>
             </Card>
 
-            <VerificationOrdersCard orders={dateFilteredOrders} onView={() => { setOrderSearch(" "); document.getElementById("subagent-orders")?.scrollIntoView({ behavior: "smooth" }); }} />
+            <VerificationOrdersCard orders={dateFilteredOrders} actorRole="subagent" onCancelled={() => window.location.reload()} onView={() => { setOrderSearch(" "); document.getElementById("subagent-orders")?.scrollIntoView({ behavior: "smooth" }); }} />
   <div id="subagent-orders" className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-border">
                 <CardContent className="pt-6">

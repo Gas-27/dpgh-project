@@ -2119,7 +2119,7 @@ return (
             </div>
 
             {/* Stats Cards */}
-            <VerificationOrdersCard orders={dateFilteredOrders} onView={() => { setOrderSearch(" "); document.getElementById("subsubagent-orders")?.scrollIntoView({ behavior: "smooth" }); }} />
+            <VerificationOrdersCard orders={dateFilteredOrders} actorRole="sub_subagent" onCancelled={() => window.location.reload()} onView={() => { setOrderSearch(" "); document.getElementById("subsubagent-orders")?.scrollIntoView({ behavior: "smooth" }); }} />
   <div id="subsubagent-orders" className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
               <Card className="border-border">
