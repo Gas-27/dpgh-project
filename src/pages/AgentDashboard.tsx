@@ -8,6 +8,8 @@ import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { verifyHubtelMsisdn } from "@/services/hubtelService";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { OrderSourceFilter } from "@/components/OrderSourceFilter";
+import { getOrderSource, ORDER_SOURCE_LABELS, type OrderSourceFilterKey } from "@/lib/orderSource";
 import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
 import { RefundStatusCell } from "@/components/RefundStatusCell";
 import { useStorefrontRefunds } from "@/hooks/useStorefrontRefunds";
@@ -466,6 +468,7 @@ const localNumber = number.replace(/\D/g, "");
   const [openManualSection, setOpenManualSection] = useState<number | null>(null);
   const [markupPercent, setMarkupPercent] = useState("");
   const [showRefundedOnly, setShowRefundedOnly] = useState(false);
+  const [orderSourceFilter, setOrderSourceFilter] = useState<OrderSourceFilterKey>("all");
   const [allRefundedOrders, setAllRefundedOrders] = useState<Order[]>([]);
   const [refundedOrdersTotal, setRefundedOrdersTotal] = useState(0);
 
@@ -2443,10 +2446,43 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
   );
   const pendingOrders = dateFilteredOrders.filter(o => o.status === "pending").length;
   // When "show refunded only" is on, draw from the full allRefundedOrders list fetched from DB
-  const filteredOrders = (showRefundedOnly ? allRefundedOrders : getDateFilteredOrders(orders)).filter(o => {
+  const sourceBaseOrders = showRefundedOnly ? allRefundedOrders : getDateFilteredOrders(orders);
+  const filteredOrders = sourceBaseOrders.filter(o => {
     const matchesSearch = o.customer_number?.toLowerCase().includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase());
-    return matchesSearch;
+    const matchesSource = orderSourceFilter === "all" || getOrderSource(o as any) === orderSourceFilter;
+    return matchesSearch && matchesSource;
   });
+
+  const orderSourceCounts: Partial<Record<OrderSourceFilterKey, number>> = { all: sourceBaseOrders.length };
+  for (const o of sourceBaseOrders) {
+    const key = getOrderSource(o as any);
+    orderSourceCounts[key] = (orderSourceCounts[key] ?? 0) + 1;
+  }
+
+  // Revenue and profit of the selected source, using the same price rules as the orders table below.
+  const orderSourceSummary = (() => {
+    let revenue = 0;
+    let profit = 0;
+    for (const order of filteredOrders as any[]) {
+      const method = String(order.payment_method || "").toLowerCase();
+      const isRefundedOrFailed =
+        order.status === "refunded" || order.status === "failed" ||
+        order.fulfillment_status === "refunded" || String(order.order_status || "").toLowerCase() === "refunded";
+      if (method === "free_data_claim" || isRefundedOrFailed) continue;
+      const adminBase = packages.find(p => p.id === order.package_id)?.agent_price || 0;
+      if (order.subagent_store_id || order.sub_subagent_store_id) {
+        const charged = subagentBasePrices[order.package_id] || adminBase;
+        revenue += charged;
+        profit += charged - adminBase;
+      } else {
+        const sell = order.selling_price && order.selling_price > 0 ? Number(order.selling_price) : Number(order.amount);
+        const base = order.base_price && order.base_price > 0 ? Number(order.base_price) : adminBase;
+        revenue += sell;
+        profit += order.profit !== null && order.profit !== undefined && order.profit !== 0 ? Number(order.profit) : sell - base;
+      }
+    }
+    return { revenue, profit };
+  })();
   
   // Financial KPIs come from the database aggregate, not the paginated orders array.
   // This keeps the figures complete for large stores and applies the same status,
@@ -2728,6 +2764,25 @@ return (
                 </Card>
               </div>
             )}
+
+            <Card className="border-border">
+              <CardHeader className="flex flex-col gap-3">
+                <CardTitle className="font-display text-lg">Orders by source</CardTitle>
+                <OrderSourceFilter
+                  value={orderSourceFilter}
+                  onChange={(next) => { setOrderSourceFilter(next); setCurrentPage(1); }}
+                  options={["all", "dashboard", "storefront", "subagent", "subsubagent", "api"]}
+                  counts={orderSourceCounts}
+                />
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-3 gap-3 text-center">
+                  <div><p className="text-xs text-muted-foreground">{ORDER_SOURCE_LABELS[orderSourceFilter]} orders</p><p className="font-display text-xl font-bold">{filteredOrders.length}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Revenue</p><p className="font-display text-xl font-bold">GHC {orderSourceSummary.revenue.toFixed(2)}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Profit</p><p className={`font-display text-xl font-bold ${orderSourceSummary.profit >= 0 ? "text-green-400" : "text-red-400"}`}>GHC {orderSourceSummary.profit.toFixed(2)}</p></div>
+                </div>
+              </CardContent>
+            </Card>
 
             <Card className="border-border">
               <CardHeader className="flex flex-col gap-3">

@@ -20,6 +20,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Sparkles, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck, ChevronDown, ChevronUp, Video } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { OrderSourceFilter } from "@/components/OrderSourceFilter";
+import { getOrderSource, ORDER_SOURCE_LABELS, type OrderSourceFilterKey } from "@/lib/orderSource";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { useToast } from "@/hooks/use-toast";
@@ -197,6 +199,7 @@ const UserDashboard = () => {
 
   // Orders search state
   const [orderSearch, setOrderSearch] = useState("");
+  const [orderSourceFilter, setOrderSourceFilter] = useState<OrderSourceFilterKey>("all");
 
   // Announcement video iframe (Overview top)
   const [announcement, setAnnouncement] = useState<{ title: string; video_url: string } | null>(null);
@@ -689,7 +692,16 @@ const UserDashboard = () => {
     };
   };
 
-  const { filteredOrders: overviewFilteredOrders, totalSpent: overviewTotalSpent } = getFilteredOverviewStats();
+  const { filteredOrders: overviewDateOrders } = getFilteredOverviewStats();
+  const overviewSourceCounts: Partial<Record<OrderSourceFilterKey, number>> = { all: overviewDateOrders.length };
+  for (const o of overviewDateOrders) {
+    const key = getOrderSource(o as any);
+    overviewSourceCounts[key] = (overviewSourceCounts[key] ?? 0) + 1;
+  }
+  const overviewFilteredOrders = orderSourceFilter === "all"
+    ? overviewDateOrders
+    : overviewDateOrders.filter(o => getOrderSource(o as any) === orderSourceFilter);
+  const overviewTotalSpent = overviewFilteredOrders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
 
   const generateApiKey = async () => {
     if (generatingApiKey) return;
@@ -1159,11 +1171,21 @@ case "api-key":
         )}
       </div>
 
+      <div className="space-y-2">
+        <p className="text-sm font-medium text-muted-foreground">Filter by source</p>
+        <OrderSourceFilter
+          value={orderSourceFilter}
+          onChange={setOrderSourceFilter}
+          options={["all", "dashboard", "storefront", "api"]}
+          counts={overviewSourceCounts}
+        />
+      </div>
+
       {/* Stats Cards Row - Like Agent Dashboard */}
       <div className="grid grid-cols-1 gap-4">
         <Card className="border-border">
           <CardContent className="p-6 text-center">
-            <p className="text-muted-foreground text-sm">{overviewDateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p>
+            <p className="text-muted-foreground text-sm">{orderSourceFilter !== "all" ? `${ORDER_SOURCE_LABELS[orderSourceFilter]} Orders` : overviewDateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p>
             <p className="font-display text-3xl font-bold mt-2 text-foreground">{overviewFilteredOrders.length}</p>
           </CardContent>
         </Card>
@@ -1289,7 +1311,8 @@ case "api-key":
                   {orders.filter(o => {
                     const matchesSearch = o.customer_number?.includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase());
                     const matchesRefundFilter = showRefundedOnly ? (o.status === "refunded" || o.fulfillment_status === "refunded") : true;
-                    return matchesSearch && matchesRefundFilter;
+                    const matchesSource = orderSourceFilter === "all" || getOrderSource(o as any) === orderSourceFilter;
+                    return matchesSearch && matchesRefundFilter && matchesSource;
                   }).map(order => (
                     <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
                       <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>

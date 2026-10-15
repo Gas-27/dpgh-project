@@ -23,6 +23,27 @@ function asFormValue(value: unknown) { if (typeof value === "string" || typeof v
 // deno-lint-ignore no-explicit-any
 type SupabaseAdmin = any;
 
+// Only one caller may submit a given order to ExoBoost at a time. The claim is a single atomic UPDATE,
+// so a double-click, an overlapping cron run, or a webhook retry cannot send the same order twice.
+// A claim older than 10 minutes is treated as abandoned (the caller crashed before releasing it).
+async function claimOrderForProvider(supabase: SupabaseAdmin, orderNumber: unknown) {
+  const staleBefore = new Date(Date.now() - 10 * 60 * 1000).toISOString();
+  const { data } = await supabase
+    .from("social_boost_orders")
+    .update({ provider_claimed_at: new Date().toISOString() })
+    .eq("order_number", orderNumber)
+    .is("provider_order_id", null)
+    .is("refunded_at", null)
+    .or(`provider_claimed_at.is.null,provider_claimed_at.lt.${staleBefore}`)
+    .select("order_number")
+    .maybeSingle();
+  return Boolean(data);
+}
+
+async function releaseProviderClaim(supabase: SupabaseAdmin, orderNumber: unknown) {
+  await supabase.from("social_boost_orders").update({ provider_claimed_at: null }).eq("order_number", orderNumber).is("provider_order_id", null);
+}
+
 // Marks an order the provider permanently rejected as failed and refunds the buyer.
 // Setting provider_status to "canceled" fires the existing refund trigger, and the explicit RPC call
 // below is idempotent (refunded_at) and surfaces any refund error. If the refund fails, the order is
@@ -77,15 +98,25 @@ Deno.serve(async (req) => {
       const { data: linkError } = await supabase.rpc("validate_social_boost_link", { p_platform: order.platform, p_link: order.target_link });
       if (linkError) { results.push({ order: order.order_number, skipped: String(linkError) }); continue; }
       if (/comment/i.test(String(order.service))) { results.push({ order: order.order_number, skipped: "custom comments need manual handling" }); continue; }
+      if (!(await claimOrderForProvider(supabase, order.order_number))) { results.push({ order: order.order_number, skipped: "already being submitted" }); continue; }
       try {
         const res = await fetch(EXOBOOST_API_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" }, body: new URLSearchParams({ key: providerApiKey, action: "add", service: serviceId, link: String(order.target_link), quantity: String(order.quantity) }), signal: AbortSignal.timeout(20000) });
         const raw = await res.text();
         let parsed: { order?: unknown; error?: unknown } = {};
         try { parsed = JSON.parse(raw); } catch { /* non-JSON reply */ }
-        if (parsed.order == null) { results.push({ order: order.order_number, failed: String(parsed.error ?? raw).slice(0, 200) }); continue; }
-        const { error: saveError } = await supabase.from("social_boost_orders").update({ provider_order_id: String(parsed.order), status: "processing", provider_status: "processing" }).eq("order_number", order.order_number).is("provider_order_id", null);
+        if (parsed.order == null) { await releaseProviderClaim(supabase, order.order_number); results.push({ order: order.order_number, failed: String(parsed.error ?? raw).slice(0, 200) }); continue; }
+        let saveError: { message: string } | null = null;
+        for (let attempt = 1; attempt <= 3; attempt += 1) {
+          const { error } = await supabase.from("social_boost_orders").update({ provider_order_id: String(parsed.order), status: "processing", provider_status: "processing" }).eq("order_number", order.order_number).is("provider_order_id", null);
+          saveError = error;
+          if (!error) break;
+        }
+        if (saveError) console.error(JSON.stringify({ event: "provider_order_id_save_failed", order: order.order_number, provider_order_id: String(parsed.order), error: saveError.message }));
         results.push({ order: order.order_number, provider_order_id: String(parsed.order), saved: !saveError });
-      } catch (error) { results.push({ order: order.order_number, failed: String(error) }); }
+      } catch (error) {
+        // The request may have reached ExoBoost before failing, so the claim is kept and expires on its own.
+        results.push({ order: order.order_number, failed: String(error) });
+      }
     }
     return json({ processed: results.length, results });
   }
@@ -144,6 +175,10 @@ Deno.serve(async (req) => {
     }
     providerInput.service = serviceId;
   }
+  if (action === "add" && input.order) {
+    const claimed = await claimOrderForProvider(supabase, input.order);
+    if (!claimed) return json({ error: "This order is already being submitted or has already been sent.", duplicate_prevented: true }, 409);
+  }
   const body = new URLSearchParams({ key: providerApiKey, action }); for (const [field, value] of Object.entries(providerInput)) { if (field === "action" || field === "key") continue; const formValue = asFormValue(value); if (formValue !== null) body.set(field, formValue); }
   let upstream: Response | null = null; let lastNetworkError: unknown = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
@@ -182,7 +217,7 @@ Deno.serve(async (req) => {
     if (action === "add" && input.order) {
       await supabase
         .from("social_boost_orders")
-        .update({ status: "pending" })
+        .update({ status: "pending", provider_claimed_at: null })
         .eq("order_number", input.order)
         .is("provider_order_id", null);
     }
@@ -224,7 +259,7 @@ Deno.serve(async (req) => {
 
       await supabase
         .from("social_boost_orders")
-        .update({ status: "pending" })
+        .update({ status: "pending", provider_claimed_at: null })
         .eq("order_number", input.order)
         .is("provider_order_id", null)
         .is("refunded_at", null);
@@ -258,7 +293,7 @@ Deno.serve(async (req) => {
     ) {
       await supabase
         .from("social_boost_orders")
-        .update({ status: "pending" })
+        .update({ status: "pending", provider_claimed_at: null })
         .eq("order_number", input.order)
         .is("provider_order_id", null);
 
