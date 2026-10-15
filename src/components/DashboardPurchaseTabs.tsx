@@ -51,7 +51,7 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
         <Tabs defaultValue="subscription" className="space-y-4">
           <TabsList className="grid w-full grid-cols-2"><TabsTrigger value="subscription">Subscription</TabsTrigger><TabsTrigger value="history">Purchase History</TabsTrigger></TabsList>
           <TabsContent value="subscription"><DigitalServicesCatalog agentStoreId={ownerId} onBuy={setService} /><ServicePurchaseDialog service={service} ownerType={ownerType} ownerId={ownerId} onOpenChange={(open) => { if (!open) setService(null); }} /></TabsContent>
-          <TabsContent value="history"><PurchaseHistory ownerType={ownerType} ownerId={ownerId} category="subscription" /></TabsContent>
+          <TabsContent value="history"><SubscriptionHistory ownerType={ownerType} ownerId={ownerId} /></TabsContent>
         </Tabs>
       </section>
     );
@@ -78,6 +78,120 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
         <TabsContent value="history"><PurchaseHistory ownerType={ownerType} ownerId={ownerId} category={historyCategory} /></TabsContent>
       </Tabs>
     </section>
+  );
+}
+
+type SubscriptionHistoryRow = {
+  id: string;
+  created_at: string;
+  source: "dashboard" | "storefront";
+  service_name: string | null;
+  customer_number: string | null;
+  amount: number;
+  cost: number;
+  profit: number;
+  status: string | null;
+};
+
+const SUBSCRIPTION_SOURCE_FILTERS = [
+  { key: "all", label: "All" },
+  { key: "dashboard", label: "Dashboard" },
+  { key: "storefront", label: "Store Front" },
+] as const;
+
+function SubscriptionHistory({ ownerType, ownerId }: { ownerType: string; ownerId?: string }) {
+  const [rows, setRows] = useState<SubscriptionHistoryRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [failed, setFailed] = useState(false);
+  const [filter, setFilter] = useState<(typeof SUBSCRIPTION_SOURCE_FILTERS)[number]["key"]>("all");
+
+  useEffect(() => {
+    let active = true;
+    const load = async () => {
+      if (!ownerId) { setLoading(false); return; }
+      setLoading(true);
+      setFailed(false);
+      const { data, error } = await supabase.rpc("get_subscription_history" as any, { p_owner_type: ownerType, p_owner_id: ownerId });
+      if (!active) return;
+      if (error) {
+        console.error("[v0] Subscription history query failed", error);
+        setFailed(true);
+        setRows([]);
+      } else {
+        setRows(((data as any[]) || []).map((row) => ({ ...row, amount: Number(row.amount ?? 0), cost: Number(row.cost ?? 0), profit: Number(row.profit ?? 0) })));
+      }
+      setLoading(false);
+    };
+    void load();
+    return () => { active = false; };
+  }, [ownerId, ownerType]);
+
+  if (loading) return <p className="py-8 text-center text-sm text-muted-foreground">Loading purchase history...</p>;
+  if (failed) return <p className="rounded-xl border border-dashed border-destructive/40 p-8 text-center text-sm text-destructive">Could not load purchase history. Please refresh and try again.</p>;
+
+  const visible = rows.filter((row) => filter === "all" || row.source === filter);
+  const isCompleted = (row: SubscriptionHistoryRow) => String(row.status || "").toLowerCase() === "completed";
+  const completed = visible.filter(isCompleted);
+  const totalSales = completed.reduce((sum, row) => sum + row.amount, 0);
+  const totalProfit = completed.reduce((sum, row) => sum + row.profit, 0);
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap gap-2" role="group" aria-label="Filter subscription purchases by source">
+          {SUBSCRIPTION_SOURCE_FILTERS.map((option) => (
+            <button
+              key={option.key}
+              type="button"
+              aria-pressed={filter === option.key}
+              onClick={() => setFilter(option.key)}
+              className={`rounded-full border px-3 py-1 text-xs font-medium transition-colors ${filter === option.key ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background text-muted-foreground hover:text-foreground"}`}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
+        <div className="flex gap-4 text-sm">
+          <span className="text-muted-foreground">Sales: <strong className="text-foreground">GHC {totalSales.toFixed(2)}</strong></span>
+          <span className="text-muted-foreground">Profit: <strong className="text-emerald-600">GHC {totalProfit.toFixed(2)}</strong></span>
+        </div>
+      </div>
+
+      {!visible.length ? (
+        <p className="rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">No subscription purchases found for this filter yet.</p>
+      ) : (
+        <div className="overflow-x-auto rounded-xl border border-border">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/50">
+              <tr>
+                <th className="p-3 text-left">Date</th>
+                <th className="p-3 text-left">Subscription</th>
+                <th className="p-3 text-left">Source</th>
+                <th className="p-3 text-left">Recipient</th>
+                <th className="p-3 text-left">Amount</th>
+                <th className="p-3 text-left">Cost</th>
+                <th className="p-3 text-left">Profit</th>
+                <th className="p-3 text-left">Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {visible.map((row) => (
+                <tr key={`${row.source}-${row.id}`} className="border-t border-border">
+                  <td className="p-3">{new Date(row.created_at).toLocaleString()}</td>
+                  <td className="p-3">{row.service_name || "Subscription"}</td>
+                  <td className="p-3">{row.source === "storefront" ? "Store Front" : "Dashboard"}</td>
+                  <td className="p-3">{row.customer_number || "—"}</td>
+                  <td className="p-3">GHC {row.amount.toFixed(2)}</td>
+                  <td className="p-3">GHC {row.cost.toFixed(2)}</td>
+                  <td className="p-3 font-medium text-emerald-600">{row.source === "storefront" && isCompleted(row) ? `GHC ${row.profit.toFixed(2)}` : "—"}</td>
+                  <td className="p-3 capitalize">{String(row.status || "pending").replace(/_/g, " ")}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
   );
 }
 
