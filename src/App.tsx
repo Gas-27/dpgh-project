@@ -296,7 +296,7 @@ return (
                   <Route path="/" element={<CustomDomainResolver />} />
                   <Route path="/become-agent" element={<BecomeAgent />} />
                   <Route path="/__custom/agent/:storeName" element={<AgentStorefront />} />
-                  <Route path="/__custom/subagent/:storeName" element={<AgentStorefront />} />
+                  <Route path="/__custom/subagent/:storeName" element={<SubagentStorefront />} />
                   <Route path="/__custom/subsubagent/:subagentStoreName/:subSubagentStoreName" element={<SubSubagentStorefront />} />
                   <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId" element={<ProductDetail />} />

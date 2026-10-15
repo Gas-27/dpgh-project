@@ -2396,6 +2396,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
   });
   const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
   const defaultStoreUrl = store ? DOMAINS.getAgentStoreUrl(store.store_name) : "";
+  const storeUrl = store?.custom_domain ? `https://${store.custom_domain}` : defaultStoreUrl;
   const subagentSignupUrl = defaultStoreUrl ? `${defaultStoreUrl}/become-agent` : "";
   const storeName = store?.store_name || "DATA PLUG .STORE";
   const supportNum = store?.support_number || "";
