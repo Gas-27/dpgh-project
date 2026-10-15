@@ -1176,7 +1176,7 @@ case "api-key":
         <OrderSourceFilter
           value={orderSourceFilter}
           onChange={setOrderSourceFilter}
-          options={["all", "dashboard", "storefront", "api"]}
+          options={["all", "dashboard", "api"]}
           counts={overviewSourceCounts}
         />
       </div>

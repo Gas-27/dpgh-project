@@ -2459,29 +2459,43 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     orderSourceCounts[key] = (orderSourceCounts[key] ?? 0) + 1;
   }
 
-  // Revenue and profit of the selected source, using the same price rules as the orders table below.
+  // Mirrors get_agent_financial_totals (the top Revenue/Profit cards) so "All Sources" matches them.
+  // The agent's own dashboard purchases are spending, not store revenue, so they are tracked as `spent`.
   const orderSourceSummary = (() => {
     let revenue = 0;
     let profit = 0;
+    let spent = 0;
     for (const order of filteredOrders as any[]) {
+      const source = getOrderSource(order);
       const method = String(order.payment_method || "").toLowerCase();
-      const isRefundedOrFailed =
-        order.status === "refunded" || order.status === "failed" ||
-        order.fulfillment_status === "refunded" || String(order.order_status || "").toLowerCase() === "refunded";
-      if (method === "free_data_claim" || isRefundedOrFailed) continue;
-      const adminBase = packages.find(p => p.id === order.package_id)?.agent_price || 0;
-      if (order.subagent_store_id || order.sub_subagent_store_id) {
-        const charged = subagentBasePrices[order.package_id] || adminBase;
-        revenue += charged;
-        profit += charged - adminBase;
+      const status = String(order.status || "").toLowerCase();
+      const isRefunded =
+        order.refunded === true ||
+        status === "refunded" || status === "failed" ||
+        String(order.fulfillment_status || "").toLowerCase() === "refunded" ||
+        String(order.order_status || "").toLowerCase() === "refunded";
+
+      if (source === "dashboard") {
+        if (!isRefunded && method !== "spin_wheel") spent += Number(order.amount ?? 0);
+        continue;
+      }
+      if (source === "api") {
+        if (method === "free_data_claim") continue;
+        revenue += Number(order.selling_price ?? order.amount ?? 0);
+        profit += Number(order.profit ?? 0);
+        continue;
+      }
+      if (isRefunded || !["paid", "completed", "delivered"].includes(status)) continue;
+
+      revenue += Number(order.selling_price ?? order.amount ?? 0);
+      if (source === "storefront") {
+        const base = order.agent_base_price ?? order.base_price ?? 0;
+        profit += Number(order.agent_profit) || Number(order.profit) || (Number(order.selling_price ?? order.amount ?? 0) - Number(base));
       } else {
-        const sell = order.selling_price && order.selling_price > 0 ? Number(order.selling_price) : Number(order.amount);
-        const base = order.base_price && order.base_price > 0 ? Number(order.base_price) : adminBase;
-        revenue += sell;
-        profit += order.profit !== null && order.profit !== undefined && order.profit !== 0 ? Number(order.profit) : sell - base;
+        profit += Number(order.agent_subagent_profit) || Number(order.agent_profit) || 0;
       }
     }
-    return { revenue, profit };
+    return { revenue, profit, spent };
   })();
   
   // Financial KPIs come from the database aggregate, not the paginated orders array.
@@ -2778,8 +2792,14 @@ return (
               <CardContent>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div><p className="text-xs text-muted-foreground">{ORDER_SOURCE_LABELS[orderSourceFilter]} orders</p><p className="font-display text-xl font-bold">{filteredOrders.length}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Revenue</p><p className="font-display text-xl font-bold">GHC {orderSourceSummary.revenue.toFixed(2)}</p></div>
-                  <div><p className="text-xs text-muted-foreground">Profit</p><p className={`font-display text-xl font-bold ${orderSourceSummary.profit >= 0 ? "text-green-400" : "text-red-400"}`}>GHC {orderSourceSummary.profit.toFixed(2)}</p></div>
+                  {orderSourceFilter === "dashboard" ? (
+                    <div className="col-span-2"><p className="text-xs text-muted-foreground">Spent from your wallet (not store revenue)</p><p className="font-display text-xl font-bold">GHC {orderSourceSummary.spent.toFixed(2)}</p></div>
+                  ) : (
+                    <>
+                      <div><p className="text-xs text-muted-foreground">Revenue</p><p className="font-display text-xl font-bold">GHC {orderSourceSummary.revenue.toFixed(2)}</p></div>
+                      <div><p className="text-xs text-muted-foreground">Profit</p><p className={`font-display text-xl font-bold ${orderSourceSummary.profit >= 0 ? "text-green-400" : "text-red-400"}`}>GHC {orderSourceSummary.profit.toFixed(2)}</p></div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
