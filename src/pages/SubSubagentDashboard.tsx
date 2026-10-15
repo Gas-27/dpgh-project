@@ -26,6 +26,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
+import TrainingVideosSection from "@/components/TrainingVideosSection";
 import AgentProductStorePanel from "@/components/AgentProductStorePanel";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import CustomDomainPanel from "@/components/CustomDomainPanel";
@@ -2062,7 +2063,9 @@ return (
           <TabsContent value="approvals" className="mt-0 space-y-6"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="subsubagent-dashboard" storeId={subagentStore?.id} /></CardContent></Card></TabsContent>
 <TabsContent value="overview" className="mt-0 space-y-6">
   <Button type="button" size="sm" className="rounded-full border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setActiveTab("withdraw")}>Withdraw</Button>
-                                              {/* Instruction Manual Dropdown */}
+  {/* TRAINING VIDEOS */}
+  <TrainingVideosSection role="subsubagent" />
+  {/* Instruction Manual Dropdown */}
   <Card className="hidden border-primary/30 bg-primary/5">
               <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">
                 <div className="flex items-center gap-3">

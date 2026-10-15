@@ -8,6 +8,11 @@ import { Label } from '@/components/ui/label';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Save, Play, Trash2 } from 'lucide-react';
+import {
+  fetchTrainingVideoRows,
+  mergeTrainingVideoRows,
+  type TrainingVideoRole,
+} from '@/lib/trainingVideos';
 
 interface VideoSettings {
   title: string;
@@ -49,50 +54,17 @@ export default function AdminYouTubeUrlManager() {
   const fetchYouTubeSettings = async () => {
     setLoading(true);
     try {
-      console.log('[v0] Fetching YouTube settings from afa_settings');
-      const { data, error } = await supabase
-        .from('afa_settings')
-        .select(`
-          agent_video_1_title, agent_video_1_url,
-          agent_video_2_title, agent_video_2_url,
-          agent_video_3_title, agent_video_3_url,
-          subagent_video_1_title, subagent_video_1_url,
-          subagent_video_2_title, subagent_video_2_url,
-          subagent_video_3_title, subagent_video_3_url,
-          subsubagent_video_1_title, subsubagent_video_1_url,
-          subsubagent_video_2_title, subsubagent_video_2_url,
-          subsubagent_video_3_title, subsubagent_video_3_url
-        `)
-        .limit(1);
-
-      if (error) {
-        console.error('[v0] Error fetching YouTube settings:', error);
-        toast({ title: 'Error', description: 'Failed to load video settings', variant: 'destructive' });
-        return;
-      }
-
-      if (data && data.length > 0) {
-        console.log('[v0] YouTube settings loaded:', data[0]);
-        const record = data[0];
-        setAgentVideos([
-          { title: record.agent_video_1_title || '', url: record.agent_video_1_url || '' },
-          { title: record.agent_video_2_title || '', url: record.agent_video_2_url || '' },
-          { title: record.agent_video_3_title || '', url: record.agent_video_3_url || '' },
-        ]);
-
-        setSubagentVideos([
-          { title: record.subagent_video_1_title || '', url: record.subagent_video_1_url || '' },
-          { title: record.subagent_video_2_title || '', url: record.subagent_video_2_url || '' },
-          { title: record.subagent_video_3_title || '', url: record.subagent_video_3_url || '' },
-        ]);
-        setSubsubagentVideos([
-          { title: record.subsubagent_video_1_title || '', url: record.subsubagent_video_1_url || '' },
-          { title: record.subsubagent_video_2_title || '', url: record.subsubagent_video_2_url || '' },
-          { title: record.subsubagent_video_3_title || '', url: record.subsubagent_video_3_url || '' },
-        ]);
-      } else {
-        console.log('[v0] No afa_settings records found');
-      }
+      const rows = await fetchTrainingVideoRows();
+      const toSlots = (role: TrainingVideoRole): VideoSettings[] => {
+        const merged = mergeTrainingVideoRows(rows, role);
+        return [1, 2, 3].map((n) => {
+          const found = merged.find((v) => v.id === String(n));
+          return { title: found?.title && found.title !== `Video ${n}` ? found.title : '', url: found?.url || '' };
+        });
+      };
+      setAgentVideos(toSlots('agent'));
+      setSubagentVideos(toSlots('subagent'));
+      setSubsubagentVideos(toSlots('subsubagent'));
     } catch (error) {
       console.error('[v0] Error fetching YouTube settings:', error);
       toast({ title: 'Error', description: 'Failed to load video settings', variant: 'destructive' });
@@ -104,18 +76,16 @@ export default function AdminYouTubeUrlManager() {
   const handleSave = async () => {
     setSaving(true);
     try {
-      // First, get the afa_settings ID
       const { data: settingsData, error: idError } = await supabase
         .from('afa_settings')
-        .select('id')
-        .limit(1);
+        .select('id');
 
       if (idError || !settingsData || settingsData.length === 0) {
         toast({ title: 'Error', description: 'AFA settings not found', variant: 'destructive' });
         return;
       }
 
-      const settingsId = settingsData[0].id;
+      const settingsIds = settingsData.map((row) => row.id);
 
       const updateData: Record<string, string | null> = {
         agent_video_1_title: agentVideos[0]?.title || null,
@@ -141,7 +111,7 @@ export default function AdminYouTubeUrlManager() {
       const { error } = await supabase
         .from('afa_settings')
         .update(updateData)
-        .eq('id', settingsId);
+        .in('id', settingsIds);
 
       if (error) throw error;
 
