@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       callerRole = String(payload.role ?? "");
     } catch (_) { /* not a JWT */ }
     if (callerRole !== "service_role" && bearer !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) return json({ error: "Forbidden." }, 403);
-    const { data: stuck, error: stuckError } = await supabase.from("social_boost_orders").select("order_number,platform,service,target_link,quantity").is("provider_order_id", null).is("refunded_at", null).eq("status", "pending").order("order_number").limit(50);
+    const { data: stuck, error: stuckError } = await supabase.from("social_boost_orders").select("order_number,platform,service,target_link,quantity").is("provider_order_id", null).is("refunded_at", null).eq("status", "pending").lt("created_at", new Date(Date.now() - 3 * 60 * 1000).toISOString()).order("order_number").limit(10);
     if (stuckError) return json({ error: stuckError.message }, 500);
     const results: Record<string, unknown>[] = [];
     for (const order of stuck ?? []) {
