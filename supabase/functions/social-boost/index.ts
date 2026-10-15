@@ -15,7 +15,7 @@ const REQUIRED_FIELDS: Record<string, string[]> = {
 
 // Provider errors that are NOT the customer's fault (our key, our supplier balance, rate limits,
 // outages). These keep the order pending so it can be retried instead of refunding the customer.
-const RETRYABLE_PROVIDER_ERRORS = /not enough funds|insufficient|balance temporarily|rate limit|too many requests|maintenance|temporar|try again|timeout|timed out|server error|service unavailable|bad gateway|gateway timeout/i;
+const RETRYABLE_PROVIDER_ERRORS = /api key|not enough funds|insufficient|balance|rate limit|too many|maintenance|temporar|try again|timeout|timed out|server error|service unavailable|bad gateway|gateway timeout|unauthori[sz]ed|forbidden/i;
 
 function json(data: unknown, status = 200) { return new Response(JSON.stringify(data), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 function asFormValue(value: unknown) { if (typeof value === "string" || typeof value === "number") return String(value); return null; }
@@ -62,6 +62,28 @@ Deno.serve(async (req) => {
   const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
   if (!bearer) return json({ error: "Authentication is required." }, 401);
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+  if (input.action === "retry_pending") {
+    if (bearer !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) return json({ error: "Forbidden." }, 403);
+    const { data: stuck, error: stuckError } = await supabase.from("social_boost_orders").select("order_number,platform,service,target_link,quantity").is("provider_order_id", null).is("refunded_at", null).eq("status", "pending").order("order_number").limit(50);
+    if (stuckError) return json({ error: stuckError.message }, 500);
+    const results: Record<string, unknown>[] = [];
+    for (const order of stuck ?? []) {
+      const serviceId = String(order.service).split(":", 1)[0].trim();
+      const { data: linkError } = await supabase.rpc("validate_social_boost_link", { p_platform: order.platform, p_link: order.target_link });
+      if (linkError) { results.push({ order: order.order_number, skipped: String(linkError) }); continue; }
+      if (/comment/i.test(String(order.service))) { results.push({ order: order.order_number, skipped: "custom comments need manual handling" }); continue; }
+      try {
+        const res = await fetch(EXOBOOST_API_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" }, body: new URLSearchParams({ key: providerApiKey, action: "add", service: serviceId, link: String(order.target_link), quantity: String(order.quantity) }), signal: AbortSignal.timeout(20000) });
+        const raw = await res.text();
+        let parsed: { order?: unknown; error?: unknown } = {};
+        try { parsed = JSON.parse(raw); } catch { /* non-JSON reply */ }
+        if (parsed.order == null) { results.push({ order: order.order_number, failed: String(parsed.error ?? raw).slice(0, 200) }); continue; }
+        const { error: saveError } = await supabase.from("social_boost_orders").update({ provider_order_id: String(parsed.order), status: "processing", provider_status: "processing" }).eq("order_number", order.order_number).is("provider_order_id", null);
+        results.push({ order: order.order_number, provider_order_id: String(parsed.order), saved: !saveError });
+      } catch (error) { results.push({ order: order.order_number, failed: String(error) }); }
+    }
+    return json({ processed: results.length, results });
+  }
   const { data: apiUser } = await supabase.from("api_users").select("id,identity_id,api_wallet,wallet,active,order_count").eq("api_key", bearer).maybeSingle();
   let actorUserId: string | null = null;
   const isApiUser = Boolean(apiUser?.active);
@@ -70,7 +92,8 @@ Deno.serve(async (req) => {
   if (!ACTIONS.has(action)) return json({ error: "Unsupported action.", allowedActions: [...ACTIONS] }, 400);
   const missing = REQUIRED_FIELDS[action].filter((field) => asFormValue(input[field]) === null);
   if (missing.length > 0) return json({ error: "Missing required fields.", missing }, 400);
-  const walletOrderNumber = typeof input.wallet_order_number === "string" ? input.wallet_order_number.trim() : "";
+  // order_number is a bigint, so clients send it as a number; accept both forms.
+  const walletOrderNumber = typeof input.wallet_order_number === "string" || typeof input.wallet_order_number === "number" ? String(input.wallet_order_number).trim() : "";
   const isWalletHandoff = action === "add" && !isApiUser && input.payment_method === "wallet" && Boolean(walletOrderNumber);
   if (action === "add" && !isApiUser && !isWalletHandoff) return json({ error: "Payment is required before creating a Social Boost order." }, 402);
   if (isWalletHandoff) {
@@ -162,6 +185,7 @@ Deno.serve(async (req) => {
     return json({ error: "ExoBoost is temporarily unavailable. The order was preserved for retry.", retryable: true }, 503);
   }
   const text = await upstream.text();
+  if (action === "add") console.log(JSON.stringify({ event: "provider_add_response", order: input.order ?? null, http_status: upstream.status, raw_body: text.slice(0, 1000) }));
   let payload: unknown = text;
   try {
     payload = JSON.parse(text);
@@ -172,14 +196,13 @@ Deno.serve(async (req) => {
     !upstream.ok ||
     (payload && typeof payload === "object" && "error" in payload)
   ) {
-    const providerError = String((payload as { error?: unknown })?.error ?? "").slice(0, 200);
+    const providerError = String((payload as { error?: unknown })?.error ?? text ?? "").slice(0, 1000);
+    const transient =
+      upstream.status >= 500 ||
+      [401, 403, 408, 425, 429].includes(upstream.status) ||
+      RETRYABLE_PROVIDER_ERRORS.test(providerError);
 
     if (action === "add" && input.order) {
-      const transient =
-        upstream.status >= 500 ||
-        [408, 425, 429].includes(upstream.status) ||
-        RETRYABLE_PROVIDER_ERRORS.test(providerError);
-
       if (!transient) {
         const refunded = await failAndRefundOrder(supabase, input.order, providerError || `HTTP ${upstream.status}`);
         if (refunded) {
