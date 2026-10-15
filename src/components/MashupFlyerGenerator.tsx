@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Download, Loader2, Share2, Image } from "lucide-react";
+import { Download, Loader2, Share2, Image, QrCode, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { toPng } from "html-to-image";
 
@@ -79,6 +79,26 @@ const MashupFlyerGenerator = ({
     // Show Express badge on specific packages matching the flyer image
     showExpress: ["360mins + 0.87GB", "700mins + 1.6GB", "1.7GB", "3.4GB", "6.8GB", "8.5GB", "10.2GB", "20GB"].includes(p.size_gb_text || "")
   }));
+
+  const storefrontUrl = storeUrl || (typeof window !== "undefined" ? window.location.origin : "");
+  const qrImageUrl = storefrontUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=320x320&margin=12&data=${encodeURIComponent(storefrontUrl)}` : "";
+
+  const downloadStoreQr = async () => {
+    if (!qrImageUrl) return;
+    try {
+      const response = await fetch(qrImageUrl);
+      if (!response.ok) throw new Error("QR image request failed");
+      const blob = await response.blob();
+      const link = document.createElement("a");
+      link.download = `${storeName.replace(/\\s+/g, "-") || "store"}-qr-code.png`;
+      link.href = URL.createObjectURL(blob);
+      link.click();
+      URL.revokeObjectURL(link.href);
+    } catch {
+      window.open(qrImageUrl, "_blank", "noopener,noreferrer");
+      toast({ title: "QR code opened", description: "Save the image from the new tab." });
+    }
+  };
 
   const downloadFlyer = async () => {
     if (!flyerRef.current) return;
@@ -216,6 +236,23 @@ const MashupFlyerGenerator = ({
               💻 <strong>Desktop:</strong> Download the image, then share manually on WhatsApp.<br />
               💾 <strong>Download PNG:</strong> Saves the image to your device.
             </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2"><QrCode className="h-5 w-5 text-primary" /> Store QR Code</CardTitle>
+          <p className="text-sm text-muted-foreground">Scan this code to open the exact storefront for {storeName}.</p>
+        </CardHeader>
+        <CardContent className="flex flex-col items-center gap-4 sm:flex-row sm:items-start">
+          {qrImageUrl ? <img src={qrImageUrl} alt={`QR code for ${storeName} storefront`} className="h-48 w-48 rounded-lg border border-border bg-white p-2" /> : <div className="flex h-48 w-48 items-center justify-center rounded-lg border border-dashed border-border text-center text-sm text-muted-foreground">Storefront URL unavailable</div>}
+          <div className="min-w-0 flex-1 space-y-3">
+            <p className="break-all rounded-md bg-muted/40 p-3 text-sm" aria-label="Storefront URL">{storefrontUrl || "Add a storefront URL to generate a QR code."}</p>
+            <div className="flex flex-wrap gap-2">
+              <Button variant="outline" onClick={downloadStoreQr} disabled={!qrImageUrl}><Download className="mr-2 h-4 w-4" />Download QR</Button>
+              {storefrontUrl && <Button variant="ghost" asChild><a href={storefrontUrl} target="_blank" rel="noreferrer"><ExternalLink className="mr-2 h-4 w-4" />Open storefront</a></Button>}
+            </div>
           </div>
         </CardContent>
       </Card>
