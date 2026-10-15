@@ -63,7 +63,12 @@ Deno.serve(async (req) => {
   if (!bearer) return json({ error: "Authentication is required." }, 401);
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   if (input.action === "retry_pending") {
-    if (bearer !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) return json({ error: "Forbidden." }, 403);
+    let callerRole = "";
+    try {
+      const payload = JSON.parse(atob(bearer.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+      callerRole = String(payload.role ?? "");
+    } catch (_) { /* not a JWT */ }
+    if (callerRole !== "service_role" && bearer !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) return json({ error: "Forbidden." }, 403);
     const { data: stuck, error: stuckError } = await supabase.from("social_boost_orders").select("order_number,platform,service,target_link,quantity").is("provider_order_id", null).is("refunded_at", null).eq("status", "pending").order("order_number").limit(50);
     if (stuckError) return json({ error: stuckError.message }, 500);
     const results: Record<string, unknown>[] = [];
