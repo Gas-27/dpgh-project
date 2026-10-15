@@ -1040,7 +1040,7 @@ const searchOrders = useCallback(async (input?: string) => {
                     className="flex-1 sm:flex-auto rounded-full bg-white text-slate-900 font-semibold hover:bg-slate-100"
                     style={{ backgroundColor: primaryColor, color: primaryForeground }}
                     onClick={() => {
-                      const url = (DOMAINS.customDomainUrl((store as any).custom_domain, (store as any).custom_domain_status) ?? DOMAINS.getSubagentStoreUrl(store.store_name));
+                      const url = DOMAINS.getSubagentStoreUrl(store.store_name);
                       if (navigator.share) {
                         navigator.share({
                           title: `${store.store_name} - Data Store`,
@@ -1064,7 +1064,7 @@ const searchOrders = useCallback(async (input?: string) => {
                     variant="outline"
                     className="flex-1 rounded-lg border-2 border-cyan-600 bg-cyan-50 font-semibold text-cyan-900 hover:bg-cyan-100 sm:flex-auto"
                     onClick={() => {
-                      const url = (DOMAINS.customDomainUrl((store as any).custom_domain, (store as any).custom_domain_status) ?? DOMAINS.getSubagentStoreUrl(store.store_name));
+                      const url = DOMAINS.getSubagentStoreUrl(store.store_name);
                       navigator.clipboard.writeText(url);
                       toast({
                         title: "Link copied!",
@@ -1354,7 +1354,7 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
           <>
           {/* USSD Info Banner */}
           {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
-            <a href="tel:*380*455#" className="block mb-4 rounded-xl border border-[#064e5f] bg-[#071316] p-4 text-black shadow-sm hover:bg-[#071316] transition-colors">
+            <a href="tel:*380*455#" className="block mb-4 rounded-xl border border-[#064e5f] bg-[#071316] p-4 text-foreground shadow-sm hover:bg-[#071316] transition-colors">
               <div className="flex items-center justify-center gap-3 text-center">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                   <Phone className="h-5 w-5 text-primary" />
