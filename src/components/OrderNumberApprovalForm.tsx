@@ -59,7 +59,10 @@ export default function OrderNumberApprovalForm({ source, storeId, compact = fal
     setSaving(true);
     const normalizedNumbers = results.map((result) => result.normalized);
     const [{ data: existingOrders }, { data: existingSubmissions }] = await Promise.all([
-      supabase.from("orders").select("customer_number").in("customer_number", normalizedNumbers),
+      supabase.rpc("numbers_with_orders", { p_numbers: normalizedNumbers }).then(({ data, error }) => ({
+        data: ((data as string[] | null) ?? []).map((customer_number) => ({ customer_number })),
+        error,
+      })),
       supabase.from("order_number_submissions").select("normalized_phone").in("normalized_phone", normalizedNumbers).in("status", ["pending", "approved"]),
     ]);
     const alreadyUsed = new Set([

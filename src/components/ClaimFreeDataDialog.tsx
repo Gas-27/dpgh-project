@@ -149,22 +149,11 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
       const packageId = packageData.id;
 
       // Create a pending order for admin to fulfill
-      const { data: createdOrder, error: orderError } = await supabase
-        .from("orders")
-        .insert({
-          package_id: packageId,
-          customer_number: normalizedPhone,
-          network: claimNetwork,
-          size_gb: freeRewardGb,
-          amount: 0,
-          status: "paid",
-          fulfillment_status: "pending",
-          payment_method: "free_data_claim",
-          agent_store_id: storeId || null,
-          subagent_store_id: subagentStoreId || null,
-        })
-        .select("id")
-        .single();
+      const { data: createdOrderId, error: orderError } = await supabase.rpc("create_free_claim_order", {
+        p_phone: normalizedPhone, p_network: claimNetwork, p_size_gb: freeRewardGb, p_package_id: packageId,
+        p_agent_store_id: storeId || null, p_subagent_store_id: subagentStoreId || null,
+      });
+      const createdOrder = { id: createdOrderId as string };
 
       if (orderError) throw orderError;
 
@@ -173,11 +162,11 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
         p_phone: normalizedPhone,
       });
       if (codeClaimError) {
-        await supabase.from("orders").delete().eq("id", createdOrder.id);
+        await supabase.rpc("discard_unfulfilled_claim_order", { p_id: createdOrder.id });
         throw new Error("We could not verify this promo code right now. Please try again.");
       }
       if (!claimed) {
-        await supabase.from("orders").delete().eq("id", createdOrder.id);
+        await supabase.rpc("discard_unfulfilled_claim_order", { p_id: createdOrder.id });
         throw new Error("This promo code has already been used, refunded, or expired. Please use another code.");
       }
 
@@ -193,7 +182,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
       if (claimError) {
         await Promise.all([
           supabase.from("promo_codes").update({ claimed_at: null }).eq("id", validatedCode.id),
-          supabase.from("orders").delete().eq("id", createdOrder.id),
+          supabase.rpc("discard_unfulfilled_claim_order", { p_id: createdOrder.id }),
         ]);
         throw claimError;
       }

@@ -92,14 +92,8 @@ const PaymentVerifier = () => {
 
   const verifyPayment = async (reference: string) => {
     const orderExists = async () => {
-      const { data, error } = await supabase
-        .from("orders")
-        .select("id, paystack_reference, status, fulfillment_status")
-        .eq("paystack_reference", reference)
-        .limit(1)
-        .maybeSingle();
-
-      return !error && Boolean(data?.id);
+      const { data, error } = await supabase.rpc("order_exists_for_reference", { p_ref: reference });
+      return !error && data === true;
     };
 
     const showSuccess = () => {

@@ -816,37 +816,20 @@ const searchOrders = useCallback(async (input?: string) => {
     let allOrders: Order[] = [];
 
     // Search subagent orders first
-    let subagentQuery = supabase
-      .from("orders")
-      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id, provider_reference, provider_order_id")
-      .eq("subagent_store_id", store?.id);
-
-    if (noSpaces.length === 36 && raw.includes("-")) {
-      subagentQuery = subagentQuery.eq("id", raw);
-    } else {
-      subagentQuery = subagentQuery.ilike("customer_number", `%${noSpaces}%`);
-    }
-
-    const { data: subagentData, error: subagentError } = await subagentQuery.order("created_at", { ascending: false });
+    const { data: subagentRpc, error: subagentError } = store?.id
+      ? await supabase.rpc("search_orders_public", { p_term: raw, p_subagent_store_id: store.id })
+      : { data: null, error: null };
+    const subagentData = subagentRpc as any[] | null;
     if (!subagentError && subagentData) {
       allOrders = [...(subagentData as Order[])];
     }
     
     // Also search parent agent's orders
     if (store?.agent_store_id) {
-      let agentQuery = supabase
-        .from("orders")
-        .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id, provider_reference, provider_order_id")
-        .eq("agent_store_id", store.agent_store_id)
-        .is("subagent_store_id", null); // Only direct agent orders
-
-      if (noSpaces.length === 36 && raw.includes("-")) {
-        agentQuery = agentQuery.eq("id", raw);
-      } else {
-        agentQuery = agentQuery.ilike("customer_number", `%${noSpaces}%`);
-      }
-
-      const { data: agentData, error: agentError } = await agentQuery.order("created_at", { ascending: false });
+      const { data: agentRpc, error: agentError } = await supabase.rpc("search_orders_public", {
+        p_term: raw, p_agent_store_id: store.agent_store_id, p_direct_agent_only: true,
+      });
+      const agentData = agentRpc as any[] | null;
       if (!agentError && agentData) {
         allOrders = [...allOrders, ...(agentData as Order[])];
       }

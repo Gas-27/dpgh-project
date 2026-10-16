@@ -234,12 +234,8 @@ const PaymentDialog = ({
     const isMTNPackage = normalizedSelectedNetwork === "mtn" || normalizedSelectedNetwork === "mtn_express";
 
     if (isMTNPackage) {
-      const { data: pendingOrders, error: pendingOrdersError } = await supabase
-        .from("orders")
-        .select("customer_number,network,mtn_retry_eligible_at,created_at,refunded,refunded_at,refund_date,order_status,fulfillment_status,status")
-        .in("network", ["mtn", "mtn_express", "MTN", "MTN Express"])
-        .or("status.ilike.refunded,order_status.ilike.refunded,fulfillment_status.ilike.refunded,refunded.eq.true")
-        .order("created_at", { ascending: false });
+      const { data: pendingRpc, error: pendingOrdersError } = await supabase.rpc("refunded_mtn_orders_for_phone", { p_phone: phone });
+      const pendingOrders = (pendingRpc as any[] | null) ?? [];
       if (pendingOrdersError) {
         setChecking(false);
         toast({ title: "Unable to verify this number", description: "Please try again before continuing with payment.", variant: "destructive" });
@@ -272,10 +268,7 @@ const PaymentDialog = ({
     }
 
     try {
-      const { count } = await supabase
-        .from("orders")
-        .select("id", { count: "exact", head: true })
-        .eq("customer_number", phone);
+      const { data: count } = await supabase.rpc("phone_order_count", { p_phone: phone });
 
       setChecking(false);
 

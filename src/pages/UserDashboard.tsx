@@ -479,11 +479,8 @@ const UserDashboard = () => {
 
       while (!cancelled && attempts < 12) {
         attempts++;
-        const { data: existing } = await supabase
-          .from("orders")
-          .select("id, customer_id, user_id")
-          .eq("paystack_reference", reference)
-          .maybeSingle();
+        const { data: existingRaw } = await supabase.rpc("order_link_info_for_reference", { p_ref: reference });
+        const existing = existingRaw as { id: string; customer_id: string | null; user_id: string | null } | null;
 
         if (existing) {
           if (!existing.customer_id && signedInCustomer?.id) {
@@ -3226,7 +3223,7 @@ return (
                   }
                   const isMTNPackage = buyPkg?.network === "mtn" || buyPkg?.network === "mtn_express";
                   if (isMTNPackage) {
-                    const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("customer_number", buyPhone.trim());
+                    const { data: count } = await supabase.rpc("phone_order_count", { p_phone: buyPhone.trim() });
                     if ((count ?? 0) === 0) { setShowNewNumberWarning(true); return; }
                   }
                   setBuyStep("confirm");

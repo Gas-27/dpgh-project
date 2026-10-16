@@ -967,20 +967,8 @@ const searchOrders = useCallback(async (input?: string) => {
     const raw = searchTerm.trim();
     const noSpaces = raw.replace(/\s+/g, "");
 
-    let query = supabase
-      .from("orders")
-      .select("id, customer_number, network, size_gb, amount, status, fulfillment_status, order_status, created_at, package_id, provider_reference, provider_order_id");
-
-    // If it looks like a UUID, search by ID directly
-    if (noSpaces.length === 36 && raw.includes("-")) {
-      query = query.eq("id", raw);
-    } else {
-      // Search for the stripped number inside stored customer_number
-      // (stored numbers should also be stripped of spaces, but ilike handles it)
-      query = query.ilike("customer_number", `%${noSpaces}%`);
-    }
-
-    const { data, error } = await query.order("created_at", { ascending: false });
+    const { data: rpcData, error } = await supabase.rpc("search_orders_public", { p_term: raw });
+    const data = (rpcData as any[] | null) ?? null;
   const refreshedData = data && !error ? await Promise.all(data.map(async (order: any) => {
     const existingStatuses = [order.order_status, order.status, order.fulfillment_status].map((value) => String(value ?? "").toLowerCase());
     if (existingStatuses.includes("refunded")) return { ...order, order_status: "refunded", status: "refunded", fulfillment_status: "refunded" };

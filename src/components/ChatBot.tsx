@@ -203,12 +203,8 @@ async function fetchOrdersByPhone(phone: string): Promise<TrackingResult> {
   const normalised = phone.replace(/^\+233/, '0').replace(/\s+/g, '').trim();
 
   try {
-    const { data, error } = await publicSupabase
-      .from('orders')
-      .select('id, created_at, status, fulfillment_status, order_status, network, size_gb, amount, customer_number, refunded_amount')
-      .eq('customer_number', normalised)
-      .order('created_at', { ascending: false })
-      .limit(8);
+    const { data: rpcData, error } = await publicSupabase.rpc('search_orders_public', { p_term: normalised });
+    const data = ((rpcData as Record<string, unknown>[] | null) ?? []).slice(0, 8);
 
     if (error) {
       console.error('[ChatBot] fetchOrdersByPhone error:', error.message);
@@ -248,7 +244,7 @@ async function fetchOrdersByPhone(phone: string): Promise<TrackingResult> {
         package: sizeGb,
         amount: `GHS ${rawAmount.toFixed(2)}`,
         recipient: String(r.customer_number ?? normalised),
-        refunded: Boolean(r.refunded_amount && Number(r.refunded_amount) > 0),
+        refunded: status === 'refunded' || Boolean(r.refunded_amount && Number(r.refunded_amount) > 0),
         can_report: isRowDelivered(r),
       };
     });

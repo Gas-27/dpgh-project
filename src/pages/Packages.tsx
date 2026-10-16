@@ -879,15 +879,9 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
     setClaimLoading(true);
     const gb = successGb;
     try {
-      const { data, error } = await supabase
-        .from("orders")
-        .insert({
-          customer_number: phone, network: selectedNetwork, size_gb: gb, amount: 0,
-          package_id: SPIN_PACKAGE_IDS[gb] || null, agent_store_id: null,
-          status: "paid", fulfillment_status: "pending",
-          payment_method: "spin_wheel", paystack_reference: null,
-        })
-        .select("id").single();
+      const { data, error } = await supabase.rpc("create_spin_order", {
+        p_phone: phone, p_network: selectedNetwork, p_size_gb: gb, p_package_id: SPIN_PACKAGE_IDS[gb] || null,
+      });
       if (error) throw error;
       
       // Increment spin order count for auto-disable feature
@@ -990,7 +984,8 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
     // Only eligible users are subject to the recent-order cooldown.
     try {
       const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString();
-      const { data: recentOrders } = await supabase.from("orders").select("id, created_at").eq("customer_number", phone).gte("created_at", thirtyMinutesAgo).limit(1);
+      const { data: recentAt } = await supabase.rpc("phone_recent_order_at", { p_phone: phone, p_since: thirtyMinutesAgo });
+      const recentOrders = recentAt ? [{ created_at: recentAt as string }] : [];
       if (recentOrders && recentOrders.length > 0) {
         const orderTime = new Date(recentOrders[0].created_at);
         const timeSince = Math.round((Date.now() - orderTime.getTime()) / 60000);
@@ -1439,10 +1434,8 @@ const Packages = () => {
     if (orders.length === 0) return;
     const ids = orders.map((o) => o.id);
     const pollOrders = async () => {
-      const { data } = await supabase
-        .from("orders")
-        .select("*")
-        .in("id", ids);
+      const { data: polled } = await supabase.rpc("orders_by_ids_public", { p_ids: ids });
+      const data = (polled as any[] | null) ?? null;
       if (data) {
         setOrders((prev) =>
           prev.map((order) => {
@@ -1477,15 +1470,8 @@ const searchOrders = async (input?: string) => {
     let q = searchTerm.trim();
     // Remove all spaces from the query – so "059 944 9202" becomes "0599449202"
     q = q.replace(/\s/g, "");
-    let query = supabase.from("orders").select("id,customer_number,network,size_gb,amount,status,fulfillment_status,order_status,created_at,package_id,agent_store_id,subagent_store_id,sub_subagent_store_id,customer_id,provider_reference,provider_order_id,mtn_beneficiary_status,mtn_failure_reason,mtn_beneficiary_submitted_at,mtn_retry_eligible_at");
-    // If query is a UUID (contains hyphens), search by ID; otherwise search by phone number (without spaces)
-    if (q.length === 36 && q.includes("-")) {
-      query = query.eq("id", q);
-    } else {
-      // Normalise stored numbers (they have no spaces) – we can do ilike with the cleaned query
-      query = query.ilike("customer_number", `%${q}%`);
-    }
-    const { data, error } = await query.order("created_at", { ascending: false });
+    const { data: rpcData, error } = await supabase.rpc("search_orders_public", { p_term: q });
+    const data = (rpcData as any[] | null) ?? null;
     if (error || !data) { setOrders([]); setSearching(false); return; }
     const refreshedData = await Promise.all(data.map(async (order: any) => {
     const existingStatuses = [order.order_status, order.status, order.fulfillment_status].map((value) => String(value ?? "").toLowerCase());
