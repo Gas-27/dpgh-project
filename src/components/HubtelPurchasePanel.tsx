@@ -519,7 +519,7 @@ const resultRoot = (record.results || record.result || record) as Record<string,
       if (!balanceError && freshStore)
         currentWalletBalance = Number(freshStore.wallet_balance ?? 0);
     }
-    if (walletOnly && Number(amount) > currentWalletBalance) {
+    if (walletOnly && Number(purchaseAmount) > currentWalletBalance) {
       toast({
         title: "Insufficient wallet balance",
         description: `Your wallet has GHC ${currentWalletBalance.toFixed(2)} available.`,
