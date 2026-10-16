@@ -43,6 +43,7 @@ const providerCatalog = [
   { key: "fastdealgh", label: "FastDealGH" },
   { key: "bundlezone", label: "Bundle Zone" },
   { key: "fricopay", label: "Fricopay" },
+  { key: "datamart", label: "Datamart" },
 ];
 const providersByFlow: Record<Flow, typeof providerCatalog> = {
   purchase: providerCatalog,

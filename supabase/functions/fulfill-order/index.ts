@@ -109,6 +109,27 @@ const NETWORK_CONFIGS: Record<string, NetworkConfig> = {
     authHeader: "bearer",
   },
 
+  // Datamart handles standard data purchases from the wallet balance.
+  datamart: {
+    apiUrl: "https://api.datamartgh.shop/api/developer/purchase",
+    networkMap: {
+      mtn: "YELLO",
+      mtn_express: "YELLO",
+      mtn_xpress: "YELLO",
+      telecel: "TELECEL",
+      airteltigo: "AT_PREMIUM",
+      atbigtime: "AT_BIGTIME",
+    },
+    buildRequest: (phone, sizeGb, networkKey) => ({
+      phoneNumber: phone,
+      network: networkKey,
+      capacity: String(sizeGb),
+      gateway: "wallet",
+    }),
+    apiKeyEnvVar: "DATAMART_API_KEY",
+    authHeader: "x-api-key",
+  },
+
   // Datahubnet handles: mashup (Special MTN Mashup packages)
   datahubnet: {
     apiUrl: "https://www.datahubnet.online/api/v1/special-offers/",
@@ -410,6 +431,8 @@ Deno.serve(async (req) => {
       // Provider references must come from the provider response, never from a local/generated order id.
       const providerReference = provider === "fricopay"
         ? (parsed?.reference ?? parsed?.data?.reference ?? null)
+        : provider === "datamart"
+        ? (parsed?.data?.purchaseId ?? parsed?.data?.transactionReference ?? parsed?.data?.reference ?? null)
         : (parsed?.data?.order_code ??
           parsed?.data?.code ??
           parsed?.data?.reference ??

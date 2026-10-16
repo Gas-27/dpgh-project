@@ -87,6 +87,24 @@ const NETWORK_CONFIGS: Record<string, NetworkConfig> = {
     apiKeyEnvVar: "SPENDLESS_API_KEY",
   },
 
+  datamart: {
+    apiUrl: "https://api.datamartgh.shop/api/developer/purchase",
+    networkMap: {
+      mtn: "YELLO",
+      mtn_express: "YELLO",
+      telecel: "TELECEL",
+      airteltigo: "AT_PREMIUM",
+      atbigtime: "AT_BIGTIME",
+    },
+    buildRequest: (phone, sizeGb, networkKey) => ({
+      phoneNumber: phone,
+      network: networkKey,
+      capacity: String(sizeGb),
+      gateway: "wallet",
+    }),
+    apiKeyEnvVar: "DATAMART_API_KEY",
+  },
+
  ghdataconnect: {
     apiUrl: "https://ghdataconnect.com/api/v1/purchaseBundle",
     networkMap: {
@@ -549,7 +567,7 @@ Deno.serve(async (req) => {
     // STEP 10: Determine Success
     // ============================================
     const isSuccess = apiRes.ok && (parsedData?.success !== false);
-    const providerReference = parsedData?.reference || parsedData?.data?.reference || null;
+    const providerReference = parsedData?.reference || parsedData?.data?.reference || parsedData?.data?.purchaseId || null;
 
     // The order and wallet reservation already exist. Only update the local
     // record after the provider response; never create or charge after fulfillment.
