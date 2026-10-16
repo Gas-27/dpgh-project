@@ -46,8 +46,8 @@ Deno.serve(async (req) => {
   const { data: order, error: orderError } = await admin.from("orders").select("*").eq("id", orderId).maybeSingle();
   if (orderError) return json({ error: `Could not verify the order: ${orderError.message}` }, 500);
   if (!order) return json({ error: "Order not found" }, 404);
-  const actorUserId = authenticatedUserId ?? String(order.user_id ?? order.agent_id ?? order.agent_store_id ?? "").trim();
-  if (!actorUserId) return json({ error: "Could not identify the refund requester for this order." }, 403);
+  if (!authenticatedUserId) return json({ error: "You must be signed in to request a refund." }, 401);
+  const actorUserId = authenticatedUserId;
   const storedReference = String(order.paystack_reference ?? "").trim();
   if (!storedReference) return json({ error: "This order has no Paystack reference and cannot be refunded." }, 400);
   if (storedReference !== reference) return json({ error: "The Paystack reference does not match this order." }, 400);

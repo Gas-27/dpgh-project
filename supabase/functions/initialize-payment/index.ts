@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { BLOCKED_MESSAGE, containsBlockedNumber } from "../_shared/blocklist.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -15,6 +16,9 @@ Deno.serve(async (req) => {
 
   try {
     const { email, phone, metadata: requestMetadata, callback_url, amount: requestedAmount } = await req.json();
+    if (await containsBlockedNumber(phone, requestMetadata)) {
+      return new Response(JSON.stringify({ error: BLOCKED_MESSAGE }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
     const authHeader = req.headers.get("Authorization");
     let sessionUserId: string | null = null;
     if (authHeader?.startsWith("Bearer ")) {

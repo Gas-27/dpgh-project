@@ -1,6 +1,8 @@
 // supabase/functions/purchase/index.ts
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { BLOCKED_MESSAGE, containsBlockedNumber } from "../_shared/blocklist.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -245,6 +247,14 @@ Deno.serve(async (req) => {
     console.log(`[PURCHASE] Request body:`, JSON.stringify(body));
 
     const { network, size_gb, size_gb_text, phone } = body;
+
+    if (await containsBlockedNumber(phone)) {
+      return new Response(
+        JSON.stringify({ error: BLOCKED_MESSAGE }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
 
     // Validate required fields
     if (!network) {

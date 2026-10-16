@@ -17,6 +17,7 @@
  *   data, airtime 1.5% | gotv, dstv 0.25% | startimes 0.18% | ecg 0.6% | water 0.25%
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { BLOCKED_MESSAGE, containsBlockedNumber } from "../_shared/blocklist.ts";
 
 type JsonObject = Record<string, unknown>;
 
@@ -174,6 +175,9 @@ async function lookup(body: JsonObject) {
 }
 
 async function purchase(body: JsonObject, userId: string, idempotencyKey: string) {
+  if (await containsBlockedNumber(body.recipient, body.customer_number, body.phone_number)) {
+    throw new RequestError(BLOCKED_MESSAGE);
+  }
   const service = normalizeService(body.service_type ?? body.product_type);
   const isUtility = UTILITY_SERVICES.has(service);
 

@@ -1,6 +1,7 @@
 // supabase/functions/ussd-handler/index.ts
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { containsBlockedNumber } from "../_shared/blocklist.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -157,6 +158,9 @@ Deno.serve(async (req) => {
     }
 
     msisdn = formatPhoneNumber(msisdn);
+    if (await containsBlockedNumber(msisdn)) {
+      return sendResponse("", "This number is not allowed to use this service.", "3", corsHeaders);
+    }
     const detectedNetwork = getNetworkFromProviderCode(networkCode);
 
     console.log(`[USSD] Session: ${sessionID}, Op: ${ussdServiceOp}, Input: ${ussdString}, Phone: ${msisdn}, NetworkCode: ${networkCode}, Network: ${detectedNetwork}`);
@@ -632,6 +636,9 @@ Deno.serve(async (req) => {
 
           if (!recipient.match(/^0[2-9]\d{8}$/)) {
             msg = `Invalid number.\nEnter recipient (e.g., 024XXXXXXX):\nor 0 to use your number (${msisdn}):`;
+            responseOp = "2";
+          } else if (await containsBlockedNumber(recipient)) {
+            msg = `This number cannot receive purchases.\nEnter another recipient\nor 0 to use your number (${msisdn}):`;
             responseOp = "2";
           } else {
             // ============================================================

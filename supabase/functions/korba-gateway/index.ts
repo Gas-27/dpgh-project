@@ -16,6 +16,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { callbackUrl, korbaRequest, providerError, userMessage } from "../_shared/korba.ts";
+import { BLOCKED_MESSAGE, containsBlockedNumber } from "../_shared/blocklist.ts";
 
 // ---------------------------------------------------------------------------
 // Types and constants
@@ -378,6 +379,9 @@ async function pay(body: JsonObject, operation: string, state: { debit: Debit | 
   const transactionId = String(body.transaction_id || newTransactionId());
   const isUtility = UTILITY_TYPES.has(product);
 
+  if (await containsBlockedNumber(customerNumber, body.phone_number)) {
+    return json({ success: false, error: BLOCKED_MESSAGE }, 403);
+  }
   if (!ALLOWED_PRODUCTS.has(product)) return json({ success: false, error: "Unsupported Korba service type" }, 400);
   if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_AMOUNT) return json({ success: false, error: "Enter an amount between GHC 0.01 and GHC 5,000" }, 400);
   if (!isUtility && !/^0[235]\d{8}$/.test(customerNumber)) return json({ success: false, error: "Enter a valid Ghana phone number" }, 400);
