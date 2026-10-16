@@ -1,15 +1,11 @@
-import { createClient } from "@supabase/supabase-js";
+import type { NextApiRequest, NextApiResponse } from "next";
+import { adminSupabase, requireAdmin } from "../../lib/api-admin-auth";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-
-// Use service role key to bypass RLS
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
-
-export default async function handler(req: any, res: any) {
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
+  if (!await requireAdmin(req, res)) return;
 
   const { searchTerm } = req.body;
 
@@ -49,10 +45,10 @@ export default async function handler(req: any, res: any) {
     }
 
     // Use service role key to bypass RLS
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await adminSupabase
       .from("api_users")
       .select(
-        "id, full_name, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference, identity_id"
+        "id, full_name, user_email, email, store_name, wallet, active, custom_price, topup_reference, identity_id"
       )
       .or(filters.join(","))
       .limit(20);
