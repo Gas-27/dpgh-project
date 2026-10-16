@@ -149,11 +149,61 @@ function walletClient() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-async function debitWallet(body: JsonObject, amount: number): Promise<Debit | null> {
-  if (body.wallet_only !== true) return null;
-  const ownerType = String(body.wallet_balance_owner_type || "").toLowerCase();
+class HttpError extends Error {
+  constructor(message: string, readonly status: number) {
+    super(message);
+  }
+}
+
+/** service = another edge function that has already been paid (Paystack webhook, partner API). */
+type Caller = { kind: "service" } | { kind: "user"; userId: string } | null;
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const WALLET_TABLES: Record<string, string> = {
+  user: "customers",
+  agent: "agent_stores",
+  subagent: "subagent_stores",
+  subsubagent: "sub_subagent_stores",
+};
+
+async function identifyCaller(request: Request): Promise<Caller> {
+  const token = (request.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (!token) return null;
+  const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+  if (serviceKey && token === serviceKey) return { kind: "service" };
+  const { data, error } = await walletClient().auth.getUser(token);
+  if (error || !data?.user) return null;
+  return { kind: "user", userId: data.user.id };
+}
+
+function canonicalOwnerType(value: unknown) {
+  const type = String(value || "").toLowerCase().replace(/[\s_-]/g, "");
+  return type === "customer" ? "user" : type;
+}
+
+/** The wallet owner id arrives in the request body, so prove it belongs to the signed-in user. */
+async function assertWalletOwner(caller: Caller, ownerType: string, ownerId: string) {
+  const table = WALLET_TABLES[ownerType];
+  if (!table || !UUID_PATTERN.test(ownerId)) throw new HttpError("Unsupported wallet owner", 400);
+  if (caller?.kind === "service") return;
+  if (caller?.kind !== "user") throw new HttpError("Please sign in to pay from your wallet", 401);
+
+  let query = walletClient().from(table).select("id").eq("user_id", caller.userId);
+  query = ownerType === "user" ? query.or(`id.eq.${ownerId},user_id.eq.${ownerId}`) : query.eq("id", ownerId);
+  const { data } = await query.limit(1).maybeSingle();
+  if (!data) throw new HttpError("This wallet does not belong to your account", 403);
+}
+
+async function debitWallet(body: JsonObject, amount: number, caller: Caller): Promise<Debit | null> {
+  if (body.wallet_only !== true) {
+    // Only an already-paid server caller may skip the wallet. Everyone else must pay.
+    if (caller?.kind === "service") return null;
+    throw new HttpError("Payment is required for this purchase", 402);
+  }
+  const ownerType = canonicalOwnerType(body.wallet_balance_owner_type);
   const ownerId = String(body.wallet_balance_owner_id || "");
   if (!ownerType || !ownerId) throw new Error("Wallet owner is required for wallet purchases");
+  await assertWalletOwner(caller, ownerType, ownerId);
 
   const { data, error } = await walletClient().rpc("debit_purchase_wallet", { p_owner_type: ownerType, p_owner_id: ownerId, p_amount: amount });
   if (error) throw new Error(`Wallet debit failed: ${error.message}`);
@@ -310,7 +360,17 @@ function buildPayment(ctx: PaymentContext): { endpoint: string; payload: JsonObj
   return { endpoint: "/utilities_pay_bill/", payload };
 }
 
-async function pay(body: JsonObject, operation: string, state: { debit: Debit | null }) {
+/** The browser sends the amount, so never let it pay less than Korba's price for the bundle. */
+async function assertBundlePrice(network: string, bundleId: string, amount: number) {
+  const result = await korbaRequest<JsonObject>(dataEndpoints(network).lookup, {});
+  const bundle = normalizeBundles(result).find((item) =>
+    [item.id, item.product_id, item.bundle_id].some((value) => value !== undefined && String(value) === bundleId));
+  if (!bundle) throw new HttpError("That bundle is no longer available. Please refresh and try again.", 400);
+  const price = Number(bundle.amount);
+  if (Number.isFinite(price) && amount + 0.01 < price) throw new HttpError("The amount does not match the bundle price", 400);
+}
+
+async function pay(body: JsonObject, operation: string, state: { debit: Debit | null }, caller: Caller) {
   const product = normalizeProduct(body.product_type, operation === "data" ? "data" : "airtime");
   const network = normalizeNetworkCode(String(body.network_code || ""));
   const amount = Number(body.amount);
@@ -328,7 +388,10 @@ async function pay(body: JsonObject, operation: string, state: { debit: Debit | 
   const payment = buildPayment({ body, operation, product, network, amount, customerNumber, transactionId });
   if ("error" in payment) return json({ success: false, error: payment.error }, 400);
 
-  state.debit = await debitWallet(body, amount);
+  if (operation === "data" && caller?.kind !== "service") {
+    await assertBundlePrice(network, String(body.product_id || body.bundle_id || body.package_code || ""), amount);
+  }
+  state.debit = await debitWallet(body, amount, caller);
   const result = await korbaRequest<JsonObject>(payment.endpoint, payment.payload);
 
   if (result.success === false) {
@@ -385,6 +448,14 @@ Deno.serve(async (request) => {
     const body = (await request.json()) as JsonObject;
     const operation = String(body.operation || "");
 
+    const needsCaller = ["balance", "status", "transactions", "history", "collect", "data"].includes(operation);
+    const caller = needsCaller ? await identifyCaller(request) : null;
+    // The OVA balance and company-wide transactions are for server callers only.
+    if (["balance", "transactions"].includes(operation) && caller?.kind !== "service") {
+      throw new HttpError("Not allowed", 403);
+    }
+    if (operation === "status" && !caller) throw new HttpError("Please sign in", 401);
+
     switch (operation) {
       case "balance":
         return json(await korbaRequest("/get_ova_balance/", {}));
@@ -394,9 +465,10 @@ Deno.serve(async (request) => {
   case "transactions":
   return json(await korbaRequest("/client_transactions/", {}));
   case "history": {
-    const ownerType = String(body.wallet_balance_owner_type || "");
+    const ownerType = canonicalOwnerType(body.wallet_balance_owner_type);
     const ownerId = String(body.wallet_balance_owner_id || "");
     if (!ownerType || !ownerId) return json({ success: false, error: "History owner is required" }, 400);
+    await assertWalletOwner(caller, ownerType, ownerId);
     const { data, error } = await walletClient().from("korba_transaction_history").select("id, product_type, network_code, package_code, customer_number, amount, transaction_id, provider_reference, status, source, created_at").eq("wallet_owner_type", ownerType).eq("wallet_owner_id", ownerId).order("created_at", { ascending: false }).limit(200);
     if (error) return json({ success: false, error: error.message }, 500);
     return json({ success: true, transactions: data || [] });
@@ -409,11 +481,12 @@ Deno.serve(async (request) => {
         return await utilityLookup(body);
       case "collect":
       case "data":
-        return await pay(body, operation, state);
+        return await pay(body, operation, state, caller);
       default:
         return json({ success: false, error: "Unsupported Korba operation" }, 400);
     }
   } catch (error) {
+    if (error instanceof HttpError) return json({ success: false, error: error.message }, error.status);
     await refundWallet(state.debit);
     const details = error instanceof Error && "details" in error ? (error as Error & { details?: JsonObject }).details : undefined;
     console.error("[korba-gateway] request failed", error instanceof Error ? error.message : error);
