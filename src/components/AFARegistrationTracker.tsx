@@ -109,12 +109,9 @@ export default function AFARegistrationTracker({ storeLabel }: AFATrackerProps) 
     setLoading(true);
     setRegistrations(null);
     try {
-      const { data, error } = await supabase
-        .from("afa_registrations")
-        .select("id, customer_name, customer_phone, region, crop, registration_status, created_at")
-        .eq("customer_phone", cleaned)
-        .order("created_at", { ascending: false })
-        .limit(5);
+      const { data, error } = await (supabase as any).rpc("search_afa_registration", {
+        p_phone: cleaned,
+      });
       if (error) throw error;
       setRegistrations((data as Registration[]) || []);
     } catch (err: any) {
@@ -167,30 +164,14 @@ export default function AFARegistrationTracker({ storeLabel }: AFATrackerProps) 
       const { data: urlData } = supabase.storage.from("complaint-screenshots").getPublicUrl(path);
       const screenshotUrl = urlData?.publicUrl || null;
 
-      const tier1Payload = {
-        customer_phone: reg.customer_phone,
-        customer_name: reg.customer_name,
-        registration_id: reg.id,
-        dialed_1848: true,
-        notes: reportNote.trim() || null,
-        screenshot_url: screenshotUrl || null,
-        status: "pending",
-      };
-
-      // Try with screenshot_url field first; if schema error, fall back to embedding in notes
-      let error = (await supabase.from("afa_registration_reports").insert(tier1Payload)).error;
-      if (error && (error.code === "42703" || error.message?.includes("screenshot"))) {
-        // Field doesn't exist, try without it
-        const fallbackPayload = {
-          customer_phone: reg.customer_phone,
-          customer_name: reg.customer_name,
-          registration_id: reg.id,
-          dialed_1848: true,
-          notes: [reportNote.trim(), screenshotUrl ? `Screenshot: ${screenshotUrl}` : null].filter(Boolean).join('\n') || null,
-          status: "pending",
-        };
-        ({ error } = await supabase.from("afa_registration_reports").insert(fallbackPayload));
-      }
+const { error } = await (supabase as any).rpc("submit_afa_registration_report", {
+        p_registration_id: reg.id,
+        p_phone: reg.customer_phone,
+        p_name: reg.customer_name,
+        p_dialed_1848: true,
+        p_notes: reportNote.trim() || null,
+        p_screenshot_url: screenshotUrl,
+      });
       if (error) throw error;
       toast({ title: "Report submitted", description: "Our team will review your case shortly." });
       setReportingId(null);

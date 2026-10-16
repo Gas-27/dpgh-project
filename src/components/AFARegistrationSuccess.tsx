@@ -35,11 +35,10 @@ const AFARegistrationSuccess = () => {
   const verifyAFARegistration = async (reference: string) => {
     try {
       // Query the database to get the registration status
-      const { data, error } = await supabase
-        .from("afa_registrations")
-        .select("id, registration_status, customer_phone")
-        .eq("paystack_reference", reference)
-        .single();
+      const { data: rows, error } = await (supabase as any).rpc("lookup_afa_registration_by_reference", {
+        p_reference: reference,
+      });
+      const data = rows?.[0] ?? null;
 
       if (error || !data) {
         setStatus("error");
