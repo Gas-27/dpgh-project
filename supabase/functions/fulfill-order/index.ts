@@ -9,16 +9,13 @@ const corsHeaders = {
 interface NetworkConfig {
   apiUrl: string;
   networkMap: Record<string, string>;
-  buildRequest: (phone: string, sizeOrId: any, networkKey: string, network: string, orderId?: string, bundleId?: any) => any;
+  buildRequest: (phone: string, bundle_id: number, sizeGb: number, networkKey: string, sizeGbText: string, network: string, orderId?: string) => any;
   apiKeyEnvVar: string;
-  authHeader?: "bearer" | "x-api-key" | "both";
 }
 
-// ===== MASHUP PACKAGE ID MAPPING (datahubnet) =====
 const MASHUP_SIZE_TO_PACKAGE_ID: Record<string, number> = {
   "1.7": 14,
   "5.1": 3,
-  "3": 3,
   "2.6": 16,
   "8.2": 17,
   "11.9": 18,
@@ -36,159 +33,532 @@ const MASHUP_SIZE_TO_PACKAGE_ID: Record<string, number> = {
   "1485": 20,
 };
 
-function getMashupPackageId(sizeGbText?: string, sizeGb?: number): number | undefined {
-  if (sizeGbText) {
-    const t = sizeGbText.toLowerCase().trim();
-    if (t.includes("1.7"))  return MASHUP_SIZE_TO_PACKAGE_ID["1.7"];
-    if (t.includes("5.1"))  return MASHUP_SIZE_TO_PACKAGE_ID["5.1"];
-    if (t.includes("2.6"))  return MASHUP_SIZE_TO_PACKAGE_ID["2.6"];
-    if (t.includes("8.2"))  return MASHUP_SIZE_TO_PACKAGE_ID["8.2"];
-    if (t.includes("11.9")) return MASHUP_SIZE_TO_PACKAGE_ID["11.9"];
-    if (t.includes("3.61")) return MASHUP_SIZE_TO_PACKAGE_ID["3.61"];
-    if (t.includes("15.3")) return MASHUP_SIZE_TO_PACKAGE_ID["15.3"];
-    if (t.includes("1077")) return MASHUP_SIZE_TO_PACKAGE_ID["1077"];
-    if (t.includes("1485")) return MASHUP_SIZE_TO_PACKAGE_ID["1485"];
-    // Try exact key match
-    const exact = MASHUP_SIZE_TO_PACKAGE_ID[sizeGbText.trim()];
-    if (exact) return exact;
-  }
-  if (sizeGb !== undefined) {
-    const rounded = sizeGb.toFixed(1);
-    return MASHUP_SIZE_TO_PACKAGE_ID[rounded] ?? MASHUP_SIZE_TO_PACKAGE_ID[String(sizeGb)];
-  }
-  return undefined;
-}
+const FASTDEALSGH_PLAN_ID_MAP: Record<string, number> = {
+  "mtn:1": 14, "mtn:2": 15, "mtn:3": 16, "mtn:4": 17, "mtn:5": 18,
+  "mtn:6": 19, "mtn:8": 20, "mtn:10": 21, "mtn:15": 22, "mtn:20": 23,
+  "mtn:25": 24, "mtn:30": 25, "mtn:40": 26, "mtn:50": 27,
 
-// ===== PROVIDER CONFIGS =====
+  "telecel:10": 28, "telecel:15": 29, "telecel:20": 30, "telecel:25": 31,
+  "telecel:30": 32, "telecel:40": 33, "telecel:50": 34,
+
+  "airteltigo:1": 35, "airteltigo:2": 36, "airteltigo:3": 37, "airteltigo:4": 38,
+  "airteltigo:5": 39, "airteltigo:6": 40, "airteltigo:7": 41, "airteltigo:8": 42,
+  "airteltigo:10": 43,
+
+  "atbigtime:10": 44, "atbigtime:20": 45, "atbigtime:30": 46,
+  "atbigtime:40": 47, "atbigtime:50": 48, "atbigtime:100": 49,
+};
+
+const ORISJAY_BUNDLE_ID_MAP: Record<string, number> = {
+  "mtn:1": 16, "mtn:2": 17, "mtn:3": 18, "mtn:4": 19, "mtn:5": 20,
+  "mtn:6": 21, "mtn:7": 22, "mtn:8": 23, "mtn:10": 24, "mtn:12": 25,
+  "mtn:15": 26, "mtn:20": 27, "mtn:25": 28, "mtn:30": 29, "mtn:40": 30,
+  "mtn:50": 31,
+
+  "telecel:10": 71, "telecel:15": 72, "telecel:20": 73, "telecel:25": 74,
+  "telecel:30": 75, "telecel:40": 76, "telecel:50": 77,
+};
+
 const NETWORK_CONFIGS: Record<string, NetworkConfig> = {
-  // Dakazina handles: mtn, telecel, at_ishare, mtn_mashup
-  dakazina: {
-    apiUrl: "https://reseller.dakazinabusinessconsult.com/api/v1/buy-data-package",
+  bossudata: {
+    apiUrl: "https://bossudatahub.com/api.php",
     networkMap: {
-      mtn:        "mtn",
-      telecel:    "telecel",
-      airteltigo: "at_ishare",
-      mtn_mashup: "mtn_mashup",
+      mtn: "mtn",
+      telecel: "TELECEL",
+      airteltigo: "AIRTELTIGO_ISHARE",
     },
-    buildRequest: (phone, sizeOrId, networkKey, network, orderId) => {
-      const networkIdMap: Record<string, number> = {
-        mtn:        6,
-        telecel:    2,
-        at_ishare:  1,
-        airteltigo: 1,
-        mtn_mashup: 7,
-      };
-      return {
-        recipient_msisdn: phone,
-        shared_bundle:    sizeOrId,
-        network_id:       networkIdMap[networkKey] ?? networkIdMap[network] ?? 6,
-        ...(orderId ? { incoming_api_ref: orderId } : {}),
-      };
-    },
-    apiKeyEnvVar: "DAKAZINA_API_KEY",
-    authHeader: "bearer",
+    buildRequest: (phone, sizeGb, networkKey, network, orderId) => ({
+      "action": "create_order",
+      "network": networkKey,
+      "package_key": `${sizeGb}gb`,
+      "recipient_phone": phone,
+      ...(orderId && { "order_reference": orderId }),
+    }),
+    apiKeyEnvVar: "BOSSUDATA_API_KEY",
   },
 
-  // Fricopay handles provider-routed standard data purchases.
-  fricopay: {
-    apiUrl: "https://fricopay.com/devapi/cheap-data/purchase",
+  cledanet: {
+    apiUrl: "https://backend.mycledanet.com/api/order",
+    networkMap: {
+      mtn: "MTN",
+      telecel: "TELECEL",
+      airteltigo: "AIRTELTIGO_ISHARE",
+      atbigtime: "AIRTELTIGO_BIGTIME",
+    },
+    buildRequest: (phone, sizeGb, networkKey, network, orderId) => ({
+      phone: phone,
+      size: Number(sizeGb),
+      network: networkKey,
+      ...(orderId && { "order_reference": orderId }),
+    }),
+    apiKeyEnvVar: "CLEDANET_API_KEY",
+  },
+
+  spendless: {
+    apiUrl: "https://spendless.top/api/purchase",
     networkMap: {
       mtn: "YELLO",
-      mtn_express: "YELLO",
-      mtn_xpress: "YELLO",
       telecel: "TELECEL",
       airteltigo: "AT_PREMIUM",
-      atbigtime: "AT_BIGTIME",
     },
-    buildRequest: (phone, sizeGb, networkKey) => ({
-      network: networkKey,
+    buildRequest: (phone, sizeGb, networkKey, network, orderId) => ({
       recipient: phone,
       capacity: Number(sizeGb),
+      networkKey: networkKey,
+      ...(orderId && { "order_reference": orderId }),
     }),
-    apiKeyEnvVar: "FRICOPAY_API_KEY",
-    authHeader: "bearer",
+    apiKeyEnvVar: "SPENDLESS_API_KEY",
   },
 
-  // Datamart handles standard data purchases from the wallet balance.
-  datamart: {
-    apiUrl: "https://api.datamartgh.shop/api/developer/purchase",
+  ghdataconnect: {
+    apiUrl: "https://ghdataconnect.com/api/v1/purchaseBundle",
     networkMap: {
-      mtn: "YELLO",
-      mtn_express: "YELLO",
-      mtn_xpress: "YELLO",
-      telecel: "TELECEL",
-      airteltigo: "AT_PREMIUM",
-      atbigtime: "AT_BIGTIME",
+      mtn: "mtn",
+      mtn_express: "mtn",
+      telecel: "telecel",
+      airteltigo: "atishare",
+      atbigtime: "atbigtime"
     },
-    buildRequest: (phone, sizeGb, networkKey) => ({
-      phoneNumber: phone,
-      network: networkKey,
-      capacity: String(sizeGb),
-      gateway: "wallet",
+    buildRequest: (phone, sizeGb, networkKey, network, orderId) => ({
+      "msisdn": phone,
+      "capacity": Number(sizeGb),
+      "network": networkKey,
+      ...(orderId && { "reference": orderId }),
     }),
-    apiKeyEnvVar: "DATAMART_API_KEY",
-    authHeader: "x-api-key",
+    apiKeyEnvVar: "GHDATACONNECT_API_KEY",
   },
+  dakazina: {
+    apiUrl: "https://reseller.dakazinabusinessconsult.com/api/v1/buy-data-package?",
+    networkMap: {
+      mtn_mashup: "mtn_mashup",
+    },
+    buildRequest: (phone, sizeGbText, networkKey, network, orderId) => {
+      const networkIdMap = {
+        'mtn': 3,  //mtn expreee 6 mtn 3 
+        'mtn_express': 6,
+        'telecel': 2,
+        'at_ishare': 1,
+        'mtn_mashup': 7
+      };
 
-  // Datahubnet handles: mashup (Special MTN Mashup packages)
+      return {
+        "recipient_msisdn": phone,
+        "shared_bundle": sizeGbText,
+        "network_id": networkIdMap[network] || networkIdMap[networkKey] || 3,
+        ...(orderId && { "incoming_api_ref": orderId })
+      };
+    },
+    apiKeyEnvVar: "DAKAZINA_API_KEY"
+  },
   datahubnet: {
     apiUrl: "https://www.datahubnet.online/api/v1/special-offers/",
     networkMap: {
       mashup: "mashup",
     },
-    buildRequest: (phone, packageId) => ({
-      phone_number: phone,
-      package_id:   Number(packageId) || 0,
+    buildRequest: (phone, data_package_id, networkKey, network, orderId) => ({
+      "phone_number": phone,
+      "package_id": Number(data_package_id) || 0,
     }),
     apiKeyEnvVar: "DATAHUBNET_API_KEY",
-    authHeader: "bearer",
+  },
+  refer2bundle: {
+    apiUrl: "https://www.refer2bundle.com/api/v1/order",
+    networkMap: {
+      mtn: "MTN",
+      telecel: "TELECEL",
+      airteltigo: "AT",
+    },
+    buildRequest: (phone, sizeGb, networkKey, network, orderId) => ({
+      "network": networkKey,
+      "data_plan": `${sizeGb}GB`,
+      "beneficiary": phone,
+    }),
+    apiKeyEnvVar: "REFER2BUNDLE_API_KEY",
   },
 
-  // Orisjay handles: telecel, airteltigo, atbigtime (fallback)
+  datamart: {
+    apiUrl: "https://api.datamartgh.shop/api/purchase",
+    networkMap: {
+      mtn: "YELLO",
+      telecel: "TELECEL",
+      airteltigo: "AT_PREMIUM",
+      atbigtime: "atbigtime"
+    },
+    buildRequest: (phone, sizeGb, networkKey, network, orderId) => ({
+      "phoneNumber": phone,
+      "capacity": Number(sizeGb),
+      "network": networkKey,
+      "gateway": "wallet",
+      ...(orderId && { "reference": orderId }),
+    }),
+    apiKeyEnvVar: "DATAMART_API_KEY",
+  },
+
+  // ===== NEW: DataMart MTN MashUp =====
+  // Provider key is "datamart_mashup" (so it doesn't clash with the regular
+  // "datamart" provider above), but the ORDER network stays "mashup".
+  // comboCost is read from data_packages.bundle_id (passed in as bundle_id).
+  datamart_mashup: {
+    apiUrl: "https://api.datamartgh.shop/api/developer/mashup/purchase",
+    networkMap: {
+      mashup: "MTN_COMBO",
+    },
+    buildRequest: (phone, sizeGb, networkKey, network, orderId, bundle_id) => {
+      const comboCost = Number(bundle_id) || 0;
+      if (!comboCost) {
+        console.warn(`[DATAMART-MASHUP] No comboCost (bundle_id) for ${network}:${sizeGb} — provider will reject with UNKNOWN_PACKAGE`);
+      }
+      return {
+        "phoneNumber": phone,
+        "comboCost": comboCost,
+        ...(orderId && { "ref": orderId }),
+      };
+    },
+    apiKeyEnvVar: "DATAMART_API_KEY",
+  },
+  // ===== END NEW =====
+
+  datahubgh: {
+    apiUrl: "https://app.datahubgh.com/api/external/data-purchase",
+    networkMap: {
+      mtn: "YELLO",
+      mtn_xpress: "YELLO",
+      telecel: "TELECEL",
+      airteltigo: "AT_PREMIUM",
+      atbigtime: "AT_BIGTIME",
+    },
+    buildRequest: (phone, sizeGb, networkKey, network, orderId) => ({
+      "networkKey": networkKey,
+      "recipient": phone,
+      "capacity": String(sizeGb),
+    }),
+    apiKeyEnvVar: "DATAHUBGH_API_KEY",
+  },
+
   orisjay: {
     apiUrl: "https://orisjay.store/api/process-order.php",
     networkMap: {
-      telecel:    "telecel",
+      mtn: "mtn",
+      mtn_express: "mtn",
+      mtn_xpress: "mtn",
+      telecel: "telecel",
       airteltigo: "ishare",
-      atbigtime:  "bigtime",
+      atbigtime: "bigtime",
     },
-    buildRequest: (phone, sizeGb, networkKey, network, orderId, bundleId) => ({
-      phone:      phone,
-      bundle_id:  bundleId,
-      network:    networkKey,
-      ...(orderId ? { external_reference: orderId } : {}),
-    }),
+    buildRequest: (phone, sizeGb, networkKey, network, orderId, bundle_id) => {
+      const bundleLookupNetwork = network.startsWith("mtn") ? "mtn" : network;
+
+      const dbBundleId = Number(bundle_id) > 0 ? Number(bundle_id) : null;
+      const mappedBundleId =
+        ORISJAY_BUNDLE_ID_MAP[`${bundleLookupNetwork}:${Number(sizeGb)}`] ?? dbBundleId;
+
+      if (!mappedBundleId) {
+        console.warn(`[ORISJAY] No bundle_id mapping for ${network}:${sizeGb}GB — request will fail`);
+      }
+
+      return {
+        "phone": phone,
+        "bundle_id": mappedBundleId,
+        "network": networkKey,
+        ...(orderId && { "external_reference": orderId }),
+      };
+    },
     apiKeyEnvVar: "ORISJAY_API_KEY",
-    authHeader: "both",
   },
+hubnet: {
+  apiUrl: "https://console.hubnet.app/live/api/context/business/transaction",
+  networkMap: {
+    mtn: "mtn",
+    telecel: "telecel",
+    airteltigo: "at",
+    atbigtime: "big-time",
+  },
+  buildRequest: (phone, sizeGb, networkKey, network, orderId) => ({
+    "phone": phone,
+    "volume": String(Number(sizeGb) * 1000),
+    "reference": orderId ?? `TCX-${crypto.randomUUID().replace(/-/g, "").slice(0, 12).toUpperCase()}`,
+    "referrer": phone,
+  }),
+  apiKeyEnvVar: "HUBNET_API_KEY",
+},
+bundlezonegh: {
+  apiUrl: "https://bundlezonegh.com/api/v1",
+  networkMap: {
+    mtn: "mtn",
+    mtn_express: "mtn",
+    telecel: "telecel",
+    airteltigo: "ishare",
+  },
+  buildRequest: (phone, sizeGb, networkKey, network, orderId, bundle_id) => ({
+    "action": "place_order",
+    "network": networkKey,
+    "recipient": phone,
+    "id": bundle_id,
+    ...(orderId && { "order_id": orderId }),
+  }),
+  apiKeyEnvVar: "BUNDLEZONEGH_API",
+},
 
-  // GHDataConnect handles: atbigtime
-  ghdataconnect: {
-    apiUrl: "https://ghdataconnect.com/api/v1/purchaseBundle",
-    networkMap: {
-      atbigtime: "atbigtime",
-    },
-    buildRequest: (phone, sizeGb, networkKey, network, orderId) => ({
-      msisdn:   phone,
-      capacity: Number(sizeGb),
-      network:  networkKey,
-      ...(orderId ? { reference: orderId } : {}),
-    }),
-    apiKeyEnvVar: "GHDATACONNECT_API_KEY",
-    authHeader: "bearer",
+fastdealgh: {
+  apiUrl: "https://fastdealsgh.com/api/v1/data/buy",
+  networkMap: {
+    mtn: "mtn",
+    mtn_express: "mtn",
+    telecel: "telecel",
+    airteltigo: "airteltigo",
+    atbigtime: "atbigtime",
   },
+  buildRequest: (phone, sizeGb, networkKey, network, orderId) => ({
+    "plan_id": FASTDEALSGH_PLAN_ID_MAP[`${networkKey}:${Number(sizeGb)}`],
+    "phone": phone,
+  }),
+  apiKeyEnvVar: "FASTDEALSGH_API",
+},
 };
 
-// ===== NETWORK → PROVIDER ROUTING =====
-// Order matters: more specific entries first
+
 const NETWORK_TO_PROVIDER: Record<string, string> = {
-  mtn:        "dakazina",
-  telecel:    "dakazina",
-  airteltigo: "dakazina",
+  mtn: "dakazina",
+  mtn_express:"ghdataconnect",
+  telecel: "ghdataconnect",
+  airteltigo:"ghdataconnect",
+  atbigtime:"ghdataconnect",
   mtn_mashup: "dakazina",
-  mashup:     "datahubnet",
-  atbigtime:  "ghdataconnect",
+  // CHANGED: "mashup" now goes to DataMart MashUp (was "datahubnet").
+  // datahubnet is still fully configured above; you can switch back any time
+  // from your admin route table (network_provider_routes) without a redeploy.
+  mashup: "datamart_mashup",
 };
+
+async function resolveProvider(
+  supabase: any,
+  networkKey: string,
+  fallback: string | undefined,
+): Promise<string | undefined> {
+  const { data, error } = await supabase
+    .from("network_provider_routes")
+    .select("provider_key, enabled")
+    .eq("network_key", networkKey)
+    .eq("flow", "fulfillment")
+    .maybeSingle();
+
+  if (error) {
+    console.warn(`[FULFILL] Route lookup failed for ${networkKey}, using fallback: ${error.message}`);
+    return fallback;
+  }
+  if (data && data.enabled) {
+    console.log(`[FULFILL] Admin route for ${networkKey} → ${data.provider_key}`);
+    return data.provider_key;
+  }
+  return fallback;
+}
+
+const PROVIDER_RATE_LIMIT_MS = 90 * 1000; // 90 seconds
+
+async function checkProviderRateLimit(
+  supabase: any,
+  phone: string,
+  network: string,
+  sizeGb: number,
+  provider: string,
+): Promise<{ id: string; last_provider_sent_at: string } | null> {
+  const windowStart = new Date(Date.now() - PROVIDER_RATE_LIMIT_MS).toISOString();
+
+  const { data, error } = await supabase
+    .from("orders")
+    .select("id, last_provider_sent_at")
+    .eq("customer_number", phone)
+    .eq("network", network)
+    .eq("size_gb", sizeGb)
+    .eq("fulfillment_provider", provider)
+    .gte("last_provider_sent_at", windowStart)
+    .order("last_provider_sent_at", { ascending: false })
+    .limit(1);
+
+  if (error) {
+    console.warn(`[FULFILL] Provider rate-limit check failed (continuing anyway): ${error.message}`);
+    return null;
+  }
+
+  return data && data.length > 0 ? data[0] : null;
+}
+
+/**
+ * Called when an incoming order is recognized as a duplicate send of an
+ * already-in-flight/completed order (either the 5-minute cross-order
+ * duplicate check, or the 90-second same-provider rate-limit check).
+ *
+ * Instead of marking the duplicate order "failed" (which is misleading —
+ * nothing actually went wrong, the bundle was already sent via the
+ * original order), this mirrors whatever the original order's status
+ * currently is, and tags the duplicate with `duplicate_of` so that if the
+ * original is still "processing" at this instant, a later cascade
+ * (see cascadeToDuplicates) can catch it up once the original resolves.
+ */
+async function blockAsDuplicate(
+  supabase: any,
+  duplicateOrderId: string,
+  originalOrderId: string,
+  reasonLabel: string,
+): Promise<string> {
+  const { data: originalOrder, error: fetchErr } = await supabase
+    .from("orders")
+    .select("fulfillment_status, provider_reference")
+    .eq("id", originalOrderId)
+    .single();
+
+  if (fetchErr) {
+    console.warn(`[FULFILL] Could not fetch original order ${originalOrderId} to mirror (defaulting to processing): ${fetchErr.message}`);
+  }
+
+  // If we can't tell what the original order is doing yet, default to
+  // "processing" rather than "failed" — a cascade will catch it up once
+  // the original order resolves.
+  const mirroredStatus = (!fetchErr && originalOrder?.fulfillment_status) ? originalOrder.fulfillment_status : "processing";
+  const providerReference = originalOrder?.provider_reference ?? null;
+
+  const { error: updateErr } = await supabase
+    .from("orders")
+    .update({
+      fulfillment_status: mirroredStatus,
+      provider_reference: providerReference,
+      api_response: `${reasonLabel} — treated as a duplicate of order ${originalOrderId}; mirrored its status ("${mirroredStatus}") instead of failing`,
+      duplicate_of: originalOrderId,
+    })
+    .eq("id", duplicateOrderId);
+
+  if (updateErr) {
+    console.error(`[FULFILL] DB update error while marking ${duplicateOrderId} as duplicate: ${updateErr.message}`);
+  } else {
+    console.log(`[FULFILL] Order ${duplicateOrderId} marked as duplicate of ${originalOrderId}, mirrored status "${mirroredStatus}"`);
+  }
+
+  return mirroredStatus;
+}
+
+/**
+ * Called right after an order's fulfillment_status is finally resolved
+ * (completed or failed from an actual provider call). Any other order
+ * that was parked as a duplicate of this one (see blockAsDuplicate) and
+ * is still sitting at "processing" gets caught up to the real outcome.
+ */
+async function cascadeToDuplicates(
+  supabase: any,
+  originalOrderId: string,
+  resolvedStatus: string,
+  providerReference: string | null | undefined,
+  apiResponseNote: string,
+): Promise<void> {
+  const { data: cascaded, error } = await supabase
+    .from("orders")
+    .update({
+      fulfillment_status: resolvedStatus,
+      provider_reference: providerReference ?? null,
+      api_response: `Mirrored from original order ${originalOrderId}: ${apiResponseNote}`,
+    })
+    .eq("duplicate_of", originalOrderId)
+    .eq("fulfillment_status", "processing")
+    .select("id");
+
+  if (error) {
+    console.warn(`[FULFILL] Failed to cascade status to duplicates of ${originalOrderId} (continuing anyway): ${error.message}`);
+    return;
+  }
+
+  if (cascaded && cascaded.length > 0) {
+    console.log(`[FULFILL] Cascaded status "${resolvedStatus}" to ${cascaded.length} duplicate order(s) of ${originalOrderId}: ${cascaded.map((c: any) => c.id).join(", ")}`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Payment authorisation: nothing may reach a provider unless it is paid for.
+// ---------------------------------------------------------------------------
+
+type Authorization = { ok: true } | { ok: false; status: number; error: string };
+
+const AUTHORISED: Authorization = { ok: true };
+// Paystack charges that belong to other products must never be reusable as proof for a data order.
+const NON_DATA_PAYMENT_TYPES = new Set(["storefront_korba_purchase", "social_boost"]);
+const MIN_PAID_RATIO = 0.95;
+
+async function verifyPaystackPayment(order: any): Promise<Authorization> {
+  const reference = order.paystack_reference || order.payment_reference;
+  const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
+  if (!reference || !secret) {
+    return { ok: false, status: 402, error: "No payment reference on this order" };
+  }
+
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const res = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(String(reference))}`, {
+        headers: { Authorization: `Bearer ${secret}` },
+      });
+      const body = await res.json().catch(() => null);
+
+      if (res.ok && body?.data?.status === "success") {
+        const paid = Number(body.data.amount) / 100;
+        const type = String(body.data.metadata?.type || "").toLowerCase();
+        if (NON_DATA_PAYMENT_TYPES.has(type)) {
+          return { ok: false, status: 402, error: "This payment belongs to a different purchase" };
+        }
+        if (!Number.isFinite(paid) || paid < Number(order.amount || 0) * MIN_PAID_RATIO) {
+          return { ok: false, status: 402, error: "Amount paid does not cover this order" };
+        }
+        return AUTHORISED;
+      }
+      // A definite answer from Paystack that the charge did not succeed.
+      if (res.status !== 429 && res.status < 500) {
+        return { ok: false, status: 402, error: "Payment has not been confirmed" };
+      }
+    } catch (err) {
+      console.warn(`[FULFILL] Paystack verification attempt ${attempt + 1} failed:`, err);
+    }
+  }
+  return { ok: false, status: 503, error: "Could not confirm payment right now. Please try again shortly." };
+}
+
+async function ownsOrder(supabase: any, userId: string, order: any): Promise<boolean> {
+  if (order.user_id === userId || order.customer_id === userId) return true;
+
+  const stores: Array<[string, string | null]> = [
+    ["agent_stores", order.agent_store_id],
+    ["subagent_stores", order.subagent_store_id],
+    ["sub_subagent_stores", order.sub_subagent_store_id],
+  ];
+  for (const [table, storeId] of stores) {
+    if (!storeId) continue;
+    const { data } = await supabase.from(table).select("id").eq("id", storeId).eq("user_id", userId).maybeSingle();
+    if (data) return true;
+  }
+
+  if (order.customer_id) {
+    const { data } = await supabase.from("customers").select("id").eq("id", order.customer_id).eq("user_id", userId).maybeSingle();
+    if (data) return true;
+  }
+  return false;
+}
+
+async function authorizeFulfillment(supabase: any, req: Request, order: any, serviceRoleKey: string): Promise<Authorization> {
+  const token = (req.headers.get("authorization") || "").replace(/^Bearer\s+/i, "").trim();
+  if (token && token === serviceRoleKey) return AUTHORISED;
+
+  let userId: string | null = null;
+  if (token) {
+    const { data } = await supabase.auth.getUser(token);
+    userId = data?.user?.id ?? null;
+  }
+
+  if (userId) {
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    if (isAdmin === true) return AUTHORISED;
+  }
+
+  const method = String(order.payment_method || "").toLowerCase();
+  if (method === "paystack") return await verifyPaystackPayment(order);
+  if (method === "wallet" && userId && await ownsOrder(supabase, userId, order)) return AUTHORISED;
+
+  return { ok: false, status: userId ? 403 : 401, error: "You are not allowed to fulfil this order" };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -196,11 +566,30 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const supabaseUrl    = Deno.env.get("SUPABASE_URL")!;
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase       = createClient(supabaseUrl, serviceRoleKey);
 
-    const { order_id, paystack_reference } = await req.json();
+    const apiKeys: Record<string, string> = {};
+    for (const [provider, config] of Object.entries(NETWORK_CONFIGS)) {
+      const apiKey = Deno.env.get(config.apiKeyEnvVar);
+      if (apiKey) {
+        apiKeys[provider] = apiKey;
+      } else {
+        console.warn(`API key for ${provider} (${config.apiKeyEnvVar}) not configured`);
+      }
+    }
+
+    if (Object.keys(apiKeys).length === 0) {
+      return new Response(JSON.stringify({ error: "No API keys configured" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const supabase = createClient(supabaseUrl, serviceRoleKey);
+    const { order_id } = await req.json();
+
+    console.log(`[FULFILL] Full request metadata:`, JSON.stringify({ order_id }, null, 2));
 
     if (!order_id) {
       return new Response(JSON.stringify({ error: "Missing order_id" }), {
@@ -211,7 +600,6 @@ Deno.serve(async (req) => {
 
     console.log(`[FULFILL] Starting fulfillment for order_id: ${order_id}`);
 
-    // ─── Fetch order ────────────────────────────────────────────────────────
     const { data: order, error: orderErr } = await supabase
       .from("orders")
       .select("*")
@@ -226,48 +614,87 @@ Deno.serve(async (req) => {
       });
     }
 
-    console.log(`[FULFILL] Order found - fulfillment_status=${order.fulfillment_status}, network=${order.network}, size_gb=${order.size_gb}`);
+    console.log(`[FULFILL] Order found - Status: ${order.fulfillment_status}, Network: ${order.network}, Size: ${order.size_gb}GB`);
 
-    // ─── Prevent double-fulfillment ─────────────────────────────────────────
-    if (order.fulfillment_status === "completed") {
-      console.log(`[FULFILL] Order ${order_id} already completed. Skipping.`);
-      return new Response(JSON.stringify({ success: true, message: "Already fulfilled", skipped: true }), {
+    const authorization = await authorizeFulfillment(supabase, req, order, serviceRoleKey);
+    if (!authorization.ok) {
+      console.warn(`[FULFILL] BLOCKED order ${order_id} (payment_method=${order.payment_method}): ${authorization.error}`);
+      return new Response(JSON.stringify({ success: false, error: authorization.error }), {
+        status: authorization.status,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ─── Duplicate paystack_reference check ─────────────────────────────────
-    if (paystack_reference) {
-      const { data: dupes } = await supabase
-        .from("orders")
-        .select("id")
-        .eq("paystack_reference", paystack_reference)
-        .eq("fulfillment_status", "completed")
-        .neq("id", order_id);
+    let bundleId = null;
 
-      if (dupes && dupes.length > 0) {
-        console.log(`[FULFILL] Duplicate detected for ${paystack_reference} - marking as duplicate`);
-        await supabase
-          .from("orders")
-          .update({ fulfillment_status: "duplicate", status: "duplicate", api_response: `Duplicate of order ${dupes[0].id}` })
-          .eq("id", order_id);
-        return new Response(JSON.stringify({ success: false, message: "Duplicate order", skipped: true }), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+    if (order.package_id) {
+      const { data: packageData, error: packageError } = await supabase
+        .from("data_packages")
+        .select("bundle_id")
+        .eq("id", order.package_id)
+        .single();
+
+      if (!packageError && packageData) {
+        bundleId = packageData.bundle_id;
+        console.log(`[FULFILL] Bundle ID fetched: ${bundleId}`);
+      } else {
+        console.warn(`[FULFILL] No bundle_id found for package: ${order.package_id}`);
       }
     }
 
-    // ─── Atomically claim the order before calling any provider ───────────────
-    // A conditional update plus select prevents concurrent callbacks from both
-    // passing the pending/failed guard and sending the same bundle twice.
-    const allowedStatuses = ["pending", "failed"];
-    const { data: claimedOrder, error: lockErr } = await supabase
+    const DUPLICATE_WINDOW_MS = 5 * 60 * 1000;
+    const duplicateWindowStart = new Date(Date.now() - DUPLICATE_WINDOW_MS).toISOString();
+
+    const { data: dupOrders, error: dupErr } = await supabase
+      .from("orders")
+      .select("id, fulfillment_status, created_at")
+      .eq("customer_number", order.customer_number)
+      .eq("network", order.network)
+      .eq("size_gb", order.size_gb)
+      .neq("id", order_id)
+      .in("fulfillment_status", ["completed", "processing"])
+      .gte("created_at", duplicateWindowStart)
+      .limit(1);
+
+    if (dupErr) {
+      console.warn(`[FULFILL] Cross-order duplicate check failed (continuing anyway): ${dupErr.message}`);
+    } else if (dupOrders && dupOrders.length > 0) {
+      const dup = dupOrders[0];
+      console.warn(`[FULFILL] Order ${order_id} is a duplicate of order ${dup.id} (status: ${dup.fulfillment_status}, created: ${dup.created_at}) — mirroring instead of failing`);
+
+      const mirroredStatus = await blockAsDuplicate(
+        supabase,
+        order_id,
+        dup.id,
+        `Duplicate order detected within ${DUPLICATE_WINDOW_MS / 1000}s window`,
+      );
+
+      return new Response(JSON.stringify({
+        success: mirroredStatus === "completed",
+        message: `Duplicate of order ${dup.id} (${dup.fulfillment_status}) — mirrored its status ("${mirroredStatus}"). No separate bundle was sent.`,
+        duplicate_of: dup.id,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (order.fulfillment_status === "completed") {
+      console.log(`[FULFILL] Order ${order_id} already completed. Skipping.`);
+      return new Response(JSON.stringify({
+        success: false,
+        message: "Order already completed"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    console.log(`[FULFILL] Locking order as processing...`);
+    const { data: lockedRows, error: lockErr } = await supabase
       .from("orders")
       .update({ fulfillment_status: "processing" })
       .eq("id", order_id)
-      .in("fulfillment_status", allowedStatuses)
-      .select("id")
-      .maybeSingle();
+      .in("fulfillment_status", ["pending", "failed"])
+      .select("id");
 
     if (lockErr) {
       console.error(`[FULFILL] Failed to lock order: ${lockErr.message}`);
@@ -276,261 +703,528 @@ Deno.serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (!claimedOrder) {
-      console.log(`[FULFILL] Order ${order_id} was claimed by another request. Skipping.`);
-      return new Response(JSON.stringify({ success: true, message: "Fulfillment already in progress", skipped: true }), {
+
+    if (!lockedRows || lockedRows.length === 0) {
+      console.warn(`[FULFILL] Order ${order_id} was already locked/processed by another call — skipping duplicate fulfillment`);
+      return new Response(JSON.stringify({
+        success: false,
+        message: "Order already being processed or completed (duplicate fulfillment call blocked)"
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // ─── Clean phone number ─────���────────────────────────────────────────────
-    let phone = order.customer_number.replace(/[^0-9]/g, "");
-    if (phone.startsWith("233")) phone = "0" + phone.slice(3);
-    if (!phone.startsWith("0"))  phone = "0" + phone;
+    console.log(`[FULFILL] Order locked as processing`);
 
-    if (phone.length !== 10) {
-      await supabase.from("orders").update({ fulfillment_status: "failed", api_response: "Invalid phone number format" }).eq("id", order_id);
-      return new Response(JSON.stringify({ success: false, error: "Invalid phone number" }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    let phone = order.customer_number.replace(/[^0-9]/g, "");
+    if (phone.startsWith("233")) {
+      phone = "0" + phone.slice(3);
+    }
+    if (!phone.startsWith("0")) {
+      phone = "0" + phone;
     }
 
-    console.log(`[FULFILL] phone=${phone}, network=${order.network}, size_gb=${order.size_gb}`);
+    console.log(`[FULFILL] Cleaned phone: ${phone}, Size: ${order.size_gb}GB, Network: ${order.network}`);
 
-    // ─── Fetch bundle_id from data_packages (used by orisjay) ───────────────
-    let bundleId: any = null;
-    if (order.package_id) {
-      const { data: pkg } = await supabase
-        .from("data_packages")
-        .select("bundle_id, data_package_id, size_gb_text")
-        .eq("id", order.package_id)
-        .single();
-      if (pkg) {
-        bundleId = pkg.bundle_id;
-        if (!order.size_gb_text && pkg.size_gb_text) order.size_gb_text = pkg.size_gb_text;
-        if (!order.data_package_id && pkg.data_package_id) order.data_package_id = pkg.data_package_id;
-        console.log(`[FULFILL] Package data: bundle_id=${bundleId}, data_package_id=${pkg.data_package_id}`);
+    const isFreeDataClaim = order.payment_method === "free_data_claim";
+
+    if (isFreeDataClaim) {
+      console.log(`[FULFILL] Processing FREE DATA CLAIM order ${order_id}`);
+
+      let claimNetwork = order.network?.toLowerCase() || "mtn";
+
+      if (!order.network || order.network === "") {
+        if (phone.startsWith("024") || phone.startsWith("054") || phone.startsWith("025") || phone.startsWith("053") || phone.startsWith("055") || phone.startsWith("059")) {
+          claimNetwork = "mtn";
+        } else if (phone.startsWith("020") || phone.startsWith("050")) {
+          claimNetwork = "telecel";
+        } else if (phone.startsWith("026") || phone.startsWith("056") || phone.startsWith("057") || phone.startsWith("027")) {
+          claimNetwork = "airteltigo";
+        } else {
+          claimNetwork = "mtn";
+        }
+        console.log(`[FULFILL] Network auto-detected: ${claimNetwork}`);
+      }
+
+      const provider = await resolveProvider(supabase, claimNetwork, NETWORK_TO_PROVIDER[claimNetwork]);
+      if (!provider) {
+        console.error(`[FULFILL] No provider for network: ${claimNetwork}`);
+        const { error: updateErr } = await supabase
+          .from("orders")
+          .update({
+            fulfillment_status: "failed",
+            api_response: `No provider for network: ${claimNetwork}`
+          })
+          .eq("id", order_id);
+
+        if (updateErr) console.error(`[FULFILL] DB update error: ${updateErr.message}`);
+        else console.log(`[FULFILL] ❌ FREE DATA CLAIM failed - marked as failed`);
+
+        await cascadeToDuplicates(supabase, order_id, "failed", null, `No provider for network: ${claimNetwork}`);
+
+        return new Response(JSON.stringify({ error: `No provider for network: ${claimNetwork}` }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const config = NETWORK_CONFIGS[provider];
+      const apiKey = apiKeys[provider];
+
+      if (!apiKey) {
+        console.error(`[FULFILL] No API key for provider: ${provider}`);
+        const { error: updateErr } = await supabase
+          .from("orders")
+          .update({
+            fulfillment_status: "failed",
+            api_response: `No API key for provider: ${provider}`
+          })
+          .eq("id", order_id);
+
+        if (updateErr) console.error(`[FULFILL] DB update error: ${updateErr.message}`);
+        else console.log(`[FULFILL] ❌ FREE DATA CLAIM failed - marked as failed`);
+
+        await cascadeToDuplicates(supabase, order_id, "failed", null, `No API key for provider: ${provider}`);
+
+        return new Response(JSON.stringify({ error: `No API key for provider: ${provider}` }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const claimRateLimitHit = await checkProviderRateLimit(supabase, phone, claimNetwork, order.size_gb, provider);
+      if (claimRateLimitHit) {
+        console.warn(`[FULFILL] Order ${order_id} is a duplicate send within the provider rate-limit window: ${phone} / ${claimNetwork} ${order.size_gb}GB already sent to ${provider} (order ${claimRateLimitHit.id} at ${claimRateLimitHit.last_provider_sent_at}) — mirroring instead of failing`);
+
+        const mirroredStatus = await blockAsDuplicate(
+          supabase,
+          order_id,
+          claimRateLimitHit.id,
+          `Same phone/network/size sent to ${provider} within the last ${PROVIDER_RATE_LIMIT_MS / 1000}s`,
+        );
+
+        return new Response(JSON.stringify({
+          success: mirroredStatus === "completed",
+          message: `Duplicate send of order ${claimRateLimitHit.id} to ${provider} within ${PROVIDER_RATE_LIMIT_MS / 1000}s — mirrored its status ("${mirroredStatus}"). No separate bundle was sent.`,
+          duplicate_of: claimRateLimitHit.id,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { error: providerTagErr } = await supabase
+        .from("orders")
+        .update({ fulfillment_provider: provider, last_provider_sent_at: new Date().toISOString() })
+        .eq("id", order_id);
+      if (providerTagErr) {
+        console.warn(`[FULFILL] Failed to tag order with fulfillment_provider (continuing): ${providerTagErr.message}`);
+      }
+
+      const networkKey = config.networkMap[claimNetwork] || claimNetwork.toUpperCase();
+      console.log(`[FULFILL] Sending FREE DATA to ${provider}: phone=${phone}, size=${order.size_gb}GB, network=${networkKey}`);
+
+      const requestBody = config. buildRequest(phone, order.size_gb, networkKey, claimNetwork, order_id);
+
+      const apiRes = await fetch(config.apiUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-API-Key": apiKey,
+          "AUTHORIZATION": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      const apiData = await apiRes.text();
+      console.log(`[FULFILL] API Response from ${provider}: ${apiRes.status} - ${apiData}`);
+
+      let parsedData;
+      try {
+        parsedData = JSON.parse(apiData);
+      } catch (e) {
+        parsedData = null;
+      }
+
+      const isSuccess = apiRes.ok && (parsedData?.success !== false);
+
+      if (isSuccess) {
+        console.log(`[FULFILL] FREE DATA CLAIM - SUCCESS`);
+        const { error: updateErr } = await supabase
+          .from("orders")
+          .update({
+            fulfillment_status: "completed",
+            api_response: apiData,
+            provider_reference: parsedData?.reference,
+            network: claimNetwork,
+          })
+          .eq("id", order_id);
+
+        if (updateErr) {
+          console.error(`[FULFILL] DB update error: ${updateErr.message}`);
+          return new Response(JSON.stringify({ error: updateErr.message }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        await cascadeToDuplicates(supabase, order_id, "completed", parsedData?.reference, apiData);
+
+        console.log(`[FULFILL] ✅ FREE DATA CLAIM completed successfully`);
+        return new Response(JSON.stringify({
+          success: true,
+          message: "Free data claim fulfilled successfully"
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      } else {
+        const errorMsg = parsedData?.message || apiData;
+        console.log(`[FULFILL] FREE DATA CLAIM - FAILED: ${errorMsg}`);
+
+        const { error: updateErr } = await supabase
+          .from("orders")
+          .update({
+            fulfillment_status: "failed",
+            api_response: apiData,
+          })
+          .eq("id", order_id);
+
+        if (updateErr) {
+          console.error(`[FULFILL] DB update error: ${updateErr.message}`);
+          return new Response(JSON.stringify({ error: updateErr.message }), {
+            status: 500,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+
+        await cascadeToDuplicates(supabase, order_id, "failed", null, apiData);
+
+        console.log(`[FULFILL] ❌ FREE DATA CLAIM marked as failed - can retry`);
+        return new Response(JSON.stringify({
+          success: false,
+          message: "Free data claim fulfillment failed",
+          api_response: apiData
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
     }
 
-    // ─── Determine provider ──────────────────────────────────────────────────
-    const rawNetwork = (order.network ?? "").toLowerCase().trim().replace(/[\s-]+/g, "_");
-    const normalizedNetwork = rawNetwork === "mtn_xpress" || rawNetwork === "mtnexpress" ? "mtn_express" : rawNetwork === "airtel_tigo" ? "airteltigo" : rawNetwork;
-    const routeSizeGb = Number(order.size_gb);
-    const fallbackProvider = NETWORK_TO_PROVIDER[normalizedNetwork];
-    const { data: mappedProvider, error: routeError } = await supabase.rpc("get_network_provider_route_for_size", { p_network_key: normalizedNetwork, p_flow: "fulfillment", p_size_gb: routeSizeGb });
-    if (routeError) console.warn(`[FULFILL] Route lookup failed, using fallback: ${routeError.message}`);
-    const provider = mappedProvider || fallbackProvider;
+    console.log(`[FULFILL] Processing REGULAR PAID order ${order_id}`);
 
-    // Fricopay rejects duplicate submissions and refunds the duplicate. A failed
-    // Fricopay response is not safe to retry automatically because the provider
-    // may have accepted the request before returning an error.
-    if (provider === "fricopay" && order.fulfillment_status === "failed") {
-      console.warn(`[FULFILL] Fricopay order ${order_id} is failed and requires manual provider verification before retry.`);
-      return new Response(JSON.stringify({ success: false, message: "Fricopay order requires manual verification before retry", retryable: false }), {
-        status: 409,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    const normalizedNetwork = order.network.toLowerCase();
+    const provider = await resolveProvider(supabase, normalizedNetwork, NETWORK_TO_PROVIDER[normalizedNetwork]);
+  if (provider === "fricopay" && order.fulfillment_status === "failed") {
+  console.warn(
+    `[FULFILL] Fricopay order ${order_id} is failed and must be manually verified before retry`
+  );
+
+  return new Response(
+    JSON.stringify({
+      success: false,
+      retryable: false,
+      message:
+        "Fricopay order requires manual provider verification before retry",
+    }),
+    {
+      status: 409,
+      headers: {
+        ...corsHeaders,
+        "Content-Type": "application/json",
+      },
     }
-
-    if (provider === "fricopay" && normalizedNetwork === "mtn_xpress") {
-      console.log("[FULFILL] Fricopay does not expose MTN Xpress; using its MTN route.");
-    }
-
+  );
+}
     if (!provider) {
       console.error(`[FULFILL] No provider for network: ${order.network}`);
-      await supabase.from("orders").update({ fulfillment_status: "failed", api_response: `No provider for network: ${order.network}` }).eq("id", order_id);
+      const { error: updateErr } = await supabase
+        .from("orders")
+        .update({
+          fulfillment_status: "failed",
+          api_response: `No provider for network: ${order.network}`
+        })
+        .eq("id", order_id);
+
+      if (updateErr) console.error(`[FULFILL] DB update error: ${updateErr.message}`);
+      else console.log(`[FULFILL] ❌ No provider - marked as failed`);
+
+      await cascadeToDuplicates(supabase, order_id, "failed", null, `No provider for network: ${order.network}`);
+
       return new Response(JSON.stringify({ error: `No provider for network: ${order.network}` }), {
-        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
     const config = NETWORK_CONFIGS[provider];
-    const apiKey = Deno.env.get(config.apiKeyEnvVar);
+    if (!config) {
+      console.error(`[FULFILL] Invalid provider config: ${provider}`);
+      const { error: updateErr } = await supabase
+        .from("orders")
+        .update({
+          fulfillment_status: "failed",
+          api_response: `Invalid provider config: ${provider}`
+        })
+        .eq("id", order_id);
 
-    if (!apiKey) {
-      console.error(`[FULFILL] API key missing for ${provider} (${config.apiKeyEnvVar})`);
-      await supabase.from("orders").update({ fulfillment_status: "failed", api_response: `No API key for provider: ${provider}` }).eq("id", order_id);
-      return new Response(JSON.stringify({ error: `No API key for provider: ${provider}` }), {
-        status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      if (updateErr) console.error(`[FULFILL] DB update error: ${updateErr.message}`);
+      else console.log(`[FULFILL] ❌ Invalid config - marked as failed`);
+
+      await cascadeToDuplicates(supabase, order_id, "failed", null, `Invalid provider config: ${provider}`);
+
+      return new Response(JSON.stringify({ error: `Invalid provider config: ${provider}` }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const networkKey = config.networkMap[normalizedNetwork] ?? normalizedNetwork;
+    const apiKey = apiKeys[provider];
+    if (!apiKey) {
+      console.error(`[FULFILL] No API key for provider: ${provider}`);
+      const { error: updateErr } = await supabase
+        .from("orders")
+        .update({
+          fulfillment_status: "failed",
+          api_response: `No API key for provider: ${provider}`
+        })
+        .eq("id", order_id);
 
-    // ─── Build request body ──────────────────────────────────────────────────
-    let requestBody: Record<string, any>;
+      if (updateErr) console.error(`[FULFILL] DB update error: ${updateErr.message}`);
+      else console.log(`[FULFILL] ❌ No API key - marked as failed`);
 
-    if (provider === "datahubnet" || normalizedNetwork === "mashup") {
-      // Datahubnet needs a numeric package_id
-      let packageId = order.data_package_id ?? getMashupPackageId(order.size_gb_text, Number(order.size_gb));
-      console.log(`[FULFILL] Mashup → datahubnet package_id=${packageId} (size_gb_text="${order.size_gb_text}", size_gb=${order.size_gb})`);
-      if (!packageId) {
-        await supabase.from("orders").update({ fulfillment_status: "failed", api_response: `Cannot map mashup package: size_gb_text="${order.size_gb_text}", size_gb=${order.size_gb}` }).eq("id", order_id);
-        return new Response(JSON.stringify({ error: "Unable to map mashup package" }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      await cascadeToDuplicates(supabase, order_id, "failed", null, `No API key for provider: ${provider}`);
+
+      return new Response(JSON.stringify({ error: `No API key for provider: ${provider}` }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const rateLimitHit = await checkProviderRateLimit(supabase, phone, normalizedNetwork, order.size_gb, provider);
+    if (rateLimitHit) {
+      console.warn(`[FULFILL] Order ${order_id} is a duplicate send within the provider rate-limit window: ${phone} / ${normalizedNetwork} ${order.size_gb}GB already sent to ${provider} (order ${rateLimitHit.id} at ${rateLimitHit.last_provider_sent_at}) — mirroring instead of failing`);
+
+      const mirroredStatus = await blockAsDuplicate(
+        supabase,
+        order_id,
+        rateLimitHit.id,
+        `Same phone/network/size sent to ${provider} within the last ${PROVIDER_RATE_LIMIT_MS / 1000}s`,
+      );
+
+      return new Response(JSON.stringify({
+        success: mirroredStatus === "completed",
+        message: `Duplicate send of order ${rateLimitHit.id} to ${provider} within ${PROVIDER_RATE_LIMIT_MS / 1000}s — mirrored its status ("${mirroredStatus}"). No separate bundle was sent.`,
+        duplicate_of: rateLimitHit.id,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const { error: providerTagErr2 } = await supabase
+      .from("orders")
+      .update({ fulfillment_provider: provider, last_provider_sent_at: new Date().toISOString() })
+      .eq("id", order_id);
+    if (providerTagErr2) {
+      console.warn(`[FULFILL] Failed to tag order with fulfillment_provider (continuing): ${providerTagErr2.message}`);
+    }
+
+    const networkKey = config.networkMap[normalizedNetwork] || normalizedNetwork.toUpperCase();
+    console.log(`[FULFILL] Sending to ${provider}: phone=${phone}, size=${order.size_gb}GB, network=${networkKey}`);
+
+    let requestBody;
+
+    if (normalizedNetwork === "mashup" && provider === "datamart_mashup") {
+      // ===== NEW: DataMart MashUp =====
+      // comboCost = data_packages.bundle_id for this order's package.
+      const comboCost = Number(bundleId) || 0;
+      console.log(`[FULFILL] MASHUP (DataMart) order - package_id: ${order.package_id}, comboCost (bundle_id): ${comboCost}`);
+
+      if (!comboCost) {
+        console.error(`[FULFILL] ERROR: No comboCost (bundle_id) found for mashup package_id: ${order.package_id}`);
+        const { error: updateErr } = await supabase
+          .from("orders")
+          .update({
+            fulfillment_status: "failed",
+            api_response: `Unable to find comboCost (bundle_id) for mashup package_id="${order.package_id}". Set data_packages.bundle_id to the DataMart comboCost.`
+          })
+          .eq("id", order_id);
+
+        if (updateErr) console.error(`[FULFILL] DB update error: ${updateErr.message}`);
+        else console.log(`[FULFILL] ❌ Mashup comboCost missing - marked as failed`);
+
+        await cascadeToDuplicates(supabase, order_id, "failed", null, `Unable to find comboCost for mashup package`);
+
+        return new Response(JSON.stringify({ error: "Unable to find comboCost for mashup package" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      requestBody = config.buildRequest(phone, packageId, networkKey, normalizedNetwork, order_id, bundleId);
 
-    } else if (provider === "dakazina") {
-      // Dakazina needs: recipient_msisdn, shared_bundle (size as string), network_id, incoming_api_ref (our order UUID)
-      // For mtn_mashup the shared_bundle is the size_gb_text (e.g. "2.6 GB + 1,077 mins")
-      // For regular networks it is the numeric GB value as a string
-      const sharedBundle = (normalizedNetwork === "mtn_mashup" && order.size_gb_text)
-        ? order.size_gb_text
-        : String(order.size_gb);
-      console.log(`[FULFILL] Dakazina → network=${networkKey}, shared_bundle="${sharedBundle}", incoming_api_ref=${order_id}`);
-      requestBody = config.buildRequest(phone, sharedBundle, networkKey, normalizedNetwork, order_id, bundleId);
+      requestBody = config.buildRequest(phone, order.size_gb, networkKey, normalizedNetwork, order_id, bundleId);
+    } else if (normalizedNetwork === "mashup") {
+      // Your original mashup logic (datahubnet etc.) — unchanged.
+      let dataPackageId = undefined;
 
+      if (order.size_gb_text) {
+        dataPackageId = MASHUP_SIZE_TO_PACKAGE_ID[order.size_gb_text];
+
+        if (!dataPackageId) {
+          if (order.size_gb_text.includes("2.6")) dataPackageId = 16;
+          else if (order.size_gb_text.includes("3.61")) dataPackageId = 20;
+          else if (order.size_gb_text.includes("1.7")) dataPackageId = 14;
+          else if (order.size_gb_text.includes("5.1")) dataPackageId = 3;
+          else if (order.size_gb_text.includes("8.2")) dataPackageId = 17;
+          else if (order.size_gb_text.includes("11.9")) dataPackageId = 18;
+          else if (order.size_gb_text.includes("15.3")) dataPackageId = 19;
+        }
+      }
+
+      if (!dataPackageId) {
+        const sizeStr = String(order.size_gb);
+        dataPackageId = MASHUP_SIZE_TO_PACKAGE_ID[sizeStr];
+      }
+
+      console.log(`[FULFILL] MASHUP order - size_gb_text: "${order.size_gb_text}", size_gb: ${order.size_gb}, looked up package_id: ${dataPackageId}`);
+
+      if (!dataPackageId) {
+        console.error(`[FULFILL] ERROR: Could not map mashup package - size_gb_text: "${order.size_gb_text}", size_gb: ${order.size_gb}`);
+        const { error: updateErr } = await supabase
+          .from("orders")
+          .update({
+            fulfillment_status: "failed",
+            api_response: `Unable to map mashup package. size_gb_text="${order.size_gb_text}", size_gb=${order.size_gb}`
+          })
+          .eq("id", order_id);
+
+        if (updateErr) console.error(`[FULFILL] DB update error: ${updateErr.message}`);
+        else console.log(`[FULFILL] ❌ Mashup mapping failed - marked as failed`);
+
+        await cascadeToDuplicates(supabase, order_id, "failed", null, `Unable to map mashup package`);
+
+        return new Response(JSON.stringify({ error: "Unable to map mashup package" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      requestBody = config.buildRequest(phone, dataPackageId, networkKey, normalizedNetwork, order_id);
     } else {
       requestBody = config.buildRequest(phone, order.size_gb, networkKey, normalizedNetwork, order_id, bundleId);
     }
 
-    console.log(`[FULFILL] Sending to ${provider} (${config.apiUrl}):`, JSON.stringify(requestBody));
+    const apiRes = await fetch(config.apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-API-Key": apiKey,
+        "AUTHORIZATION": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
 
-    // ─── Build headers ───────────────────────────────────────────────────────
-    const reqHeaders: Record<string, string> = { "Content-Type": "application/json" };
-    if (config.authHeader === "bearer" || config.authHeader === "both") {
-      reqHeaders["Authorization"] = `Bearer ${apiKey}`;
+    const apiData = await apiRes.text();
+    console.log(`[FULFILL] API Response from ${provider}: ${apiRes.status} - ${apiData}`);
+
+    let parsedData;
+    try {
+      parsedData = JSON.parse(apiData);
+    } catch (e) {
+      parsedData = null;
     }
-    if (config.authHeader === "x-api-key" || config.authHeader === "both") {
-      reqHeaders["X-API-Key"] = apiKey;
-    }
-    // Default: send both for maximum compatibility
-    if (!config.authHeader) {
-      reqHeaders["Authorization"] = `Bearer ${apiKey}`;
-      reqHeaders["X-API-Key"]     = apiKey;
-    }
 
-    // ─── Call provider API ─────────��─────────────────────────────────────────
-    const apiRes  = await fetch(config.apiUrl, { method: "POST", headers: reqHeaders, body: JSON.stringify(requestBody) });
-    const rawText = await apiRes.text();
-
-    let parsed: any = null;
-    try { parsed = JSON.parse(rawText); } catch { /* keep null */ }
-
-    console.log(`[FULFILL] ${provider} response: HTTP ${apiRes.status} - ${rawText.slice(0, 400)}`);
-
-    // ─── Determine success ───────────────────────────────────────────────────
-    // Dakazina returns: { "status": "success", "data": { ... } }  OR  { "success": true, ... }
-    const isSuccess =
-      apiRes.status >= 200 &&
-      apiRes.status < 300 &&
-      (
-        parsed?.status  === "success"  ||
-        parsed?.status  === "placed"   ||
-        parsed?.success === true       ||
-        // Dakazina sometimes returns { "message": "Package purchased successfully." }
-        (typeof parsed?.message === "string" && parsed.message.toLowerCase().includes("purchased successfully"))
-      );
+    const isSuccess = apiRes.ok && (parsedData?.success !== false);
 
     if (isSuccess) {
-      console.log(`[FULFILL] SUCCESS for order ${order_id}`);
+      console.log(`[FULFILL] Order ${order_id} - SUCCESS`);
 
-      // Provider references must come from the provider response, never from a local/generated order id.
-      const providerReference = provider === "fricopay"
-        ? (parsed?.reference ?? parsed?.data?.reference ?? null)
-        : provider === "datamart"
-        ? (parsed?.data?.purchaseId ?? parsed?.data?.transactionReference ?? parsed?.data?.reference ?? null)
-        : (parsed?.data?.order_code ??
-          parsed?.data?.code ??
-          parsed?.data?.reference ??
-          parsed?.order_code ??
-          parsed?.reference ??
-          parsed?.transaction_code ??
-          parsed?.data?.transaction_code ??
-          null);
-
-      console.log(`[FULFILL] ${provider} provider reference from response: ${providerReference ?? "none"}`);
-
-      // Build update — provider_reference = dakazina order code (if any)
-      // provider_order_id = also store order code for webhook matching
-      // order_status stays "processing" — Dakazina webhook will update to "delivered"
       const updatePayload: Record<string, any> = {
-        // Provider acceptance is not delivery. Keep the order active until
-        // the provider webhook/status sync confirms delivery.
-        fulfillment_status: "processing",
-        api_response:       rawText,
-        order_status:       "processing",
+        fulfillment_status: "completed",
+        provider_reference: parsedData?.reference,
+        api_response: apiData,
       };
-
-      if (providerReference) {
-        updatePayload.provider_reference = String(providerReference);
-        updatePayload.provider_order_id  = String(providerReference);
+      if (provider === "dakazina" && parsedData?.transaction_code) {
+        updatePayload.provider_reference = parsedData.transaction_code;
+        console.log(`[FULFILL] Dakazina transaction_code saved: ${parsedData.transaction_code}`);
       }
 
-      const { error: updateErr } = await supabase.from("orders").update(updatePayload).eq("id", order_id);
+      // ===== NEW: DataMart MashUp nests the reference under `data` =====
+      if (provider === "datamart_mashup") {
+        updatePayload.provider_reference =
+          parsedData?.data?.reference ?? parsedData?.data?.orderId ?? updatePayload.provider_reference;
+        console.log(`[FULFILL] DataMart MashUp reference saved: ${updatePayload.provider_reference}`);
+      }
+
+      const { error: updateErr } = await supabase
+        .from("orders")
+        .update(updatePayload)
+        .eq("id", order_id);
 
       if (updateErr) {
         console.error(`[FULFILL] DB update error: ${updateErr.message}`);
         return new Response(JSON.stringify({ error: updateErr.message }), {
-          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
-      console.log(`[FULFILL] Order ${order_id} marked as fulfilled. provider=${provider}, provider_reference=${providerReference ?? "none"}`);
+      await cascadeToDuplicates(supabase, order_id, "completed", updatePayload.provider_reference, apiData);
+
+      console.log(`[FULFILL] ✅ Order completed successfully`);
       return new Response(JSON.stringify({
         success: true,
-        message: "Order fulfilled successfully",
-        provider,
-        provider_reference: providerReference,
-      }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-
+        message: "Order fulfilled successfully"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     } else {
-      // ─── Failure ───────────────────────────────────────────────────────────
-      const errorMsg = parsed?.message ?? parsed?.error ?? `HTTP ${apiRes.status}: ${rawText.slice(0, 200)}`;
-      console.log(`[FULFILL] FAILED order ${order_id}: ${errorMsg}`);
+      const errorMsg = parsedData?.message || apiData;
+      console.log(`[FULFILL] Order ${order_id} - FAILED: ${errorMsg}`);
 
-      const isLowBalance   = errorMsg.toLowerCase().includes("low balance") || errorMsg.toLowerCase().includes("insufficient");
-      const isCapacityIssue = errorMsg.toLowerCase().includes("capacity not available") || errorMsg.toLowerCase().includes("bundle not available");
+      const isLowBalance = errorMsg.toLowerCase().includes("low balance") ||
+        errorMsg.toLowerCase().includes("insufficient balance") ||
+        errorMsg.toLowerCase().includes("insufficient funds");
+      const isCapacityIssue = errorMsg.toLowerCase().includes("capacity not available") ||
+        errorMsg.toLowerCase().includes("package not available") ||
+        errorMsg.toLowerCase().includes("bundle not available");
 
-      if (isLowBalance)    console.warn(`[FULFILL] LOW BALANCE on ${provider}`);
-      if (isCapacityIssue) console.warn(`[FULFILL] CAPACITY ISSUE on ${provider}`);
-
-      const isMtnRoute = ["mtn", "mtn_express"].includes(normalizedNetwork);
-      const beneficiaryFailure = isMtnRoute && /beneficiar|whitelist|portal list|not.*list|not.*added/i.test(String(errorMsg));
-      const failureUpdate: Record<string, unknown> = {
-        fulfillment_status: beneficiaryFailure ? "refunded" : "failed",
-        order_status: beneficiaryFailure ? "refunded" : "failed",
-        api_response: rawText,
-      };
-      if (beneficiaryFailure) {
-        failureUpdate.mtn_beneficiary_status = "pending";
-        failureUpdate.mtn_failure_reason = "MTN requires the number to be approved on our beneficiary list before delivery.";
-        failureUpdate.mtn_beneficiary_submitted_at = new Date().toISOString();
-        failureUpdate.mtn_retry_eligible_at = new Date(Date.now() + 5 * 24 * 60 * 60 * 1000).toISOString();
+      if (isLowBalance) {
+        console.warn(`[FULFILL] ⚠️ API Provider LOW BALANCE - Will auto-retry when balance restored`);
+      } else if (isCapacityIssue) {
+        console.warn(`[FULFILL] ⚠️ Bundle/Package not available for this network`);
       }
-      await supabase.from("orders").update(failureUpdate).eq("id", order_id);
 
-      // Log to api_error_logs for admin visibility
-      try {
-        await supabase.from("api_error_logs").insert({
-          order_id:         order_id,
-          customer_number:  order.customer_number,
-          network:          order.network,
-          size_gb:          order.size_gb,
-          amount:           order.amount,
-          error_type:       "DATA_ORDER_FULFILLMENT_FAILED",
-          error_message:    errorMsg,
-          api_endpoint:     config.apiUrl,
-          http_status_code: apiRes.status,
-          request_payload:  requestBody,
-          response_payload: parsed ?? { raw: rawText.slice(0, 500) },
+      const { error: updateErr } = await supabase
+        .from("orders")
+        .update({
+          fulfillment_status: "failed",
+          api_response: apiData,
+        })
+        .eq("id", order_id);
+
+      if (updateErr) {
+        console.error(`[FULFILL] DB update error: ${updateErr.message}`);
+        return new Response(JSON.stringify({ error: updateErr.message }), {
+          status: 500,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
-      } catch (logErr) {
-        console.error(`[FULFILL] Failed to write api_error_logs: ${logErr}`);
       }
 
-      return new Response(JSON.stringify({ success: false, message: "Fulfillment failed", api_response: errorMsg }), {
+      await cascadeToDuplicates(supabase, order_id, "failed", null, apiData);
+
+      console.log(`[FULFILL] ❌ Order marked as failed - can retry`);
+      return new Response(JSON.stringify({
+        success: false,
+        message: "Order fulfillment failed",
+        api_response: apiData
+      }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
   } catch (err) {
-    console.error("[FULFILL] Unhandled exception:", err);
+    console.error(`[FULFILL] Unhandled error:`, err);
     return new Response(JSON.stringify({ error: "Internal server error", details: String(err) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
