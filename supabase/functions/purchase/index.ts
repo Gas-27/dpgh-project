@@ -478,7 +478,10 @@ Deno.serve(async (req) => {
     } else if (normalizedNetwork === "mtn_mashup") {
       requestBody = config.buildRequest(cleanedPhone, size_gb_text || size_gb, networkKey, normalizedNetwork, orderReference);
     } else {
-      requestBody = config.buildRequest(cleanedPhone, size_gb, networkKey, normalizedNetwork, orderReference, bundleId);
+      // Callers may send "1.00", 1 or "1". Providers match on the canonical
+      // package size, so always send the matched package's size ("1"), as fulfill-order does.
+      const canonicalSizeGb = String(Number(packageData.size_gb ?? size_gb));
+      requestBody = config.buildRequest(cleanedPhone, canonicalSizeGb, networkKey, normalizedNetwork, orderReference, bundleId);
     }
 
     // Reserve the API wallet and create the local order before contacting the
