@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
+import { debitOwnWallet, refundFailedOrder, creditUpline, newOrderId } from "@/lib/wallet";
   import { VerificationOrdersCard } from "@/components/VerificationOrdersCard";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
@@ -1602,17 +1603,16 @@ const handleSaveStore = async () => {
         return;
       }
       
-      const newBalance = currentBalance - price;
-      
-      // Deduct from wallet
-      const { error: walletError } = await supabase
-        .from("sub_subagent_stores")
-        .update({ wallet_balance: newBalance })
-        .eq("id", subagentStore.id);
-      
-      if (walletError) {
-        throw new Error("Failed to deduct wallet balance: " + walletError.message);
-      }
+      const walletOrderId = newOrderId();
+      const debit = await debitOwnWallet({
+        ownerType: "subsubagent",
+        ownerId: subagentStore.id,
+        amount: price,
+        kind: "data_purchase",
+        reference: walletOrderId,
+        note: `${buyingPkg.network} for ${buyCustomerNumber}`,
+      });
+      const newBalance = debit.balanceAfter;
       
       // Create order with wallet payment method
       // Include agent_store_id so it shows on storefront and for proper tracking
@@ -1639,6 +1639,7 @@ const handleSaveStore = async () => {
       }
       
       const { data: orderData, error: orderError } = await supabase.from("orders").insert({
+        id: walletOrderId,
         package_id: buyingPkg.id,
         sub_subagent_store_id: subagentStore.id,
         customer_number: buyCustomerNumber,
@@ -1654,11 +1655,7 @@ const handleSaveStore = async () => {
       }).select("id").single();
       
       if (orderError) {
-        // Rollback wallet if order fails
-        await supabase
-          .from("sub_subagent_stores")
-          .update({ wallet_balance: currentBalance })
-          .eq("id", subagentStore.id);
+        await refundFailedOrder(walletOrderId);
         throw orderError;
       }
       
@@ -1678,16 +1675,12 @@ const handleSaveStore = async () => {
         if (subagentStore.subagent_store_id) {
           const subagentCommission = price - agentToSub;
           if (subagentCommission > 0) {
-            const { data: parentSub } = await supabase
-              .from("subagent_stores")
-              .select("wallet_balance")
-              .eq("id", subagentStore.subagent_store_id)
-              .single();
-            if (parentSub) {
-              const newBal = (Number(parentSub.wallet_balance) || 0) + subagentCommission;
-              await supabase.from("subagent_stores").update({ wallet_balance: newBal }).eq("id", subagentStore.subagent_store_id);
-              console.log(`[v0] Wallet purchase - Subagent commission: +${subagentCommission} (new balance: ${newBal})`);
-            }
+            await creditUpline({
+              debitLedgerId: debit.ledgerId,
+              targetType: "subagent",
+              targetId: subagentStore.subagent_store_id,
+              amount: subagentCommission,
+            });
           }
         }
 
@@ -1695,16 +1688,12 @@ const handleSaveStore = async () => {
         if (subagentStore.agent_store_id) {
           const agentCommission = agentToSub - adminBasePrice;
           if (agentCommission > 0) {
-            const { data: agentStore } = await supabase
-              .from("agent_stores")
-              .select("subagent_commission_balance")
-              .eq("id", subagentStore.agent_store_id)
-              .single();
-            if (agentStore) {
-              const newCommissionBalance = (agentStore.subagent_commission_balance || 0) + agentCommission;
-              await supabase.from("agent_stores").update({ subagent_commission_balance: newCommissionBalance }).eq("id", subagentStore.agent_store_id);
-              console.log(`[v0] Wallet purchase - Agent commission: +${agentCommission} (new balance: ${newCommissionBalance})`);
-            }
+            await creditUpline({
+              debitLedgerId: debit.ledgerId,
+              targetType: "agent_commission",
+              targetId: subagentStore.agent_store_id,
+              amount: agentCommission,
+            });
           }
         }
       } catch (profitErr) {

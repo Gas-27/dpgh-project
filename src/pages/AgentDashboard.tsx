@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { supabase } from "@/integrations/supabase/client";
+  import { debitOwnWallet, refundFailedOrder, transferToChild, newOrderId } from "@/lib/wallet";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
 import PartnerServicesApiDocs from "@/components/PartnerServicesApiDocs";
   import { VerificationOrdersCard } from "@/components/VerificationOrdersCard";
@@ -1624,8 +1625,11 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
     const ap = Number(buyPkg.agent_price);
     if (buyPaymentMethod === "wallet") {
       if (Number(store.wallet_balance) < ap) { toast({ title: "Insufficient balance", variant: "destructive" }); setBuyLoading(false); return; }
-      const { error: we } = await supabase.from("agent_stores").update({ wallet_balance: Number(store.wallet_balance) - ap }).eq("id", store.id);
-      if (we) { toast({ title: "Error", description: we.message, variant: "destructive" }); setBuyLoading(false); return; }
+      const walletOrderId = newOrderId();
+      let debit;
+      try {
+        debit = await debitOwnWallet({ ownerType: "agent", ownerId: store.id, amount: ap, kind: "data_purchase", reference: walletOrderId, note: `${buyPkg.network} for ${buyPhone.trim()}` });
+      } catch (we: any) { toast({ title: "Error", description: we.message, variant: "destructive" }); setBuyLoading(false); return; }
       // Extract size_gb the same way verify-payment does: match first numeric value
       const packageName = buyPkg.size_gb_text || buyPkg.size_gb?.toString() || "";
       const sizeMatch = packageName.toString().match(/(\d+(?:\.\d+)?)/);
@@ -1652,6 +1656,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       }
       
       const { data: od, error: oe } = await supabase.from("orders").insert({ 
+        id: walletOrderId,
         customer_number: buyPhone.trim(), 
         network: buyPkg.network, 
         size_gb: extractedSize, 
@@ -1662,11 +1667,11 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         fulfillment_status: "pending", 
         payment_method: "wallet"
       }).select("id").single();
-      if (oe) { toast({ title: "Order error", description: oe.message, variant: "destructive" }); setBuyLoading(false); return; }
+      if (oe) { await refundFailedOrder(walletOrderId); toast({ title: "Order error", description: oe.message, variant: "destructive" }); setBuyLoading(false); return; }
       console.log("[v0] Wallet order created, invoking fulfill-order for order:", od.id, "network:", buyPkg.network, "dataPackageId:", dataPackageId);
       const { data: fulfillData, error: fulfillError } = await supabase.functions.invoke("fulfill-order", { body: { order_id: od.id, data_package_id: dataPackageId } });
       if (fulfillError) { console.log("[v0] Fulfill-order error:", fulfillError); toast({ title: "Fulfillment error", description: fulfillError.message || "Order created but fulfillment failed", variant: "destructive" }); }
-      setStore({ ...store, wallet_balance: Number(store.wallet_balance) - ap });
+      setStore({ ...store, wallet_balance: debit.balanceAfter });
       toast({ title: "Order placed!" }); setBuyDialogOpen(false);
       fetchAllData();
     } else {
@@ -2312,58 +2317,37 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
           return;
         }
 
-        // Deduct refund amount from agent wallet
-        const { error: deductErr } = await supabase
-          .from("agent_stores")
-          .update({ wallet_balance: agentBalance - refundAmount })
-          .eq("id", freshAgentStore!.id);
-        if (deductErr) { errorCount++; continue; }
-
-        const { data: subagent } = await supabase
-          .from("subagent_stores")
-          .select("wallet_balance")
-          .eq("id", targetSubagentId)
-          .maybeSingle();
-
-        if (subagent) {
-          const newBalance = (subagent.wallet_balance || 0) + refundAmount;
-          const { error: updateErr } = await supabase
-            .from("subagent_stores")
-            .update({ wallet_balance: newBalance })
-            .eq("id", targetSubagentId);
-
-          if (!updateErr) {
-            // Update local agent wallet state
-            setStore(prev => prev ? { ...prev, wallet_balance: agentBalance - refundAmount } : prev);
-            // Mark as agent-refunded to prevent double-refund
-            await supabase
-              .from("orders")
-              .update({ agent_refunded_subagent: true })
-              .eq("id", orderId);
-            successCount++;
-            setSubagentOrdersState((prev) =>
-              prev.map((o) =>
-                o.id === orderId
-                  ? { ...o, wallet_refunded: true }
-                  : o
-              )
-            );
-          } else {
-            // Reverse the wallet deduction since credit failed
-            await supabase
-              .from("agent_stores")
-              .update({ wallet_balance: agentBalance })
-              .eq("id", freshAgentStore!.id);
-            errorCount++;
-          }
-        } else {
-          // Reverse the wallet deduction since subagent not found
-          await supabase
-            .from("agent_stores")
-            .update({ wallet_balance: agentBalance })
-            .eq("id", freshAgentStore!.id);
+        // The server moves the money in one step and refuses anyone who is not in the agent's downline.
+        let moved;
+        try {
+          moved = await transferToChild({
+            fromType: "agent",
+            fromId: freshAgentStore!.id,
+            toType: "subagent",
+            toId: targetSubagentId,
+            amount: refundAmount,
+            reference: `agent-refund:${orderId}`,
+            note: "Agent refund of subagent order",
+          });
+        } catch {
           errorCount++;
+          continue;
         }
+
+        setStore(prev => prev ? { ...prev, wallet_balance: moved.balanceAfter } : prev);
+        // Mark as agent-refunded to prevent double-refund
+        await supabase
+          .from("orders")
+          .update({ agent_refunded_subagent: true })
+          .eq("id", orderId);
+        successCount++;
+        setSubagentOrdersState((prev) =>
+          prev.map((o) =>
+            o.id === orderId
+              ? { ...o, wallet_refunded: true }
+              : o
+          )
+        );
       } catch (error) {
         errorCount++;
       }
@@ -3533,7 +3517,7 @@ return (
                               setBulkResults([]);
                               
                               const results: typeof bulkResults = [];
-                              let totalDeducted = 0;
+                              let totalDeducted: number | null = null;
                               
                               for (const recipient of parsed) {
                                 const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === recipient.size);
@@ -3544,9 +3528,12 @@ return (
                                 
                                 const price = pkg.agent_price ?? pkg.price;
                                 
+                                const bulkOrderId = newOrderId();
                                 try {
-                                  // Create order
+                                  const debit = await debitOwnWallet({ ownerType: "agent", ownerId: store.id, amount: Number(price), kind: "bulk_data_purchase", reference: bulkOrderId, note: `${bulkNetwork} bulk for ${recipient.phone}` });
+                                  totalDeducted = debit.balanceAfter;
                                   const { error: orderError } = await supabase.from("orders").insert({
+                                    id: bulkOrderId,
                                     package_id: pkg.id,
                                     size_gb_text: pkg.network === "mtn_mashup" ? pkg.size_gb_text : null,
                                     agent_store_id: store.id,
@@ -3561,18 +3548,16 @@ return (
                                     fulfillment_status: "pending"
                                   });
                                   
-                                  if (orderError) throw orderError;
-                                  totalDeducted += price;
+                                  if (orderError) { await refundFailedOrder(bulkOrderId); throw orderError; }
                                   results.push({ phone: recipient.phone, size: recipient.size || 0, status: "success" });
                                 } catch (err: any) {
                                   results.push({ phone: recipient.phone, size: recipient.size || 0, status: "failed", error: err.message });
                                 }
                               }
                               
-                              // Deduct total from wallet
-                              if (totalDeducted > 0) {
-                                await supabase.from("agent_stores").update({ wallet_balance: walletBalance - totalDeducted }).eq("id", store.id);
-                                setStore(prev => prev ? { ...prev, wallet_balance: walletBalance - totalDeducted } : prev);
+                              if (totalDeducted !== null) {
+                                const latestBalance = totalDeducted;
+                                setStore(prev => prev ? { ...prev, wallet_balance: latestBalance } : prev);
                               }
                               
                               setBulkResults(results);

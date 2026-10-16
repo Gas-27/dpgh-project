@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { debitOwnWallet, refundFailedOrder, newOrderId } from "@/lib/wallet";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
 import PartnerServicesApiDocs from "@/components/PartnerServicesApiDocs";
 import { verifyHubtelMsisdn } from "@/services/hubtelService";
@@ -834,25 +835,31 @@ const UserDashboard = () => {
           return;
         }
 
-        const { error: walletError } = await supabase
-          .from("customers")
-          .update({ wallet_balance: normalWallet - price })
-          .eq("user_id", effectiveUserId);
-
-        if (walletError) {
+        const walletOrderId = newOrderId();
+        let debit;
+        try {
+          debit = await debitOwnWallet({
+            ownerType: "customer",
+            ownerId: effectiveUserId,
+            amount: price,
+            kind: "data_purchase",
+            reference: walletOrderId,
+            note: `${buyPkg.network} ${buyPkg.size_gb}GB for ${buyPhone.trim()}`,
+          });
+        } catch (walletError: any) {
           toast({ title: "Error", description: walletError.message, variant: "destructive" });
           setBuyLoading(false);
           return;
         }
 
-        setNormalWallet(normalWallet - price);
+        setNormalWallet(debit.balanceAfter);
 
-        // Create order record for wallet payment.
-        // Wallet money is already deducted above, so the order is PAID.
-        // fulfillment_status "pending" lets the auto-retry/fulfill flow process it.
+        // The wallet debit is recorded server-side under this order id, which is what
+        // lets fulfill-order accept the order as paid.
         const { error: orderError } = await supabase
           .from("orders")
           .insert({
+            id: walletOrderId,
             package_id: buyPkg.id,
             customer_id: effectiveUserId,
             customer_number: buyPhone.trim(),
@@ -866,6 +873,8 @@ const UserDashboard = () => {
           });
 
         if (orderError) {
+          await refundFailedOrder(walletOrderId);
+          setNormalWallet(normalWallet);
           toast({ title: "Error", description: orderError.message, variant: "destructive" });
           setBuyLoading(false);
           return;

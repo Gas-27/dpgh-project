@@ -1,5 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { adminAdjustWallet, type AdminWalletOwnerType } from "@/lib/wallet";
+
+const WALLET_TABLE_OWNER: Record<string, AdminWalletOwnerType> = {
+  customers: "customer",
+  agent_stores: "agent",
+  subagent_stores: "subagent",
+  sub_subagent_stores: "subsubagent",
+};
 import { APIPricingTab } from "@/components/APIPricingTab";
 import { useAuth } from "@/hooks/useAuth";
 import { useOptimizedRealtime } from "@/hooks/useOptimizedRealtime";
@@ -1912,10 +1920,15 @@ const AdminDashboard = () => {
         // The deepest storefront is credited first, then its parent storefronts are
         // credited without requiring another manual refund action.
         const creditWallet = async (table: string, id: string, amount: number) => {
-          const { data: wallet } = await supabase.from(table).select("id, wallet_balance").eq("id", id).maybeSingle();
-          if (!wallet) return false;
-          const { error } = await supabase.from(table).update({ wallet_balance: (Number(wallet.wallet_balance) || 0) + amount }).eq("id", id);
-          return !error;
+          const ownerType = WALLET_TABLE_OWNER[table];
+          if (!ownerType) return false;
+          try {
+            await adminAdjustWallet({ ownerType, ownerId: id, delta: amount, kind: "order_refund", reference: String(order.id), note: "Admin order refund" });
+            return true;
+          } catch (err) {
+            console.error("Refund credit failed:", err);
+            return false;
+          }
         };
 
         if ((order as any).sub_subagent_store_id) {
@@ -1954,15 +1967,10 @@ const AdminDashboard = () => {
           if (agentByUser) {
             // Treat as an agent order: refund base price to agent wallet
             refundAmount = await resolveAgentBasePrice(order, agentByUser.id);
-            const newBalance = (Number(agentByUser.wallet_balance) || 0) + refundAmount;
-            const { error: updateErr } = await supabase
-              .from("agent_stores")
-              .update({ wallet_balance: newBalance })
-              .eq("id", agentByUser.id);
-            if (!updateErr) {
+            if (await creditWallet("agent_stores", agentByUser.id, refundAmount)) {
               targetWalletUpdated = true;
             } else {
-              toast({ title: `Refund failed`, description: updateErr.message, variant: "destructive" });
+              toast({ title: `Refund failed`, description: "Could not credit the agent wallet", variant: "destructive" });
               continue;
             }
           } else {
@@ -1975,28 +1983,24 @@ const AdminDashboard = () => {
             .eq("user_id", order.customer_id)
             .maybeSingle();
 
-          if (customer) {
-            const newBalance = (Number(customer.wallet_balance) || 0) + refundAmount;
-            const { error: updateErr } = await supabase
+          let customerWalletId: string | null = customer?.id ?? null;
+          if (!customerWalletId) {
+            const { data: created, error: insertErr } = await supabase
               .from("customers")
-              .update({ wallet_balance: newBalance })
-              .eq("id", customer.id);
-            if (!updateErr) {
-              targetWalletUpdated = true;
-            } else {
-              toast({ title: `Refund failed`, description: updateErr.message, variant: "destructive" });
+              .insert({ user_id: order.customer_id, wallet_balance: 0 })
+              .select("id")
+              .single();
+            if (insertErr || !created) {
+              toast({ title: `Refund failed`, description: insertErr?.message || fetchErr?.message || "Customer wallet not found", variant: "destructive" });
               continue;
             }
+            customerWalletId = created.id;
+          }
+          if (await creditWallet("customers", customerWalletId as string, refundAmount)) {
+            targetWalletUpdated = true;
           } else {
-            const { error: insertErr } = await supabase
-              .from("customers")
-              .insert({ user_id: order.customer_id, wallet_balance: refundAmount });
-            if (!insertErr) {
-              targetWalletUpdated = true;
-            } else {
-              toast({ title: `Refund failed`, description: insertErr.message || fetchErr?.message || "Customer wallet not found", variant: "destructive" });
-              continue;
-            }
+            toast({ title: `Refund failed`, description: "Could not credit the customer wallet", variant: "destructive" });
+            continue;
           }
           } // end else (not an agent buying from Packages)
         } else if (order.api_user) {
@@ -2157,6 +2161,19 @@ const AdminDashboard = () => {
       const refundAmount = Number(order.refunded_amount);
       let targetWalletUpdated = false;
 
+      // Never take more than the wallet holds, same as the old floor-at-zero behaviour.
+      const reverseDebit = async (ownerType: AdminWalletOwnerType, ownerId: string, currentBalance: number) => {
+        const delta = -Math.min(refundAmount, Math.max(0, currentBalance));
+        if (delta === 0) return true;
+        try {
+          await adminAdjustWallet({ ownerType, ownerId, delta, kind: "refund_reversal", reference: String(orderId), note: "Admin refund reversal" });
+          return true;
+        } catch (err) {
+          console.error("Refund reversal failed:", err);
+          return false;
+        }
+      };
+
       // Determine target wallet and deduct the refund amount.
       // agent_store_id MUST be checked before customer_id — agent orders have both set.
       if (order.agent_store_id) {
@@ -2168,12 +2185,7 @@ const AdminDashboard = () => {
           .maybeSingle();
 
         if (agent) {
-          const newBalance = Math.max(0, (Number(agent.wallet_balance) || 0) - refundAmount);
-          const { error: updateErr } = await supabase
-            .from("agent_stores")
-            .update({ wallet_balance: newBalance })
-            .eq("id", agent.id);
-          if (!updateErr) targetWalletUpdated = true;
+          targetWalletUpdated = await reverseDebit("agent", agent.id, Number(agent.wallet_balance) || 0);
         }
       } else if (order.subagent_store_id) {
         // Subagent refund reversal: deduct from subagent wallet
@@ -2184,12 +2196,7 @@ const AdminDashboard = () => {
           .maybeSingle();
 
         if (subagent) {
-          const newBalance = Math.max(0, (Number(subagent.wallet_balance) || 0) - refundAmount);
-          const { error: updateErr } = await supabase
-            .from("subagent_stores")
-            .update({ wallet_balance: newBalance })
-            .eq("id", subagent.id);
-          if (!updateErr) targetWalletUpdated = true;
+          targetWalletUpdated = await reverseDebit("subagent", subagent.id, Number(subagent.wallet_balance) || 0);
         }
       } else if (order.customer_id) {
         // Check if this customer_id belongs to an agent (e.g. bought via Packages page
@@ -2203,12 +2210,7 @@ const AdminDashboard = () => {
 
         if (agentByUser) {
           // Deduct from agent wallet instead
-          const newBalance = Math.max(0, (Number(agentByUser.wallet_balance) || 0) - refundAmount);
-          const { error: updateErr } = await supabase
-            .from("agent_stores")
-            .update({ wallet_balance: newBalance })
-            .eq("id", agentByUser.id);
-          if (!updateErr) targetWalletUpdated = true;
+          targetWalletUpdated = await reverseDebit("agent", agentByUser.id, Number(agentByUser.wallet_balance) || 0);
         } else {
         // Direct customer refund reversal: deduct from customers.wallet_balance
         const { data: customer } = await supabase
@@ -2218,12 +2220,7 @@ const AdminDashboard = () => {
           .maybeSingle();
 
         if (customer) {
-          const newBalance = Math.max(0, (Number(customer.wallet_balance) || 0) - refundAmount);
-          const { error: updateErr } = await supabase
-            .from("customers")
-            .update({ wallet_balance: newBalance })
-            .eq("id", customer.id);
-          if (!updateErr) targetWalletUpdated = true;
+          targetWalletUpdated = await reverseDebit("customer", customer.id, Number(customer.wallet_balance) || 0);
         }
         } // end else (not an agent)
       } else if (order.api_user) {
@@ -2389,9 +2386,15 @@ const AdminDashboard = () => {
     const amount = parseFloat(topupAmount);
     if (!amount || amount <= 0) { toast({ title: "Enter a valid amount", variant: "destructive" }); return; }
     setTopupLoading(true);
-    const newBalance = Number(topupAgent.wallet_balance) + amount;
-    const { error: updateErr } = await supabase.from("agent_stores").update({ wallet_balance: newBalance }).eq("id", topupAgent.id);
-    if (updateErr) { toast({ title: "Error", description: updateErr.message, variant: "destructive" }); setTopupLoading(false); return; }
+    let newBalance: number;
+    try {
+      const result = await adminAdjustWallet({ ownerType: "agent", ownerId: topupAgent.id, delta: amount, kind: "admin_topup", note: "Admin wallet top-up" });
+      newBalance = result.balanceAfter;
+    } catch (err: any) {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+      setTopupLoading(false);
+      return;
+    }
     const { data: newTopup, error: insertErr } = await supabase
       .from("wallet_topups")
       .insert({ agent_store_id: topupAgent.id, amount })
@@ -2501,18 +2504,7 @@ const AdminDashboard = () => {
       
       if (isSubsubagentWithdrawal) {
         // SUBSUBAGENT WITHDRAWAL - fetch fresh balance from database first
-        const { data: freshSubsubagent, error: fetchError } = await supabase
-          .from("subagent_stores")
-          .select("wallet_balance")
-          .eq("id", withdrawalData.sub_subagent_store_id)
-          .single();
-        
-        if (fetchError || !freshSubsubagent) throw new Error("Failed to fetch subsubagent balance");
-        
-        const currentBalance = Number(freshSubsubagent.wallet_balance ?? 0);
-        const newBalance = currentBalance - amount;
-        
-        await supabase.from("subagent_stores").update({ wallet_balance: newBalance }).eq("id", withdrawalData.sub_subagent_store_id);
+        const { balanceAfter: newBalance } = await adminAdjustWallet({ ownerType: "subsubagent", ownerId: withdrawalData.sub_subagent_store_id, delta: -amount, kind: "withdrawal", reference: withdrawalId, note: "Withdrawal processed" });
         await supabase.from("withdrawal_requests").update({ status: "completed", processed_at: new Date().toISOString() }).eq("id", withdrawalId);
         
         // Update local state
@@ -2522,18 +2514,7 @@ const AdminDashboard = () => {
         toast({ title: "Withdrawal processed!", description: `GHC ${Number(amount || 0).toFixed(2)} deducted from SubSubagent wallet. New balance: GHC ${Number(newBalance || 0).toFixed(2)}.` });
       } else if (isSubagentWithdrawal) {
         // SUBAGENT WITHDRAWAL - fetch fresh balance from database first
-        const { data: freshSubagent, error: fetchError } = await supabase
-          .from("subagent_stores")
-          .select("wallet_balance")
-          .eq("id", withdrawalData.subagent_store_id)
-          .single();
-        
-        if (fetchError || !freshSubagent) throw new Error("Failed to fetch subagent balance");
-        
-        const currentBalance = Number(freshSubagent.wallet_balance ?? 0);
-        const newBalance = currentBalance - amount;
-        
-        await supabase.from("subagent_stores").update({ wallet_balance: newBalance }).eq("id", withdrawalData.subagent_store_id);
+        const { balanceAfter: newBalance } = await adminAdjustWallet({ ownerType: "subagent", ownerId: withdrawalData.subagent_store_id, delta: -amount, kind: "withdrawal", reference: withdrawalId, note: "Withdrawal processed" });
         await supabase.from("withdrawal_requests").update({ status: "completed", processed_at: new Date().toISOString() }).eq("id", withdrawalId);
         
         // Update local state
@@ -2543,23 +2524,9 @@ const AdminDashboard = () => {
         toast({ title: "Withdrawal processed!", description: `GHC ${Number(amount || 0).toFixed(2)} deducted from Subagent wallet. New balance: GHC ${Number(newBalance || 0).toFixed(2)}.` });
       } else {
         // AGENT WITHDRAWAL - fetch fresh balance from database first
-        const { data: freshAgent, error: fetchError } = await supabase
-          .from("agent_stores")
-          .select("wallet_balance, subagent_commission_balance")
-          .eq("id", agentStoreId)
-          .single();
-        
-        if (fetchError || !freshAgent) throw new Error("Failed to fetch agent balance");
-        
-        // Choose which balance to deduct from
-        const currentBalance = isSubagentProfit 
-          ? Number(freshAgent.subagent_commission_balance ?? 0) 
-          : Number(freshAgent.wallet_balance ?? 0);
-        const newBalance = currentBalance - amount;
-        
-        // Update the correct balance column
+        if (!agentStoreId) throw new Error("Missing agent store for withdrawal");
+        const { balanceAfter: newBalance } = await adminAdjustWallet({ ownerType: isSubagentProfit ? "agent_commission" : "agent", ownerId: agentStoreId, delta: -amount, kind: "withdrawal", reference: withdrawalId, note: "Withdrawal processed" });
         const updateField = isSubagentProfit ? "subagent_commission_balance" : "wallet_balance";
-        await supabase.from("agent_stores").update({ [updateField]: newBalance }).eq("id", agentStoreId);
         await supabase.from("withdrawal_requests").update({ status: "completed", processed_at: new Date().toISOString() }).eq("id", withdrawalId);
         
         // Update local state

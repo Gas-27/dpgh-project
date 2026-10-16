@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
+ import { debitOwnWallet, refundFailedOrder, transferToChild, creditUpline, newOrderId } from "@/lib/wallet";
   import { VerificationOrdersCard } from "@/components/VerificationOrdersCard";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
@@ -1175,35 +1176,28 @@ const SubagentDashboard = () => {
           continue;
         }
 
-        // Deduct from subagent wallet
-        const { error: deductErr } = await supabase
-          .from("subagent_stores")
-          .update({ wallet_balance: myBalance - refundAmount })
-          .eq("id", myStore!.id);
-        if (deductErr) { errorCount++; continue; }
-
-        // Credit sub-subagent wallet
-        const newBalance = (ssa.wallet_balance || 0) + refundAmount;
-        const { error: updateErr } = await supabase
-          .from("sub_subagent_stores")
-          .update({ wallet_balance: newBalance })
-          .eq("id", ssa.id);
-
-        if (!updateErr) {
-          // Mark order as subagent-refunded to prevent double-refund
-          await supabase
-            .from("orders")
-            .update({ subagent_refunded_sub_subagent: true })
-            .eq("id", orderId);
-          successCount++;
-        } else {
-          // Reverse the wallet deduction since credit failed
-          await supabase
-            .from("subagent_stores")
-            .update({ wallet_balance: myBalance })
-            .eq("id", myStore!.id);
+        // The server moves the money in one step and refuses anyone outside this subagent's downline.
+        try {
+          await transferToChild({
+            fromType: "subagent",
+            fromId: myStore!.id,
+            toType: "subsubagent",
+            toId: ssa.id,
+            amount: refundAmount,
+            reference: `subagent-refund:${orderId}`,
+            note: "Subagent refund of sub-subagent order",
+          });
+        } catch {
           errorCount++;
+          continue;
         }
+
+        // Mark order as subagent-refunded to prevent double-refund
+        await supabase
+          .from("orders")
+          .update({ subagent_refunded_sub_subagent: true })
+          .eq("id", orderId);
+        successCount++;
       } catch (err) {
         errorCount++;
       }
@@ -2014,17 +2008,16 @@ const handleSaveStore = async () => {
         return;
       }
       
-      const newBalance = currentBalance - price;
-      
-      // Deduct from wallet
-      const { error: walletError } = await supabase
-        .from("subagent_stores")
-        .update({ wallet_balance: newBalance })
-        .eq("id", subagentStore.id);
-      
-      if (walletError) {
-        throw new Error("Failed to deduct wallet balance: " + walletError.message);
-      }
+      const walletOrderId = newOrderId();
+      const debit = await debitOwnWallet({
+        ownerType: "subagent",
+        ownerId: subagentStore.id,
+        amount: price,
+        kind: "data_purchase",
+        reference: walletOrderId,
+        note: `${buyingPkg.network} for ${buyCustomerNumber}`,
+      });
+      const newBalance = debit.balanceAfter;
       
       // Create order with wallet payment method
       // Include agent_store_id so it shows on storefront and for proper tracking
@@ -2051,6 +2044,7 @@ const handleSaveStore = async () => {
       }
       
       const { data: orderData, error: orderError } = await supabase.from("orders").insert({
+        id: walletOrderId,
         package_id: buyingPkg.id,
         subagent_store_id: subagentStore.id,
         agent_store_id: subagentStore.agent_store_id, // Include parent agent for storefront display
@@ -2067,11 +2061,7 @@ const handleSaveStore = async () => {
       }).select("id").single();
       
       if (orderError) {
-        // Rollback wallet if order fails
-        await supabase
-          .from("subagent_stores")
-          .update({ wallet_balance: currentBalance })
-          .eq("id", subagentStore.id);
+        await refundFailedOrder(walletOrderId);
         throw orderError;
       }
       
@@ -2086,23 +2076,12 @@ const handleSaveStore = async () => {
           console.log(`[v0] Wallet purchase - Subagent price: ${price}, Admin agent price: ${adminBasePrice}, Agent profit: ${agentProfit}`);
           
           if (agentProfit > 0) {
-            // Get agent's current subagent commission balance (Profit from Subagents)
-            const { data: agentStore, error: agentFetchError } = await supabase
-              .from("agent_stores")
-              .select("subagent_commission_balance")
-              .eq("id", subagentStore.agent_store_id)
-              .single();
-            
-            if (agentStore && !agentFetchError) {
-              const newCommissionBalance = (agentStore.subagent_commission_balance || 0) + agentProfit;
-              
-              await supabase
-                .from("agent_stores")
-                .update({ subagent_commission_balance: newCommissionBalance })
-                .eq("id", subagentStore.agent_store_id);
-              
-              console.log(`[v0] Added agent profit: +${agentProfit} to Profit from Subagents (new balance: ${newCommissionBalance})`);
-            }
+            await creditUpline({
+              debitLedgerId: debit.ledgerId,
+              targetType: "agent_commission",
+              targetId: subagentStore.agent_store_id,
+              amount: agentProfit,
+            });
           }
         } catch (profitErr) {
           console.error("[v0] Error adding agent profit:", profitErr);
@@ -3644,7 +3623,7 @@ handleMobileNumberChange(digits);
                               setBulkResults([]);
                               
                               const results: typeof bulkResults = [];
-                              let totalDeducted = 0;
+                              let latestBalance: number | null = null;
                               
                               // Get fresh wallet balance from database
                               const { data: freshStore } = await supabase
@@ -3662,22 +3641,6 @@ handleMobileNumberChange(digits);
                                 return;
                               }
                               
-                              // First deduct the total amount from wallet to prevent race conditions
-                              const newBalance = currentBalance - totalCost;
-                              const { error: walletError } = await supabase
-                                .from("subagent_stores")
-                                .update({ wallet_balance: newBalance })
-                                .eq("id", subagentStore.id);
-                              
-                              if (walletError) {
-                                toast({ title: "Error", description: "Failed to process payment", variant: "destructive" });
-                                setBulkProcessing(false);
-                                return;
-                              }
-                              
-                              // Update local state immediately
-                              setSubagentStore(prev => prev ? { ...prev, wallet_balance: newBalance } : prev);
-                              
                               for (const recipient of parsed) {
                                 const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === recipient.size);
                                 if (!pkg) {
@@ -3687,9 +3650,12 @@ handleMobileNumberChange(digits);
                                 
                                 const price = basePrices[pkg.id] ?? pkg.price;
                                 
+                                const bulkOrderId = newOrderId();
                                 try {
-                                  // Create order with agent_store_id for tracking
+                                  const debit = await debitOwnWallet({ ownerType: "subagent", ownerId: subagentStore.id, amount: Number(price), kind: "bulk_data_purchase", reference: bulkOrderId, note: `${bulkNetwork} bulk for ${recipient.phone}` });
+                                  latestBalance = debit.balanceAfter;
                                   const { data: orderData, error: orderError } = await supabase.from("orders").insert({
+                                    id: bulkOrderId,
                                     package_id: pkg.id,
                                     subagent_store_id: subagentStore.id,
                                     agent_store_id: subagentStore.agent_store_id,
@@ -3705,7 +3671,7 @@ handleMobileNumberChange(digits);
                                     fulfillment_status: "pending"
                                   }).select("id").single();
                                   
-                                  if (orderError) throw orderError;
+                                  if (orderError) { await refundFailedOrder(bulkOrderId); throw orderError; }
                                   
                                   // Trigger fulfillment for each order
                                   if (orderData?.id) {
@@ -3718,24 +3684,15 @@ handleMobileNumberChange(digits);
                                     }
                                   }
                                   
-                                  totalDeducted += price;
                                   results.push({ phone: recipient.phone, size: recipient.size || 0, status: "success" });
                                 } catch (err: any) {
                                   results.push({ phone: recipient.phone, size: recipient.size || 0, status: "failed", error: err.message });
                                 }
                               }
                               
-                              // If some orders failed, refund the difference
-                              const actualDeducted = results.filter(r => r.status === "success").reduce((sum, r) => {
-                                const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
-                                return sum + (pkg ? (basePrices[pkg.id] ?? pkg.price) : 0);
-                              }, 0);
-                              
-                              const refundAmount = totalCost - actualDeducted;
-                              if (refundAmount > 0) {
-                                const refundedBalance = newBalance + refundAmount;
-                                await supabase.from("subagent_stores").update({ wallet_balance: refundedBalance }).eq("id", subagentStore.id);
-                                setSubagentStore(prev => prev ? { ...prev, wallet_balance: refundedBalance } : prev);
+                              if (latestBalance !== null) {
+                                const finalBalance = latestBalance;
+                                setSubagentStore(prev => prev ? { ...prev, wallet_balance: finalBalance } : prev);
                               }
                               
                               setBulkResults(results);

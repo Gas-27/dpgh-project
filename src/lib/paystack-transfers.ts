@@ -173,37 +173,7 @@ export async function createAgentPayoutRequest(
 
   if (payoutError) throw payoutError;
 
-  // Deduct balance
-  if (withdrawalSource === "subagent_commission") {
-    const { data: store } = await supabase
-      .from("agent_stores")
-      .select("subagent_commission_balance")
-      .eq("id", agentStoreId)
-      .single();
-
-    if (store) {
-      const newBalance = (store.subagent_commission_balance || 0) - amount;
-      await supabase
-        .from("agent_stores")
-        .update({ subagent_commission_balance: newBalance })
-        .eq("id", agentStoreId);
-    }
-  } else {
-    const { data: store } = await supabase
-      .from("agent_stores")
-      .select("wallet_balance")
-      .eq("id", agentStoreId)
-      .single();
-
-    if (store) {
-      const newBalance = (store.wallet_balance || 0) - amount;
-      await supabase
-        .from("agent_stores")
-        .update({ wallet_balance: newBalance })
-        .eq("id", agentStoreId);
-    }
-  }
-
+  // The edge function deducts the balance server-side; browsers can no longer write balances.
   return payoutRequest;
 }
 
@@ -263,21 +233,7 @@ export async function createSubagentPayoutRequest(
 
   if (payoutError) throw payoutError;
 
-  // Deduct balance
-  const { data: store } = await supabase
-    .from("subagent_stores")
-    .select("wallet_balance")
-    .eq("id", subagentStoreId)
-    .single();
-
-  if (store) {
-    const newBalance = (store.wallet_balance || 0) - amount;
-    await supabase
-      .from("subagent_stores")
-      .update({ wallet_balance: newBalance })
-      .eq("id", subagentStoreId);
-  }
-
+  // The edge function deducts the balance server-side; browsers can no longer write balances.
   return payoutRequest;
 }
 

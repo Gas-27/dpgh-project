@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { debitOwnWallet, newOrderId } from "@/lib/wallet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,7 +24,6 @@ const BOOST_GLOBAL_PRICE = 35;
 const BOOST_SITEWIDE_PRICE = 40;
 const BOOST_DURATION_DAYS = 30;
 const MAX_IMAGES = 4;
-const walletTableByKind: Record<StoreKind, string> = { agent: "agent_stores", subagent: "subagent_stores", subsubagent: "sub_subagent_stores" };
 
 export default function AgentProductStorePanel({ storeId, storeKind, supportPhone, walletBalance = 0, onWalletBalanceChange }: { storeId?: string; storeKind: StoreKind; supportPhone?: string; walletBalance?: number; onWalletBalanceChange?: (balance: number) => void }) {
   const { toast } = useToast();
@@ -89,12 +89,15 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
       return;
     }
     setSaving(true);
-    const walletTable = walletTableByKind[storeKind];
-    const startingBalance = Number(walletBalance);
     if (needsExtraCharge) {
-      const { error: walletError } = await supabase.from(walletTable).update({ wallet_balance: startingBalance - EXTRA_POST_PRICE }).eq("id", storeId).gte("wallet_balance", EXTRA_POST_PRICE);
-      if (walletError) { toast({ title: "Could not charge wallet", description: walletError.message, variant: "destructive" }); setSaving(false); return; }
-      onWalletBalanceChange?.(startingBalance - EXTRA_POST_PRICE);
+      try {
+        const { balanceAfter } = await debitOwnWallet({ ownerType: storeKind, ownerId: storeId, amount: EXTRA_POST_PRICE, kind: "product_post", reference: newOrderId(), note: "Extra product post" });
+        onWalletBalanceChange?.(balanceAfter);
+      } catch (err: any) {
+        toast({ title: "Could not charge wallet", description: err.message, variant: "destructive" });
+        setSaving(false);
+        return;
+      }
     }
     const cleanImages = images.map(image => image.trim()).filter(Boolean).slice(0, MAX_IMAGES);
     const { error } = await supabase.from("store_products").insert({ store_id: storeId, store_kind: storeKind, title: title.trim(), description: description.trim(), price: Number(price), image_urls: cleanImages, payment_mode: paymentMode, whatsapp_payment_number: paymentMode === "whatsapp" ? paymentNumber.trim() : null });
@@ -120,13 +123,18 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
     const durationDays = plan === "monthly" ? MONTHLY_DURATION_DAYS : 7;
     if (walletBalance < price) { toast({ title: "Insufficient wallet balance", description: `You need GHS ${price.toFixed(2)} to renew.`, variant: "destructive" }); return; }
     setSaving(true);
-    const walletTable = walletTableByKind[storeKind];
-    const { error: walletError } = await supabase.from(walletTable).update({ wallet_balance: Number(walletBalance) - price }).eq("id", storeId).gte("wallet_balance", price);
-    if (walletError) { toast({ title: "Renewal failed", description: walletError.message, variant: "destructive" }); setSaving(false); return; }
+    let balanceAfter: number;
+    try {
+      ({ balanceAfter } = await debitOwnWallet({ ownerType: storeKind, ownerId: storeId, amount: price, kind: "product_plan", reference: newOrderId(), note: `${plan} product plan` }));
+    } catch (err: any) {
+      toast({ title: "Renewal failed", description: err.message, variant: "destructive" });
+      setSaving(false);
+      return;
+    }
+    onWalletBalanceChange?.(balanceAfter);
     const expires = new Date(); expires.setDate(expires.getDate() + durationDays);
     const { error: entitlementError } = await supabase.from("store_product_entitlements").upsert({ store_id: storeId, store_kind: storeKind, paid_post_limit: limit, paid_post_expires_at: expires.toISOString(), plan_type: plan, updated_at: new Date().toISOString() }, { onConflict: "store_id" });
-    if (entitlementError) { await supabase.from(walletTable).update({ wallet_balance: Number(walletBalance) }).eq("id", storeId); toast({ title: "Renewal failed", description: entitlementError.message, variant: "destructive" }); setSaving(false); return; }
-    onWalletBalanceChange?.(Number(walletBalance) - price);
+    if (entitlementError) { toast({ title: "Plan not activated", description: "Your wallet was charged but the plan could not be activated. Contact support with this time and amount.", variant: "destructive" }); setSaving(false); return; }
     toast({ title: "Product plan renewed", description: plan === "monthly" ? "Thirty product posts are available for thirty days." : "Five product posts are available for seven days." });
     await load(); setSaving(false);
   }
@@ -136,14 +144,19 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
     const price = kind === "sitewide" ? BOOST_SITEWIDE_PRICE : BOOST_GLOBAL_PRICE;
     if (walletBalance < price) { toast({ title: "Insufficient wallet balance", description: `You need GHS ${price.toFixed(2)} to boost this product.`, variant: "destructive" }); return; }
     setBoosting(`${product.id}-${kind}`);
-    const walletTable = walletTableByKind[storeKind];
-    const { error: walletError } = await supabase.from(walletTable).update({ wallet_balance: Number(walletBalance) - price }).eq("id", storeId).gte("wallet_balance", price);
-    if (walletError) { toast({ title: "Boost failed", description: walletError.message, variant: "destructive" }); setBoosting(null); return; }
+    let balanceAfter: number;
+    try {
+      ({ balanceAfter } = await debitOwnWallet({ ownerType: storeKind, ownerId: storeId, amount: price, kind: "product_boost", reference: newOrderId(), note: `${kind} boost` }));
+    } catch (err: any) {
+      toast({ title: "Boost failed", description: err.message, variant: "destructive" });
+      setBoosting(null);
+      return;
+    }
+    onWalletBalanceChange?.(balanceAfter);
     const expires = new Date(); expires.setDate(expires.getDate() + BOOST_DURATION_DAYS);
     const patch = kind === "sitewide" ? { boost_sitewide: true, boost_sitewide_expires_at: expires.toISOString() } : { boost_global: true, boost_global_expires_at: expires.toISOString() };
     const { error: productError } = await supabase.from("store_products").update(patch).eq("id", product.id).eq("store_id", storeId);
-    if (productError) { await supabase.from(walletTable).update({ wallet_balance: Number(walletBalance) }).eq("id", storeId); toast({ title: "Boost failed", description: productError.message, variant: "destructive" }); setBoosting(null); return; }
-    onWalletBalanceChange?.(Number(walletBalance) - price);
+    if (productError) { toast({ title: "Boost not applied", description: "Your wallet was charged but the boost could not be applied. Contact support with this time and amount.", variant: "destructive" }); setBoosting(null); return; }
     toast({ title: "Product boosted", description: kind === "sitewide" ? "This product now appears sitewide on the Package page for thirty days." : "This product now appears in Global Products for thirty days." });
     await load(); setBoosting(null);
   }
