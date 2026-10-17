@@ -2757,9 +2757,9 @@ return (
           </TabsContent>
 
           {/* BUY DATA */}
-          <TabsContent value="buy" className="mt-0 space-y-6">
-            <Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
-              <CardContent className="p-4 space-y-1">
+<TabsContent value="buy" className="space-y-4 mt-0">
+  <Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
+  <CardContent className="p-4 space-y-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Wallet className="h-5 w-5 text-primary" />
@@ -2777,17 +2777,17 @@ return (
                 const basePrice = basePrices[pkg.id] || pkg.price || 0;
                 const isInactive = pkg.active === false;
                 return (
-                  <Card key={pkg.id} className={`border-border transition-all relative ${isInactive ? "opacity-50 grayscale" : "hover:border-primary/50"}`}>
+                  <Card key={pkg.id} className={`relative border-slate-700/50 bg-slate-900/5 transition-all ${isInactive ? "opacity-50 grayscale" : "hover:border-slate-600/50"}`}>
                     {isInactive && (
                       <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
                         Not available
                       </div>
                     )}
-                    <CardContent className="p-4 text-center space-y-3">
-                      <p className="font-display text-xl font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb}GB</p>
-                      <p className="text-lg font-bold text-primary">GHC {Number(basePrice).toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">Agent Base Price</p>
-                      <Button variant="hero" size="sm" disabled={isInactive} className="w-full disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && setBuyingPkg(pkg)}>{isInactive ? "Not Available" : "Buy Now"}</Button>
+                    <CardContent>
+                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                      <p className="text-lg font-bold text-cyan-400">GHC {Number(basePrice).toFixed(2)}</p>
+                      <p className="text-xs text-muted-foreground">Agent Price</p>
+                      <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && setBuyingPkg(pkg)} disabled={isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                     </CardContent>
                   </Card>
                 );
