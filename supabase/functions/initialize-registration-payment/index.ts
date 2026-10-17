@@ -1,5 +1,6 @@
 // supabase/functions/initialize-registration-payment/index.ts
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { BLOCKED_MESSAGE, containsBlockedNumber } from "../_shared/blocklist.ts";
 
 const corsHeaders = {
     "Access-Control-Allow-Origin": "*",
@@ -14,6 +15,13 @@ Deno.serve(async (req) => {
 
     try {
         const { email, amount, phone, metadata } = await req.json();
+
+        if (await containsBlockedNumber(phone, metadata)) {
+            return new Response(JSON.stringify({ error: BLOCKED_MESSAGE }), {
+                status: 403,
+                headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+        }
 
         if (!email || !amount || !phone) {
             return new Response(JSON.stringify({ error: "Missing required fields" }), {

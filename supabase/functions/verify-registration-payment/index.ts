@@ -51,6 +51,7 @@ Deno.serve(async (req) => {
         const network = metadata.network || "";
         const packageName = metadata.package_name || "";
         const agentStoreId = metadata.agent_store_id || null;
+        const authenticatedUserId = metadata.user_id || metadata.customer_id || null;
 
         const sizeMatch = packageName.match(/(\d+(?:\.\d+)?)/);
         const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
@@ -66,6 +67,14 @@ Deno.serve(async (req) => {
             .select("id")
             .eq("paystack_reference", reference)
             .maybeSingle();
+
+        const { data: packagePricing } = await supabase
+            .from("data_packages")
+            .select("price, agent_price")
+            .eq("id", packageId)
+            .maybeSingle();
+        const basePrice = Number(agentStoreId ? packagePricing?.agent_price : packagePricing?.price) || amount;
+        const profit = Math.max(0, amount - basePrice);
 
         if (existing) {
             return new Response(JSON.stringify({
@@ -87,6 +96,12 @@ Deno.serve(async (req) => {
             status: "paid",
             fulfillment_status: "pending",
             paystack_reference: reference,
+            payment_method: "paystack",
+            selling_price: amount,
+            base_price: basePrice,
+            profit,
+            user_id: authenticatedUserId,
+            customer_id: authenticatedUserId,
         };
         if (agentStoreId) {
             orderInsert.agent_store_id = agentStoreId;
