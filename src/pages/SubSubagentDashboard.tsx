@@ -262,7 +262,7 @@ const SubSubagentDashboard = () => {
     if (!/^0\d{9}$/.test(buyCustomerNumber)) return;
     setBuySimLookupLoading(true);
     verifyHubtelMsisdn(buyCustomerNumber).then((result) => {
-      if (!cancelled) setBuySimName(result.data?.name || null);
+      if (!cancelled) setBuySimName(result.data?.name?.trim() || null);
     }).catch(() => { if (!cancelled) setBuySimLookupError(true); }).finally(() => {
       if (!cancelled) setBuySimLookupLoading(false);
     });
@@ -1605,9 +1605,7 @@ const handleSaveStore = async () => {
         return;
       }
     }
-    acknowledgedNewNumber.current = false;
-    
-    const price = basePrices[buyingPkg.id] || buyingPkg.price || 0;
+  const price = basePrices[buyingPkg.id] || buyingPkg.price || 0;
     
     if (price > getAvailableBalance()) {
       toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
@@ -2351,7 +2349,7 @@ return (
                       <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
                       <p className="text-lg font-bold text-cyan-400">GHC {Number(basePrice).toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Price</p>
-                      <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => { if (!isInactive) { setBuyStep("phone"); setBuyCustomerNumber(""); setBuyingPkg(pkg); } }} disabled={isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
+                      <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => { if (!isInactive) { acknowledgedNewNumber.current = false; setShowNewNumberWarning(false); setBuyStep("phone"); setBuyCustomerNumber(""); setBuyingPkg(pkg); } }} disabled={isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                     </CardContent>
                   </Card>
                 );
@@ -3497,7 +3495,7 @@ handleMobileNumberChange(digits);
             <div className="rounded-lg bg-red-500/5 border border-red-500/20 px-4 py-3"><p className="text-xs font-semibold text-red-600 dark:text-red-400 mb-1">If the order fails</p><p className="text-xs text-muted-foreground leading-relaxed">Your payment will be <span className="font-medium text-foreground">fully refunded</span>. You can repurchase after <span className="font-semibold text-foreground">2 days</span>, by which time your number will be fully verified.</p></div>
 <div className="flex gap-3 pt-1">
   <Button variant="outline" className="flex-1" onClick={() => setShowNewNumberWarning(false)}>Cancel</Button>
-  <Button variant="hero" className="flex-1" onClick={() => { setShowNewNumberWarning(false); setBuyStep("confirm"); }}>I Understand, Continue</Button>
+  <Button variant="hero" className="flex-1" onClick={() => { acknowledgedNewNumber.current = true; setShowNewNumberWarning(false); setBuyStep("confirm"); }}>I Understand, Continue</Button>
   </div>
   </div>
   </div>
