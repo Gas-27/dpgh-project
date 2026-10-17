@@ -262,7 +262,7 @@ const SubSubagentDashboard = () => {
     if (!/^0\d{9}$/.test(buyCustomerNumber)) return;
     setBuySimLookupLoading(true);
     verifyHubtelMsisdn(buyCustomerNumber).then((result) => {
-      if (!cancelled) setBuySimName(result.name || result.data?.name || null);
+      if (!cancelled) setBuySimName(result.data?.name || null);
     }).catch(() => { if (!cancelled) setBuySimLookupError(true); }).finally(() => {
       if (!cancelled) setBuySimLookupLoading(false);
     });
@@ -1565,6 +1565,20 @@ const handleSaveStore = async () => {
     }
   };
 
+  const handleBuyContinue = () => {
+    if (!buyingPkg || !isValidPhoneLength(buyCustomerNumber)) {
+      toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" });
+      return;
+    }
+    const detected = detectNetwork(buyCustomerNumber);
+    const validMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detected === "mtn";
+    if (!validMashup && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
+      toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyingPkg.network.toUpperCase()} package`, variant: "destructive" });
+      return;
+    }
+    setBuyStep("confirm");
+  };
+
   const handleBuyData = async () => {
     if (!buyingPkg || !buyCustomerNumber || !subagentStore) return;
     
@@ -2337,7 +2351,7 @@ return (
                       <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
                       <p className="text-lg font-bold text-cyan-400">GHC {Number(basePrice).toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Price</p>
-                      <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && setBuyingPkg(pkg)} disabled={isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
+                      <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => { if (!isInactive) { setBuyStep("phone"); setBuyCustomerNumber(""); setBuyingPkg(pkg); } }} disabled={isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                     </CardContent>
                   </Card>
                 );
@@ -2353,6 +2367,7 @@ return (
                     <button onClick={() => { setBuyingPkg(null); setBuyCustomerNumber(""); }} className="text-muted-foreground hover:text-foreground text-2xl">x</button>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {buyStep === "phone" ? <>
                     <div className="bg-primary/10 border border-primary/30 rounded-lg p-4 text-center">
                       <p className="text-sm text-muted-foreground">Price</p>
                       <p className="font-display text-2xl font-bold text-primary">GHC {Number(basePrices[buyingPkg.id] || buyingPkg.price || 0).toFixed(2)}</p>
@@ -2378,13 +2393,23 @@ return (
                       <Button 
                         variant="outline" 
                         className="w-full border-green-500 text-green-500 hover:bg-green-500/10" 
-                        onClick={handleBuyData} 
-                        disabled={buyLoading || !buyCustomerNumber || (basePrices[buyingPkg.id] || buyingPkg.price || 0) > availableWalletBalance}
+onClick={handleBuyContinue}
+                        disabled={buyLoading || !isValidPhoneLength(buyCustomerNumber)}
                       >
                         {buyLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wallet className="h-4 w-4 mr-2" />}
-                        Pay with Wallet
+                        Continue
                       </Button>
                     </div>
+                    </> : <>
+                      <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
+                        <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyingPkg.size_gb}GB {buyingPkg.network.toUpperCase()}</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold underline">{buyCustomerNumber}</span></div>
+                        {buySimName && <div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">SIM registered to</span><span className="text-right font-semibold">{buySimName}</span></div>}
+                        <div className="border-t border-border pt-3 flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-cyan-400">GHC {Number(basePrices[buyingPkg.id] || buyingPkg.price || 0).toFixed(2)}</span></div>
+                      </div>
+                      <div className="rounded-lg border border-red-500/50 bg-red-500/10 p-4 text-sm text-red-400 leading-relaxed"><span className="font-semibold block mb-1">Important Notice</span>Make sure the recipient number has no outstanding airtime, MoMo, or bundle debt. Network providers will not deliver data to numbers with unpaid balances.</div>
+                      <div className="flex gap-3"><Button variant="outline" className="flex-1" onClick={() => setBuyStep("phone")} disabled={buyLoading}>Back</Button><Button variant="hero" className="flex-1" onClick={handleBuyData} disabled={buyLoading || (basePrices[buyingPkg.id] || buyingPkg.price || 0) > availableWalletBalance}>{buyLoading ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Processing...</> : "Confirm Purchase"}</Button></div>
+                    </>}
                     <p className="text-xs text-muted-foreground text-center">
                       <span>Wallet Balance: GHC {availableWalletBalance.toFixed(2)}</span>
                       <Button
