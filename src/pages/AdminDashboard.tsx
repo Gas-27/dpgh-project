@@ -54,6 +54,7 @@ import AdminSpaceshipPricing from "@/components/AdminSpaceshipPricing";
 import AdminOrderNumberApprovals from "@/components/AdminOrderNumberApprovals";
 import AdminWaitingOrders from "@/components/AdminWaitingOrders";
   import AdminBlockedSenderIds from "@/components/AdminBlockedSenderIds";
+import AdminBlockedContacts from "@/components/AdminBlockedContacts";
 import WeeklyOrderTargetAdmin from "@/components/WeeklyOrderTargetAdmin";
 import PriceReductionRequestsAdmin from "@/components/PriceReductionRequestsAdmin";
 import SmsAdmin from "@/components/SmsAdmin";
@@ -2765,7 +2766,7 @@ const AdminDashboard = () => {
 
           <TabsContent value="subscriptions" className="space-y-6"><SubscriptionPaymentsPanel admin /></TabsContent>
           <TabsContent value="price_reduction_requests" className="space-y-6"><PriceReductionRequestsAdmin /></TabsContent>
-<TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /><AdminBlockedSenderIds /></TabsContent>
+<TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /><AdminBlockedContacts /><AdminBlockedSenderIds /></TabsContent>
           <TabsContent value="waiting_numbers" className="space-y-6"><AdminWaitingOrders orders={orders as any[]} onRefresh={() => { setLoadedTabs((current) => { const next = new Set(current); next.delete("orders"); return next; }); setActiveTab("orders"); }} /></TabsContent>
           <TabsContent value="domain_purchases" className="space-y-6"><AdminDomainPurchasesPanel /></TabsContent>
   <TabsContent value="domain_renewals" className="space-y-6"><AdminDomainRenewalsPanel /></TabsContent>
