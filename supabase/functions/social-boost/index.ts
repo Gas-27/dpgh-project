@@ -1,5 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { loadProviders, resolveActionProvider, resolveRoute } from "../_shared/social-boost-providers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -7,10 +8,9 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const EXOBOOST_API_URL = "https://exosupplier.com/api/v2";
-const ACTIONS = new Set(["services", "add", "status", "refill", "refill_status", "cancel", "balance"]);
+const ACTIONS = new Set(["services", "add", "status", "refill", "refill_status", "cancel", "balance", "provider_status"]);
 const REQUIRED_FIELDS: Record<string, string[]> = {
-  services: [], balance: [], add: ["service", "link", "quantity"], status: ["order"], refill: ["order"], refill_status: ["refill"], cancel: ["orders"],
+  services: [], balance: [], provider_status: [], add: ["service", "link", "quantity"], status: ["order"], refill: ["order"], refill_status: ["refill"], cancel: ["orders"],
 };
 
 // Provider errors that are NOT the customer's fault (our key, our supplier balance, rate limits,
@@ -75,8 +75,6 @@ async function failAndRefundOrder(supabase: SupabaseAdmin, orderNumber: unknown,
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Use POST for Social Boost requests." }, 405);
-  const providerApiKey = Deno.env.get("EXOBOOST_API_KEY");
-  if (!providerApiKey) return json({ error: "Social Boost is not configured." }, 500);
   let input: Record<string, unknown>;
   try { input = await req.json(); } catch { return json({ error: "Request body must be valid JSON." }, 400); }
   const authHeader = req.headers.get("authorization") ?? "";
@@ -94,27 +92,29 @@ Deno.serve(async (req) => {
     if (stuckError) return json({ error: stuckError.message }, 500);
     const results: Record<string, unknown>[] = [];
     for (const order of stuck ?? []) {
-      const serviceId = String(order.service).split(":", 1)[0].trim();
       const { data: linkError } = await supabase.rpc("validate_social_boost_link", { p_platform: order.platform, p_link: order.target_link });
       if (linkError) { results.push({ order: order.order_number, skipped: String(linkError) }); continue; }
       if (/comment/i.test(String(order.service))) { results.push({ order: order.order_number, skipped: "custom comments need manual handling" }); continue; }
+      const resolved = await resolveRoute(supabase, order.service);
+      if ("error" in resolved) { results.push({ order: order.order_number, skipped: resolved.error }); continue; }
+      const { route } = resolved;
       if (!(await claimOrderForProvider(supabase, order.order_number))) { results.push({ order: order.order_number, skipped: "already being submitted" }); continue; }
       try {
-        const res = await fetch(EXOBOOST_API_URL, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" }, body: new URLSearchParams({ key: providerApiKey, action: "add", service: serviceId, link: String(order.target_link), quantity: String(order.quantity) }), signal: AbortSignal.timeout(20000) });
+        const res = await fetch(route.provider.api_url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" }, body: new URLSearchParams({ key: route.apiKey, action: "add", service: route.providerServiceId, link: String(order.target_link), quantity: String(order.quantity) }), signal: AbortSignal.timeout(20000) });
         const raw = await res.text();
         let parsed: { order?: unknown; error?: unknown } = {};
         try { parsed = JSON.parse(raw); } catch { /* non-JSON reply */ }
         if (parsed.order == null) { await releaseProviderClaim(supabase, order.order_number); results.push({ order: order.order_number, failed: String(parsed.error ?? raw).slice(0, 200) }); continue; }
         let saveError: { message: string } | null = null;
         for (let attempt = 1; attempt <= 3; attempt += 1) {
-          const { error } = await supabase.from("social_boost_orders").update({ provider_order_id: String(parsed.order), status: "processing", provider_status: "processing" }).eq("order_number", order.order_number).is("provider_order_id", null);
+          const { error } = await supabase.from("social_boost_orders").update({ provider_order_id: String(parsed.order), provider: route.provider.id, status: "processing", provider_status: "processing" }).eq("order_number", order.order_number).is("provider_order_id", null);
           saveError = error;
           if (!error) break;
         }
         if (saveError) console.error(JSON.stringify({ event: "provider_order_id_save_failed", order: order.order_number, provider_order_id: String(parsed.order), error: saveError.message }));
         results.push({ order: order.order_number, provider_order_id: String(parsed.order), saved: !saveError });
       } catch (error) {
-        // The request may have reached ExoBoost before failing, so the claim is kept and expires on its own.
+        // The request may have reached the provider before failing, so the claim is kept and expires on its own.
         results.push({ order: order.order_number, failed: String(error) });
       }
     }
@@ -146,6 +146,37 @@ Deno.serve(async (req) => {
     if (catalogError) return json({ error: "Could not load Social Boost service catalog." }, 500);
     return json({ services: (catalog ?? []).map((service) => ({ id: service.service_id, name: service.service_name, category: service.category, base_price_per_1000: service.admin_price_per_1000, min_quantity: service.min_quantity, max_quantity: service.max_quantity, average_completion_time: service.average_completion_time, notes: service.notes })) });
   }
+  if (action === "provider_status") {
+    if (!actorUserId) return json({ error: "Admin access required." }, 403);
+    const { data: isAdmin } = await supabase.rpc("has_role", { _user_id: actorUserId, _role: "admin" });
+    if (!isAdmin) return json({ error: "Admin access required." }, 403);
+    const providers = await loadProviders(supabase);
+    const report = await Promise.all(providers.map(async (provider) => {
+      const apiKey = Deno.env.get(provider.api_key_env);
+      if (!apiKey) return { id: provider.id, key_configured: false, key_env: provider.api_key_env, balance: null, currency: null, error: `Add the ${provider.api_key_env} secret to this Supabase project.` };
+      try {
+        const res = await fetch(provider.api_url, { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" }, body: new URLSearchParams({ key: apiKey, action: "balance" }), signal: AbortSignal.timeout(10000) });
+        const data = await res.json().catch(() => ({}));
+        if (data?.balance == null) return { id: provider.id, key_configured: true, key_env: provider.api_key_env, balance: null, currency: null, error: String(data?.error ?? `HTTP ${res.status}`).slice(0, 200) };
+        return { id: provider.id, key_configured: true, key_env: provider.api_key_env, balance: String(data.balance), currency: data.currency ? String(data.currency) : null, error: null };
+      } catch (error) {
+        return { id: provider.id, key_configured: true, key_env: provider.api_key_env, balance: null, currency: null, error: `Could not reach ${provider.label}: ${String(error).slice(0, 120)}` };
+      }
+    }));
+    return json({ providers: report });
+  }
+  let target: { id: string; label: string; url: string; key: string };
+  let providerServiceId = "";
+  if (action === "add") {
+    const resolved = await resolveRoute(supabase, input.service);
+    if ("error" in resolved) return json({ error: resolved.error, retryable: resolved.retryable }, resolved.status);
+    target = { id: resolved.route.provider.id, label: resolved.route.provider.label, url: resolved.route.provider.api_url, key: resolved.route.apiKey };
+    providerServiceId = resolved.route.providerServiceId;
+  } else {
+    const resolved = await resolveActionProvider(supabase, input);
+    if ("error" in resolved) return json({ error: resolved.error, retryable: resolved.retryable }, resolved.status);
+    target = { id: resolved.provider.id, label: resolved.provider.label, url: resolved.provider.api_url, key: resolved.apiKey };
+  }
   if (action === "add" && !isWalletHandoff) {
     const quantity = Number(input.quantity); if (!Number.isInteger(quantity) || quantity <= 0) return json({ error: "quantity must be a positive integer." }, 400);
     const serviceLookup = String(input.service);
@@ -167,26 +198,21 @@ Deno.serve(async (req) => {
   const providerInput = { ...input };
   delete providerInput.wallet_order_number;
   delete providerInput.payment_method;
+  delete providerInput.provider;
 
-  if (action === "add" && typeof providerInput.service === "string") {
-    const serviceId = providerInput.service.split(":", 1)[0].trim();
-    if (!/^\d+$/.test(serviceId)) {
-      return json({ error: "Invalid Social Boost service ID." }, 400);
-    }
-    providerInput.service = serviceId;
-  }
+  if (action === "add") providerInput.service = providerServiceId;
   if (action === "add" && input.order) {
     const claimed = await claimOrderForProvider(supabase, input.order);
     if (!claimed) return json({ error: "This order is already being submitted or has already been sent.", duplicate_prevented: true }, 409);
   }
-  const body = new URLSearchParams({ key: providerApiKey, action }); for (const [field, value] of Object.entries(providerInput)) { if (field === "action" || field === "key") continue; const formValue = asFormValue(value); if (formValue !== null) body.set(field, formValue); }
+  const body = new URLSearchParams({ key: target.key, action }); for (const [field, value] of Object.entries(providerInput)) { if (field === "action" || field === "key") continue; const formValue = asFormValue(value); if (formValue !== null) body.set(field, formValue); }
   let upstream: Response | null = null; let lastNetworkError: unknown = null;
   for (let attempt = 1; attempt <= 3; attempt += 1) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 15000);
 
     try {
-      upstream = await fetch(EXOBOOST_API_URL, {
+      upstream = await fetch(target.url, {
         method: "POST",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
@@ -222,7 +248,7 @@ Deno.serve(async (req) => {
         .is("provider_order_id", null);
     }
     console.error(JSON.stringify({ event: "provider_unreachable_after_retries", order: input.order ?? null, error: String(lastNetworkError ?? "unknown") }));
-    return json({ error: "ExoBoost is temporarily unavailable. The order was preserved for retry.", retryable: true }, 503);
+    return json({ error: `${target.label} is temporarily unavailable. The order was preserved for retry.`, retryable: true }, 503);
   }
   const text = await upstream.text();
   if (action === "add") console.log(JSON.stringify({ event: "provider_add_response", order: input.order ?? null, http_status: upstream.status, raw_body: text.slice(0, 1000) }));
@@ -307,6 +333,7 @@ Deno.serve(async (req) => {
       .from("social_boost_orders")
       .update({
         provider_order_id: String(providerOrderId),
+        provider: target.id,
         status: "processing",
         provider_status: "processing",
       })
@@ -341,7 +368,9 @@ Deno.serve(async (req) => {
       : ["canceled", "cancelled", "failed", "failure"].includes(providerStatus)
         ? "failed"
         : "processing";
-    await supabase.from("social_boost_orders").update({ status: localStatus, provider_status: live.status, start_count: live.start_count == null ? null : Number(live.start_count), remains: live.remains == null ? null : Number(live.remains) }).eq("provider_order_id", String(input.order));
+    // Provider order IDs are only unique per provider; orders saved before routing existed have provider = null (ExoBoost).
+    const ownedByTarget = supabase.from("social_boost_orders").update({ status: localStatus, provider_status: live.status, start_count: live.start_count == null ? null : Number(live.start_count), remains: live.remains == null ? null : Number(live.remains) }).eq("provider_order_id", String(input.order));
+    await (target.id === "exoboost" ? ownedByTarget.or("provider.is.null,provider.eq.exoboost") : ownedByTarget.eq("provider", target.id));
   }
   return json(payload, upstream.status);
 });

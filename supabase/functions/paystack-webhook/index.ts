@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.39.0";
+import { resolveRoute } from "../_shared/social-boost-providers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -220,13 +221,20 @@ Deno.serve(async (req) => {
         }
         return new Response(JSON.stringify({ success: true, already_processed: true, reference }), { status: 200, headers: corsHeaders });
       }
-      const providerKey = Deno.env.get("EXOBOOST_API_KEY");
       const providerService = String(metadata?.provider_service_id || metadata?.service_id || "").trim();
       const providerLink = String(metadata?.target_link || "");
       const providerQuantity = Number(metadata?.quantity || 0);
-      if (!providerKey || !providerService || !providerLink || !Number.isInteger(providerQuantity) || providerQuantity <= 0) {
+      if (!providerService || !providerLink || !Number.isInteger(providerQuantity) || providerQuantity <= 0) {
         return new Response(JSON.stringify({ error: "Social Boost payment metadata is incomplete" }), { status: 400, headers: corsHeaders });
       }
+      // Payment already succeeded, so a routing problem (provider off, missing mapping or key) must not lose the order:
+      // returning 503 makes Paystack retry the webhook until an admin fixes the routing.
+      const resolvedRoute = await resolveRoute(supabaseClient, providerService);
+      if ("error" in resolvedRoute) {
+        console.error("[SOCIAL BOOST] Provider routing failed", { reference, error: resolvedRoute.error });
+        return new Response(JSON.stringify({ error: resolvedRoute.error, retry: resolvedRoute.retryable }), { status: resolvedRoute.retryable ? 503 : 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      const { route } = resolvedRoute;
 
       const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
       const rawUserId = String(metadata?.user_id || "").trim();
@@ -241,12 +249,12 @@ Deno.serve(async (req) => {
         return new Response(JSON.stringify({ error: "Social Boost storefront identity is invalid" }), { status: 400, headers: corsHeaders });
       }
 
-      const providerBody = new URLSearchParams({ key: providerKey, action: "add", service: providerService, link: providerLink, quantity: String(providerQuantity), ...(metadata?.comments ? { type: String(metadata.comment_type || "Average Quality Comments"), comments: String(metadata.comments) } : {}) });
+      const providerBody = new URLSearchParams({ key: route.apiKey, action: "add", service: route.providerServiceId, link: providerLink, quantity: String(providerQuantity), ...(metadata?.comments ? { type: String(metadata.comment_type || "Average Quality Comments"), comments: String(metadata.comments) } : {}) });
       let providerResponse: Response | null = null;
       let providerNetworkError: unknown = null;
       for (let attempt = 1; attempt <= 3; attempt += 1) {
         try {
-          providerResponse = await fetch("https://exosupplier.com/api/v2", {
+          providerResponse = await fetch(route.provider.api_url, {
             method: "POST",
             headers: { "Content-Type": "application/x-www-form-urlencoded", Accept: "application/json" },
             body: providerBody,
@@ -260,7 +268,7 @@ Deno.serve(async (req) => {
         }
       }
       if (!providerResponse) {
-        console.error("[SOCIAL BOOST] ExoBoost unreachable after retries", { reference, error: String(providerNetworkError ?? "unknown") });
+        console.error("[SOCIAL BOOST] Provider unreachable after retries", { reference, provider: route.provider.id, error: String(providerNetworkError ?? "unknown") });
         return new Response(JSON.stringify({ error: "Payment succeeded but Social Boost delivery is pending retry", reference }), { status: 202, headers: corsHeaders });
       }
       const providerText = await providerResponse.text();
@@ -278,8 +286,9 @@ Deno.serve(async (req) => {
         /api key|not enough funds|insufficient|balance|rate limit|too many|maintenance|temporar|try again|timeout|timed out|server error|unauthori[sz]ed|forbidden/i.test(providerMessage)
       );
       if (!providerOrderId && retryableProviderFailure) {
-        console.error("[SOCIAL BOOST] ExoBoost delivery was retryable; asking Paystack to retry webhook", {
+        console.error("[SOCIAL BOOST] Provider delivery was retryable; asking Paystack to retry webhook", {
           reference,
+          provider: route.provider.id,
           status: providerResponse.status,
           message: providerMessage,
         });
@@ -315,6 +324,7 @@ Deno.serve(async (req) => {
         seller_store_id: sellerStoreId || null,
         payment_reference: reference,
         provider_order_id: providerOrderId,
+        provider: providerOrderId ? route.provider.id : null,
         provider_status: providerStatus,
       });
       if (socialError && !String(socialError.message).toLowerCase().includes("duplicate")) return new Response(JSON.stringify({ error: "Could not record Social Boost payment" }), { status: 500, headers: corsHeaders });

@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminSocialBoostPricing from "@/components/AdminSocialBoostPricing";
+import AdminSocialBoostProviders from "@/components/AdminSocialBoostProviders";
 import PromoCodesPanel from "@/components/PromoCodesPanel";
 import AdminSocialBoostOrders from "@/components/AdminSocialBoostOrders";
 import { Link } from "react-router-dom";
@@ -2771,7 +2772,7 @@ const AdminDashboard = () => {
           <TabsContent value="domain_purchases" className="space-y-6"><AdminDomainPurchasesPanel /></TabsContent>
   <TabsContent value="domain_renewals" className="space-y-6"><AdminDomainRenewalsPanel /></TabsContent>
 
-  <TabsContent value="social-boost" className="space-y-6"><AdminSocialBoostPricing /></TabsContent>
+  <TabsContent value="social-boost" className="space-y-6"><AdminSocialBoostProviders /><AdminSocialBoostPricing /></TabsContent>
   <TabsContent value="promo-codes" className="space-y-6"><PromoCodesPanel walletBalance={0} adminMode /></TabsContent>
 <TabsContent value="social-boost-orders" className="space-y-6"><AdminSocialBoostOrders /></TabsContent>
 
