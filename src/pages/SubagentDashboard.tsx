@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
   import { VerificationOrdersCard } from "@/components/VerificationOrdersCard";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
+import { verifyHubtelMsisdn } from "@/services/hubtelService";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
@@ -240,8 +241,26 @@ const SubagentDashboard = () => {
   const [buyingPkg, setBuyingPkg] = useState<any>(null);
   const [buyCustomerNumber, setBuyCustomerNumber] = useState("");
   const [buyLoading, setBuyLoading] = useState(false);
+  const [buyStep, setBuyStep] = useState<"phone" | "confirm">("phone");
+  const [buySimName, setBuySimName] = useState<string | null>(null);
+  const [buySimLookupLoading, setBuySimLookupLoading] = useState(false);
+  const [buySimLookupError, setBuySimLookupError] = useState(false);
   const [showNewNumberWarning, setShowNewNumberWarning] = useState(false);
   const acknowledgedNewNumber = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    setBuySimName(null);
+    setBuySimLookupError(false);
+    if (!/^0\d{9}$/.test(buyCustomerNumber)) return;
+    setBuySimLookupLoading(true);
+    verifyHubtelMsisdn(buyCustomerNumber).then((result) => {
+      if (!cancelled) setBuySimName(result.name || result.data?.name || null);
+    }).catch(() => { if (!cancelled) setBuySimLookupError(true); }).finally(() => {
+      if (!cancelled) setBuySimLookupLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [buyCustomerNumber]);
   const [subSubagentEditedPrices, setSubSubagentEditedPrices] = useState<Record<string, number | string>>({});
   const [subSubagentMarkupPercent, setSubSubagentMarkupPercent] = useState("");
   const [subSubagentNetworkFilter, setSubSubagentNetworkFilter] = useState("mtn");
@@ -2818,8 +2837,11 @@ return (
                       {buyCustomerNumber.length > 0 && buyCustomerNumber.length < 10 && (
                         <p className="text-xs text-red-500">{10 - buyCustomerNumber.length} digit{10 - buyCustomerNumber.length !== 1 ? "s" : ""} remaining</p>
                       )}
-                      <NetworkIndicator phone={buyCustomerNumber} />
-                    </div>
+  <NetworkIndicator phone={buyCustomerNumber} />
+  {buySimLookupLoading && <p className="text-xs text-muted-foreground">Checking who this SIM is registered to…</p>}
+  {buySimName && <p className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">SIM registered to <span className="font-semibold">{buySimName}</span></p>}
+  {buySimLookupError && <p className="text-xs text-muted-foreground">SIM registration lookup unavailable. You can still continue.</p>}
+  </div>
                     <div className="grid grid-cols-1 gap-3">
                       <Button
                         variant="outline"
