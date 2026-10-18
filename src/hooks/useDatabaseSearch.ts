@@ -17,6 +17,12 @@ export function useDatabaseSearch<T>(
   const [isSearching, setIsSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Private store columns (wallet, MoMo, email) are only served by an RPC that limits rows to the owner and admins.
+  const baseQuery = () =>
+    table === 'agent_stores'
+      ? (supabase as any).rpc('get_agent_stores_private').select(selectColumns)
+      : (supabase as any).from(table).select(selectColumns);
+
   const search = async (query: string) => {
     if (!query || query.length === 0) {
       setResults([]);
@@ -40,9 +46,7 @@ export function useDatabaseSearch<T>(
 
       // If single term, use simple ilike
       if (searchTerms.length === 1) {
-        const { data, error: searchError } = await supabase
-          .from(table)
-          .select(selectColumns)
+        const { data, error: searchError } = await baseQuery()
           .ilike(searchColumn, `%${searchTerms[0]}%`)
           .order('created_at', { ascending: false })
           .limit(resultLimit);
@@ -56,9 +60,7 @@ export function useDatabaseSearch<T>(
         const seenIds = new Set();
 
         for (const term of searchTerms) {
-          const { data, error: searchError } = await supabase
-            .from(table)
-            .select(selectColumns)
+          const { data, error: searchError } = await baseQuery()
             .ilike(searchColumn, `%${term}%`)
             .order('created_at', { ascending: false })
             .limit(resultLimit);

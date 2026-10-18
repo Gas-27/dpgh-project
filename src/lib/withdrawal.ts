@@ -42,11 +42,9 @@ export interface Balance {
 
 // Get agent balance
 export async function getAgentBalance(agentStoreId: string): Promise<Balance> {
-  const { data, error } = await supabase
-    .from("agent_stores")
-    .select("wallet_balance, subagent_commission_balance")
-    .eq("id", agentStoreId)
-    .single();
+  const { data, error } = await (supabase as any)
+    .rpc("get_agent_stores_private", { p_ids: [agentStoreId] })
+    .maybeSingle();
 
   if (error || !data) {
     throw new Error("Failed to fetch agent balance");

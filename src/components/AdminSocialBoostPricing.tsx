@@ -101,8 +101,12 @@ function PricingPanel() {
   const load = async () => {
     setLoading(true);
     try {
-      const rows: any[] = await fetchAllRows(() => (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider_rate,admin_price_per_1000,base_price_per_1000,default_price_per_1000,max_reseller_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("service_id"));
-      setServices(rows.map((row) => ({ service: Number(row.service_id), name: row.service_name || `Service ${row.service_id}`, category: row.category || "Social Boost", rate: String(row.provider_rate ?? 0), min: String(row.min_quantity ?? 1), max: String(row.max_quantity ?? 100000), average_completion_time: row.average_completion_time, notes: row.notes })));
+      const [rows, ratesResult]: [any[], any] = await Promise.all([
+        fetchAllRows(() => (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,admin_price_per_1000,base_price_per_1000,default_price_per_1000,max_reseller_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("service_id")),
+        (supabase as any).rpc("get_social_boost_provider_rates"),
+      ]);
+      const providerRates = new Map<number, number>(((ratesResult?.data as any[]) ?? []).map((r) => [Number(r.service_id), Number(r.provider_rate ?? 0)]));
+      setServices(rows.map((row) => ({ service: Number(row.service_id), name: row.service_name || `Service ${row.service_id}`, category: row.category || "Social Boost", rate: String(providerRates.get(Number(row.service_id)) ?? 0), min: String(row.min_quantity ?? 1), max: String(row.max_quantity ?? 100000), average_completion_time: row.average_completion_time, notes: row.notes })));
       setPrices(Object.fromEntries(rows.map((row) => [Number(row.service_id), { admin: Number(row.admin_price_per_1000 ?? 0), base: Number(row.base_price_per_1000 ?? 0), default: Number(row.default_price_per_1000 ?? 0), max: Number(row.max_reseller_price_per_1000 ?? 0), minQuantity: Number(row.min_quantity ?? 1), maxQuantity: Number(row.max_quantity ?? 1), averageTime: row.average_completion_time ?? "", notes: row.notes ?? "" }])));
       setDirty(new Set());
       setLoadError(null);

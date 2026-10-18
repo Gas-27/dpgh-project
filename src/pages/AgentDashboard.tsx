@@ -753,7 +753,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       return;
     }
     try {
-      const { data: sd, error } = await supabase.from("agent_stores").select("*").eq("user_id", effectiveUserId).maybeSingle();
+      const { data: sd, error } = await (supabase as any).rpc("get_agent_stores_private", { p_user_ids: [effectiveUserId] }).maybeSingle();
       if (error) {
         console.error("[v0] Error refetching store:", error);
         return;
@@ -949,7 +949,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
   const fetchAllData = async () => {
     const effectiveUserId = impersonatedUserId || user?.id;
     if (!effectiveUserId) return;
-    const { data: sd, error: se } = await supabase.from("agent_stores").select("*").eq("user_id", effectiveUserId).maybeSingle();
+    const { data: sd, error: se } = await (supabase as any).rpc("get_agent_stores_private", { p_user_ids: [effectiveUserId] }).maybeSingle();
     if (se) { console.error(se); setLoading(false); return; }
   if (sd) {
   if (sd.show_whatsapp_group_icon == null) { sd.show_whatsapp_group_icon = true; await supabase.from("agent_stores").update({ show_whatsapp_group_icon: true }).eq("id", sd.id); }
@@ -2299,10 +2299,8 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
         }
 
         // Check agent's own wallet balance before deducting
-        const { data: freshAgentStore } = await supabase
-          .from("agent_stores")
-          .select("id, wallet_balance")
-          .eq("id", store.id)
+        const { data: freshAgentStore } = await (supabase as any)
+          .rpc("get_agent_stores_private", { p_ids: [store.id] })
           .maybeSingle();
 
         const agentBalance = Number(freshAgentStore?.wallet_balance || 0);

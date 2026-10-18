@@ -150,7 +150,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     checkoutMode === "wallet"
       ? supabase.functions.invoke("social-boost", { body: { action: "services" } })
       : Promise.resolve({ data: [] }),
-    fetchAllRows(() => (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider,provider_rate,default_price_per_1000,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("service_id")).then((data) => ({ data })).catch(() => ({ data: [] as any[] })),
+    fetchAllRows(() => (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider,default_price_per_1000,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("service_id")).then((data) => ({ data })).catch(() => ({ data: [] as any[] })),
   ]).then(([providerResult, pricingResult]) => {
     if (!mounted) return;
     const providerServices = Array.isArray(providerResult.data) ? providerResult.data : [];
@@ -160,7 +160,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       name: String(row.service_name || `Service ${row.service_id}`),
       category: String(row.category || "Social Boost"),
       provider: row.provider ?? null,
-      rate: String(Number(row.admin_price_per_1000) > 0 ? row.admin_price_per_1000 : Number(row.default_price_per_1000) > 0 ? row.default_price_per_1000 : row.provider_rate ?? 0),
+      rate: String(Number(row.admin_price_per_1000) > 0 ? row.admin_price_per_1000 : Number(row.default_price_per_1000) > 0 ? row.default_price_per_1000 : 0),
       min: String(row.min_quantity ?? 1),
       max: String(row.max_quantity ?? 100000),
       average_time: String(row.average_completion_time || "Provider estimate"),
@@ -358,7 +358,7 @@ const userPrice = Number(data?.admin_price_per_1000 ?? service.rate ?? 0);
       let pricingUserId = authData.user?.id ?? null;
 if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType)) {
   const table = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
-        const { data: store } = await (supabase as any).from(table).select("*").eq("id", storeId).maybeSingle();
+        const { data: store } = await (supabase as any).from(table).select(normalizedOwnerType === "agent" ? "user_id" : "*").eq("id", storeId).maybeSingle();
         pricingUserId = store?.user_id ?? store?.owner_id ?? store?.created_by ?? pricingUserId;
       }
       if (!pricingUserId) return;

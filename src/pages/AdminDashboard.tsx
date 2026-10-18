@@ -236,7 +236,7 @@ const AdminDashboard = () => {
   const topupDatabaseSearch = useDatabaseSearch<any>(
     "wallet_topups",
     "agent_store_id",
-    "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )"
+    "id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference )"
   );
   
   const [savingAgentPrices, setSavingAgentPrices] = useState(false);
@@ -389,7 +389,9 @@ const AdminDashboard = () => {
   // Only fetches first 200 records to prevent database timeout
   const fetchRecords = async (table: string, select: string = "*", orderBy?: { column: string; ascending: boolean }, limit: number = 200) => {
     try {
-      let query = supabase.from(table).select(select);
+      let query: any = table === "agent_stores"
+        ? (supabase as any).rpc("get_agent_stores_private").select(select)
+        : supabase.from(table).select(select);
       if (orderBy) {
         query = query.order(orderBy.column, { ascending: orderBy.ascending });
       }
@@ -495,7 +497,7 @@ const AdminDashboard = () => {
       const recipientIds = [...new Set(allRows.filter((r: any) => r.recipient_id).map((r: any) => r.recipient_id))];
 
       const [agentStoresRes, subagentStoresRes, subSubStoresRes, recipientsRes] = await Promise.all([
-        agentIds.length > 0 ? supabase.from("agent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance, subagent_commission_balance").in("id", agentIds) : { data: [] },
+        agentIds.length > 0 ? (supabase as any).rpc("get_agent_stores_private", { p_ids: agentIds }) : { data: [] },
         subagentIds.length > 0 ? supabase.from("subagent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance").in("id", subagentIds) : { data: [] },
         subSubIds.length > 0 ? supabase.from("sub_subagent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance").in("id", subSubIds) : { data: [] },
         recipientIds.length > 0 ? supabase.from("transfer_recipients").select("id, recipient_name, account_name, momo_number, momo_network, account_number, bank_name").in("id", recipientIds) : { data: [] },
@@ -1476,11 +1478,9 @@ const AdminDashboard = () => {
           }
 
           const newWithdrawal = payload.new as WithdrawalRequest;
-          const { data: agent } = await supabase
-            .from("agent_stores")
-            .select("store_name, whatsapp_number, momo_name, momo_number, momo_network, wallet_balance")
-            .eq("id", newWithdrawal.agent_store_id)
-            .single();
+          const { data: agent } = await (supabase as any)
+            .rpc("get_agent_stores_private", { p_ids: [newWithdrawal.agent_store_id] })
+            .maybeSingle();
           if (!agent) return;
           const currentBalance = Number(agent.wallet_balance);
           const requestedAmount = Number(newWithdrawal.amount);
@@ -1959,10 +1959,8 @@ const AdminDashboard = () => {
         } else if (order.customer_id && !order.api_user) {
           // Check first: did an agent buy this from the Packages page? (agent_store_id was null
           // at the time of order but the customer_id maps to an approved agent store)
-          const { data: agentByUser } = await supabase
-            .from("agent_stores")
-            .select("id, wallet_balance")
-            .eq("user_id", order.customer_id)
+          const { data: agentByUser } = await (supabase as any)
+            .rpc("get_agent_stores_private", { p_user_ids: [order.customer_id] })
             .eq("approved", true)
             .maybeSingle();
 
@@ -2180,10 +2178,8 @@ const AdminDashboard = () => {
       // agent_store_id MUST be checked before customer_id — agent orders have both set.
       if (order.agent_store_id) {
         // Agent refund reversal: deduct from agent wallet
-        const { data: agent } = await supabase
-          .from("agent_stores")
-          .select("id, wallet_balance")
-          .eq("id", order.agent_store_id)
+        const { data: agent } = await (supabase as any)
+          .rpc("get_agent_stores_private", { p_ids: [order.agent_store_id] })
           .maybeSingle();
 
         if (agent) {
@@ -2203,10 +2199,8 @@ const AdminDashboard = () => {
       } else if (order.customer_id) {
         // Check if this customer_id belongs to an agent (e.g. bought via Packages page
         // where agent_store_id was null at the time of the original order).
-        const { data: agentByUser } = await supabase
-          .from("agent_stores")
-          .select("id, wallet_balance")
-          .eq("user_id", order.customer_id)
+        const { data: agentByUser } = await (supabase as any)
+          .rpc("get_agent_stores_private", { p_user_ids: [order.customer_id] })
           .eq("approved", true)
           .maybeSingle();
 
@@ -2343,10 +2337,8 @@ const AdminDashboard = () => {
     
     try {
       // Query Supabase directly for agent by exact topup_reference match
-      const { data, error } = await supabase
-        .from("agent_stores")
-        .select("id, store_name, topup_reference, wallet_balance, momo_name, momo_number, momo_network")
-        .eq("topup_reference::text", topupSearch.trim())
+      const { data, error } = await (supabase as any)
+        .rpc("get_agent_stores_private", { p_topup_reference: topupSearch.trim() })
         .limit(1)
         .single();
 
@@ -2400,7 +2392,7 @@ const AdminDashboard = () => {
     const { data: newTopup, error: insertErr } = await supabase
       .from("wallet_topups")
       .insert({ agent_store_id: topupAgent.id, amount })
-      .select("id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference, wallet_balance, momo_name )")
+      .select("id, agent_store_id, amount, created_at, agent_stores ( store_name, topup_reference )")
       .single();
     if (!insertErr && newTopup) {
       setTopupHistory((prev) => [newTopup as any, ...prev]);
@@ -3844,9 +3836,9 @@ const AdminDashboard = () => {
                                 <TableCell className="text-sm whitespace-nowrap">{new Date(t.created_at).toLocaleString()}</TableCell>
                                 <TableCell className="font-medium">{t.agent_stores?.store_name ?? "—"}</TableCell>
                                 <TableCell className="text-primary">{t.agent_stores?.topup_reference ?? "—"}</TableCell>
-                                <TableCell>{t.agent_stores?.momo_name ?? "—"}</TableCell>
+                                <TableCell>{t.agent_stores?.momo_name ?? agents.find((a) => a.id === t.agent_store_id)?.momo_name ?? "—"}</TableCell>
                                 <TableCell>GHC {Number(t.amount || 0).toFixed(2)}</TableCell>
-                                <TableCell>GHC {(t.agent_stores?.wallet_balance ? Number(t.agent_stores.wallet_balance || 0).toFixed(2) : "—")}</TableCell>
+                                <TableCell>GHC {(() => { const balance = t.agent_stores?.wallet_balance ?? agents.find((a) => a.id === t.agent_store_id)?.wallet_balance; return balance ? Number(balance || 0).toFixed(2) : "—"; })()}</TableCell>
                               </TableRow>
                             ))}
                           </TableBody>

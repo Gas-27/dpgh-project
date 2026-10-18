@@ -511,10 +511,8 @@ const resultRoot = (record.results || record.result || record) as Record<string,
     }
     let currentWalletBalance = Number(walletBalance);
     if (walletOnly && ownerType === "agent" && ownerId) {
-      const { data: freshStore, error: balanceError } = await supabase
-        .from("agent_stores")
-        .select("wallet_balance")
-        .eq("id", ownerId)
+      const { data: freshStore, error: balanceError } = await (supabase as any)
+        .rpc("get_agent_stores_private", { p_ids: [ownerId] })
         .maybeSingle();
       if (!balanceError && freshStore)
         currentWalletBalance = Number(freshStore.wallet_balance ?? 0);

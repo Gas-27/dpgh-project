@@ -52,6 +52,9 @@ export const fetchAllStores = async (
   table: string,
   selectStr: string = "*"
 ): Promise<StoreData[]> => {
+  const publicAgentColumns =
+    "id, user_id, store_name, store_name_slug, url_slug, full_store_url, approved, created_at, parent_agent_id, theme_config, store_headline, tutorial_video_url, whatsapp_number, whatsapp_group, support_number, phone_number, topup_reference, show_whatsapp_group_icon, show_ussd_on_storefront, allow_registration, allow_subagent_registration, subagent_commission_rate, subagent_fee_enabled, subagent_fee_amount, afa_bundle_price, afa_profit, afa_subagent_base_price, custom_domain, custom_domain_status";
+  if (table === "agent_stores" && selectStr === "*") selectStr = publicAgentColumns;
   const pageSize = 1000;
   let allRows: StoreData[] = [];
   let from = 0;
