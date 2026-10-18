@@ -23,6 +23,45 @@ function asFormValue(value: unknown) { if (typeof value === "string" || typeof v
 // deno-lint-ignore no-explicit-any
 type SupabaseAdmin = any;
 
+const textEncoder = new TextEncoder();
+
+function base64UrlToBytes(value: string) {
+  const padded = value.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(value.length / 4) * 4, "=");
+  return Uint8Array.from(atob(padded), (char) => char.charCodeAt(0));
+}
+
+// Compares fixed-length digests so the comparison time does not leak how much of the secret matched.
+async function sameSecret(a: string, b: string) {
+  if (!a || !b) return false;
+  const [x, y] = await Promise.all([crypto.subtle.digest("SHA-256", textEncoder.encode(a)), crypto.subtle.digest("SHA-256", textEncoder.encode(b))]);
+  const xa = new Uint8Array(x);
+  const ya = new Uint8Array(y);
+  let diff = 0;
+  for (let i = 0; i < xa.length; i += 1) diff |= xa[i] ^ ya[i];
+  return diff === 0;
+}
+
+// True only for a genuine service credential: an exact key match, or a JWT whose HS256 signature verifies.
+// The role claim of an unsigned or unverified token is never trusted.
+async function isServiceBearer(bearer: string) {
+  if (await sameSecret(bearer, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "")) return true;
+  if (await sameSecret(bearer, Deno.env.get("SUPABASE_SECRET_KEY") ?? "")) return true;
+  const jwtSecret = Deno.env.get("SUPABASE_JWT_SECRET");
+  const parts = bearer.split(".");
+  if (!jwtSecret || parts.length !== 3) return false;
+  try {
+    const header = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[0])));
+    if (header.alg !== "HS256") return false;
+    const key = await crypto.subtle.importKey("raw", textEncoder.encode(jwtSecret), { name: "HMAC", hash: "SHA-256" }, false, ["verify"]);
+    const valid = await crypto.subtle.verify("HMAC", key, base64UrlToBytes(parts[2]), textEncoder.encode(`${parts[0]}.${parts[1]}`));
+    if (!valid) return false;
+    const claims = JSON.parse(new TextDecoder().decode(base64UrlToBytes(parts[1])));
+    return claims.role === "service_role" && (claims.exp == null || Number(claims.exp) * 1000 > Date.now());
+  } catch {
+    return false;
+  }
+}
+
 // Only one caller may submit a given order to ExoBoost at a time. The claim is a single atomic UPDATE,
 // so a double-click, an overlapping cron run, or a webhook retry cannot send the same order twice.
 // A claim older than 10 minutes is treated as abandoned (the caller crashed before releasing it).
@@ -82,12 +121,7 @@ Deno.serve(async (req) => {
   if (!bearer) return json({ error: "Authentication is required." }, 401);
   const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
   if (input.action === "retry_pending") {
-    let callerRole = "";
-    try {
-      const payload = JSON.parse(atob(bearer.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-      callerRole = String(payload.role ?? "");
-    } catch (_) { /* not a JWT */ }
-    if (callerRole !== "service_role" && bearer !== Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")) return json({ error: "Forbidden." }, 403);
+    if (!(await isServiceBearer(bearer))) return json({ error: "Forbidden." }, 403);
     const { data: stuck, error: stuckError } = await supabase.from("social_boost_orders").select("order_number,platform,service,target_link,quantity").is("provider_order_id", null).is("refunded_at", null).eq("status", "pending").lt("created_at", new Date(Date.now() - 3 * 60 * 1000).toISOString()).order("order_number").limit(10);
     if (stuckError) return json({ error: stuckError.message }, 500);
     const results: Record<string, unknown>[] = [];
@@ -125,13 +159,29 @@ Deno.serve(async (req) => {
   const isApiUser = Boolean(apiUser?.active);
   // The paystack-webhook calls this function with the service-role key after it has verified the payment.
   // Only an exact match counts: a JWT's payload is not signed-checked here, so its "role" claim cannot be trusted.
-  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const isServiceCaller = !isApiUser && serviceRoleKey.length > 0 && bearer === serviceRoleKey;
+  const isServiceCaller = !isApiUser && (await isServiceBearer(bearer));
   if (!isApiUser && !isServiceCaller) { const { data: authData } = await supabase.auth.getUser(bearer); actorUserId = authData.user?.id ?? null; if (!actorUserId) return json({ error: "Invalid or expired authentication." }, 401); }
   const action = typeof input.action === "string" ? input.action : "";
   if (!ACTIONS.has(action)) return json({ error: "Unsupported action.", allowedActions: [...ACTIONS] }, 400);
   const missing = REQUIRED_FIELDS[action].filter((field) => asFormValue(input[field]) === null);
   if (missing.length > 0) return json({ error: "Missing required fields.", missing }, 400);
+  // Status, refill and cancel act on supplier orders, so a caller may only touch orders they own.
+  // Service callers and admins may act on any order. The supplier balance is never shown to customers.
+  if (["status", "refill", "cancel", "balance"].includes(action) && !isServiceCaller) {
+    const isAdmin = actorUserId ? Boolean((await supabase.rpc("has_role", { _user_id: actorUserId, _role: "admin" })).data) : false;
+    if (!isAdmin) {
+      if (action === "balance") {
+        if (!isApiUser) return json({ error: "Forbidden." }, 403);
+        return json({ balance: String(Number(apiUser?.api_wallet ?? apiUser?.wallet ?? 0).toFixed(2)), currency: "GHS" });
+      }
+      const requestedIds = String(input.order ?? input.orders ?? "").split(",").map((id) => id.trim()).filter(Boolean).slice(0, 50);
+      const ownerId = isApiUser ? apiUser?.identity_id : actorUserId;
+      if (requestedIds.length === 0 || !ownerId) return json({ error: "Forbidden." }, 403);
+      const { data: ownedOrders } = await supabase.from("social_boost_orders").select("provider_order_id").eq("user_id", ownerId).in("provider_order_id", requestedIds);
+      const ownedIds = new Set((ownedOrders ?? []).map((row: { provider_order_id: unknown }) => String(row.provider_order_id)));
+      if (!requestedIds.every((id) => ownedIds.has(id))) return json({ error: "Order not found." }, 404);
+    }
+  }
   // order_number is a bigint, so clients send it as a number; accept both forms.
   const walletOrderNumber = typeof input.wallet_order_number === "string" || typeof input.wallet_order_number === "number" ? String(input.wallet_order_number).trim() : "";
   const isWalletHandoff = action === "add" && !isApiUser && input.payment_method === "wallet" && Boolean(walletOrderNumber);
