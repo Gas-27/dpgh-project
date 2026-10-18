@@ -23,7 +23,8 @@ const holdMs = Number(process.env.HOLD_MS ?? 1500);
 
 if (!url) throw new Error("TEST_DATABASE_URL is required");
 if (!prodHost) throw new Error("PRODUCTION_DB_HOST is required so the script can refuse to run against production");
-if (new URL(url).hostname === prodHost || url.includes(prodHost)) {
+const PRODUCTION_PROJECT_REF = "uloaiqmknsrknqikbmtb";
+if (new URL(url).hostname === prodHost || url.includes(prodHost) || url.includes(PRODUCTION_PROJECT_REF)) {
   throw new Error("Refusing to run against the production database");
 }
 if (sessions <= seats) throw new Error("SESSIONS must exceed SEATS so at least one request loses");

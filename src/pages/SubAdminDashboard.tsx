@@ -27,7 +27,6 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { ComplaintsManager } from "@/components/ComplaintsManager";
-import SubscriptionPaymentsPanel from "@/components/SubscriptionPaymentsPanel";
 import ReportCenter from "@/components/ReportCenter";
 import AdminDigitalServicesManager from "@/components/AdminDigitalServicesManager";
 
@@ -298,7 +297,7 @@ export default function SubAdminDashboard() {
       {/* Sub-admin access notice */}
       <div className="bg-primary/10 border-b border-primary/20 px-4 py-2 text-center">
         <p className="text-xs text-primary">
-          Sub-admin access: manage subscriptions, orders, agent networks, complaints, reports, and digital services.
+          Sub-admin access: manage orders, agent networks, complaints, reports, and digital services.
         </p>
       </div>
 

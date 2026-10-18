@@ -67,7 +67,7 @@ export default function SubscriptionPaymentsPanel({ admin = false }: Props) {
     } else if (!result || result.changed !== true || result.rows_updated !== 1) {
       toast({ title: "Nothing was changed", description: "The subscription was not confirmed. Refresh and try again.", variant: "destructive" });
     } else {
-      toast({ title: "Subscription confirmed" });
+      toast({ title: "Payment reviewed", description: "Marked as reviewed by an admin. This does not assign a private-share account." });
     }
     load();
   };
@@ -86,8 +86,9 @@ export default function SubscriptionPaymentsPanel({ admin = false }: Props) {
     </CardHeader>
     <CardContent className="space-y-4">
       <div className="flex gap-2"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search payment reference, service, customer, or phone" /><Button variant="outline" onClick={load}>Refresh</Button></div>
+      <p className="text-xs text-muted-foreground">Payment and admin review are tracked here. Account assignment is a separate step and is not shown or changed by this table.</p>
       {loadError && <p role="alert" className="text-sm text-destructive">Subscriptions could not be loaded: {loadError}</p>}
-      <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Payment reference</TableHead><TableHead>Service</TableHead><TableHead>Customer</TableHead><TableHead>Amount</TableHead><TableHead>Paid at</TableHead><TableHead>Payment</TableHead><TableHead>Status</TableHead><TableHead>Action</TableHead></TableRow></TableHeader><TableBody>
+      <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Payment reference</TableHead><TableHead>Service</TableHead><TableHead>Customer</TableHead><TableHead>Amount</TableHead><TableHead>Paid at</TableHead><TableHead>Payment</TableHead><TableHead>Admin review</TableHead><TableHead>Action</TableHead></TableRow></TableHeader><TableBody>
         {loading ? <TableRow><TableCell colSpan={8}>Loading subscriptions...</TableCell></TableRow>
           : filtered.length === 0 ? <TableRow><TableCell colSpan={8}>{loadError ? "Unavailable." : "No subscriptions found."}</TableCell></TableRow>
           : filtered.map((row) => {
