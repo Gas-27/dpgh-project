@@ -204,8 +204,26 @@ Deno.serve(async (req) => {
         console.error("[SOCIAL BOOST] Existing order lookup failed:", existingOrderError);
         return new Response(JSON.stringify({ error: "Social Boost order lookup failed" }), { status: 500, headers: corsHeaders });
       }
-      const baseAmount = Number(metadata?.base_amount || 0);
-      const sellingAmount = Number(metadata?.selling_amount || Number(amount) / 100);
+      // Metadata can be supplied by whoever starts a Paystack charge, so the paid amount is checked against
+      // the database price. An order is only fulfilled when the money actually received covers it.
+      const paidAmount = Number(amount) / 100;
+      const orderServiceId = Number(metadata?.provider_service_id || metadata?.service_id);
+      const orderQuantity = Number(metadata?.quantity || 0);
+      const { data: priceRow, error: priceError } = await supabaseClient.from("social_boost_service_pricing").select("admin_price_per_1000,base_price_per_1000,min_quantity,max_quantity").eq("service_id", orderServiceId).maybeSingle();
+      if (priceError) {
+        console.error("[SOCIAL BOOST] Price verification lookup failed:", priceError);
+        return new Response(JSON.stringify({ error: "Social Boost price verification failed" }), { status: 500, headers: corsHeaders });
+      }
+      const pricePoints = [Number(priceRow?.admin_price_per_1000), Number(priceRow?.base_price_per_1000)].filter((value) => Number.isFinite(value) && value > 0);
+      const floorPrice = pricePoints.length ? Math.min(...pricePoints) : 0;
+      const quantityOk = Number.isInteger(orderQuantity) && orderQuantity >= Number(priceRow?.min_quantity ?? 1) && orderQuantity <= Number(priceRow?.max_quantity ?? 100000000);
+      const minimumPaid = Math.round((orderQuantity / 1000) * floorPrice * 100) / 100;
+      if (!priceRow || floorPrice <= 0 || !quantityOk || !Number.isFinite(paidAmount) || paidAmount + 0.01 < minimumPaid) {
+        console.error("[SOCIAL BOOST] Payment rejected: amount does not cover the order", { reference, paidAmount, minimumPaid, service: orderServiceId, quantity: orderQuantity });
+        return new Response(JSON.stringify({ error: "Payment does not cover this Social Boost order; it was not fulfilled" }), { status: 200, headers: corsHeaders });
+      }
+      const baseAmount = Math.max(Number(metadata?.base_amount || 0), minimumPaid);
+      const sellingAmount = Math.min(Number(metadata?.selling_amount || paidAmount), paidAmount);
       if (existingOrder?.provider_order_id || existingOrder?.provider_status === "processing") {
         if (metadata?.seller_store_kind && metadata?.seller_store_id && sellingAmount > baseAmount) {
           const { error: retryProfitError } = await supabaseClient.rpc("credit_social_boost_profit", {
