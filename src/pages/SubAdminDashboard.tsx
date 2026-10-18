@@ -305,8 +305,7 @@ export default function SubAdminDashboard() {
       <main className="container py-6 px-4 space-y-4">
         <Tabs value={activeTab} onValueChange={handleTabChange}>
           <TabsList className="flex flex-wrap gap-1 h-auto bg-muted/50 p-1 rounded-lg w-full">
-            <TabsTrigger value="subscriptions" className="flex items-center gap-1.5 text-xs">Paid subscriptions</TabsTrigger>
-<TabsTrigger value="orders" className="flex items-center gap-1.5 text-xs">
+            <TabsTrigger value="orders" className="flex items-center gap-1.5 text-xs">
               <ShoppingCart className="h-3.5 w-3.5" /> Orders
             </TabsTrigger>
             <TabsTrigger value="agents" className="flex items-center gap-1.5 text-xs">
@@ -333,8 +332,7 @@ export default function SubAdminDashboard() {
           </TabsList>
 
           {/* ---------------------------------------------------------------- */}
-          <TabsContent value="subscriptions" className="space-y-4 pt-4"><SubscriptionPaymentsPanel admin /></TabsContent>
-
+          
           {/* ORDERS TAB — search-only, no data until searched                 */}
           {/* ---------------------------------------------------------------- */}
           <TabsContent value="orders" className="space-y-4 pt-4">
