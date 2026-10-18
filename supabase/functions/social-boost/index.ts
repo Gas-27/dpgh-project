@@ -123,10 +123,10 @@ Deno.serve(async (req) => {
   const { data: apiUser } = await supabase.from("api_users").select("id,identity_id,api_wallet,wallet,active,order_count").eq("api_key", bearer).maybeSingle();
   let actorUserId: string | null = null;
   const isApiUser = Boolean(apiUser?.active);
-  let bearerRole = "";
-  try { bearerRole = String(JSON.parse(atob(bearer.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).role ?? ""); } catch (_) { /* not a JWT */ }
   // The paystack-webhook calls this function with the service-role key after it has verified the payment.
-  const isServiceCaller = !isApiUser && (bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || bearerRole === "service_role");
+  // Only an exact match counts: a JWT's payload is not signed-checked here, so its "role" claim cannot be trusted.
+  const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
+  const isServiceCaller = !isApiUser && serviceRoleKey.length > 0 && bearer === serviceRoleKey;
   if (!isApiUser && !isServiceCaller) { const { data: authData } = await supabase.auth.getUser(bearer); actorUserId = authData.user?.id ?? null; if (!actorUserId) return json({ error: "Invalid or expired authentication." }, 401); }
   const action = typeof input.action === "string" ? input.action : "";
   if (!ACTIONS.has(action)) return json({ error: "Unsupported action.", allowedActions: [...ACTIONS] }, 400);
