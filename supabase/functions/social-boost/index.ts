@@ -142,9 +142,11 @@ Deno.serve(async (req) => {
   }
   let chargedAmount = 0;
   if (action === "services") {
-    const { data: catalog, error: catalogError } = await supabase.from("social_boost_service_pricing").select("service_id,service_name,category,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("category").order("service_id");
+    const { data: catalog, error: catalogError } = await supabase.from("social_boost_service_pricing").select("service_id,service_name,category,provider,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("category").order("service_id").range(0, 4999);
     if (catalogError) return json({ error: "Could not load Social Boost service catalog." }, 500);
-    return json({ services: (catalog ?? []).map((service) => ({ id: service.service_id, name: service.service_name, category: service.category, base_price_per_1000: service.admin_price_per_1000, min_quantity: service.min_quantity, max_quantity: service.max_quantity, average_completion_time: service.average_completion_time, notes: service.notes })) });
+    const exoFirst = (row: { provider?: string | null }) => (row.provider && row.provider !== "exoboost" ? 1 : 0);
+    const sortedCatalog = [...(catalog ?? [])].sort((a, b) => String(a.category).localeCompare(String(b.category)) || exoFirst(a) - exoFirst(b) || Number(a.service_id) - Number(b.service_id));
+    return json({ services: sortedCatalog.map((service) => ({ id: service.service_id, name: service.service_name, category: service.category, base_price_per_1000: service.admin_price_per_1000, min_quantity: service.min_quantity, max_quantity: service.max_quantity, average_completion_time: service.average_completion_time, notes: service.notes })) });
   }
   if (action === "provider_status") {
     if (!actorUserId) return json({ error: "Admin access required." }, 403);
@@ -179,8 +181,10 @@ Deno.serve(async (req) => {
   }
   if (action === "add" && !isWalletHandoff) {
     const quantity = Number(input.quantity); if (!Number.isInteger(quantity) || quantity <= 0) return json({ error: "quantity must be a positive integer." }, 400);
-    const serviceLookup = String(input.service);
-    const { data: configuredService } = await supabase.from("social_boost_service_pricing").select("service_id,service_name,admin_price_per_1000,default_price_per_1000,min_quantity,max_quantity").or(`service_id.eq.${serviceLookup},service_name.ilike.${serviceLookup}`).maybeSingle();
+    const serviceLookup = String(input.service).split(":", 1)[0].trim();
+    // Names repeat across providers, so orders are matched on the numeric service ID only.
+    if (!/^\d+$/.test(serviceLookup)) return json({ error: "service must be the numeric service id returned by the services action." }, 400);
+    const { data: configuredService } = await supabase.from("social_boost_service_pricing").select("service_id,service_name,admin_price_per_1000,default_price_per_1000,min_quantity,max_quantity").eq("service_id", serviceLookup).maybeSingle();
     const pricePer1000 = Number(configuredService?.admin_price_per_1000 ?? 0); const minimum = Number(configuredService?.min_quantity ?? 1); const maximum = Number(configuredService?.max_quantity ?? 1000000);
     if (!configuredService || !Number.isFinite(pricePer1000) || pricePer1000 <= 0) return json({ error: "Service is not available for API ordering." }, 400);
     if (quantity < minimum || quantity > maximum) return json({ error: `quantity must be between ${minimum} and ${maximum}.` }, 400);

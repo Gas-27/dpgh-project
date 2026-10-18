@@ -6,7 +6,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { ChevronDown, Loader2 } from "lucide-react";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 
-type Service = { service_id: number; service_name: string; category: string; admin_price_per_1000: number; min_quantity: number; max_quantity: number; average_completion_time?: string | null; notes?: string | null };
+type Service = { provider?: string | null; service_id: number; service_name: string; category: string; admin_price_per_1000: number; min_quantity: number; max_quantity: number; average_completion_time?: string | null; notes?: string | null };
 
 export default function SocialBoostApiCatalog() {
   const [services, setServices] = useState<Service[]>([]);
@@ -16,9 +16,12 @@ export default function SocialBoostApiCatalog() {
   useEffect(() => {
     let active = true;
     const load = async () => {
-      const data = await fetchAllRows<any>(() => (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("category").order("service_id")).catch(() => []);
+      const data = await fetchAllRows<any>(() => (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("category").order("service_id")).catch(() => []);
       const removedServiceNames = new Set(["facebook custom comments ( female )", "facebook custom comments ( male )"]);
-      const visibleServices = (data ?? []).filter((service) => !removedServiceNames.has(String(service.service_name).trim().toLowerCase()));
+      const exoFirst = (row: any) => (row.provider && row.provider !== "exoboost" ? 1 : 0);
+      const visibleServices = (data ?? [])
+        .filter((service) => !removedServiceNames.has(String(service.service_name).trim().toLowerCase()))
+        .sort((a, b) => String(a.category).localeCompare(String(b.category)) || exoFirst(a) - exoFirst(b) || a.service_id - b.service_id);
       if (active) { setServices(visibleServices as Service[]); setLoading(false); }
     };
     void load();

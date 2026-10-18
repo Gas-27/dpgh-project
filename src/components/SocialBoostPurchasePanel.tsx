@@ -42,7 +42,7 @@ import {
 } from "@/lib/socialBoostMessages";
 
 type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack"; showHistory?: boolean; pricingMode?: "user" | "storefront"; purchaseSource?: "Dashboard" | "Packages page" | "Storefront"; requireAuth?: boolean };
-type ProviderService = { service: number; name: string; category: string; rate: string; min: string; max: string; average?: string; average_time?: string; note?: string; notes?: string; refill?: boolean; cancel?: boolean };
+type ProviderService = { service: number; name: string; category: string; rate: string; min: string; max: string; average?: string; average_time?: string; note?: string; notes?: string; refill?: boolean; cancel?: boolean; provider?: string | null };
 
 const platforms = ["TikTok", "Instagram", "Facebook", "YouTube", "WhatsApp", "Twitter", "Telegram", "Snapchat", "Spotify", "Twitch", "Discord", "LinkedIn", "Threads", "Kick", "Pinterest", "Reddit"];
 const orbitPlatforms = platforms.slice(0, 6);
@@ -82,6 +82,7 @@ const platformTileBg: Record<string, string> = {
   Pinterest: "bg-red-700",
   Reddit: "bg-orange-600",
 };
+const providerRank = (item: ProviderService) => (item.provider && item.provider !== "exoboost" ? 1 : 0);
 const fallbackServices: ProviderService[] = [{ service: 1, name: "Followers", category: "TikTok", rate: "0.90", min: "50", max: "50000", average_time: "4 Hours", refill: true, cancel: true }];
 
 export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "user", storeId = null, canSetPrices = false, checkoutMode = "wallet", showHistory = true, pricingMode = "storefront", purchaseSource, requireAuth = false }: Props) {
@@ -139,7 +140,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   const orderedCategoryServices = [...categoryServices].sort((a, b) => {
     const aFollowers = a.name.toLowerCase().includes("follower") ? 0 : 1;
     const bFollowers = b.name.toLowerCase().includes("follower") ? 0 : 1;
-    return aFollowers - bFollowers || a.name.localeCompare(b.name);
+    return providerRank(a) - providerRank(b) || aFollowers - bFollowers || a.name.localeCompare(b.name);
   });
   const serviceTypes = Array.from(new Set(orderedCategoryServices.map((item) => item.name.trim()))).filter(Boolean);
 
@@ -149,7 +150,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     checkoutMode === "wallet"
       ? supabase.functions.invoke("social-boost", { body: { action: "services" } })
       : Promise.resolve({ data: [] }),
-    fetchAllRows(() => (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider_rate,default_price_per_1000,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("service_id")).then((data) => ({ data })).catch(() => ({ data: [] as any[] })),
+    fetchAllRows(() => (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider,provider_rate,default_price_per_1000,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("service_id")).then((data) => ({ data })).catch(() => ({ data: [] as any[] })),
   ]).then(([providerResult, pricingResult]) => {
     if (!mounted) return;
     const providerServices = Array.isArray(providerResult.data) ? providerResult.data : [];
@@ -158,6 +159,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
       service: Number(row.service_id),
       name: String(row.service_name || `Service ${row.service_id}`),
       category: String(row.category || "Social Boost"),
+      provider: row.provider ?? null,
       rate: String(Number(row.admin_price_per_1000) > 0 ? row.admin_price_per_1000 : Number(row.default_price_per_1000) > 0 ? row.default_price_per_1000 : row.provider_rate ?? 0),
       min: String(row.min_quantity ?? 1),
       max: String(row.max_quantity ?? 100000),
@@ -172,11 +174,11 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
   }, []);
 
   useEffect(() => {
-    const preferred = categoryServices.find((item) => {
+    const preferred = orderedCategoryServices.find((item) => {
       const name = item.name.toLowerCase();
       const platformName = platform.toLowerCase();
       return name.includes("follower") && (name.includes(platformName) || item.category.toLowerCase().includes(platformName));
-    }) ?? categoryServices.find((item) => item.name.toLowerCase().includes("follower"));
+    }) ?? orderedCategoryServices.find((item) => item.name.toLowerCase().includes("follower"));
     const next = preferred ?? orderedCategoryServices[0] ?? services[0] ?? fallbackServices[0];
     setService(next);
     setServiceType(next.name);
@@ -782,7 +784,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             <span className="mt-0.5 block text-xs font-normal text-blue-100/60">Choose a service category</span>
             <select
               value={serviceType}
-              onChange={(e) => { const next = categoryServices.find((item) => item.name === e.target.value) ?? categoryServices[0] ?? service; setServiceType(e.target.value); setService(next); }}
+              onChange={(e) => { const next = orderedCategoryServices.find((item) => item.name === e.target.value) ?? orderedCategoryServices[0] ?? service; setServiceType(e.target.value); setService(next); }}
               className="mt-2 w-full rounded-xl border border-blue-400/60 bg-[#08122b] px-4 py-3 text-white"
             >
               {serviceTypes.map((type) => <option key={type} value={type}>{type}</option>)}
