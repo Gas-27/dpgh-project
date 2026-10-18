@@ -37,6 +37,7 @@ import { Link } from "react-router-dom";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import ReportCenter from "@/components/ReportCenter";
 import AdminDigitalServicesManager from "@/components/AdminDigitalServicesManager";
+import AdminPrivateShareManager from "@/components/AdminPrivateShareManager";
 import SubscriptionPaymentsPanel from "@/components/SubscriptionPaymentsPanel";
 import AdminPublicProductsManager from "@/components/AdminPublicProductsManager";
 import AdminDomainPurchasesPanel from "@/components/AdminDomainPurchasesPanel";
@@ -2746,6 +2747,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="delivery_status" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Check className="h-3 w-3 md:h-4 md:w-4" /> Delivery progress</TabsTrigger>
   <TabsTrigger value="delivery_automation" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Play className="h-3 w-3 md:h-4 md:w-4" /> Delivery automation</TabsTrigger>
   <TabsTrigger value="digital_services" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><KeyRound className="h-3 w-3 md:h-4 md:w-4" /> Digital Services</TabsTrigger>
+  <TabsTrigger value="private_share" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Shield className="h-3 w-3 md:h-4 md:w-4" /> Private Share</TabsTrigger>
   <TabsTrigger value="network_routing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Route className="h-3 w-3 md:h-4 md:w-4" /> Network Routing</TabsTrigger>
                 <TabsTrigger value="sms" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><MessageCircle className="h-3 w-3 md:h-4 md:w-4" /> SMS</TabsTrigger>
  <TabsTrigger value="public_products" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Package className="h-3 w-3 md:h-4 md:w-4" /> Store Products</TabsTrigger>
@@ -4657,7 +4659,13 @@ const AdminDashboard = () => {
 
             {canSee("digital_services") && (
               <TabsContent value="digital_services" className="space-y-6">
-                <AdminDigitalServicesManager />
+              <AdminDigitalServicesManager />
+            </TabsContent>
+            )}
+
+            {canSee("digital_services") && (
+              <TabsContent value="private_share" className="space-y-6">
+                <AdminPrivateShareManager />
               </TabsContent>
             )}
 
