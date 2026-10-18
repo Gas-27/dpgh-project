@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { groupByPlatform } from "@/lib/socialBoostPlatforms";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 type Provider = { id: string; label: string; api_url: string; api_key_env: string; enabled: boolean; is_default: boolean; sort_order: number };
 type ServiceRow = { service_id: number; service_name: string | null; category: string | null; provider: string | null };
@@ -21,8 +22,8 @@ const db = supabase as any;
 async function fetchRouting(): Promise<RoutingData> {
   const [providers, services, routes] = await Promise.all([
     db.from("social_boost_providers").select("*").order("sort_order"),
-    db.from("social_boost_service_pricing").select("service_id,service_name,category,provider").order("service_id"),
-    db.from("social_boost_service_routes").select("service_id,provider_id,provider_service_id"),
+    fetchAllRows(() => db.from("social_boost_service_pricing").select("service_id,service_name,category,provider").order("service_id")).then((data) => ({ data, error: null as any })).catch((error) => ({ data: null as any, error })),
+    fetchAllRows(() => db.from("social_boost_service_routes").select("service_id,provider_id,provider_service_id").order("service_id")).then((data) => ({ data, error: null as any })).catch((error) => ({ data: null as any, error })),
   ]);
   const failure = providers.error ?? services.error ?? routes.error;
   if (failure) throw new Error(failure.message);

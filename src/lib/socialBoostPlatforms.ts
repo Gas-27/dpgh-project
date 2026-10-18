@@ -1,10 +1,19 @@
-const knownPlatforms = ["TikTok", "Instagram", "Facebook", "YouTube", "WhatsApp", "Telegram", "Twitter", "Snapchat", "Spotify", "LinkedIn", "Threads", "Discord"];
+export const knownPlatforms = ["TikTok", "Instagram", "Facebook", "YouTube", "WhatsApp", "Telegram", "Twitter", "Snapchat", "Spotify", "LinkedIn", "Threads", "Discord", "Twitch", "Kick", "Pinterest", "Reddit"];
 
-export function getSocialBoostPlatform(category?: string | null, name?: string | null): string {
-  const haystack = `${category ?? ""} ${name ?? ""}`.toLowerCase();
-  const matched = knownPlatforms.find((platform) => haystack.includes(platform.toLowerCase()));
+function matchPlatform(text?: string | null): string | null {
+  const lower = String(text ?? "").toLowerCase();
+  if (!lower) return null;
+  const matched = knownPlatforms.find((platform) => lower.includes(platform.toLowerCase()));
   if (matched) return matched;
-  if (haystack.includes("twitter") || /\bx\b/.test(haystack)) return "Twitter";
+  if (/tweet|\bx\.com\b|\bx\b/.test(lower)) return "Twitter";
+  return null;
+}
+
+// The category decides the platform; the service name is only a fallback so that
+// "US number verifications / Tiktok USA number verification" stays out of the TikTok list.
+export function getSocialBoostPlatform(category?: string | null, name?: string | null): string {
+  const matched = matchPlatform(category) ?? matchPlatform(name);
+  if (matched) return matched;
   const first = String(category ?? "").trim().split(/\s+/)[0];
   return first || "Other";
 }

@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { groupByPlatform } from "@/lib/socialBoostPlatforms";
+import { fetchAllRows } from "@/lib/fetchAllRows";
 
 type Service = { service_id: number; service_name: string; category: string; admin_price_per_1000: number; base_price_per_1000?: number; default_price_per_1000: number; max_reseller_price_per_1000: number };
 
@@ -21,7 +22,7 @@ export default function SocialBoostPricingManager({ ownerId, ownerType }: { owne
   const [search, setSearch] = useState("");
   useEffect(() => {
     const load = async () => {
-      const { data } = await (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,admin_price_per_1000,base_price_per_1000,default_price_per_1000,max_reseller_price_per_1000").order("category").order("service_name");
+      const data = await fetchAllRows<any>(() => (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,admin_price_per_1000,base_price_per_1000,default_price_per_1000,max_reseller_price_per_1000").order("category").order("service_id")).catch(() => []);
 const removedServiceNames = new Set([
         "facebook custom comments ( female )",
         "facebook custom comments ( male )",

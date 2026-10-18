@@ -27,6 +27,8 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import SocialBoostSuccessDialog from "@/components/SocialBoostSuccessDialog";
+import { fetchAllRows } from "@/lib/fetchAllRows";
+import { getSocialBoostPlatform } from "@/lib/socialBoostPlatforms";
 import {
   SOCIAL_BOOST_DUPLICATE_NOTICE,
   TRACK_ORDER_EVENT,
@@ -42,13 +44,25 @@ import {
 type Props = { walletBalance: number; ownerType?: string; storeId?: string | null; canSetPrices?: boolean; checkoutMode?: "wallet" | "paystack"; showHistory?: boolean; pricingMode?: "user" | "storefront"; purchaseSource?: "Dashboard" | "Packages page" | "Storefront"; requireAuth?: boolean };
 type ProviderService = { service: number; name: string; category: string; rate: string; min: string; max: string; average?: string; average_time?: string; note?: string; notes?: string; refill?: boolean; cancel?: boolean };
 
-const platforms = ["TikTok", "Instagram", "Facebook", "YouTube", "WhatsApp"];
+const platforms = ["TikTok", "Instagram", "Facebook", "YouTube", "WhatsApp", "Twitter", "Telegram", "Snapchat", "Spotify", "Twitch", "Discord", "LinkedIn", "Threads", "Kick", "Pinterest", "Reddit"];
+const orbitPlatforms = platforms.slice(0, 6);
 const platformIcons: Record<string, string> = {
   TikTok: "https://cdn.simpleicons.org/tiktok",
   Instagram: "https://cdn.simpleicons.org/instagram/white",
   Facebook: "https://cdn.simpleicons.org/facebook/white",
   YouTube: "https://cdn.simpleicons.org/youtube/white",
   WhatsApp: "https://cdn.simpleicons.org/whatsapp/white",
+  Twitter: "https://cdn.simpleicons.org/x/white",
+  Telegram: "https://cdn.simpleicons.org/telegram/white",
+  Snapchat: "https://cdn.simpleicons.org/snapchat/black",
+  Spotify: "https://cdn.simpleicons.org/spotify/white",
+  Twitch: "https://cdn.simpleicons.org/twitch/white",
+  Discord: "https://cdn.simpleicons.org/discord/white",
+  LinkedIn: "https://cdn.simpleicons.org/linkedin/white",
+  Threads: "https://cdn.simpleicons.org/threads/white",
+  Kick: "https://cdn.simpleicons.org/kick/black",
+  Pinterest: "https://cdn.simpleicons.org/pinterest/white",
+  Reddit: "https://cdn.simpleicons.org/reddit/white",
 };
 const platformTileBg: Record<string, string> = {
   TikTok: "bg-black",
@@ -56,6 +70,17 @@ const platformTileBg: Record<string, string> = {
   Facebook: "bg-blue-600",
   YouTube: "bg-red-600",
   WhatsApp: "bg-green-500",
+  Twitter: "bg-neutral-900",
+  Telegram: "bg-sky-500",
+  Snapchat: "bg-yellow-300",
+  Spotify: "bg-emerald-600",
+  Twitch: "bg-purple-600",
+  Discord: "bg-indigo-500",
+  LinkedIn: "bg-blue-700",
+  Threads: "bg-neutral-800",
+  Kick: "bg-lime-400",
+  Pinterest: "bg-red-700",
+  Reddit: "bg-orange-600",
 };
 const fallbackServices: ProviderService[] = [{ service: 1, name: "Followers", category: "TikTok", rate: "0.90", min: "50", max: "50000", average_time: "4 Hours", refill: true, cancel: true }];
 
@@ -100,7 +125,11 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     return "Dashboard wallet";
   };
 
-  const platformServices = catalog.filter((item) => item.category.toLowerCase().includes(platform.toLowerCase()));
+  const platformServices = catalog.filter((item) => getSocialBoostPlatform(item.category, item.name) === platform);
+  const availablePlatforms = useMemo(() => {
+    const present = platforms.filter((item) => catalog.some((entry) => getSocialBoostPlatform(entry.category, entry.name) === item));
+    return present.length ? present : platforms.slice(0, 5);
+  }, [catalog]);
 
     const services = platformServices.length ? platformServices : catalog;
   const serviceCategories = Array.from(new Set(services.map((item) => item.category.trim()))).filter(Boolean);
@@ -120,7 +149,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
     checkoutMode === "wallet"
       ? supabase.functions.invoke("social-boost", { body: { action: "services" } })
       : Promise.resolve({ data: [] }),
-    (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider_rate,default_price_per_1000,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes"),
+    fetchAllRows(() => (supabase as any).from("social_boost_service_pricing").select("service_id,service_name,category,provider_rate,default_price_per_1000,admin_price_per_1000,min_quantity,max_quantity,average_completion_time,notes").order("service_id")).then((data) => ({ data })).catch(() => ({ data: [] as any[] })),
   ]).then(([providerResult, pricingResult]) => {
     if (!mounted) return;
     const providerServices = Array.isArray(providerResult.data) ? providerResult.data : [];
@@ -546,8 +575,8 @@ const noteLines = String(service.notes || service.note || "No additional note ha
             <div className="absolute left-1/2 top-1/2 flex h-20 w-12 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-2xl bg-slate-900 shadow-[0_0_25px_rgba(56,189,248,0.6)] sm:h-28 sm:w-16">
               <TrendingUp className="h-6 w-6 text-cyan-300 sm:h-8 sm:w-8" />
             </div>
-            {platforms.map((item, index) => {
-              const angle = (index / platforms.length) * Math.PI * 2 - Math.PI / 2;
+            {orbitPlatforms.map((item, index) => {
+              const angle = (index / orbitPlatforms.length) * Math.PI * 2 - Math.PI / 2;
               const radius = 42;
               const left = 50 + radius * Math.cos(angle);
               const top = 50 + radius * Math.sin(angle);
@@ -683,7 +712,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
         </h2>
         <p className="mb-3 text-xs text-blue-100/60">Choose where you want to grow</p>
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-          {platforms.map((item) => (
+          {availablePlatforms.map((item) => (
             <button
               type="button"
               key={item}
