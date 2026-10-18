@@ -123,7 +123,11 @@ Deno.serve(async (req) => {
   const { data: apiUser } = await supabase.from("api_users").select("id,identity_id,api_wallet,wallet,active,order_count").eq("api_key", bearer).maybeSingle();
   let actorUserId: string | null = null;
   const isApiUser = Boolean(apiUser?.active);
-  if (!isApiUser) { const { data: authData } = await supabase.auth.getUser(bearer); actorUserId = authData.user?.id ?? null; if (!actorUserId) return json({ error: "Invalid or expired authentication." }, 401); }
+  let bearerRole = "";
+  try { bearerRole = String(JSON.parse(atob(bearer.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).role ?? ""); } catch (_) { /* not a JWT */ }
+  // The paystack-webhook calls this function with the service-role key after it has verified the payment.
+  const isServiceCaller = !isApiUser && (bearer === Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || bearerRole === "service_role");
+  if (!isApiUser && !isServiceCaller) { const { data: authData } = await supabase.auth.getUser(bearer); actorUserId = authData.user?.id ?? null; if (!actorUserId) return json({ error: "Invalid or expired authentication." }, 401); }
   const action = typeof input.action === "string" ? input.action : "";
   if (!ACTIONS.has(action)) return json({ error: "Unsupported action.", allowedActions: [...ACTIONS] }, 400);
   const missing = REQUIRED_FIELDS[action].filter((field) => asFormValue(input[field]) === null);
@@ -131,7 +135,17 @@ Deno.serve(async (req) => {
   // order_number is a bigint, so clients send it as a number; accept both forms.
   const walletOrderNumber = typeof input.wallet_order_number === "string" || typeof input.wallet_order_number === "number" ? String(input.wallet_order_number).trim() : "";
   const isWalletHandoff = action === "add" && !isApiUser && input.payment_method === "wallet" && Boolean(walletOrderNumber);
-  if (action === "add" && !isApiUser && !isWalletHandoff) return json({ error: "Payment is required before creating a Social Boost order." }, 402);
+  const paystackOrderNumber = typeof input.order === "string" || typeof input.order === "number" ? String(input.order).trim() : "";
+  const isPaystackHandoff = action === "add" && isServiceCaller && input.payment_method === "paystack" && Boolean(paystackOrderNumber);
+  if (action === "add" && !isApiUser && !isWalletHandoff && !isPaystackHandoff) return json({ error: "Payment is required before creating a Social Boost order." }, 402);
+  if (isPaystackHandoff) {
+    const { data: paidOrder } = await supabase.from("social_boost_orders").select("order_number, provider_order_id, status, service, target_link, quantity").eq("order_number", paystackOrderNumber).eq("payment_method", "paystack").maybeSingle();
+    if (!paidOrder || paidOrder.provider_order_id || ["failed", "cancelled", "refunded"].includes(String(paidOrder.status))) return json({ error: "Paystack order is invalid or already processed." }, 409);
+    input.order = paidOrder.order_number;
+    input.service = String(paidOrder.service).split(":", 1)[0].trim();
+    input.link = String(paidOrder.target_link);
+    input.quantity = Number(paidOrder.quantity);
+  }
   if (isWalletHandoff) {
     const { data: walletOrder } = await supabase.from("social_boost_orders").select("order_number, user_id, provider_order_id, status, service, target_link, quantity").eq("order_number", walletOrderNumber).eq("user_id", actorUserId).maybeSingle();
     if (!walletOrder || walletOrder.provider_order_id || ["failed", "cancelled", "refunded"].includes(String(walletOrder.status))) return json({ error: "Wallet order is invalid or already processed." }, 409);
@@ -179,7 +193,7 @@ Deno.serve(async (req) => {
     if ("error" in resolved) return json({ error: resolved.error, retryable: resolved.retryable }, resolved.status);
     target = { id: resolved.provider.id, label: resolved.provider.label, url: resolved.provider.api_url, key: resolved.apiKey };
   }
-  if (action === "add" && !isWalletHandoff) {
+  if (action === "add" && !isWalletHandoff && !isPaystackHandoff) {
     const quantity = Number(input.quantity); if (!Number.isInteger(quantity) || quantity <= 0) return json({ error: "quantity must be a positive integer." }, 400);
     const serviceLookup = String(input.service).split(":", 1)[0].trim();
     // Names repeat across providers, so orders are matched on the numeric service ID only.
