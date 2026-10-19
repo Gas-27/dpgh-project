@@ -1,6 +1,6 @@
--- Persistent cache of Korba bundle catalogues so the gateway does not call
--- Korba (through the Fixie proxy) for every customer who opens the buy page.
--- Service role only: the gateway reads and writes it, browsers never do.
+-- Persistent cache for Korba bundle catalogue responses.
+-- Survives Edge Function cold starts (unlike an in-memory cache), which is
+-- what was causing repeated live Korba calls through the Fixie proxy.
 create table if not exists public.korba_catalogue_cache (
   network text primary key,
   payload jsonb not null,

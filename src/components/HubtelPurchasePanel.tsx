@@ -320,7 +320,7 @@ export default function HubtelPurchasePanel({
     return () => {
       cancelled = true;
     };
-  }, [mode, instantProduct, normalizedPhone, network]);
+  }, [mode, instantProduct, network]);
 
   useEffect(() => {
     let cancelled = false;

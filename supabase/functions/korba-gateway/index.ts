@@ -241,23 +241,60 @@ async function addMeter(body: JsonObject) {
   }));
 }
 
-const BUNDLE_CACHE_TTL_MS = 60_000;
-const bundleCache = new Map<string, { expiresAt: number; value: JsonObject }>();
-const bundleRequests = new Map<string, Promise<JsonObject>>();
+// Catalogues change rarely, so they are cached in the database (shared by every
+// Edge Function instance) and only re-fetched through the paid proxy when stale.
+const BUNDLE_CACHE_TTL_MS = 6 * 60 * 60_000;
+const BUNDLE_MIN_REFRESH_MS = 15 * 60_000;
+type CatalogueEntry = { fetchedAt: number; value: JsonObject };
+const bundleMemory = new Map<string, CatalogueEntry>();
+const bundleRequests = new Map<string, Promise<CatalogueEntry>>();
 
-async function getBundleCatalogue(network: string, forceRefresh = false) {
-  const cached = bundleCache.get(network);
-  if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.value;
+async function readStoredCatalogue(network: string): Promise<CatalogueEntry | null> {
+  const memory = bundleMemory.get(network);
+  const { data, error } = await walletClient()
+    .from("korba_catalogue_cache")
+    .select("payload, fetched_at")
+    .eq("network", network)
+    .maybeSingle();
+  if (error || !data) return memory ?? null;
+  const entry = { fetchedAt: Date.parse(String(data.fetched_at)), value: asObject(data.payload) };
+  if (!memory || entry.fetchedAt >= memory.fetchedAt) bundleMemory.set(network, entry);
+  return bundleMemory.get(network) ?? entry;
+}
+
+async function getBundleCatalogue(network: string, maxAgeMs = BUNDLE_CACHE_TTL_MS): Promise<CatalogueEntry> {
+  const isFresh = (entry: CatalogueEntry | null | undefined): entry is CatalogueEntry =>
+    !!entry && Date.now() - entry.fetchedAt < maxAgeMs;
+
+  const inMemory = bundleMemory.get(network);
+  if (isFresh(inMemory)) return inMemory;
 
   const inFlight = bundleRequests.get(network);
-  if (!forceRefresh && inFlight) return inFlight;
+  if (inFlight) return inFlight;
 
-  const request = korbaRequest<JsonObject>(dataEndpoints(network).lookup, {})
-    .then((value) => {
-      bundleCache.set(network, { expiresAt: Date.now() + BUNDLE_CACHE_TTL_MS, value });
-      return value;
-    })
-    .finally(() => bundleRequests.delete(network));
+  const request = (async () => {
+    const stored = await readStoredCatalogue(network);
+    if (isFresh(stored)) return stored;
+
+    try {
+      const value = await korbaRequest<JsonObject>(dataEndpoints(network).lookup, {});
+      const entry = { fetchedAt: Date.now(), value };
+      if (value.success !== false && normalizeBundles(value).length > 0) {
+        bundleMemory.set(network, entry);
+        const { error } = await walletClient()
+          .from("korba_catalogue_cache")
+          .upsert({ network, payload: value, fetched_at: new Date(entry.fetchedAt).toISOString() });
+        if (error) console.error("[korba-gateway] catalogue cache write failed", error);
+      }
+      return entry;
+    } catch (error) {
+      if (stored) {
+        console.error("[korba-gateway] catalogue refresh failed, serving stale copy", error);
+        return stored;
+      }
+      throw error;
+    }
+  })().finally(() => bundleRequests.delete(network));
 
   bundleRequests.set(network, request);
   return request;
@@ -265,7 +302,7 @@ async function getBundleCatalogue(network: string, forceRefresh = false) {
 
 async function bundleLookup(body: JsonObject) {
   const network = normalizeNetworkCode(String(body.network_code || ""));
-  const result = await getBundleCatalogue(network);
+  const { value: result } = await getBundleCatalogue(network);
   return json({ success: result.success !== false, network_code: network, bundles: normalizeBundles(result), raw: result });
 }
 
@@ -385,9 +422,15 @@ function buildPayment(ctx: PaymentContext): { endpoint: string; payload: JsonObj
 
 /** The browser sends the amount, so never let it pay less than Korba's price for the bundle. */
 async function assertBundlePrice(network: string, bundleId: string, amount: number) {
-  const result = await getBundleCatalogue(network);
-  const bundle = normalizeBundles(result).find((item) =>
+  const findBundle = (result: JsonObject) => normalizeBundles(result).find((item) =>
     [item.id, item.product_id, item.bundle_id].some((value) => value !== undefined && String(value) === bundleId));
+
+  let bundle = findBundle((await getBundleCatalogue(network)).value);
+  if (!bundle) {
+    // A new bundle may have been added since the last fetch. Refresh at most once per few minutes
+    // so an invalid id can't trigger a Korba call on every attempt.
+    bundle = findBundle((await getBundleCatalogue(network, BUNDLE_MIN_REFRESH_MS)).value);
+  }
   if (!bundle) throw new HttpError("That bundle is no longer available. Please refresh and try again.", 400);
   const price = Number(bundle.amount);
   if (Number.isFinite(price) && amount + 0.01 < price) throw new HttpError("The amount does not match the bundle price", 400);
