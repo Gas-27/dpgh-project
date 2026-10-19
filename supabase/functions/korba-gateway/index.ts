@@ -241,9 +241,31 @@ async function addMeter(body: JsonObject) {
   }));
 }
 
+const BUNDLE_CACHE_TTL_MS = 60_000;
+const bundleCache = new Map<string, { expiresAt: number; value: JsonObject }>();
+const bundleRequests = new Map<string, Promise<JsonObject>>();
+
+async function getBundleCatalogue(network: string, forceRefresh = false) {
+  const cached = bundleCache.get(network);
+  if (!forceRefresh && cached && cached.expiresAt > Date.now()) return cached.value;
+
+  const inFlight = bundleRequests.get(network);
+  if (!forceRefresh && inFlight) return inFlight;
+
+  const request = korbaRequest<JsonObject>(dataEndpoints(network).lookup, {})
+    .then((value) => {
+      bundleCache.set(network, { expiresAt: Date.now() + BUNDLE_CACHE_TTL_MS, value });
+      return value;
+    })
+    .finally(() => bundleRequests.delete(network));
+
+  bundleRequests.set(network, request);
+  return request;
+}
+
 async function bundleLookup(body: JsonObject) {
   const network = normalizeNetworkCode(String(body.network_code || ""));
-  const result = await korbaRequest<JsonObject>(dataEndpoints(network).lookup, {});
+  const result = await getBundleCatalogue(network);
   return json({ success: result.success !== false, network_code: network, bundles: normalizeBundles(result), raw: result });
 }
 
@@ -363,7 +385,7 @@ function buildPayment(ctx: PaymentContext): { endpoint: string; payload: JsonObj
 
 /** The browser sends the amount, so never let it pay less than Korba's price for the bundle. */
 async function assertBundlePrice(network: string, bundleId: string, amount: number) {
-  const result = await korbaRequest<JsonObject>(dataEndpoints(network).lookup, {});
+  const result = await getBundleCatalogue(network);
   const bundle = normalizeBundles(result).find((item) =>
     [item.id, item.product_id, item.bundle_id].some((value) => value !== undefined && String(value) === bundleId));
   if (!bundle) throw new HttpError("That bundle is no longer available. Please refresh and try again.", 400);

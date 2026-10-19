@@ -52,7 +52,11 @@ function readCredentials() {
   return { clientId: Number.isFinite(numericClientId) ? numericClientId : clientId, clientKey, secretKey };
 }
 
+let sharedHttpClient: Deno.HttpClient | undefined;
+
 function fixieHttpClient() {
+  if (sharedHttpClient) return sharedHttpClient;
+
   const proxyUrl = Deno.env.get("FIXIE_URL")?.trim();
   if (!proxyUrl) throw new Error("FIXIE_URL is not configured");
 
@@ -65,12 +69,13 @@ function fixieHttpClient() {
   proxy.username = "";
   proxy.password = "";
 
-  return Deno.createHttpClient({
+  sharedHttpClient = Deno.createHttpClient({
     proxy: {
       url: proxy.toString(),
       ...(username || password ? { basicAuth: { username, password } } : {}),
     },
   });
+  return sharedHttpClient;
 }
 
 async function send(baseUrl: string, path: string, payload: KorbaPayload) {
