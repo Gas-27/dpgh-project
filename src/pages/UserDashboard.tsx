@@ -247,8 +247,6 @@ const UserDashboard = () => {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  const showUserUssd = totalOrders > 1;
-
   // Agent-only features (locked for regular users)
   const agentOnlyItems = [
     { id: "bulk-orders", label: "Bulk Orders", icon: ShoppingCart },
@@ -257,7 +255,6 @@ const UserDashboard = () => {
     { id: "subagent-prices", label: "Subagent Prices", icon: TrendingUp },
     { id: "appearance", label: "Appearance", icon: Settings },
     { id: "notifications", label: "Notifications", icon: Bell },
-    ...(showUserUssd ? [{ id: "ussd-code", label: "USSD Code", icon: Smartphone }] : []),
     { id: "view-subagents", label: "View Subagents", icon: Users },
     { id: "view-sub-subagents", label: "View Sub-Subagents", icon: Users },
     { id: "more", label: "More...", icon: MoreHorizontal },
@@ -1246,34 +1243,6 @@ case "api-key":
           </Card>
         );
       })()}
-
-      {/* Account Reference and Codes Card */}
-      <Card className={showUserUssd ? "border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5" : "hidden"}>
-        <CardContent className="p-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div className="text-center md:text-left">
-              <p className="text-sm text-muted-foreground mb-1">Buy with USSD when you do not have data to come online</p>
-  <p className="text-xs text-muted-foreground max-w-2xl">Orders made through USSD are guest orders and will not appear in this dashboard. Track them through USSD or the Track Order Status section on the main site.</p>
-              <div className="flex items-center justify-center md:justify-start gap-3">
-                <div className="p-3 bg-primary/20 rounded-lg">
-                  <p className="text-2xl font-bold font-mono text-primary">*380*455*1#</p>
-                </div>
-
-              </div>
-            </div>
-            <Button 
-              variant="default"
-              size="sm"
-              onClick={() => {
-                window.location.href = "tel:*380*455%23";
-              }}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Phone className="h-4 w-4 mr-2" /> Call
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Orders Table with Search - Like Agent Dashboard */}
       <Card className="border-border">

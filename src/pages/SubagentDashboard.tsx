@@ -2619,10 +2619,8 @@ return (
                 {subagentStore?.topup_reference && (
                   <div className="mt-4 pt-4 border-t border-yellow-500/20">
                     <div className="text-center space-y-3">
-                      <p className="text-xs text-muted-foreground">Your customers can buy data via USSD</p>
                       <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
-                        <p className="text-2xl font-bold font-mono text-primary">*380*455#</p>
-                        <p className="text-sm text-muted-foreground mt-2">Access Code:</p>
+                        <p className="text-sm text-muted-foreground">Top-up Reference</p>
                         <p className="text-3xl font-bold font-mono text-foreground">{subagentStore.topup_reference}</p>
                       </div>
                       <Button
@@ -2630,11 +2628,11 @@ return (
                         size="sm"
                         className="w-full"
                         onClick={() => {
-                          navigator.clipboard.writeText("*380*455#");
-                          toast({ title: "Copied!", description: "USSD code copied to clipboard" });
+                          navigator.clipboard.writeText(String(subagentStore.topup_reference));
+                          toast({ title: "Copied!", description: "Top-up reference copied to clipboard" });
                         }}
                       >
-                        <Copy className="h-4 w-4 mr-2" /> Copy USSD Code
+                        <Copy className="h-4 w-4 mr-2" /> Copy Reference
                       </Button>
                     </div>
                   </div>

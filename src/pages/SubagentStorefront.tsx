@@ -1335,21 +1335,6 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
         ) : activeSection === "data" ? (
           /* Packages Grid */
           <>
-          {/* USSD Info Banner */}
-          {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
-            <a href="tel:*380*455#" className="block mb-4 rounded-xl border border-[#064e5f] bg-[#071316] p-4 text-foreground shadow-sm hover:bg-[#071316] transition-colors">
-              <div className="flex items-center justify-center gap-3 text-center">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
-                  <Phone className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed!</p>
-                  <p className="text-xl font-bold font-mono text-primary">*380*455#</p>
-                  <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">{store.topup_reference}</span></p>
-                </div>
-              </div>
-            </a>
-          )}
           <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3" style={{ gridTemplateColumns: `repeat(auto-fill, minmax(min(100%, 300px), 1fr))` }}>
             {loading ? (
               <div className="col-span-full flex items-center justify-center py-12">

@@ -2713,32 +2713,24 @@ return (
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Profit from Subagents</p><p className="font-display text-2xl font-bold text-primary mt-1">GHC {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Withdraw separately in Wallet tab</p></div><Users className="h-8 w-8 text-primary opacity-50" /></div></CardContent></Card>
             </div>
             
-            {/* USSD Access Code Card */}
+            {/* Top-up Reference Card */}
             {store?.topup_reference && (
               <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5">
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="text-center md:text-left">
-                      <p className="text-sm text-muted-foreground mb-1">Your customers can buy data via USSD</p>
-                      <div className="flex items-center justify-center md:justify-start gap-3">
-                        <div className="p-3 bg-primary/20 rounded-lg">
-                          <p className="text-2xl font-bold font-mono text-primary">*380*455#</p>
-                        </div>
-                        <div className="text-left">
-                          <p className="text-xs text-muted-foreground">Access Code</p>
-                          <p className="text-3xl font-bold font-mono text-foreground">{store.topup_reference}</p>
-                        </div>
-                      </div>
+                      <p className="text-xs text-muted-foreground">Top-up Reference</p>
+                      <p className="text-3xl font-bold font-mono text-foreground">{store.topup_reference}</p>
                     </div>
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => {
-                        navigator.clipboard.writeText("*380*455#");
-                        toast({ title: "Copied!", description: "USSD code copied to clipboard" });
+                        navigator.clipboard.writeText(String(store.topup_reference));
+                        toast({ title: "Copied!", description: "Top-up reference copied to clipboard" });
                       }}
                     >
-                      <Copy className="h-4 w-4 mr-2" /> Copy USSD Code
+                      <Copy className="h-4 w-4 mr-2" /> Copy Reference
                     </Button>
                   </div>
                 </CardContent>
