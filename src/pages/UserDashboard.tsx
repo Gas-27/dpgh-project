@@ -44,6 +44,7 @@ import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
 import NotificationPopup from "@/components/NotificationPopup";
+import PrivateShareMySubscriptions from "@/components/PrivateShareMySubscriptions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface DataPackage {
@@ -231,6 +232,7 @@ const UserDashboard = () => {
     { id: "services", label: "Services", icon: CreditCard },
   { id: "social-boost", label: "Social Boost", icon: Sparkles },
     { id: "subscription", label: "Subscription", icon: CreditCard },
+    { id: "private-subscriptions", label: "My Private Subscriptions", icon: Key },
     { id: "orders", label: "Orders", icon: BarChart3 },
     { id: "refunds", label: "Refunds", icon: Wallet },
     { id: "my-complaints", label: "My Complaints", icon: MessageCircle },
@@ -1029,6 +1031,8 @@ case "api-key":
   return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="social-boost" onMaintenanceReturn={() => setActiveMenu("overview")} />;
   case "subscription":
   return <DashboardPurchaseTabs walletBalance={normalWallet} ownerType="customer" ownerId={effectiveUserId} initialTab="subscription" />;
+      case "private-subscriptions":
+        return <PrivateShareMySubscriptions />;
       case "sms":
         return <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="customer" ownerId={effectiveUserId} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="customer" ownerId={effectiveUserId} /></TabsContent></Tabs>;
       case "topup":

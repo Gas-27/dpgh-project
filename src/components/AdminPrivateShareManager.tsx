@@ -163,6 +163,112 @@ function ProductCard({ service, config, onSave }: {
   );
 }
 
+type CodeSender = { domain: string; label: string | null; active: boolean };
+const INBOUND_URL = `${import.meta.env.VITE_SUPABASE_URL ?? "https://uloaiqmknsrknqikbmtb.supabase.co"}/functions/v1/private-share-inbound-email`;
+
+function InboundRelayCard() {
+  const { toast } = useToast();
+  const [secret, setSecret] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState(false);
+  const [senders, setSenders] = useState<CodeSender[]>([]);
+  const [newDomain, setNewDomain] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const loadAll = useCallback(async () => {
+    const [s, d] = await Promise.all([
+      db.rpc("private_share_admin_get_inbound_settings"),
+      db.from("private_share_code_senders").select("*").order("domain"),
+    ]);
+    if (s.error) toast({ title: "Could not load relay settings", description: s.error.message, variant: "destructive" });
+    else setSecret(s.data?.secret ?? null);
+    setSenders(d.data ?? []);
+  }, [toast]);
+
+  useEffect(() => { loadAll(); }, [loadAll]);
+
+  const copy = async (value: string, what: string) => {
+    try { await navigator.clipboard.writeText(value); toast({ title: `${what} copied` }); }
+    catch { toast({ title: "Copy failed", variant: "destructive" }); }
+  };
+
+  const rotate = async () => {
+    if (!window.confirm("Rotate the secret? Your email forwarder stops working until you paste the new secret into it.")) return;
+    setBusy(true);
+    const { data, error } = await db.rpc("private_share_admin_rotate_inbound_secret");
+    setBusy(false);
+    if (error) { toast({ title: "Rotate failed", description: error.message, variant: "destructive" }); return; }
+    setSecret(data?.secret ?? null); setRevealed(true);
+    toast({ title: "Secret rotated" });
+  };
+
+  const setSender = async (domain: string, active: boolean) => {
+    const { error } = await db.rpc("private_share_admin_set_code_sender", { p_domain: domain, p_active: active });
+    if (error) { toast({ title: "Could not save sender", description: error.message, variant: "destructive" }); return false; }
+    await loadAll();
+    return true;
+  };
+
+  return (
+    <div className="space-y-3">
+      <Alert>
+        <AlertTitle>How automatic verification codes work</AlertTitle>
+        <AlertDescription>
+          Forward the shared account&apos;s verification emails (for example from Netflix) to the URL below using an email-to-webhook service.
+          The relay pulls out only the numeric code, stores it for 15 minutes and shows it to the customer who holds an active seat on that account when they press
+          &quot;Get my login code&quot;. Each account needs its mailbox added in Emails and linked in Accounts with the role &quot;verification&quot;.
+        </AlertDescription>
+      </Alert>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Forwarder settings</CardTitle>
+          <CardDescription>Send a POST with JSON fields mailbox, from, subject, text (or html) and the header x-inbound-secret.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="space-y-1">
+            <Label>Webhook URL</Label>
+            <div className="flex gap-2">
+              <Input readOnly value={INBOUND_URL} className="font-mono text-xs" />
+              <Button variant="outline" onClick={() => copy(INBOUND_URL, "URL")}>Copy</Button>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <Label>Secret (header x-inbound-secret)</Label>
+            <div className="flex gap-2">
+              <Input readOnly type={revealed ? "text" : "password"} value={secret ?? ""} className="font-mono text-xs" />
+              <Button variant="outline" onClick={() => setRevealed((v) => !v)}>{revealed ? "Hide" : "Show"}</Button>
+              <Button variant="outline" disabled={!secret} onClick={() => secret && copy(secret, "Secret")}>Copy</Button>
+              <Button variant="destructive" disabled={busy} onClick={rotate}>Rotate</Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Allowed sender domains</CardTitle>
+          <CardDescription>Only codes from these domains (and their subdomains) are accepted. Everything else is ignored.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex gap-2">
+            <Input placeholder="example.com" value={newDomain} onChange={(e) => setNewDomain(e.target.value)} />
+            <Button disabled={!newDomain.trim()} onClick={async () => { if (await setSender(newDomain, true)) setNewDomain(""); }}>Add</Button>
+          </div>
+          <div className="space-y-2">
+            {senders.map((s) => (
+              <div key={s.domain} className="flex items-center justify-between rounded-md border p-2">
+                <div className="text-sm"><span className="font-medium">{s.domain}</span>{s.label && <span className="text-muted-foreground"> - {s.label}</span>}</div>
+                <Switch checked={s.active} aria-label={`Allow ${s.domain}`} onCheckedChange={(v) => setSender(s.domain, v)} />
+              </div>
+            ))}
+            {senders.length === 0 && <p className="text-sm text-muted-foreground">No sender domains yet.</p>}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 const emptyAccountForm = { id: null as string | null, label: "", capacity: 1, capacity_basis: "", expires: "", maintenance_status: "active", maintenance_until: "", supplier_ref: "", notes: "" };
 
 export default function AdminPrivateShareManager() {
@@ -306,6 +412,7 @@ export default function AdminPrivateShareManager() {
           <TabsTrigger value="accounts">Accounts</TabsTrigger>
           <TabsTrigger value="assignments">Assignments{pending.length ? ` (${pending.length} pending)` : ""}</TabsTrigger>
           <TabsTrigger value="verification">Verification</TabsTrigger>
+          <TabsTrigger value="relay">Code relay</TabsTrigger>
           <TabsTrigger value="integrations">Integrations</TabsTrigger>
           <TabsTrigger value="audit">Audit</TabsTrigger>
         </TabsList>
@@ -518,6 +625,10 @@ export default function AdminPrivateShareManager() {
             </CardContent></Card>
           ))}
           {verifications.length === 0 && <p className="text-sm text-muted-foreground">No verification requests.</p>}
+        </TabsContent>
+
+        <TabsContent value="relay" className="pt-3">
+          <InboundRelayCard />
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-3 pt-3">
