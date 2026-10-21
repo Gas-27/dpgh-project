@@ -133,7 +133,7 @@ function ProductCard({ service, config, onSave }: {
           <div className="flex items-center justify-between rounded-md border p-2">
             <Label htmlFor={`rv-${service.id}`}>Requires verification</Label>
             <Switch id={`rv-${service.id}`} checked={draft.requires_verification}
-              onCheckedChange={(v) => setDraft({ ...draft, requires_verification: v, verification_provider: v ? "manual" : null })} />
+              onCheckedChange={(v) => setDraft({ ...draft, requires_verification: v, verification_provider: v ? "forwarding" : null })} />
           </div>
           <div className="space-y-1">
             <Label>Verification method</Label>
@@ -142,9 +142,8 @@ function ProductCard({ service, config, onSave }: {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">None</SelectItem>
+                <SelectItem value="forwarding">Universal forwarding relay</SelectItem>
                 <SelectItem value="manual">Manual (admin relays)</SelectItem>
-                <SelectItem value="gmail" disabled>Gmail (not available yet)</SelectItem>
-                <SelectItem value="microsoft" disabled>Microsoft (not available yet)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -167,6 +166,7 @@ type CodeSender = { domain: string; label: string | null; active: boolean };
 const INBOUND_URL = `${import.meta.env.VITE_SUPABASE_URL ?? "https://uloaiqmknsrknqikbmtb.supabase.co"}/functions/v1/private-share-inbound-email`;
 
 function InboundRelayCard() {
+  // The relay is provider-agnostic: any mailbox that can forward matching messages can use it.
   const { toast } = useToast();
   const [secret, setSecret] = useState<string | null>(null);
   const [revealed, setRevealed] = useState(false);

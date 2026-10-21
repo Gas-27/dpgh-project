@@ -123,7 +123,7 @@ function CodeCard({ assignment }: { assignment: MyAssignment }) {
         {active && state.phase === "idle" && (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground text-pretty">
-              Start signing in first so the service sends its code, then press the button. Your code appears here as soon as it arrives.
+              Start signing in first so the service sends its code, then press the button. Any supported mailbox provider can forward the message to our secure relay, and your code appears here as soon as it arrives.
             </p>
             <Button onClick={requestCode} disabled={busy}>
               {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <KeyRound className="mr-2 h-4 w-4" />}
