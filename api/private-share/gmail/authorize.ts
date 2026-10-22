@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js'
-import { startAuthorization, getToken, UserAuthorizationRequiredError } from '@vercel/connect'
+import { startAuthorization, getToken, revokeToken, UserAuthorizationRequiredError } from '@vercel/connect'
 
 const CONNECTOR_UID = 'google/justbuy-gmail-verification-inbox'
 const scopes = ['https://www.googleapis.com/auth/gmail.readonly']
@@ -15,7 +15,7 @@ function origin(req: any) {
 }
 
 export default async function handler(req: any, res: any) {
-  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })
+  if (req.method !== 'POST' && req.method !== 'DELETE') return res.status(405).json({ error: 'Method not allowed' })
   const auth = req.headers.authorization
   if (!auth?.startsWith('Bearer ')) return res.status(401).json({ error: 'Authentication required' })
   const accessToken = auth.slice(7)
@@ -23,7 +23,12 @@ export default async function handler(req: any, res: any) {
   const { data: { user }, error } = await supabase.auth.getUser()
   if (error || !user) return res.status(401).json({ error: 'Authentication required' })
   try {
-    const token = await getToken(CONNECTOR_UID, { subject: { type: 'user', id: user.id }, scopes })
+    const subject = { type: 'user' as const, id: user.id }
+    if (req.method === 'DELETE') {
+      await revokeToken(CONNECTOR_UID, { subject })
+      return res.status(200).json({ disconnected: true })
+    }
+    const token = await getToken(CONNECTOR_UID, { subject, scopes })
     const profile = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', { headers: { Authorization: `Bearer ${token}` } })
     if (!profile.ok) return res.status(502).json({ error: 'Gmail authorization is not usable', reauthorize: true })
     const mailbox = await profile.json()

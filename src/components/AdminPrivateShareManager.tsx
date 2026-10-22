@@ -347,6 +347,21 @@ export default function AdminPrivateShareManager() {
     } finally { setGmailBusy(false); }
   };
 
+  const disconnectGmail = async () => {
+    setGmailBusy(true)
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token
+      const response = await fetch("/api/private-share/gmail/authorize", { method: "DELETE", headers: { Authorization: `Bearer ${token ?? ""}` } })
+      const data = await response.json()
+      if (!response.ok) throw new Error(data.error ?? "Gmail disconnect failed")
+      setGmailState({ connected: false })
+      toast({ title: "Gmail disconnected", description: "You can now connect a different Google account." })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gmail disconnect failed"
+      toast({ title: "Gmail disconnect failed", description: message, variant: "destructive" })
+    } finally { setGmailBusy(false) }
+  };
+
   const syncGmail = async () => {
     setGmailBusy(true);
     try {
@@ -685,6 +700,7 @@ export default function AdminPrivateShareManager() {
               <div className="flex flex-wrap gap-2">
                 <Button onClick={connectGmail} disabled={gmailBusy}><ExternalLink className="mr-2 h-4 w-4" />Connect or reauthorize Gmail</Button>
                 {gmailState.connected && <Button variant="outline" onClick={syncGmail} disabled={gmailBusy}><RefreshCw className="mr-2 h-4 w-4" />Sync inbox</Button>}
+                {gmailState.connected && <Button variant="destructive" onClick={disconnectGmail} disabled={gmailBusy}>Disconnect this Gmail account</Button>}
               </div>
               <p className="text-xs text-muted-foreground">Only Gmail read access is requested. Messages are reduced to short-lived verification codes and are never shown to customers.</p>
             </CardContent>
