@@ -17,6 +17,11 @@ type MyAssignment = {
   entitlement_starts_at: string | null;
   entitlement_expires_at: string | null;
   customer_note: string | null;
+  login_identifier: string | null;
+  customer_instructions: string | null;
+  verification_required: boolean;
+  verification_status: string | null;
+  verification_note: string | null;
 };
 
 type CodeState =
@@ -116,11 +121,24 @@ function CodeCard({ assignment }: { assignment: MyAssignment }) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
+        {assignment.login_identifier && (
+          <p className="text-sm"><span className="font-medium">Login:</span> {assignment.login_identifier}</p>
+        )}
         {assignment.customer_note && (
           <p className="rounded-md bg-muted p-3 text-sm text-pretty">{assignment.customer_note}</p>
         )}
+        {assignment.customer_instructions && (
+          <div className="rounded-md border p-3 text-sm text-pretty">
+            <p className="font-medium">How to sign in</p>
+            <p className="mt-1 text-muted-foreground">{assignment.customer_instructions}</p>
+          </div>
+        )}
 
-        {active && state.phase === "idle" && (
+        {active && !assignment.verification_required && (
+          <p className="text-sm text-muted-foreground">No verification code is required for this subscription.</p>
+        )}
+
+        {active && assignment.verification_required && state.phase === "idle" && (
           <div className="space-y-2">
             <p className="text-sm text-muted-foreground text-pretty">
               Start signing in first so the service sends its code, then press the button. Any supported mailbox provider can forward the message to our secure relay, and your code appears here as soon as it arrives.
@@ -163,6 +181,12 @@ function CodeCard({ assignment }: { assignment: MyAssignment }) {
             <p className="text-sm text-muted-foreground text-pretty">No code arrived in time. Start the sign-in again and request a new code.</p>
             <Button variant="outline" onClick={() => setState({ phase: "idle" })}>Try again</Button>
           </div>
+        )}
+
+        {assignment.verification_status === "failed" && assignment.verification_note && (
+          <p className="rounded-md border border-destructive/40 p-3 text-sm text-destructive">
+            {assignment.verification_note}
+          </p>
         )}
       </CardContent>
     </Card>
