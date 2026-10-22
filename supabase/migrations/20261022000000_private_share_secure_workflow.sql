@@ -27,6 +27,8 @@ drop policy if exists private_share_verification_events_admin_read on public.pri
 create policy private_share_verification_events_admin_read on public.private_share_verification_request_events
   for select to authenticated using ((select public.is_wallet_admin()));
 
+drop function if exists public.private_share_my_assignments();
+
 create or replace function public.private_share_my_assignments()
 returns table (
   assignment_id uuid,
