@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, ShieldCheck, Plus, Link2, Unlink, RefreshCw } from "lucide-react";
+import { Loader2, ShieldCheck, Plus, Link2, Unlink, RefreshCw, Mail, ExternalLink } from "lucide-react";
 
 type Service = { id: string; name: string; service_type: string };
 type Config = {
@@ -290,6 +290,8 @@ export default function AdminPrivateShareManager() {
   const [linkDraft, setLinkDraft] = useState<Record<string, { email: string; role: string }>>({});
   const [integrationDraft, setIntegrationDraft] = useState({ email_identity_id: "", provider: "gmail", senders: "" });
   const [noteTarget, setNoteTarget] = useState<{ kind: "assignment" | "verification"; id: string; status?: string; initial: string } | null>(null);
+  const [gmailState, setGmailState] = useState<{ connected: boolean; email?: string; lastSyncAt?: string | null; error?: string }>({ connected: false });
+  const [gmailBusy, setGmailBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -322,6 +324,44 @@ export default function AdminPrivateShareManager() {
     await load();
     return true;
   }, [load, toast]);
+
+  const connectGmail = async () => {
+    setGmailBusy(true);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      if (!token) throw new Error("Admin session required");
+      const response = await fetch("/api/private-share/gmail/authorize", { method: "POST", headers: { Authorization: `Bearer ${token}` } });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Gmail authorization failed");
+      if (data.authorizationUrl) {
+        if (window.self !== window.top) window.open(data.authorizationUrl, "_blank", "noopener,noreferrer");
+        else window.location.href = data.authorizationUrl;
+        return;
+      }
+      setGmailState({ connected: true, email: data.email, lastSyncAt: data.lastSyncAt });
+      toast({ title: "Gmail connected", description: data.email });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gmail authorization failed";
+      setGmailState((current) => ({ ...current, error: message }));
+      toast({ title: "Gmail connection failed", description: message, variant: "destructive" });
+    } finally { setGmailBusy(false); }
+  };
+
+  const syncGmail = async () => {
+    setGmailBusy(true);
+    try {
+      const token = (await supabase.auth.getSession()).data.session?.access_token;
+      const response = await fetch("/api/private-share/gmail/sync", { method: "POST", headers: { Authorization: `Bearer ${token ?? ""}` } });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error ?? "Gmail synchronization failed");
+      setGmailState((current) => ({ ...current, connected: true, lastSyncAt: data.synchronizedAt, error: undefined }));
+      toast({ title: "Gmail synchronized", description: `${data.processed} verification message(s) processed.` });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Gmail synchronization failed";
+      setGmailState((current) => ({ ...current, error: message }));
+      toast({ title: "Gmail sync failed", description: message, variant: "destructive" });
+    } finally { setGmailBusy(false); }
+  };
 
   const serviceName = useMemo(() => Object.fromEntries(services.map((x) => [x.id, x.name])), [services]);
   const emailById = useMemo(() => Object.fromEntries(emails.map((x) => [x.id, x])), [emails]);
@@ -632,13 +672,23 @@ export default function AdminPrivateShareManager() {
         </TabsContent>
 
         <TabsContent value="integrations" className="space-y-3 pt-3">
-          <Alert>
-            <AlertTitle>Mailbox access is disabled in this phase</AlertTitle>
-            <AlertDescription>
-              This only records which senders a future authorised integration may read. No mailbox is connected, no OAuth token is stored,
-              and a connection cannot be enabled until consent is recorded by that future integration.
-            </AlertDescription>
-          </Alert>
+          <Card>
+            <CardHeader><CardTitle className="flex items-center gap-2 text-base"><Mail className="h-4 w-4" />Central Gmail verification inbox</CardTitle>
+              <CardDescription>Connect the authorized JustBuy Gmail account. OAuth tokens remain server-side in Vercel Connect.</CardDescription></CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant={gmailState.connected ? "default" : "outline"}>{gmailState.connected ? "Connected" : "Not connected"}</Badge>
+                {gmailState.email && <span className="text-sm">{gmailState.email}</span>}
+                {gmailState.lastSyncAt && <span className="text-xs text-muted-foreground">Last sync {fmt(gmailState.lastSyncAt)}</span>}
+              </div>
+              {gmailState.error && <p className="text-sm text-destructive">{gmailState.error}</p>}
+              <div className="flex flex-wrap gap-2">
+                <Button onClick={connectGmail} disabled={gmailBusy}><ExternalLink className="mr-2 h-4 w-4" />Connect or reauthorize Gmail</Button>
+                {gmailState.connected && <Button variant="outline" onClick={syncGmail} disabled={gmailBusy}><RefreshCw className="mr-2 h-4 w-4" />Sync inbox</Button>}
+              </div>
+              <p className="text-xs text-muted-foreground">Only Gmail read access is requested. Messages are reduced to short-lived verification codes and are never shown to customers.</p>
+            </CardContent>
+          </Card>
           <Card><CardContent className="grid gap-3 p-3 sm:grid-cols-4">
             <Select value={integrationDraft.email_identity_id} onValueChange={(v) => setIntegrationDraft({ ...integrationDraft, email_identity_id: v })}>
               <SelectTrigger><SelectValue placeholder="Email identity" /></SelectTrigger>
