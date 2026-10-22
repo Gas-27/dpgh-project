@@ -77,7 +77,7 @@ export default async function handler(
         status: 'paid',
         order_status: 'processing',
         fulfillment_status: 'pending',
-        payment_method: 'api',
+        payment_method: 'api_wallet'
         source: 'api',
         agent_store_id: agentStore.id,
         selling_price: amount,

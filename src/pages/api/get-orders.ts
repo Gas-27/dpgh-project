@@ -76,7 +76,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   .from('orders')
   .select('id, user_id, customer_number, network, size_gb, size_gb_text, amount, selling_price, status, fulfillment_status, payment_status, payment_method, source, created_at, updated_at')
   .eq('user_id', apiUser.identity_id)
-  .eq('payment_method', 'api_wallet')
+  .in('payment_method', ['api', 'api_wallet'])
+  .eq('source', 'api')
   .order('created_at', { ascending: false });
   }
 
