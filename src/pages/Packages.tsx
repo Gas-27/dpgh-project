@@ -1187,6 +1187,11 @@ const Packages = () => {
   // Agent store ID — when an agent buys from the Packages page their order must be
   // attributed to their store so that refunds correctly credit their agent wallet.
   const [agentStoreIdForPayment, setAgentStoreIdForPayment] = useState<string | null>(null);
+  const [customerWalletId, setCustomerWalletId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!authUser) { setCustomerWalletId(null); return; }
+    supabase.from("customers").select("id").eq("user_id", authUser.id).maybeSingle().then(({ data }) => setCustomerWalletId(data?.id ?? null));
+  }, [authUser]);
   useEffect(() => {
     if (!authUser || !isAgent || hasPendingAgentStore) {
       setAgentStoreIdForPayment(null);
@@ -1894,7 +1899,7 @@ const searchOrders = async (input?: string) => {
         ) : renderComingSoon()}
       </div>
 
-      <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => { if (!open) setSelectedService(null); }} />
+      <ServicePurchaseDialog service={selectedService} ownerType="customer" ownerId={customerWalletId ?? undefined} onOpenChange={(open) => { if (!open) setSelectedService(null); }} />
 
       <Dialog open={showLoginRequired} onOpenChange={setShowLoginRequired}>
         <DialogContent className="max-w-sm text-center">

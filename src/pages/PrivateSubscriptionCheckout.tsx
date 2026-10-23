@@ -17,12 +17,13 @@ export default function PrivateSubscriptionCheckout() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const [{ data: auth }, { data: row }] = await Promise.all([
+      const [{ data: auth }, { data: customer }, { data: row }] = await Promise.all([
         supabase.auth.getUser(),
+        supabase.auth.getUser().then(({ data }) => data.user ? supabase.from("customers").select("id").eq("user_id", data.user.id).maybeSingle() : { data: null }),
         serviceId ? supabase.from("digital_services").select("id,slug,name,category,description,price,duration,icon,logo_url,official_url,service_type,private_delivery_mode,is_free,active,help_video_url").eq("id", serviceId).eq("service_type", "private_shared").eq("active", true).maybeSingle() : Promise.resolve({ data: null }),
       ]);
       if (!cancelled) {
-        setOwnerId(auth.user?.id);
+        setOwnerId(customer?.id ?? undefined);
         setService(row as Service | null);
         setLoading(false);
       }
