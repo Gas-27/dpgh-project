@@ -921,7 +921,7 @@ Deno.serve(async (req) => {
       const totalAmount =
         Math.round((baseAmount + feeAmount) * 100) / 100;
 
-      if (String(metadata.service_type || "private_shared") === "private_shared") {
+      if (String(metadata.service_type || "") === "private_shared") {
         const { data: hasAvailableSeat, error: capacityError } = await supabaseClient.rpc("private_share_has_available_seat", { p_service_id: serviceId });
         if (capacityError) {
           console.error("[SUBSCRIPTION PAYMENT] Capacity check failed", { code: capacityError.code, serviceId });

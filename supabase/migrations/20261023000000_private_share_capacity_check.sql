@@ -16,7 +16,7 @@ as $$
         select count(*)
         from public.private_share_assignments assignment
         where assignment.account_id = a.id
-          and assignment.status in ('active', 'expired', 'revoked')
+          and assignment.status in ('active', 'pending')
       ) < a.capacity
   );
 $$;
