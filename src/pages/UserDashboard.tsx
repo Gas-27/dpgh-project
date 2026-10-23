@@ -1134,6 +1134,31 @@ case "api-key":
             </div>
           </CardContent>
         </Card>
+
+        {apiKey && (
+          <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-blue-500/5 hover:border-purple-500/50 transition-all">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm font-medium text-muted-foreground">API Wallet Balance</p>
+                <Zap className="h-5 w-5 text-purple-400" />
+              </div>
+              <p className="font-display text-3xl font-bold text-purple-400">GHC {Number(apiWallet).toFixed(2)}</p>
+              <p className="text-xs text-muted-foreground mt-2">For API purchases</p>
+              <div className="mt-3 flex items-center gap-2 bg-purple-500/10 border border-purple-500/30 rounded-md px-3 py-2">
+                <span className="text-xs text-muted-foreground shrink-0">Top-up Reference:</span>
+                {topupReference
+                  ? <span className="font-mono font-bold text-purple-400 text-sm tracking-wider">{topupReference}</span>
+                  : <span className="text-xs text-muted-foreground italic">Loading...</span>
+                }
+              </div>
+              <div className="flex gap-2 mt-4">
+                <Button onClick={() => setShowApiWalletTopup(true)} className="flex-1" size="sm" variant="outline">
+                  Top Up API Wallet
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Date Filter Buttons */}

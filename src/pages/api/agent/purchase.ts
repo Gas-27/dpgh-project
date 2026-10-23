@@ -27,7 +27,7 @@ export default async function handler(
     // Fetch the agent from api_users using the api_key
     const { data: apiUser, error: apiUserError } = await supabase
       .from('api_users')
-      .select('identity_id, is_agent')
+      .select('id, identity_id, is_agent')
       .eq('api_key', api_key)
       .single();
 
@@ -77,9 +77,10 @@ export default async function handler(
         status: 'paid',
         order_status: 'processing',
         fulfillment_status: 'pending',
-        payment_method: 'api_wallet'
+        payment_method: 'api_wallet',
         source: 'api',
         agent_store_id: agentStore.id,
+        api_user: apiUser.id,
         selling_price: amount,
         base_price: amount,
         profit: 0,

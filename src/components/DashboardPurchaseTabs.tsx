@@ -214,10 +214,29 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
         return;
       }
       const normalize = (value: unknown) => String(value || "").toLowerCase().replace(/[\s_-]+/g, "");
-      const { data: apiUser } = await supabase.from("api_users" as any).select("id").eq("identity_id", ownerId).maybeSingle();
-      const { data: partnerHistory } = apiUser?.id
-        ? await supabase.from("partner_api_purchases" as any).select("id,created_at,service_type,network,product_name,recipient,amount,status").eq("api_user_id", apiUser.id).order("created_at", { ascending: false })
+      // Agent dashboards pass the store id; the API user is keyed by the store owner's auth id.
+      let identityId = ownerId;
+      if (normalizedOwnerType === "agent") {
+        const { data: store } = await supabase.from("agent_stores").select("user_id").eq("id", ownerId).maybeSingle();
+        if (store?.user_id) identityId = store.user_id;
+      }
+      const { data: apiUsers } = await supabase.from("api_users" as any).select("id").eq("identity_id", identityId);
+      const apiUserIds = ((apiUsers as any[]) || []).map((row) => row.id);
+      const { data: partnerHistory } = apiUserIds.length
+        ? await supabase.from("partner_api_purchases" as any).select("id,created_at,service_type,network,product_name,recipient,amount,status").in("api_user_id", apiUserIds).order("created_at", { ascending: false })
         : { data: [] };
+      // Data bundles bought through the API wallet are stored as orders rather than partner purchases.
+      const { data: apiOrders } = category === "instant" && apiUserIds.length
+        ? await (supabase as any).from("orders").select("id,created_at,network,size_gb_text,size_gb,customer_number,amount,status,fulfillment_status").in("api_user", apiUserIds).eq("source", "api").order("created_at", { ascending: false })
+        : { data: [] };
+      const apiOrderRows = (apiOrders || []).map((row: any) => ({
+        ...row,
+        product_type: "data",
+        network_code: row.network,
+        package_code: row.size_gb_text,
+        status: row.fulfillment_status || row.status,
+        source: "API wallet",
+      }));
       const instantServices = ["data", "airtime"];
       const utilityServices = ["ecg", "electricity", "water", "ghanawater", "dstv", "gotv", "startimes"];
       const rows = [
@@ -242,6 +261,7 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
             customer_number: row.recipient,
             source: "partner API",
           })),
+        ...apiOrderRows,
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setRows(rows);
       setLoading(false);

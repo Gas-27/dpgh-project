@@ -253,6 +253,10 @@ const AdminDashboard = () => {
   const [apiTopupUser, setApiTopupUser] = useState<{ id: string; store_name?: string; user_email?: string; email?: string; wallet: number; topup_reference: string } | null>(null);
   const [apiTopupAmount, setApiTopupAmount] = useState("");
   const [apiTopupLoading, setApiTopupLoading] = useState(false);
+  const [agentApiSearch, setAgentApiSearch] = useState("");
+  const [agentApiUser, setAgentApiUser] = useState<{ id: string; wallet: number; topup_reference: string; store_name?: string; momo_name?: string; store_slug?: string } | null>(null);
+  const [agentApiAmount, setAgentApiAmount] = useState("");
+  const [agentApiLoading, setAgentApiLoading] = useState(false);
 
   const [notifTitle, setNotifTitle] = useState("");
   const [notifMessage, setNotifMessage] = useState("");
@@ -2294,6 +2298,7 @@ const AdminDashboard = () => {
       const { data, error } = await supabase
         .from("api_users")
         .select("id, store_name, user_email, email, wallet, topup_reference")
+        .eq("is_agent", false)
         .or(variants.map(v => `topup_reference.eq.${v}`).join(","))
         .limit(1)
         .maybeSingle();
@@ -2316,9 +2321,9 @@ const AdminDashboard = () => {
     if (isNaN(amount) || amount <= 0) { toast({ title: "Invalid amount", description: "Enter a valid amount greater than 0.", variant: "destructive" }); return; }
     setApiTopupLoading(true);
     try {
-      const newBalance = Number(apiTopupUser.wallet || 0) + amount;
-      const { error } = await supabase.from("api_users").update({ wallet: newBalance }).eq("id", apiTopupUser.id);
+      const { data: balance, error } = await (supabase as any).rpc("admin_credit_api_wallet", { p_api_user_id: apiTopupUser.id, p_amount: amount });
       if (error) throw error;
+      const newBalance = Number(balance);
       setApiTopupUser({ ...apiTopupUser, wallet: newBalance });
       setApiTopupAmount("");
       toast({ title: "API wallet credited!", description: `GHC ${amount.toFixed(2)} added to ${apiTopupUser.store_name || apiTopupUser.user_email || apiTopupUser.email}. New balance: GHC ${newBalance.toFixed(2)}` });
@@ -2326,6 +2331,53 @@ const AdminDashboard = () => {
       toast({ title: "Credit failed", description: err.message, variant: "destructive" });
     } finally {
       setApiTopupLoading(false);
+    }
+  };
+
+  const searchAgentApiRef = async () => {
+    const raw = agentApiSearch.trim();
+    if (!raw) { setAgentApiUser(null); return; }
+    try {
+      const { data: apiUser, error } = await supabase
+        .from("api_users")
+        .select("id, wallet, topup_reference")
+        .eq("is_agent", true)
+        .eq("topup_reference", raw)
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!apiUser) {
+        toast({ title: "Not found", description: "No agent API wallet found with that top-up reference.", variant: "destructive" });
+        setAgentApiUser(null);
+        return;
+      }
+      const { data: store } = await (supabase as any)
+        .rpc("get_agent_stores_private", { p_topup_reference: raw })
+        .limit(1)
+        .maybeSingle();
+      setAgentApiUser({ ...apiUser, store_name: store?.store_name, momo_name: store?.momo_name, store_slug: store?.slug });
+    } catch (err: any) {
+      toast({ title: "Search failed", description: err.message, variant: "destructive" });
+      setAgentApiUser(null);
+    }
+  };
+
+  const creditAgentApiWallet = async () => {
+    if (!agentApiUser) return;
+    const amount = parseFloat(agentApiAmount);
+    if (isNaN(amount) || amount <= 0) { toast({ title: "Invalid amount", description: "Enter a valid amount greater than 0.", variant: "destructive" }); return; }
+    setAgentApiLoading(true);
+    try {
+      const { data: balance, error } = await (supabase as any).rpc("admin_credit_api_wallet", { p_api_user_id: agentApiUser.id, p_amount: amount });
+      if (error) throw error;
+      const newBalance = Number(balance);
+      setAgentApiUser({ ...agentApiUser, wallet: newBalance });
+      setAgentApiAmount("");
+      toast({ title: "Agent API wallet credited!", description: `GHC ${amount.toFixed(2)} added to ${agentApiUser.store_name || agentApiUser.topup_reference}. New balance: GHC ${newBalance.toFixed(2)}` });
+    } catch (err: any) {
+      toast({ title: "Credit failed", description: err.message, variant: "destructive" });
+    } finally {
+      setAgentApiLoading(false);
     }
   };
 
@@ -3745,6 +3797,44 @@ const AdminDashboard = () => {
                       <div className="flex gap-2 items-end">
                         <div className="flex-1 space-y-1"><Label>Amount to Credit (GHC)</Label><Input type="number" step="0.01" placeholder="e.g. 50.00" value={topupAmount} onChange={(e) => setTopupAmount(e.target.value)} /></div>
                         <Button variant="hero" onClick={creditWallet} disabled={topupLoading}>{topupLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Wallet className="h-4 w-4 mr-1" />} Credit</Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+              {/* Agent API Wallet Top-up */}
+              <Card className="border-border">
+                <CardHeader><CardTitle className="font-display text-lg flex items-center gap-2"><Zap className="h-5 w-5 text-primary" /> Top Up Agent API Wallet</CardTitle></CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Enter agent top-up reference"
+                        value={agentApiSearch}
+                        onChange={(e) => setAgentApiSearch(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && !e.nativeEvent.isComposing && searchAgentApiRef()}
+                        className="pl-10"
+                      />
+                    </div>
+                    <Button variant="hero" onClick={searchAgentApiRef}><Search className="h-4 w-4 mr-1" /> Search</Button>
+                  </div>
+                  {agentApiUser && (
+                    <div className="rounded-xl border border-primary/30 bg-primary/5 p-6 space-y-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm">
+                        <div><p className="text-muted-foreground">Store</p><p className="font-bold text-foreground">{agentApiUser.store_name || "—"}</p></div>
+                        <div><p className="text-muted-foreground">MoMo Name</p><p className="font-bold text-foreground">{agentApiUser.momo_name || "—"}</p></div>
+                        <div><p className="text-muted-foreground">Top-up Reference</p><p className="font-bold text-primary">{agentApiUser.topup_reference}</p></div>
+                        <div><p className="text-muted-foreground">API Wallet Balance</p><p className="font-bold text-green-400">GHC {Number(agentApiUser.wallet || 0).toFixed(2)}</p></div>
+                      </div>
+                      <div className="flex gap-2 items-end">
+                        <div className="flex-1 space-y-1">
+                          <Label>Amount to Credit (GHC)</Label>
+                          <Input type="number" step="0.01" min="0.01" placeholder="e.g. 50.00" value={agentApiAmount} onChange={(e) => setAgentApiAmount(e.target.value)} />
+                        </div>
+                        <Button variant="hero" onClick={creditAgentApiWallet} disabled={agentApiLoading}>
+                          {agentApiLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Wallet className="h-4 w-4 mr-1" />} Credit
+                        </Button>
                       </div>
                     </div>
                   )}
