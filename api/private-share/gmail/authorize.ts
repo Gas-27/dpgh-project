@@ -28,9 +28,18 @@ export default async function handler(req: any, res: any) {
       await revokeToken(CONNECTOR_UID, { subject })
       return res.status(200).json({ disconnected: true })
     }
-    const token = await getToken(CONNECTOR_UID, { subject, scopes })
+    const token = await getToken(CONNECTOR_UID, { subject, scopes }, { forceRefresh: true })
     const profile = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', { headers: { Authorization: `Bearer ${token}` } })
-    if (!profile.ok) return res.status(502).json({ error: 'Gmail authorization is not usable', reauthorize: true })
+    if (!profile.ok) {
+      const detail = await profile.text().catch(() => '')
+      if (profile.status === 401 || profile.status === 403) {
+        await revokeToken(CONNECTOR_UID, { subject }).catch(() => undefined)
+        const callbackUrl = `${origin(req)}/api/private-share/gmail/callback`
+        const authorization = await startAuthorization(CONNECTOR_UID, { subject, scopes, callbackUrl })
+        return res.status(200).json({ connected: false, authorizationUrl: authorization.url, reauthorize: true })
+      }
+      return res.status(502).json({ error: `Gmail profile request failed (${profile.status})`, detail: detail.slice(0, 160) })
+    }
     const mailbox = await profile.json()
     return res.status(200).json({ connected: true, email: mailbox.emailAddress, lastSyncAt: null })
   } catch (cause) {
