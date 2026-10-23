@@ -270,7 +270,7 @@ A live preview shows exactly how your store will look. Click Save to apply chang
 
 • Subagents are sellers who have their own store but operate under you.
 • When a subagent makes a sale, you earn a commission from their profit.
-• You can view all your subagents, their store names, and contact info.
+��� You can view all your subagents, their store names, and contact info.
 • Enable/disable subagent registration from Settings.
 
 Subagent Profit Split:
@@ -831,7 +831,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       
       const { data, error } = await supabase
         .from("api_users")
-        .select("api_key, wallet")
+        .select("api_key, wallet, topup_reference")
         .eq("identity_id", userId)
         .eq("is_agent", true)
         .maybeSingle();
@@ -2041,7 +2041,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     setGeneratingFlyer(false);
   };
 
-  // ─── IMPROVED SHARE FUNCTION – shares image directly via Web Share API ───
+  // ─── IMPROVED SHARE FUNCTION – shares image directly via Web Share API ──���
   const shareFlyer = async () => {
     setGeneratingFlyer(true);
     try {
