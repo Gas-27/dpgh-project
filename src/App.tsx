@@ -301,6 +301,7 @@ return (
                   <Route path="/__custom/subsubagent/:subagentStoreName/:subSubagentStoreName" element={<SubSubagentStorefront />} />
                   <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
+                  <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
                   <Route path="*" element={<CustomDomainResolver />} />
                 </Routes>
               ) : isSubagentDomain ? (
@@ -339,6 +340,7 @@ return (
                   {/* Product pages must be declared before storefront catch-all routes. */}
                   <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
+                  <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
                   {/* Catch-all routes for storefronts */}
                   <Route path="/:subagentStoreName/store/:subSubagentStoreName" element={<SubSubagentStorefront />} />
                   <Route path="/:storeName" element={<SubagentStorefront />} />
@@ -351,6 +353,7 @@ return (
                   <Route path="/store/:storeName/product/:productId" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
+                  <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
                   <Route path="*" element={<AgentStorefront />} />
                 </Routes>
               ) : (
@@ -376,6 +379,7 @@ return (
                   <Route path="/store/:storeName/product/:productId" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
+                  <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
                   <Route path="/agent/:storeName" element={<RedirectToAgentSubdomain />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
