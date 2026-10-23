@@ -105,6 +105,10 @@ Deno.serve(async (req) => {
       const record = { payment_reference: reference, customer_id: metadata?.customer_id || metadata?.user_id || null, customer_name: customerName || null, customer_email: customerEmail || null, customer_phone: customerPhone || null, service_id: serviceId, service_name: serviceName, service_link: serviceLink || null, amount: amountPaid, fee_amount: feeAmount, selling_price: baseAmount, seller_store_kind: ["agent", "subagent", "subsubagent"].includes(sellerStoreKind) ? sellerStoreKind : null, seller_store_id: sellerStoreId, payment_status: "paid", confirmation_status: "pending", paid_at: paidAt, delivery_mode: deliveryMode, whatsapp_number: deliveryMode === "whatsapp" ? `+${whatsappNumber}` : null, whatsapp_url: whatsappUrl, whatsapp_message: deliveryMode === "whatsapp" ? message : null, provider_payload: payload, updated_at: paidAt };
       const { data: subscription, error: subscriptionError } = existing ? await supabaseClient.from("private_share_subscriptions").update(record).eq("id", existing.id).select("id").single() : await supabaseClient.from("private_share_subscriptions").insert(record).select("id").single();
       if (subscriptionError || !subscription) return new Response(JSON.stringify({ error: "Could not record subscription payment", details: subscriptionError?.message }), { status: 500, headers: corsHeaders });
+      const { data: assignmentResult, error: assignmentError } = await supabaseClient.rpc("private_share_assign", { p_subscription_id: subscription.id });
+      if (assignmentError) {
+        console.error("[v0] Private subscription assignment queued", { code: assignmentError.code, reference });
+      }
       if (sellerStoreId && ["agent", "subagent", "subsubagent"].includes(sellerStoreKind)) {
         const table = sellerStoreKind === "agent" ? "agent_stores" : sellerStoreKind === "subagent" ? "subagent_stores" : "sub_subagent_stores";
         const { data: store } = await supabaseClient.from(table).select("wallet_balance").eq("id", sellerStoreId).maybeSingle();

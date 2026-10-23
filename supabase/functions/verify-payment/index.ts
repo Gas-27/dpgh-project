@@ -123,7 +123,9 @@ Deno.serve(async (req) => {
     if (paymentType === "service_payment" || paymentType === "subscription" || metadata.service_payment === true || metadata.service_payment === "true") {
       const { data: subscription } = await supabase.from("private_share_subscriptions").select("id, payment_status, confirmation_status, whatsapp_url, payment_reference, service_name").eq("payment_reference", reference).maybeSingle();
       if (!subscription) return new Response(JSON.stringify({ error: "Payment verified, but subscription record is still being processed", payment_confirmed: true, retryable: true }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      return new Response(JSON.stringify({ success: true, payment_confirmed: subscription.payment_status === "paid", subscription_id: subscription.id, payment_reference: subscription.payment_reference, service_name: subscription.service_name, confirmation_status: subscription.confirmation_status, whatsapp_url: subscription.whatsapp_url }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: assignmentResult, error: assignmentError } = await supabase.rpc("private_share_assign", { p_subscription_id: subscription.id });
+      if (assignmentError) console.error("[v0] Private subscription assignment retry failed", { code: assignmentError.code, reference });
+      return new Response(JSON.stringify({ success: true, payment_confirmed: subscription.payment_status === "paid", subscription_id: subscription.id, payment_reference: subscription.payment_reference, service_name: subscription.service_name, confirmation_status: subscription.confirmation_status, assignment: assignmentResult || null, assignment_error: assignmentError ? "Assignment is pending" : null, whatsapp_url: subscription.whatsapp_url }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // =====================================
