@@ -1081,7 +1081,7 @@ const searchOrders = useCallback(async (input?: string) => {
   {activeSection === "services" && <HubtelPurchasePanel mode="services" ownerType="subsubagent" ownerId={store?.id} purchaseSource="storefront" />}
   {activeSection === "vouchers" && <HubtelPurchasePanel mode="instant" ownerType="subsubagent" ownerId={store?.id} purchaseSource="storefront" />}
   {activeSection === "subscription" && <DigitalServicesCatalog onBuy={(service) => setSelectedService(service)} />}
-  {selectedService && <ServicePurchaseDialog service={selectedService} onOpenChange={(open) => !open && setSelectedService(null)} />}
+  {selectedService && <ServicePurchaseDialog service={selectedService} ownerType="subsubagent" ownerId={store?.id} onOpenChange={(open) => !open && setSelectedService(null)} />}
 {activeSection === "data" && <>
   <TrackOrderDropdown source="subsubagent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} />
   <SpinToWinCard target="subsubagent" />
