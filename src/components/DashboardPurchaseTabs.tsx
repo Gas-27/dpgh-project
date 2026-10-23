@@ -218,14 +218,30 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
       const { data: partnerHistory } = apiUser?.id
         ? await supabase.from("partner_api_purchases" as any).select("id,created_at,service_type,network,product_name,recipient,amount,status").eq("api_user_id", apiUser.id).order("created_at", { ascending: false })
         : { data: [] };
+      const instantServices = ["data", "airtime"];
+      const utilityServices = ["ecg", "electricity", "water", "ghanawater", "dstv", "gotv", "startimes"];
       const rows = [
         ...(history || []).filter((row: any) => {
           const product = normalize(row.product_type);
-          if (category === "instant") return product === "data" || product === "airtime";
-          if (category === "services") return ["ecg", "electricity", "water", "ghanawater", "dstv", "gotv", "startimes"].includes(product);
+          if (category === "instant") return instantServices.includes(product);
+          if (category === "services") return utilityServices.includes(product);
           return product === "subscription";
         }),
-        ...(partnerHistory || []).filter((row: any) => category === "instant" && ["data", "airtime"].includes(normalize(row.service_type))).map((row: any) => ({ ...row, product_type: row.service_type, network_code: row.network, package_code: row.product_name, customer_number: row.recipient, source: "partner API" })),
+        ...(partnerHistory || [])
+          .filter((row: any) => {
+            const service = normalize(row.service_type);
+            if (category === "instant") return instantServices.includes(service);
+            if (category === "services") return utilityServices.includes(service);
+            return false;
+          })
+          .map((row: any) => ({
+            ...row,
+            product_type: row.service_type,
+            network_code: row.network,
+            package_code: row.product_name,
+            customer_number: row.recipient,
+            source: "partner API",
+          })),
       ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setRows(rows);
       setLoading(false);
