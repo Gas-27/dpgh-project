@@ -56,6 +56,7 @@ const AdminDashboard = lazyWithReload(() => import("./pages/AdminDashboard"));
 const AgentDashboard = lazyWithReload(() => import("./pages/AgentDashboard"));
 const AgentStorefront = lazyWithReload(() => import("./pages/AgentStorefront"));
 const ProductDetail = lazyWithReload(() => import("./pages/ProductDetail"));
+const PrivateSubscriptionCheckout = lazyWithReload(() => import("./pages/PrivateSubscriptionCheckout"));
 const BecomeAgent = lazyWithReload(() => import("./pages/BecomeAgent"));
 const AgentRegistrationCallback = lazyWithReload(() => import("./pages/AgentRegistrationCallback"));
 const SubagentDashboard = lazyWithReload(() => import("./pages/SubagentDashboard"));
@@ -361,6 +362,7 @@ return (
                   <Route path="/become-agent" element={<Signup />} />
                   <Route path="/only-admin/log.in" element={<AdminLogin />} />
                   <Route path="/packages" element={<Packages />} />
+ <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
                   <Route path="/products" element={<Packages />} />
                   <Route path="/afa-bundles" element={<Packages />} />
                   <Route path="/instant-data" element={<Packages />} />

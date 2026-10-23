@@ -1218,7 +1218,7 @@ case "api-key":
         <Card className="border-border">
           <CardContent className="p-6 text-center">
             <p className="text-muted-foreground text-sm">{orderSourceFilter !== "all" ? `${ORDER_SOURCE_LABELS[orderSourceFilter]} Orders` : overviewDateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p>
-            <p className="font-display text-3xl font-bold mt-2 text-foreground">{overviewFilteredOrders.length}</p>
+            <p className="font-display text-3xl font-bold mt-2 text-foreground">{overviewDateFilter === "all" && orderSourceFilter === "all" ? totalOrders : overviewFilteredOrders.length}</p>
           </CardContent>
         </Card>
       </div>
@@ -2567,14 +2567,6 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           )}
         </CardContent>
       </Card>
-      {apiReportOrder && (
-        <ReportComplaintDialog
-          open={Boolean(apiReportOrder)}
-          onOpenChange={(open) => { if (!open) setApiReportOrder(null); }}
-          order={{ id: apiReportOrder.id, customer_number: apiReportOrder.customer_number, network: apiReportOrder.network, size_gb: Number(apiReportOrder.size_gb || 0), amount: Number(apiReportOrder.selling_price || apiReportOrder.amount || 0), created_at: apiReportOrder.created_at, fulfillment_status: apiReportOrder.fulfillment_status || "delivered", status: apiReportOrder.status || "delivered" }}
-          complaintType="api_order"
-        />
-      )}
     </div>
   );
 
@@ -2925,7 +2917,6 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 
   const renderSettings = () => (
   <div className="space-y-6">
-  <CustomDomainPanel />
   <ChangePasswordForm />
   <Card>
         <CardHeader>
@@ -3287,6 +3278,15 @@ return (
           </div>
         </DialogContent>
       </Dialog>
+
+      {apiReportOrder && (
+        <ReportComplaintDialog
+          open={Boolean(apiReportOrder)}
+          onOpenChange={(open) => { if (!open) setApiReportOrder(null); }}
+          order={{ id: apiReportOrder.id, customer_number: apiReportOrder.customer_number, network: apiReportOrder.network, size_gb: Number(apiReportOrder.size_gb || 0), amount: Number(apiReportOrder.selling_price || apiReportOrder.amount || 0), created_at: apiReportOrder.created_at, fulfillment_status: apiReportOrder.fulfillment_status || "delivered", status: apiReportOrder.status || "delivered" }}
+          complaintType="api_order"
+        />
+      )}
 
       {/* Wallet Topup Dialogs */}
       <WalletTopupDialog
