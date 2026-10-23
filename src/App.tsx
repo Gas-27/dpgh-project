@@ -56,6 +56,7 @@ const AdminDashboard = lazyWithReload(() => import("./pages/AdminDashboard"));
 const AgentDashboard = lazyWithReload(() => import("./pages/AgentDashboard"));
 const AgentStorefront = lazyWithReload(() => import("./pages/AgentStorefront"));
 const ProductDetail = lazyWithReload(() => import("./pages/ProductDetail"));
+const PrivateSubscriptionCheckout = lazyWithReload(() => import("./pages/PrivateSubscriptionCheckout"));
 const BecomeAgent = lazyWithReload(() => import("./pages/BecomeAgent"));
 const AgentRegistrationCallback = lazyWithReload(() => import("./pages/AgentRegistrationCallback"));
 const SubagentDashboard = lazyWithReload(() => import("./pages/SubagentDashboard"));
