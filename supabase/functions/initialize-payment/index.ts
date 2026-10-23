@@ -921,6 +921,17 @@ Deno.serve(async (req) => {
       const totalAmount =
         Math.round((baseAmount + feeAmount) * 100) / 100;
 
+      if (String(metadata.service_type || "private_shared") === "private_shared") {
+        const { data: hasAvailableSeat, error: capacityError } = await supabaseClient.rpc("private_share_has_available_seat", { p_service_id: serviceId });
+        if (capacityError) {
+          console.error("[SUBSCRIPTION PAYMENT] Capacity check failed", { code: capacityError.code, serviceId });
+          return new Response(JSON.stringify({ error: "We could not confirm availability right now. Please try again." }), { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        if (!hasAvailableSeat) {
+          return new Response(JSON.stringify({ error: "This subscription is currently sold out. Please choose another service or try again later." }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+      }
+
       const subscriptionMetadata = {
         ...metadata,
         type: "service_payment",
