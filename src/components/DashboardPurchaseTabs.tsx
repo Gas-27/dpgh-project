@@ -214,8 +214,11 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
         return;
       }
       const normalize = (value: unknown) => String(value || "").toLowerCase().replace(/[\s_-]+/g, "");
-      // One server-side lookup resolves the owner's API identity for agents, subagents, sub-subagents and customers.
-      const { data: apiHistory, error: apiHistoryError } = await supabase.rpc("get_api_purchase_history" as any, { p_owner_type: normalizedOwnerType, p_owner_id: ownerId });
+      // API purchases exist only for agents and customers (users); subagents and sub-subagents have no API wallet.
+      const hasApiHistory = normalizedOwnerType === "agent" || normalizedOwnerType === "customer";
+      const { data: apiHistory, error: apiHistoryError } = hasApiHistory
+        ? await supabase.rpc("get_api_purchase_history" as any, { p_owner_type: normalizedOwnerType, p_owner_id: ownerId })
+        : { data: [], error: null };
       if (apiHistoryError) console.error("[v0] API purchase history query failed", apiHistoryError);
       const apiRows = ((apiHistory as any[]) || []).map((row) => ({ ...row, amount: Number(row.amount ?? 0) }));
       const instantServices = ["data", "airtime"];
