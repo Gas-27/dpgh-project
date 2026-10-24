@@ -878,8 +878,8 @@ const searchOrders = useCallback(async (input?: string) => {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
     if (networkFilter === "telecel") {
-      const packageNetwork = String(p.network || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
-      return packageNetwork === (telecelPackageType === "special" ? "telecel_special" : "telecel");
+      const packageNetwork = String(p.network || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+      return packageNetwork === (telecelPackageType === "special" ? "telecelspecial" : "telecel");
     }
     return p.network === networkFilter;
   });

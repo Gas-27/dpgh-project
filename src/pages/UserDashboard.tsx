@@ -1413,9 +1413,9 @@ case "api-key":
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {packages
               .filter(pkg => {
-                const packageNetwork = String(pkg.network || "").toLowerCase().replace(/[\s-]+/g, "_");
-                const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecel_special" : networkFilter;
-                return packageNetwork === selectedNetwork.toLowerCase();
+                const packageNetwork = String(pkg.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+                const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecelspecial" : networkFilter.replace(/[^a-z0-9]/g, "");
+                return packageNetwork === selectedNetwork;
               })
               .map(pkg => (
                 <Card key={pkg.id} className={`border-0 bg-[#2f176d] text-white shadow-none ${pkg.active ? "" : "opacity-50"}`}>

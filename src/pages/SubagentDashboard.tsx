@@ -1691,9 +1691,9 @@ const handleSaveStore = async () => {
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
-    const packageNetwork = String(p.network || "").toLowerCase().replace(/[\s-]+/g, "_");
-    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecel_special" : networkFilter;
-    return packageNetwork === selectedNetwork.toLowerCase();
+    const packageNetwork = String(p.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecelspecial" : networkFilter.replace(/[^a-z0-9]/g, "");
+    return packageNetwork === selectedNetwork;
   });
 
   const filteredSubSubagentPackages = packages.filter(p => {
