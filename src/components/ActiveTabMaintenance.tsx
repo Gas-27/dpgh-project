@@ -15,6 +15,10 @@ export default function ActiveTabMaintenance({ active, label, onReturn }: Props)
     const channel = supabase.channel("tab-controls-live").on("postgres_changes", { event: "*", schema: "public", table: "app_settings" }, load).subscribe();
     return () => { mounted = false; window.clearInterval(interval); void supabase.removeChannel(channel); };
   }, []);
+  // The subscription catalog intentionally renders inactive services as unavailable cards.
+  // Do not replace the catalog with the generic maintenance screen.
+  if (active === "subscription") return null;
+
   const aliases: Record<string, string[]> = {
     instant: ["instant", "data-airtime", "data_and_airtime", "airtime"],
     data: ["data", "cheap-data", "cheap_data"],
