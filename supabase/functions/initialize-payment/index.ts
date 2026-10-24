@@ -879,7 +879,15 @@ Deno.serve(async (req) => {
         metadata.access_pin || metadata.access_code || ""
       ).trim();
 
-      const baseAmount = Number(requestedAmount);
+      let baseAmount = Number(requestedAmount);
+      const sellerKind = String(metadata.seller_store_kind || "").trim().toLowerCase();
+      const sellerId = String(metadata.seller_store_id || metadata.agent_store_id || metadata.subagent_store_id || metadata.subsubagent_store_id || "").trim();
+      if (sellerKind === "agent" && sellerId) {
+        const adminClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+        const { data: storefrontPrice, error: storefrontPriceError } = await adminClient.from("agent_service_pricing").select("sell_price").eq("agent_store_id", sellerId).eq("service_id", serviceId).maybeSingle();
+        if (storefrontPriceError) console.error("[SUBSCRIPTION PAYMENT] Storefront price lookup failed", storefrontPriceError);
+        if (storefrontPrice?.sell_price != null && Number(storefrontPrice.sell_price) > 0) baseAmount = Number(storefrontPrice.sell_price);
+      }
 
       const paymentEmail = String(
         email || `customer-${customerPhone}@dataplug.store`

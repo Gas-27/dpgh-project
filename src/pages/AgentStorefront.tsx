@@ -1676,7 +1676,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
         </div>
       ) : activeCategory === "subscription" ? (
         <div className="container pb-20">
-          <DigitalServicesCatalog agentStoreId={store?.id} onBuy={(service) => setSelectedService(service)} />
+          <DigitalServicesCatalog agentStoreId={store?.id} storefrontKind="agent" storefrontId={store?.id} onBuy={(service) => setSelectedService(service)} />
         </div>
       ) : (
         <div className="container pb-20">{renderComingSoon()}</div>
