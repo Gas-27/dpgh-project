@@ -270,7 +270,7 @@ A live preview shows exactly how your store will look. Click Save to apply chang
 
 • Subagents are sellers who have their own store but operate under you.
 • When a subagent makes a sale, you earn a commission from their profit.
-����������� You can view all your subagents, their store names, and contact info.
+������������� You can view all your subagents, their store names, and contact info.
 • Enable/disable subagent registration from Settings.
 
 Subagent Profit Split:
@@ -1568,7 +1568,9 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
                 if (false && networkFilter === "mtn_mashup") {
                   return p.network === "mtn_mashup" || p.network === "mashup";
       }
-      return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
+      const packageNetwork = String(p.network || "").toLowerCase().replace(/[\s-]+/g, "_");
+    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecel_special" : networkFilter;
+    return packageNetwork === selectedNetwork.toLowerCase();
     });
     let appliedCount = 0;
     for (const pkg of currentNetworkPackages) {
@@ -2378,7 +2380,9 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime";
     }
-    return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
+    const packageNetwork = String(p.network || "").toLowerCase().replace(/[\s-]+/g, "_");
+    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecel_special" : networkFilter;
+    return packageNetwork === selectedNetwork.toLowerCase();
   });
   const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
   const defaultStoreUrl = store ? DOMAINS.getAgentStoreUrl(store.store_name) : "";
@@ -2925,7 +2929,9 @@ return (
       if (networkFilter === "airteltigo") {
         return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
       }
-      return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
+      const packageNetwork = String(p.network || "").toLowerCase().replace(/[\s-]+/g, "_");
+    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecel_special" : networkFilter;
+    return packageNetwork === selectedNetwork.toLowerCase();
               }).map((pkg) => {
                 const price = Number(pkg.agent_price || pkg.price);
                 const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
@@ -4723,7 +4729,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       if (networkFilter === "airteltigo") {
                         return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
                       }
-                      return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
+                      const packageNetwork = String(p.network || "").toLowerCase().replace(/[\s-]+/g, "_");
+    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecel_special" : networkFilter;
+    return packageNetwork === selectedNetwork.toLowerCase();
                     }).map((pkg) => {
                       const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
                       return (
@@ -4741,7 +4749,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                     if (networkFilter === "airteltigo") {
                       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
                     }
-                    return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
+                    const packageNetwork = String(p.network || "").toLowerCase().replace(/[\s-]+/g, "_");
+    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecel_special" : networkFilter;
+    return packageNetwork === selectedNetwork.toLowerCase();
                   }).length === 0 && (
                     <div className="col-span-full text-center py-8 text-muted-foreground">
                       No packages available for {networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "mtn" ? "MTN" : "Telecel"}.

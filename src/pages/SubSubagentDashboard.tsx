@@ -1275,7 +1275,9 @@ const handleSaveStore = async () => {
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
-    return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
+    const packageNetwork = String(p.network || "").toLowerCase().replace(/[\s-]+/g, "_");
+    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecel_special" : networkFilter;
+    return packageNetwork === selectedNetwork.toLowerCase();
   });
 
 

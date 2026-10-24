@@ -59,12 +59,18 @@ export default async function handler(
       customPriceRow?.custom_price ?? packageData.api_price ?? packageData.price
     ) || 0;
 
+    const normalizedNetwork = String(network).toLowerCase().trim().replace(/[\s-]+/g, "_");
+    const normalizedPhone = String(phone_number).replace(/\D/g, "");
+    if (normalizedNetwork === "telecel_special" && !/^(020|050)\d{7}$/.test(normalizedPhone)) {
+      return res.status(400).json({ error: "Telecel Special packages require a Telecel number" });
+    }
+
     const sizeMatch = packageData.name?.match(/(\d+(?:\.\d+)?)/);
     const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
-    const rawNetwork = String(network).toLowerCase().trim().replace(/[\s-]+/g, "_");
-    const normalizedNetwork = ["mtn_xpress", "mtnexpress", "express_mtn"].includes(rawNetwork) ? "mtn_express" : ["airtel_tigo", "airtel", "tigo"].includes(rawNetwork) ? "airteltigo" : rawNetwork === "vodafone" ? "telecel" : rawNetwork;
+    const rawNetwork = normalizedNetwork;
+    const routedNetwork = ["mtn_xpress", "mtnexpress", "express_mtn"].includes(rawNetwork) ? "mtn_express" : ["airtel_tigo", "airtel", "tigo"].includes(rawNetwork) ? "airteltigo" : rawNetwork === "vodafone" ? "telecel" : rawNetwork;
     const { data: routedProvider } = await supabase.rpc("get_network_provider_route_for_size", {
-      p_network_key: normalizedNetwork,
+      p_network_key: routedNetwork,
       p_flow: "purchase",
       p_size_gb: Number(sizeGb),
     });
@@ -76,7 +82,7 @@ export default async function handler(
       .insert({
         customer_number: phone_number,
         package_id: package_id,
-        network: network,
+        network: normalizedNetwork === "telecel_special" ? "telecel special" : network,
         size_gb: sizeGb,
         size_gb_text: packageData.name || null,
         amount: amount,

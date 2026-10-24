@@ -1014,7 +1014,8 @@ const searchOrders = useCallback(async (input?: string) => {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
     if (networkFilter === "telecel") {
-      return String(p.network || "").trim().toLowerCase() === (telecelPackageType === "special" ? "telecel special" : "telecel");
+      const packageNetwork = String(p.network || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+      return packageNetwork === (telecelPackageType === "special" ? "telecel_special" : "telecel");
     }
     return p.network === networkFilter;
   });

@@ -1662,7 +1662,7 @@ const AdminDashboard = () => {
         if (network === "airtel") {
           query = query.in("network", ["airteltigo", "atbigtime", "atbigshare"]);
         } else if (network === "telecel_special") {
-          query = query.ilike("network", "telecel special");
+          query = query.or("network.ilike.telecel special,network.ilike.telecel_special,network.ilike.telecel-special");
         } else {
           query = query.eq("network", network);
         }

@@ -1412,12 +1412,16 @@ case "api-key":
           {/* Packages Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {packages
-              .filter(pkg => pkg.network.toLowerCase() === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter).toLowerCase())
+              .filter(pkg => {
+                const packageNetwork = String(pkg.network || "").toLowerCase().replace(/[\s-]+/g, "_");
+                const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecel_special" : networkFilter;
+                return packageNetwork === selectedNetwork.toLowerCase();
+              })
               .map(pkg => (
                 <Card key={pkg.id} className={`border-0 bg-[#2f176d] text-white shadow-none ${pkg.active ? "" : "opacity-50"}`}>
                   <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
                     {!pkg.active && <Badge variant="secondary">Offline</Badge>}
-                    <p className="font-display text-4xl font-extrabold leading-none">{pkg.size_gb}GB</p>
+                    <p className="font-display text-4xl font-extrabold leading-none">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
                     <p className="text-sm font-bold uppercase text-yellow-300">{pkg.network}</p>
   <div className="flex items-center justify-center text-sm font-semibold text-white/75">
   <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>

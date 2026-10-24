@@ -882,7 +882,8 @@ const searchOrders = useCallback(async (input?: string) => {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
     if (networkFilter === "telecel") {
-      return String(p.network || "").trim().toLowerCase() === (telecelPackageType === "special" ? "telecel special" : "telecel");
+      const packageNetwork = String(p.network || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+      return packageNetwork === (telecelPackageType === "special" ? "telecel_special" : "telecel");
     }
     return p.network === networkFilter;
   });
@@ -1198,7 +1199,7 @@ const searchOrders = useCallback(async (input?: string) => {
                         </>
                       ) : (
                         <>
-                          <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb}GB</p>
+                          <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
                           <p className="text-sm font-bold uppercase" style={{ color: getNetworkColor(pkg.network) }}>{formatNetworkName(pkg.network)}</p>
                           <div className="leading-tight"><p className="text-sm font-semibold text-white/75">Your price:</p><p className="text-2xl font-extrabold text-white">GHC {Number(price).toFixed(2)}</p></div>
                           <Button size="lg" disabled={isInactive} className="mt-1 h-9 w-full rounded-full border border-white/30 bg-white/10 font-bold text-white hover:bg-white/20" onClick={(event) => { event.stopPropagation(); if (!isInactive) { setPaymentPkg(pkg); setPaymentOpen(true); } }}>{isInactive ? "Not Available" : "Buy Now"}</Button>
