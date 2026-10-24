@@ -1095,7 +1095,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
 
       const slug = sd.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
       const url = DOMAINS.getAgentStoreUrl(sd.store_name);
-      const ussdText = sd.topup_reference ? `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${sd.topup_reference}` : "";
+      const ussdText = sd.topup_reference ? `\n\n📲 USSD: *920*337#\n🔑 Access Code: ${sd.topup_reference}` : "";
       setShareText(
         `�������� Get the BEST data deals from *${sd.store_name}*!\n\n` +
         `�������� MTN • AirtelTigo • Telecel\n` +
@@ -1998,7 +1998,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     cover(365, 350, 275, 75, "#06101f"); drawText("TELECEL", 502, 388, 30, "#ef4444");
     cover(695, 350, 275, 75, "#06101f"); drawText("AIRTELTIGO", 832, 388, 27, "#ef4444");
     cover(285, 885, 510, 130, "#06101f");
-    drawText(`*380*455#`, 540, 925, 48, "#ffd21a");
+    drawText(`*920*337#`, 540, 925, 48, "#ffd21a");
     drawText(`Access Code: ${store?.topup_reference || ""}`, 540, 980, 27, "#fff");
     cover(115, 1515, 850, 68, "#06101f");
     drawText(storeUrl, 540, 1548, 27, "#fff");
@@ -2713,24 +2713,32 @@ return (
               <Card className="border-primary/30 bg-primary/5"><CardContent className="p-6"><div className="flex items-center justify-between"><div><p className="text-sm text-muted-foreground">Profit from Subagents</p><p className="font-display text-2xl font-bold text-primary mt-1">GHC {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">Withdraw separately in Wallet tab</p></div><Users className="h-8 w-8 text-primary opacity-50" /></div></CardContent></Card>
             </div>
             
-            {/* Top-up Reference Card */}
+            {/* USSD Access Code Card */}
             {store?.topup_reference && (
               <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5">
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div className="text-center md:text-left">
-                      <p className="text-xs text-muted-foreground">Top-up Reference</p>
-                      <p className="text-3xl font-bold font-mono text-foreground">{store.topup_reference}</p>
+                      <p className="text-sm text-muted-foreground mb-1">Your customers can buy data via USSD</p>
+                      <div className="flex items-center justify-center md:justify-start gap-3">
+                        <div className="p-3 bg-primary/20 rounded-lg">
+                          <p className="text-2xl font-bold font-mono text-primary">*920*337#</p>
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs text-muted-foreground">Access Code</p>
+                          <p className="text-3xl font-bold font-mono text-foreground">{store.topup_reference}</p>
+                        </div>
+                      </div>
                     </div>
                     <Button 
                       variant="outline" 
                       size="sm"
                       onClick={() => {
-                        navigator.clipboard.writeText(String(store.topup_reference));
-                        toast({ title: "Copied!", description: "Top-up reference copied to clipboard" });
+                        navigator.clipboard.writeText("*920*337#");
+                        toast({ title: "Copied!", description: "USSD code copied to clipboard" });
                       }}
                     >
-                      <Copy className="h-4 w-4 mr-2" /> Copy Reference
+                      <Copy className="h-4 w-4 mr-2" /> Copy USSD Code
                     </Button>
                   </div>
                 </CardContent>
@@ -3297,7 +3305,7 @@ return (
                       </div>
                       <div>
                         <div style={{ fontSize: 11, color: flyerColors.buttonBg, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>USSD CODE</div>
-                        <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", marginTop: 2, fontFamily: "monospace" }}>*380*455#</div>
+                        <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", marginTop: 2, fontFamily: "monospace" }}>*920*337#</div>
                         <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Dial to purchase instantly.</div>
                       </div>
                     </div>
@@ -5322,7 +5330,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           {/* ============================= SETTINGS ============================= */}
           <TabsContent value="settings" className="mt-0 space-y-6">
   <DomainDashboardPanel walletBalance={Number(store?.wallet_balance ?? 0)} walletLabel="Wallet" agentStoreId={store?.id ?? null} storeKind="agent" />
-            <Card className="border-border"><CardHeader className="flex flex-row items-center justify-between"><CardTitle className="font-display">Store Information</CardTitle>{!editingStore && <Button variant="outline" size="sm" onClick={() => setEditingStore(true)}><Edit2 className="h-4 w-4 mr-1" />Edit</Button>}</CardHeader><CardContent className="space-y-4">{editingStore ? (<><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>Store Name</Label><Input value={storeForm.store_name} onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })} /></div><div className="space-y-2"><Label>WhatsApp Number</Label><Input value={storeForm.whatsapp_number} onChange={e => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} /></div><div className="space-y-2"><Label>Support Number <span className="text-xs text-primary font-normal">(shown on flyer footer)</span></Label><Input value={storeForm.support_number} onChange={e => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-4 flex-wrap"><Label>WhatsApp Group / Channel Link</Label><div className="flex items-center gap-2"><Label htmlFor="show-group-icon" className="text-sm text-muted-foreground cursor-pointer">Show join icon on storefront</Label><Switch id="show-group-icon" checked={storeForm.show_whatsapp_group_icon} onCheckedChange={c => setStoreForm({ ...storeForm, show_whatsapp_group_icon: c })} /></div></div><Input value={storeForm.whatsapp_group} onChange={e => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Paste the WhatsApp link here" /><p className="text-xs text-muted-foreground">{storeForm.show_whatsapp_group_icon ? "The WhatsApp join icon will appear on your storefront." : "The join icon will be hidden."}</p></div><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-4 flex-wrap"><Label>USSD Access Code</Label><div className="flex items-center gap-2"><Label htmlFor="show-ussd" className="text-sm text-muted-foreground cursor-pointer">Show USSD on storefront</Label><Switch id="show-ussd" checked={storeForm.show_ussd_on_storefront} onCheckedChange={c => setStoreForm({ ...storeForm, show_ussd_on_storefront: c })} /></div></div><p className="text-xs text-muted-foreground">{storeForm.show_ussd_on_storefront ? "The USSD code (*380*455#) and your access code will be displayed on your storefront." : "USSD information will be hidden from your storefront."}</p></div><div className="space-y-2"><Label>MoMo Name</Label><Input value={storeForm.momo_name} onChange={e => setStoreForm({ ...storeForm, momo_name: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Number</Label><Input value={storeForm.momo_number} onChange={e => setStoreForm({ ...storeForm, momo_number: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Network</Label><Input value={storeForm.momo_network} onChange={e => setStoreForm({ ...storeForm, momo_network: e.target.value })} placeholder="mtn / airteltigo / telecel" /></div></div><div className="flex gap-2 pt-2"><Button variant="hero" size="sm" onClick={saveStoreInfo} disabled={savingStore}><Save className="h-4 w-4 mr-1" />{savingStore ? "Saving..." : "Save Changes"}</Button><Button variant="outline" size="sm" onClick={() => setEditingStore(false)}>Cancel</Button></div></>) : (<div className="grid grid-cols-2 gap-4 text-sm"><div><p className="text-muted-foreground">Store Name</p><p className="font-semibold">{store?.store_name}</p></div><div><p className="text-muted-foreground">WhatsApp</p><p className="font-semibold">{store?.whatsapp_number}</p></div><div><p className="text-muted-foreground">Support Number</p><p className="font-semibold">{store?.support_number}</p></div><div><p className="text-muted-foreground">WhatsApp Group</p><p className="font-semibold">{store?.whatsapp_group || "Not set"}</p></div><div><p className="text-muted-foreground">Show Group Icon</p><p className="font-semibold">{store?.show_whatsapp_group_icon !== false ? "Yes (default)" : "No"}</p></div><div><p className="text-muted-foreground">MoMo Name</p><p className="font-semibold">{store?.momo_name}</p></div><div><p className="text-muted-foreground">MoMo Number</p><p className="font-semibold">{store?.momo_number}</p></div><div><p className="text-muted-foreground">MoMo Network</p><p className="font-semibold">{store?.momo_network?.toUpperCase()}</p></div><div className="col-span-2"><p className="text-muted-foreground">Topup Reference</p><p className="font-display text-xl font-bold text-primary">{store?.topup_reference}</p></div></div>)}</CardContent></Card>
+            <Card className="border-border"><CardHeader className="flex flex-row items-center justify-between"><CardTitle className="font-display">Store Information</CardTitle>{!editingStore && <Button variant="outline" size="sm" onClick={() => setEditingStore(true)}><Edit2 className="h-4 w-4 mr-1" />Edit</Button>}</CardHeader><CardContent className="space-y-4">{editingStore ? (<><div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="space-y-2"><Label>Store Name</Label><Input value={storeForm.store_name} onChange={e => setStoreForm({ ...storeForm, store_name: e.target.value })} /></div><div className="space-y-2"><Label>WhatsApp Number</Label><Input value={storeForm.whatsapp_number} onChange={e => setStoreForm({ ...storeForm, whatsapp_number: e.target.value })} /></div><div className="space-y-2"><Label>Support Number <span className="text-xs text-primary font-normal">(shown on flyer footer)</span></Label><Input value={storeForm.support_number} onChange={e => setStoreForm({ ...storeForm, support_number: e.target.value })} /></div><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-4 flex-wrap"><Label>WhatsApp Group / Channel Link</Label><div className="flex items-center gap-2"><Label htmlFor="show-group-icon" className="text-sm text-muted-foreground cursor-pointer">Show join icon on storefront</Label><Switch id="show-group-icon" checked={storeForm.show_whatsapp_group_icon} onCheckedChange={c => setStoreForm({ ...storeForm, show_whatsapp_group_icon: c })} /></div></div><Input value={storeForm.whatsapp_group} onChange={e => setStoreForm({ ...storeForm, whatsapp_group: e.target.value })} placeholder="Paste the WhatsApp link here" /><p className="text-xs text-muted-foreground">{storeForm.show_whatsapp_group_icon ? "The WhatsApp join icon will appear on your storefront." : "The join icon will be hidden."}</p></div><div className="space-y-2 md:col-span-2"><div className="flex items-center justify-between gap-4 flex-wrap"><Label>USSD Access Code</Label><div className="flex items-center gap-2"><Label htmlFor="show-ussd" className="text-sm text-muted-foreground cursor-pointer">Show USSD on storefront</Label><Switch id="show-ussd" checked={storeForm.show_ussd_on_storefront} onCheckedChange={c => setStoreForm({ ...storeForm, show_ussd_on_storefront: c })} /></div></div><p className="text-xs text-muted-foreground">{storeForm.show_ussd_on_storefront ? "The USSD code (*920*337#) and your access code will be displayed on your storefront." : "USSD information will be hidden from your storefront."}</p></div><div className="space-y-2"><Label>MoMo Name</Label><Input value={storeForm.momo_name} onChange={e => setStoreForm({ ...storeForm, momo_name: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Number</Label><Input value={storeForm.momo_number} onChange={e => setStoreForm({ ...storeForm, momo_number: e.target.value })} /></div><div className="space-y-2"><Label>MoMo Network</Label><Input value={storeForm.momo_network} onChange={e => setStoreForm({ ...storeForm, momo_network: e.target.value })} placeholder="mtn / airteltigo / telecel" /></div></div><div className="flex gap-2 pt-2"><Button variant="hero" size="sm" onClick={saveStoreInfo} disabled={savingStore}><Save className="h-4 w-4 mr-1" />{savingStore ? "Saving..." : "Save Changes"}</Button><Button variant="outline" size="sm" onClick={() => setEditingStore(false)}>Cancel</Button></div></>) : (<div className="grid grid-cols-2 gap-4 text-sm"><div><p className="text-muted-foreground">Store Name</p><p className="font-semibold">{store?.store_name}</p></div><div><p className="text-muted-foreground">WhatsApp</p><p className="font-semibold">{store?.whatsapp_number}</p></div><div><p className="text-muted-foreground">Support Number</p><p className="font-semibold">{store?.support_number}</p></div><div><p className="text-muted-foreground">WhatsApp Group</p><p className="font-semibold">{store?.whatsapp_group || "Not set"}</p></div><div><p className="text-muted-foreground">Show Group Icon</p><p className="font-semibold">{store?.show_whatsapp_group_icon !== false ? "Yes (default)" : "No"}</p></div><div><p className="text-muted-foreground">MoMo Name</p><p className="font-semibold">{store?.momo_name}</p></div><div><p className="text-muted-foreground">MoMo Number</p><p className="font-semibold">{store?.momo_number}</p></div><div><p className="text-muted-foreground">MoMo Network</p><p className="font-semibold">{store?.momo_network?.toUpperCase()}</p></div><div className="col-span-2"><p className="text-muted-foreground">Topup Reference</p><p className="font-display text-xl font-bold text-primary">{store?.topup_reference}</p></div></div>)}</CardContent></Card>
           </TabsContent>
         </Tabs>
       </div>

@@ -2180,12 +2180,14 @@ return (
                   </div>
                   <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
                 </div>
-                {/* Top-up Reference */}
+                {/* USSD Code with Access Code */}
                 {subagentStore?.topup_reference && (
                   <div className="mt-4 pt-4 border-t border-yellow-500/20">
                     <div className="text-center space-y-3">
+                      <p className="text-xs text-muted-foreground">Your customers can buy data via USSD</p>
                       <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
-                        <p className="text-sm text-muted-foreground">Top-up Reference</p>
+                        <p className="text-2xl font-bold font-mono text-primary">*920*337#</p>
+                        <p className="text-sm text-muted-foreground mt-2">Access Code:</p>
                         <p className="text-3xl font-bold font-mono text-foreground">{subagentStore.topup_reference}</p>
                       </div>
                       <Button 
@@ -2193,11 +2195,11 @@ return (
                         size="sm"
                         className="w-full"
                         onClick={() => {
-                          navigator.clipboard.writeText(String(subagentStore.topup_reference));
-                          toast({ title: "Copied!", description: "Top-up reference copied to clipboard" });
+                          navigator.clipboard.writeText("*920*337#");
+                          toast({ title: "Copied!", description: "USSD code copied to clipboard" });
                         }}
                       >
-                        <Copy className="h-4 w-4 mr-2" /> Copy Reference
+                        <Copy className="h-4 w-4 mr-2" /> Copy USSD Code
                       </Button>
                     </div>
                   </div>
@@ -3249,7 +3251,7 @@ handleMobileNumberChange(digits);
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {storeForm.show_ussd_on_storefront !== false ? "The USSD code (*380*455#) and your access code will be displayed on your storefront." : "USSD information will be hidden from your storefront."}
+                        {storeForm.show_ussd_on_storefront !== false ? "The USSD code (*920*337#) and your access code will be displayed on your storefront." : "USSD information will be hidden from your storefront."}
                       </p>
                     </div>
                     <div className="border-t border-border pt-4 mt-4">

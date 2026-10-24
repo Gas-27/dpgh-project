@@ -49,7 +49,7 @@ const MashupFlyerGenerator = ({
   const [shareText, setShareText] = useState("");
 
   useEffect(() => {
-    const ussdText = topupReference && topupReference !== "0" ? `\n\n📲 USSD: *380*455#\n🔑 Access Code: ${topupReference}` : "";
+    const ussdText = topupReference && topupReference !== "0" ? `\n\n📲 USSD: *920*337#\n🔑 Access Code: ${topupReference}` : "";
     setShareText(`🎉 Special MTN Mashup Data from ${storeName}!\n\n⚡ Express Data Delivery\n💨 Instant • Affordable • Reliable${ussdText}\n\nVisit: ${storeUrl}\nWhatsApp: ${whatsappNumber}`);
   }, [storeName, storeUrl, whatsappNumber, topupReference]);
 
@@ -301,7 +301,7 @@ const MashupFlyerGenerator = ({
             <div style={{ border: "2px solid #333", borderRadius: 12, padding: "16px", textAlign: "center", backgroundColor: "#0a0a0a" }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>📲</div>
               <div style={{ fontSize: 11, color: "#fbbf24", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>USSD CODE</div>
-              <div style={{ fontSize: 24, fontWeight: 900, color: "#fff", marginBottom: 8, fontFamily: "monospace" }}>*380*455#</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: "#fff", marginBottom: 8, fontFamily: "monospace" }}>*920*337#</div>
               <div style={{ fontSize: 12, color: "#888" }}>Dial to purchase instantly.</div>
             </div>
 

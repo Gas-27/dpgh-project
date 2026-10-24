@@ -78,7 +78,7 @@ function drawRows(ctx: CanvasRenderingContext2D, list: FlyerPackage[], region: R
 export function DynamicFlyer({ storeName, bannerText = "DATA PLUG", accessCode, storeUrl, contactNumber = "", packages }: { storeName: string; bannerText?: string; accessCode: string; storeUrl: string; contactNumber?: string; packages: FlyerPackages }) {
   const shareMessage = `Get the BEST data deals from ${storeName || "our store"}! 🔥
 MTN • AirtelTigo • Telecel ⚡ Instant Delivery • 24/7 Support
-📲 USSD: *380*455# 🔑 Access Code: ${accessCode || "—"}
+📲 USSD: *920*337# 🔑 Access Code: ${accessCode || "—"}
 🛒 Shop: ${storeUrl || "—"}
 🔥 More services available: 📶 Data Bundles • Airtime ⚡ ECG Prepaid • AFA Registration 📺 DSTV • GOtv • StarTimes 💧 Water Bill Payments 📱 Social Media Boosting 🎬 Netflix • Canva • Spotify • ChatGPT & more 🎮 Game Hub • Bulk SMS • Marketplace
 💰 Buy • Sell • Earn — All in One Place!
