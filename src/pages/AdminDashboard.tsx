@@ -2597,7 +2597,7 @@ const AdminDashboard = () => {
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
-    return p.network === networkFilter;
+    return p.network === networkFilter || (networkFilter === "telecel" && String(p.network).trim().toLowerCase() === "telecel special");
   });
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
   const refundedCount = orders.filter((o) => o.fulfillment_status === "refunded" || o.status === "refunded").length;

@@ -879,7 +879,7 @@ const searchOrders = useCallback(async (input?: string) => {
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
-    return p.network === networkFilter;
+    return p.network === networkFilter || (networkFilter === "telecel" && String(p.network).trim().toLowerCase() === "telecel special");
   });
   const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
