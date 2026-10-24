@@ -237,6 +237,7 @@ const SubSubagentDashboard = () => {
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [markupPercent, setMarkupPercent] = useState("");
   const [networkFilter, setNetworkFilter] = useState("mtn");
+ const [telecelPackageType, setTelecelPackageType] = useState<"cheap" | "special">("cheap");
   const [savingPrices, setSavingPrices] = useState(false);
   // Wallet top-up (Paystack) state
   const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
@@ -1274,7 +1275,7 @@ const handleSaveStore = async () => {
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
-    return p.network === networkFilter;
+    return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
   });
 
 
@@ -2333,7 +2334,7 @@ return (
               </CardContent>
             </Card>
             <DeliveryProgressCard selectedNetwork={networkFilter} />
-  <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
+  <NetworkTabs value={networkFilter as any} onChange={(value) => { setNetworkFilter(value); if (value !== "telecel") setTelecelPackageType("cheap"); }} telecelPackageType={telecelPackageType} onTelecelPackageTypeChange={setTelecelPackageType} />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {filteredPackages.map(pkg => {
                 const basePrice = basePrices[pkg.id] || pkg.price || 0;

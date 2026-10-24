@@ -270,7 +270,7 @@ A live preview shows exactly how your store will look. Click Save to apply chang
 
 • Subagents are sellers who have their own store but operate under you.
 • When a subagent makes a sale, you earn a commission from their profit.
-��������� You can view all your subagents, their store names, and contact info.
+����������� You can view all your subagents, their store names, and contact info.
 • Enable/disable subagent registration from Settings.
 
 Subagent Profit Split:
@@ -372,6 +372,7 @@ const AgentDashboard = () => {
   const [subagentProfitForAgent, setSubagentProfitForAgent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [networkFilter, setNetworkFilter] = useState("mtn");
+ const [telecelPackageType, setTelecelPackageType] = useState<"cheap" | "special">("cheap");
   const [savingPrices, setSavingPrices] = useState(false);
   const [editingStore, setEditingStore] = useState(false);
   const [orderSearch, setOrderSearch] = useState("");
@@ -1567,7 +1568,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
                 if (false && networkFilter === "mtn_mashup") {
                   return p.network === "mtn_mashup" || p.network === "mashup";
       }
-      return p.network === networkFilter;
+      return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
     });
     let appliedCount = 0;
     for (const pkg of currentNetworkPackages) {
@@ -2222,7 +2223,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
 
   // Process refunds for subagent orders (defined before guards to keep hook order stable)
   // Handles: direct subagent orders → credit subagent wallet at agent_price
-  //          sub-subagent orders → credit subagent wallet at subagent_package_prices.base_price
+  //          sub-subagent orders ��� credit subagent wallet at subagent_package_prices.base_price
   const processSubagentRefunds = async () => {
     if (selectedSubagentOrderIds.size === 0) {
       toast({ title: "Error", description: "No orders selected", variant: "destructive" });
@@ -2377,7 +2378,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime";
     }
-    return p.network === networkFilter;
+    return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
   });
   const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
   const defaultStoreUrl = store ? DOMAINS.getAgentStoreUrl(store.store_name) : "";
@@ -2915,7 +2916,7 @@ return (
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GHC {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
             </Card>)}
             <DeliveryProgressCard selectedNetwork={networkFilter} />
-  <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
+  <NetworkTabs value={networkFilter as any} onChange={(value) => { setNetworkFilter(value); if (value !== "telecel") setTelecelPackageType("cheap"); }} telecelPackageType={telecelPackageType} onTelecelPackageTypeChange={setTelecelPackageType} />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {packages.filter(p => {
                 if (false && networkFilter === "mtn_mashup") {
@@ -2924,7 +2925,7 @@ return (
       if (networkFilter === "airteltigo") {
         return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
       }
-      return p.network === networkFilter;
+      return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
               }).map((pkg) => {
                 const price = Number(pkg.agent_price || pkg.price);
                 const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
@@ -4722,7 +4723,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       if (networkFilter === "airteltigo") {
                         return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
                       }
-                      return p.network === networkFilter;
+                      return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
                     }).map((pkg) => {
                       const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
                       return (
@@ -4740,7 +4741,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                     if (networkFilter === "airteltigo") {
                       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
                     }
-                    return p.network === networkFilter;
+                    return p.network === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter);
                   }).length === 0 && (
                     <div className="col-span-full text-center py-8 text-muted-foreground">
                       No packages available for {networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "mtn" ? "MTN" : "Telecel"}.

@@ -146,6 +146,7 @@ const UserDashboard = () => {
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [networkFilter, setNetworkFilter] = useState("mtn");
+  const [telecelPackageType, setTelecelPackageType] = useState<"cheap" | "special">("cheap");
   const [buyDialogOpen, setBuyDialogOpen] = useState(false);
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
   const [buyPhone, setBuyPhone] = useState("");
@@ -1406,12 +1407,12 @@ case "api-key":
         <CardContent className="space-y-4">
           <DeliveryProgressCard selectedNetwork={networkFilter} />
 
-          <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
+          <NetworkTabs value={networkFilter as any} onChange={(value) => { setNetworkFilter(value); if (value !== "telecel") setTelecelPackageType("cheap"); }} telecelPackageType={telecelPackageType} onTelecelPackageTypeChange={setTelecelPackageType} />
 
           {/* Packages Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {packages
-              .filter(pkg => pkg.network.toLowerCase() === networkFilter.toLowerCase())
+              .filter(pkg => pkg.network.toLowerCase() === (networkFilter === "telecel" && telecelPackageType === "special" ? "telecel special" : networkFilter).toLowerCase())
               .map(pkg => (
                 <Card key={pkg.id} className={`border-0 bg-[#2f176d] text-white shadow-none ${pkg.active ? "" : "opacity-50"}`}>
                   <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
