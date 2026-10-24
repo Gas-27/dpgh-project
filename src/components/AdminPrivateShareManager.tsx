@@ -318,11 +318,11 @@ export default function AdminPrivateShareManager() {
   useEffect(() => { if (!accountServiceId && services.length) setAccountServiceId(services[0].id); }, [services, accountServiceId]);
 
   const rpc = useCallback(async (fn: string, args: Record<string, unknown>, success: string) => {
-    const { error } = await db.rpc(fn, args);
-    if (error) { toast({ title: "Action failed", description: error.message, variant: "destructive" }); return false; }
+    const { data, error } = await db.rpc(fn, args);
+    if (error) { toast({ title: "Action failed", description: error.message, variant: "destructive" }); return null; }
     toast({ title: success });
     await load();
-    return true;
+    return data ?? true;
   }, [load, toast]);
 
   const connectGmail = async () => {
@@ -408,8 +408,9 @@ export default function AdminPrivateShareManager() {
       p_maintenance_status: f.maintenance_status, p_maintenance_until: fromLocalInput(f.maintenance_until),
       p_supplier_ref: f.supplier_ref || null, p_notes: f.notes || null,
     }, f.id ? "Account updated" : "Account created");
-    if (ok && f.id && f.login_password.trim()) {
-      await rpc("private_share_admin_set_account_password", { p_account_id: f.id, p_password: f.login_password }, "Account password saved");
+    const accountId = f.id || (ok && typeof ok === "object" && "id" in ok ? String((ok as { id: string }).id) : null);
+    if (accountId && (f.login_identifier.trim() || f.login_password.trim())) {
+      await rpc("private_share_admin_set_account_credentials", { p_account_id: accountId, p_login_identifier: f.login_identifier, p_password: f.login_password }, "Account credentials saved");
     }
     if (ok) setAccountForm({ ...emptyAccountForm });
   };
