@@ -226,13 +226,18 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
       const rows = [
         ...(history || []).filter((row: any) => {
           const product = normalize(row.product_type);
-          if (category === "instant") return instantServices.includes(product);
+          const source = normalize(row.source);
+          // Instant Data & Airtime is the normal retail purchase history. API/cheap-data
+          // wallet orders must stay in API history and must not appear in this tab.
+          if (category === "instant") {
+            return instantServices.includes(product) && !["api", "apiwallet", "partnerapi", "cheapdata"].includes(source);
+          }
           if (category === "services") return utilityServices.includes(product);
           return product === "subscription";
         }),
         ...apiRows.filter((row: any) => {
           const product = normalize(row.product_type);
-          if (category === "instant") return instantServices.includes(product);
+          if (category === "instant") return false;
           if (category === "services") return utilityServices.includes(product);
           return false;
         }),
