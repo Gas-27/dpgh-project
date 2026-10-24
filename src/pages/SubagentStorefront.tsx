@@ -25,6 +25,7 @@ import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import SubSubagentRegistrationForm from "@/components/SubSubagentRegistrationForm";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
   import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import { TelecelSubTabs, type TelecelPackageType } from "@/components/NetworkTabs";
   import NotificationPopup from "@/components/NotificationPopup";
   import SmsComposer from "@/components/SmsComposer";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
@@ -486,6 +487,7 @@ export function SubagentStorefront() {
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [subagentPrices, setSubagentPrices] = useState<Record<string, number>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
+  const [telecelPackageType, setTelecelPackageType] = useState<TelecelPackageType>("cheap");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
@@ -875,6 +877,9 @@ const searchOrders = useCallback(async (input?: string) => {
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
+    if (networkFilter === "telecel") {
+      return String(p.network || "").trim().toLowerCase() === (telecelPackageType === "special" ? "telecel special" : "telecel");
+    }
     return p.network === networkFilter;
   });
   const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;
@@ -1103,6 +1108,7 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
           ))}
 
         </div>
+        {networkFilter === "telecel" && <TelecelSubTabs value={telecelPackageType} onChange={setTelecelPackageType} />}
         </>}
 
         {activeSection === "sms" && <Card className="border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="subagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card>}

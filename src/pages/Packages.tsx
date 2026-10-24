@@ -1623,13 +1623,7 @@ const searchOrders = async (input?: string) => {
             <section aria-labelledby="data-bundles-heading" className="mx-auto w-full max-w-md pb-12">
               <h2 id="data-bundles-heading" className="sr-only">Data Bundles</h2>
               <DeliveryProgressCard selectedNetwork={selectedNetwork} />
-              <NetworkTabs value={selectedNetwork} onChange={(network) => { setSelectedNetwork(network); if (network !== "telecel") setTelecelPackageTab("cheap"); }} className="mb-4 justify-center" />
-              {selectedNetwork === "telecel" && (
-                <div className="mb-6 flex rounded-full border border-red-400/40 bg-red-950/20 p-1" role="tablist" aria-label="Telecel package type">
-                  <button type="button" role="tab" aria-selected={telecelPackageTab === "cheap"} onClick={() => setTelecelPackageTab("cheap")} className={`flex-1 rounded-full px-4 py-2 text-sm font-bold transition-colors ${telecelPackageTab === "cheap" ? "bg-red-500 text-white" : "text-muted-foreground hover:text-foreground"}`}>Cheap Data</button>
-                  <button type="button" role="tab" aria-selected={telecelPackageTab === "special"} onClick={() => setTelecelPackageTab("special")} className={`flex-1 rounded-full px-4 py-2 text-sm font-bold transition-colors ${telecelPackageTab === "special" ? "bg-red-500 text-white" : "text-muted-foreground hover:text-foreground"}`}>Telecel Special</button>
-                </div>
-              )}
+              <NetworkTabs value={selectedNetwork} onChange={(network) => { setSelectedNetwork(network); if (network !== "telecel") setTelecelPackageTab("cheap"); }} className="mb-4 justify-center" telecelPackageType={telecelPackageTab} onTelecelPackageTypeChange={setTelecelPackageTab} />
               {loading ? (
                 <div className="flex justify-center py-10" aria-label="Loading data bundles"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
               ) : filtered.length === 0 ? (
