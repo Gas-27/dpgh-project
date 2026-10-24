@@ -57,6 +57,7 @@ const AgentDashboard = lazyWithReload(() => import("./pages/AgentDashboard"));
 const AgentStorefront = lazyWithReload(() => import("./pages/AgentStorefront"));
 const ProductDetail = lazyWithReload(() => import("./pages/ProductDetail"));
 const PrivateSubscriptionCheckout = lazyWithReload(() => import("./pages/PrivateSubscriptionCheckout"));
+const PublicServiceAccess = lazyWithReload(() => import("./pages/PublicServiceAccess"));
 const BecomeAgent = lazyWithReload(() => import("./pages/BecomeAgent"));
 const AgentRegistrationCallback = lazyWithReload(() => import("./pages/AgentRegistrationCallback"));
 const SubagentDashboard = lazyWithReload(() => import("./pages/SubagentDashboard"));
@@ -302,6 +303,7 @@ return (
                   <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
                   <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
+                  <Route path="/service-access/:serviceId" element={<PublicServiceAccess />} />
                   <Route path="*" element={<CustomDomainResolver />} />
                 </Routes>
               ) : isSubagentDomain ? (
@@ -341,6 +343,7 @@ return (
                   <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
                   <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
+                  <Route path="/service-access/:serviceId" element={<PublicServiceAccess />} />
                   {/* Catch-all routes for storefronts */}
                   <Route path="/:subagentStoreName/store/:subSubagentStoreName" element={<SubSubagentStorefront />} />
                   <Route path="/:storeName" element={<SubagentStorefront />} />
@@ -354,6 +357,7 @@ return (
                   <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
                   <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
+                  <Route path="/service-access/:serviceId" element={<PublicServiceAccess />} />
                   <Route path="*" element={<AgentStorefront />} />
                 </Routes>
               ) : (
@@ -380,6 +384,7 @@ return (
                   <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
                   <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
+                  <Route path="/service-access/:serviceId" element={<PublicServiceAccess />} />
                   <Route path="/agent/:storeName" element={<RedirectToAgentSubdomain />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />

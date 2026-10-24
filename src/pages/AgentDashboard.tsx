@@ -270,7 +270,7 @@ A live preview shows exactly how your store will look. Click Save to apply chang
 
 • Subagents are sellers who have their own store but operate under you.
 • When a subagent makes a sale, you earn a commission from their profit.
-��� You can view all your subagents, their store names, and contact info.
+����� You can view all your subagents, their store names, and contact info.
 • Enable/disable subagent registration from Settings.
 
 Subagent Profit Split:
@@ -3658,7 +3658,26 @@ return (
               </CardContent>
             </Card>
 
-
+            {apiKey && (
+              <Card className="border-border">
+                <CardHeader>
+                  <CardTitle className="font-display flex items-center gap-2">
+                    <Wallet className="h-5 w-5" /> Top Up API Wallet
+                  </CardTitle>
+                  <p className="text-sm text-muted-foreground">Current API wallet balance: GHC {Number(wallet).toFixed(2)}</p>
+                </CardHeader>
+                <CardContent>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => { setActiveTab("api-key"); setShowTopupDialog(true); }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Top Up API Wallet
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Top Up History */}
             <Card className="border-border">
@@ -4572,7 +4591,10 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </CardHeader>
               <CardContent className="space-y-2 text-sm">
                 <p className="text-red-400 font-semibold">
-                  Only generate an API key if you have your own data source and want to connect it to our platform.
+                  Only generate an API key if you have your own data site you have built or made and want to connect it to our platform.
+                </p>
+                <p className="text-red-400 font-semibold">
+                  The API is only for people who own and run their own data site and want to source data from our system. It is not needed for reselling through your store.
                 </p>
                 <p className="text-muted-foreground">
                   API keys are for integrating external systems and sources. If you simply want to resell data, you don't need an API key.

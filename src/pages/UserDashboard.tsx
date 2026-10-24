@@ -1881,6 +1881,23 @@ case "api-key":
 
   const renderApiKey = () => (
   <div className="space-y-6">
+      <Card className="border-red-500/50 bg-red-500/10">
+        <CardHeader>
+          <CardTitle className="text-base text-red-500">Important: API Key Warning</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm">
+          <p className="font-semibold text-red-400">
+            Only generate an API key if you have your own data site you have built or made and want to connect it to our platform.
+          </p>
+          <p className="font-semibold text-red-400">
+            The API is only for people who own and run their own data site and want to source data from our system.
+          </p>
+          <p className="text-muted-foreground">
+            API keys are for integrating external systems and sources. If you simply want to resell data, you don&apos;t need an API key.
+          </p>
+        </CardContent>
+      </Card>
+
   {/* Need Help with API Card */}
       <Card className="border-primary/30 bg-primary/5">
         <CardHeader>
@@ -1902,7 +1919,7 @@ case "api-key":
         </CardContent>
       </Card>
 
-      {/* API Wallet Card */}
+      {apiKey && (
       <Card className="border-purple-500/30 bg-gradient-to-br from-purple-500/10 to-pink-500/5 hover:border-purple-500/50 transition-all">
         <CardContent className="pt-6">
           <div className="flex items-center justify-between mb-4">
@@ -1911,11 +1928,12 @@ case "api-key":
           </div>
           <p className="font-display text-3xl font-bold text-purple-400">GHC {Number(apiWallet).toFixed(2)}</p>
           <p className="text-xs text-muted-foreground mt-2">For API purchases</p>
-          <Button onClick={() => { console.log("[v0] Top Up API clicked"); setShowApiWalletTopup(true); }} className="mt-4 w-full" size="sm">
+          <Button onClick={() => setShowApiWalletTopup(true)} className="mt-4 w-full" size="sm">
             Top Up
           </Button>
         </CardContent>
       </Card>
+      )}
 
       <Card>
         <CardHeader>
@@ -2869,6 +2887,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </Button>
               <p className="text-xs text-muted-foreground mt-2">Current: GHC {Number(normalWallet).toFixed(2)}</p>
             </div>
+            {apiKey && (
             <div>
               <Label className="text-base font-semibold mb-3 block">API Wallet</Label>
               <Button onClick={handleOpenApiWalletTopup} className="w-full" variant="outline">
@@ -2877,6 +2896,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </Button>
               <p className="text-xs text-muted-foreground mt-2">Current: GHC {Number(apiWallet).toFixed(2)}</p>
             </div>
+            )}
           </div>
         </CardContent>
       </Card>

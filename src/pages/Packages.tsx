@@ -1243,7 +1243,7 @@ const Packages = () => {
         const whatsappText = encodeURIComponent(`Private service purchase confirmed.\n\nService: ${pending.serviceName || "Digital service"}\nPaid: GHC ${Number(pending.price || 0).toFixed(2)}\nCustomer phone: ${pending.phone || "Not provided"}\nOrder code: ${pending.reference}\n\nPlease process my purchase.`);
         window.location.assign(`https://wa.me/233274467682?text=${whatsappText}`);
       } else {
-        toast({ title: "Service payment successful", description: pending.serviceType === "public_shared" ? "Your access is ready. Return to the service login page and enter your phone number and access code." : "Your private access is ready on this site." });
+        toast({ title: "Service payment successful", description: pending.serviceType === "public_shared" ? "Your payment is confirmed. Open the service, then enter your phone number and 4-digit access code to see your login." : "Your private access is ready on this site." });
       }
     });
   }, [searchParams, toast]);

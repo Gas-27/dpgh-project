@@ -269,7 +269,7 @@ function InboundRelayCard() {
   );
 }
 
-const emptyAccountForm = { id: null as string | null, label: "", capacity: 1, capacity_basis: "", expires: "", maintenance_status: "active", maintenance_until: "", supplier_ref: "", notes: "", login_identifier: "", login_password: "" };
+const emptyAccountForm = { id: null as string | null, label: "", capacity: 1, capacity_basis: "", expires: "", supplier_ref: "", notes: "", login_identifier: "", login_password: "" };
 
 export default function AdminPrivateShareManager() {
   const { toast } = useToast();
@@ -405,22 +405,24 @@ export default function AdminPrivateShareManager() {
     const ok = await rpc("private_share_admin_upsert_account", {
       p_id: f.id, p_service_id: accountServiceId, p_label: f.label, p_capacity: f.capacity,
       p_capacity_basis: f.capacity_basis || null, p_subscription_expires_at: fromLocalInput(f.expires),
-      p_maintenance_status: f.maintenance_status, p_maintenance_until: fromLocalInput(f.maintenance_until),
+      p_maintenance_status: "active", p_maintenance_until: null,
       p_supplier_ref: f.supplier_ref || null, p_notes: f.notes || null,
     }, f.id ? "Account updated" : "Account created");
     const accountId = f.id || (ok && typeof ok === "object" && "id" in ok ? String((ok as { id: string }).id) : null);
     if (accountId && (f.login_identifier.trim() || f.login_password.trim())) {
       await rpc("private_share_admin_set_account_credentials", { p_account_id: accountId, p_login_identifier: f.login_identifier, p_password: f.login_password }, "Account credentials saved");
     }
-    if (ok) setAccountForm({ ...emptyAccountForm });
+    if (ok) {
+      await rpc("private_share_admin_fulfil_pending", { p_service_id: accountServiceId }, "Waiting customers assigned");
+      setAccountForm({ ...emptyAccountForm });
+    }
   };
 
   const editAccount = (a: Account) => {
     setAccountServiceId(a.service_id);
     setAccountForm({
       id: a.id, label: a.label, capacity: a.capacity, capacity_basis: a.capacity_basis ?? "",
-      expires: toLocalInput(a.account_subscription_expires_at), maintenance_status: a.maintenance_status,
-      maintenance_until: toLocalInput(a.maintenance_until), supplier_ref: a.supplier_ref ?? "", notes: a.notes ?? "", login_identifier: a.login_identifier ?? "", login_password: "",
+      expires: toLocalInput(a.account_subscription_expires_at), supplier_ref: a.supplier_ref ?? "", notes: a.notes ?? "", login_identifier: a.login_identifier ?? "", login_password: "",
     });
   };
 
@@ -536,7 +538,7 @@ export default function AdminPrivateShareManager() {
         <TabsContent value="accounts" className="space-y-3 pt-3">
           <Card>
             <CardHeader><CardTitle className="text-base">{accountForm.id ? "Edit service account" : "Create service account"}</CardTitle>
-              <CardDescription>Capacity cannot be set below seats already held. Account credentials are not stored in this system.</CardDescription></CardHeader>
+              <CardDescription>Add as many logins as you need for a service. Customers fill one login's slots before the next login is used, and waiting customers are assigned automatically when you add a new login.</CardDescription></CardHeader>
             <CardContent className="grid gap-3 sm:grid-cols-3">
               <div className="space-y-1">
                 <Label>Service</Label>
@@ -547,24 +549,12 @@ export default function AdminPrivateShareManager() {
               </div>
               <div className="space-y-1"><Label>Label</Label>
                 <Input value={accountForm.label} onChange={(e) => setAccountForm({ ...accountForm, label: e.target.value })} /></div>
-              <div className="space-y-1"><Label>Permitted capacity</Label>
+              <div className="space-y-1"><Label>Number of slots (people who can share this login)</Label>
                 <Input type="number" min={1} value={accountForm.capacity} onChange={(e) => setAccountForm({ ...accountForm, capacity: Number(e.target.value) })} /></div>
               <div className="space-y-1 sm:col-span-3"><Label>Capacity basis (provider terms)</Label>
                 <Input value={accountForm.capacity_basis} placeholder="e.g. plan allows 5 profiles" onChange={(e) => setAccountForm({ ...accountForm, capacity_basis: e.target.value })} /></div>
               <div className="space-y-1"><Label>Account subscription expires</Label>
                 <Input type="datetime-local" value={accountForm.expires} onChange={(e) => setAccountForm({ ...accountForm, expires: e.target.value })} /></div>
-              <div className="space-y-1"><Label>Maintenance status</Label>
-                <Select value={accountForm.maintenance_status} onValueChange={(v) => setAccountForm({ ...accountForm, maintenance_status: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="suspended">Suspended</SelectItem>
-                    <SelectItem value="retired">Retired</SelectItem>
-                  </SelectContent>
-                </Select></div>
-              <div className="space-y-1"><Label>Maintenance until</Label>
-                <Input type="datetime-local" value={accountForm.maintenance_until} onChange={(e) => setAccountForm({ ...accountForm, maintenance_until: e.target.value })} /></div>
               <div className="space-y-1"><Label>Supplier reference</Label>
                 <Input value={accountForm.supplier_ref} onChange={(e) => setAccountForm({ ...accountForm, supplier_ref: e.target.value })} /></div>
               <div className="space-y-1"><Label>Login email or username</Label>
@@ -593,13 +583,11 @@ export default function AdminPrivateShareManager() {
                     <div>
                       <p className="font-medium">{a.label} <span className="text-muted-foreground">- {serviceName[a.service_id] ?? "Unknown service"}</span></p>
                       <p className="text-xs text-muted-foreground">
-                        Seats {used}/{a.capacity} - subscription ends {fmt(a.account_subscription_expires_at)}
-                        {a.maintenance_until ? ` - maintenance until ${fmt(a.maintenance_until)}` : ""}
+                        Slots {used}/{a.capacity}{a.account_subscription_expires_at ? ` - subscription ends ${fmt(a.account_subscription_expires_at)}` : ""}
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <Badge variant={statusVariant(a.maintenance_status)}>{a.maintenance_status}</Badge>
-                      {!a.account_subscription_expires_at && <Badge variant="secondary">No expiry set: not assignable</Badge>}
+                      <Badge variant={used >= a.capacity ? "secondary" : "default"}>{used >= a.capacity ? "Full" : `${a.capacity - used} slot(s) left`}</Badge>
                       <Button size="sm" variant="outline" onClick={() => editAccount(a)}>Edit</Button>
                     </div>
                   </div>
