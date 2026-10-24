@@ -24,7 +24,7 @@ type EmailIdentity = { id: string; email: string; provider_kind: string; label: 
 type Account = {
   id: string; service_id: string; label: string; capacity: number; capacity_basis: string | null;
   account_subscription_expires_at: string | null; maintenance_status: string; maintenance_until: string | null;
-  supplier_ref: string | null; notes: string | null;
+  supplier_ref: string | null; notes: string | null; login_identifier: string | null; login_password: string | null;
 };
 type Link = { id: string; account_id: string; email_identity_id: string; role: string };
 type Assignment = {
@@ -269,7 +269,7 @@ function InboundRelayCard() {
   );
 }
 
-const emptyAccountForm = { id: null as string | null, label: "", capacity: 1, capacity_basis: "", expires: "", maintenance_status: "active", maintenance_until: "", supplier_ref: "", notes: "" };
+const emptyAccountForm = { id: null as string | null, label: "", capacity: 1, capacity_basis: "", expires: "", maintenance_status: "active", maintenance_until: "", supplier_ref: "", notes: "", login_identifier: "", login_password: "" };
 
 export default function AdminPrivateShareManager() {
   const { toast } = useToast();
@@ -408,6 +408,9 @@ export default function AdminPrivateShareManager() {
       p_maintenance_status: f.maintenance_status, p_maintenance_until: fromLocalInput(f.maintenance_until),
       p_supplier_ref: f.supplier_ref || null, p_notes: f.notes || null,
     }, f.id ? "Account updated" : "Account created");
+    if (ok && f.id && f.login_password.trim()) {
+      await rpc("private_share_admin_set_account_password", { p_account_id: f.id, p_password: f.login_password }, "Account password saved");
+    }
     if (ok) setAccountForm({ ...emptyAccountForm });
   };
 
@@ -416,7 +419,7 @@ export default function AdminPrivateShareManager() {
     setAccountForm({
       id: a.id, label: a.label, capacity: a.capacity, capacity_basis: a.capacity_basis ?? "",
       expires: toLocalInput(a.account_subscription_expires_at), maintenance_status: a.maintenance_status,
-      maintenance_until: toLocalInput(a.maintenance_until), supplier_ref: a.supplier_ref ?? "", notes: a.notes ?? "",
+      maintenance_until: toLocalInput(a.maintenance_until), supplier_ref: a.supplier_ref ?? "", notes: a.notes ?? "", login_identifier: a.login_identifier ?? "", login_password: "",
     });
   };
 
@@ -563,7 +566,11 @@ export default function AdminPrivateShareManager() {
                 <Input type="datetime-local" value={accountForm.maintenance_until} onChange={(e) => setAccountForm({ ...accountForm, maintenance_until: e.target.value })} /></div>
               <div className="space-y-1"><Label>Supplier reference</Label>
                 <Input value={accountForm.supplier_ref} onChange={(e) => setAccountForm({ ...accountForm, supplier_ref: e.target.value })} /></div>
-              <div className="space-y-1 sm:col-span-2"><Label>Notes</Label>
+              <div className="space-y-1"><Label>Login email or username</Label>
+                <Input value={accountForm.login_identifier} placeholder="Optional" onChange={(e) => setAccountForm({ ...accountForm, login_identifier: e.target.value })} /></div>
+              <div className="space-y-1"><Label>Login password</Label>
+                <Input type="text" value={accountForm.login_password} placeholder="Leave blank for verification pending" onChange={(e) => setAccountForm({ ...accountForm, login_password: e.target.value })} /></div>
+              <div className="space-y-1 sm:col-span-3"><Label>Notes</Label>
                 <Input value={accountForm.notes} onChange={(e) => setAccountForm({ ...accountForm, notes: e.target.value })} /></div>
               <div className="flex gap-2 sm:col-span-3">
                 <Button onClick={saveAccount} disabled={!accountServiceId || !accountForm.label.trim() || accountForm.capacity < 1}>
