@@ -11,6 +11,14 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import SocialBoostSuccessDialog from "@/components/SocialBoostSuccessDialog";
+import {
+  TRACK_ORDER_EVENT,
+  TRACK_ORDER_STORAGE_KEY,
+  isSocialBoostReference,
+  socialBoostOrderNumberFromReference,
+  socialBoostServiceLabel,
+} from "@/lib/socialBoostMessages";
 
 const PaymentVerifier = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -18,6 +26,7 @@ const PaymentVerifier = () => {
   const [status, setStatus] = useState<"verifying" | "success" | "error">("verifying");
   const [message, setMessage] = useState("Verifying your payment...");
   const [open, setOpen] = useState(false);
+  const [socialBoost, setSocialBoost] = useState<{ orderNumber: string | number | null; serviceName: string | null } | null>(null);
 
   useEffect(() => {
     const payment = searchParams.get("payment");
@@ -25,28 +34,116 @@ const PaymentVerifier = () => {
 
     if (payment === "verifying" && reference) {
       setOpen(true);
-      verifyPayment(reference);
+      if (isSocialBoostReference(reference)) {
+        void verifySocialBoost(reference);
+      } else {
+        verifyPayment(reference);
+      }
     }
   }, [searchParams]);
 
-  const verifyPayment = async (reference: string) => {
-    try {
-      const { data, error } = await supabase.functions.invoke("verify-payment", {
-        body: { reference },
+  const verifySocialBoost = async (reference: string) => {
+    const derivedOrderNumber = socialBoostOrderNumberFromReference(reference);
+    const findOrder = async () => {
+      const { data: byReference } = await (supabase as any).rpc("get_public_social_boost_order_by_reference", { p_reference: reference });
+      const referenceOrder = Array.isArray(byReference) ? byReference[0] ?? null : byReference ?? null;
+      if (referenceOrder) return referenceOrder;
+      if (!derivedOrderNumber) return null;
+      const { data } = await (supabase as any).rpc("get_public_social_boost_order", { p_order_number: String(derivedOrderNumber) });
+      return Array.isArray(data) ? data[0] ?? null : data ?? null;
+    };
+    const showOrder = (order: any) => {
+      // Only show the persisted public order number. Never turn a private Paystack
+      // reference into a tracking number or expose it in the success UI.
+      if (!order?.order_number) return false;
+      setSocialBoost({
+        orderNumber: order.order_number,
+        serviceName: socialBoostServiceLabel(order.service) || null,
       });
+      setStatus("success");
+      const cleanParams = new URLSearchParams(searchParams);
+      cleanParams.delete("payment");
+      cleanParams.delete("reference");
+      cleanParams.delete("trxref");
+      setSearchParams(cleanParams, { replace: true });
+      return true;
+    };
 
-      if (error) throw error;
-
-      if (data?.success) {
-        setStatus("success");
-        setMessage("Payment confirmed! Your data is being processed and will be delivered shortly.");
-      } else {
-        setStatus("error");
-        setMessage(data?.error || "Payment verification failed.");
+    try {
+      // The webhook creates the order after Paystack redirects, so wait for it.
+      for (let attempt = 0; attempt < 15; attempt += 1) {
+        const order = await findOrder();
+        if (order && showOrder(order)) return;
+        await new Promise((resolve) => window.setTimeout(resolve, 1500));
       }
-    } catch (err: any) {
+
+      const { data, error } = await supabase.functions.invoke("verify-payment", { body: { reference } });
+      if (!error && (data?.success || data?.payment_confirmed)) {
+        const order = await findOrder();
+        if (order && showOrder(order)) return;
+      }
+    } catch (err) {
+      console.log("[v0] Social Boost verification pending:", err);
+    }
+
+    setStatus("error");
+    setMessage("Your payment is still being confirmed. Please check Track Order shortly. Your order number will appear there after confirmation.");
+  };
+
+  const verifyPayment = async (reference: string) => {
+    const orderExists = async () => {
+      const { data, error } = await supabase.rpc("order_exists_for_reference", { p_ref: reference });
+      return !error && data === true;
+    };
+
+    const showSuccess = () => {
+      setStatus("success");
+      setMessage("Your purchase was successful and will be delivered immediately.");
+    };
+
+    try {
+      // The webhook may have already created the order. Prefer that durable result
+      // so a slow or already-processed verification request cannot block the user.
+      if (await orderExists()) {
+        showSuccess();
+        return;
+      }
+
+      const verification = supabase.functions.invoke("verify-payment", { body: { reference } });
+      const timeout = new Promise<never>((_, reject) =>
+        window.setTimeout(() => reject(new Error("Verification is still processing")), 5000),
+      );
+      const result = await Promise.race([verification, timeout]);
+      const { data, error } = result;
+
+      if (!error && (data?.success || data?.payment_confirmed)) {
+        showSuccess();
+        return;
+      }
+
+      // Do not show a false failure when the webhook/verification is still writing.
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+        if (await orderExists()) {
+          showSuccess();
+          return;
+        }
+      }
+
       setStatus("error");
-      setMessage(err.message || "Something went wrong verifying your payment.");
+      setMessage(error?.message || data?.error || "Payment verification is still processing. Please check your orders shortly.");
+    } catch (err: any) {
+      // A timeout or non-2xx response is not proof that payment failed. The
+      // webhook may still have confirmed the payment and created the order.
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        if (await orderExists()) {
+          showSuccess();
+          return;
+        }
+        await new Promise((resolve) => window.setTimeout(resolve, 1000));
+      }
+      setStatus("error");
+      setMessage("Payment is still processing. Please check your orders shortly.");
     }
   };
 
@@ -60,7 +157,35 @@ const PaymentVerifier = () => {
     setSearchParams(newParams, { replace: true });
   };
 
+  const handleTrack = () => {
+    const orderNumber = socialBoost?.orderNumber;
+    if (orderNumber) {
+      window.sessionStorage.setItem(TRACK_ORDER_STORAGE_KEY, String(orderNumber));
+      window.dispatchEvent(new CustomEvent(TRACK_ORDER_EVENT, { detail: String(orderNumber) }));
+    }
+    handleClose();
+    window.setTimeout(() => document.getElementById("social-boost-track-order")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+  };
+
+  const handleNewOrder = () => {
+    handleClose();
+    window.setTimeout(() => document.getElementById("social-boost-order-form")?.scrollIntoView({ behavior: "smooth", block: "start" }), 150);
+  };
+
   if (!open) return null;
+
+  if (socialBoost && status === "success") {
+    return (
+      <SocialBoostSuccessDialog
+        open
+        orderNumber={socialBoost.orderNumber}
+        serviceName={socialBoost.serviceName}
+        onTrack={handleTrack}
+        onNewOrder={handleNewOrder}
+        onClose={handleClose}
+      />
+    );
+  }
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -85,9 +210,14 @@ const PaymentVerifier = () => {
           )}
           <p className="text-center text-foreground">{message}</p>
           {status !== "verifying" && (
-            <Button variant="hero" onClick={handleClose}>
-              Continue
-            </Button>
+            <div className="flex w-full flex-col gap-3 sm:flex-row sm:justify-center">
+              <Button variant="hero" onClick={handleClose}>
+                Continue
+              </Button>
+              <Button variant="outline" onClick={handleClose}>
+                Cancel
+              </Button>
+            </div>
           )}
         </div>
       </DialogContent>

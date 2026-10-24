@@ -1,0 +1,65 @@
+{
+  "name": "DataPlug Ghana – Buy Data Bundles Instantly",
+  "short_name": "DataPlug",
+  "description": "Buy affordable MTN, Telecel and AirtelTigo data bundles instantly in Ghana. Fast, reliable 24/7 data service.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0f",
+  "theme_color": "#00d4ff",
+  "orientation": "portrait-primary",
+  "scope": "/",
+  "lang": "en-GH",
+  "categories": ["utilities", "finance", "shopping"],
+  "icons": [
+    {
+      "src": "/icons/icon-144x144.png",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icons/icon-384x384.png",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Buy Data Bundles",
+      "short_name": "Buy Data",
+      "description": "Browse and purchase data bundles instantly",
+      "url": "/packages",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Become an Agent",
+      "short_name": "Agent",
+      "description": "Sign up to resell data bundles and earn commissions",
+      "url": "/signup",
+      "icons": [{ "src": "/icons/icon-192x192.png", "sizes": "192x192" }]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/icons/icon-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "label": "DataPlug Ghana homepage"
+    }
+  ],
+  "related_applications": [],
+  "prefer_related_applications": false
+}
