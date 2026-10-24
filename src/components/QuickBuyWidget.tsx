@@ -42,7 +42,7 @@ const QuickBuyWidget = () => {
         // if (selectedNetwork === "mtn_mashup") {
         //   return (p.network === "mtn_mashup" || p.network === "mashup");
         // }
-        return p.network === selectedNetwork || (selectedNetwork === "telecel" && String(p.network).trim().toLowerCase() === "telecel special");
+        return p.network === selectedNetwork;
       }).slice(0, 4);
     },
     [packages, selectedNetwork],

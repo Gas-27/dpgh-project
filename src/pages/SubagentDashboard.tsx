@@ -1690,7 +1690,7 @@ const handleSaveStore = async () => {
     if (networkFilter === "airteltigo") {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
-    return p.network === networkFilter || (networkFilter === "telecel" && String(p.network).trim().toLowerCase() === "telecel special");
+    return p.network === networkFilter;
   });
 
   const filteredSubSubagentPackages = packages.filter(p => {
@@ -4592,7 +4592,7 @@ handleMobileNumberChange(digits);
             <SubagentAFAPriceManager />
           </TabsContent>
 
-          {/* ─────────── AFA REGISTRATIONS (all via this subagent) ────────��── */}
+          {/* ───���─────── AFA REGISTRATIONS (all via this subagent) ────────��── */}
           <TabsContent value="afa-registrations" className="mt-0 space-y-6">
             <div>
               <h2 className="text-xl font-bold font-display flex items-center gap-2">

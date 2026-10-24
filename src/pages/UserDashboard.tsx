@@ -2055,7 +2055,7 @@ case "api-key":
                 if (networkFilter === "airteltigo") {
                   return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
                 }
-                return p.network === networkFilter || (networkFilter === "telecel" && String(p.network).trim().toLowerCase() === "telecel special");
+                return p.network === networkFilter;
               }).map((pkg) => {
                 const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
                 return (
@@ -2073,7 +2073,7 @@ case "api-key":
               if (networkFilter === "airteltigo") {
                 return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
               }
-              return p.network === networkFilter || (networkFilter === "telecel" && String(p.network).trim().toLowerCase() === "telecel special");
+              return p.network === networkFilter;
             }).length === 0 && (
               <div className="col-span-full text-center py-8 text-muted-foreground">
                 No packages available for {networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "mtn" ? "MTN" : "Telecel"}.
