@@ -56,6 +56,24 @@ function drawStoreName(ctx: CanvasRenderingContext2D, value: string, region: Reg
   ctx.restore();
 }
 
+// The template artwork has the old USSD code baked in, so it is covered and redrawn with the current code.
+const USSD_CODE = "*920*337#";
+const USSD_COVER: Region = { x: 266, y: 574, width: 228, height: 36 };
+
+function drawUssdCode(ctx: CanvasRenderingContext2D) {
+  ctx.save();
+  ctx.fillStyle = "#0a0f2c";
+  ctx.fillRect(USSD_COVER.x, USSD_COVER.y, USSD_COVER.width, USSD_COVER.height);
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.font = "900 italic 40px Montserrat, Arial, sans-serif";
+  ctx.shadowColor = "#ffe600";
+  ctx.shadowBlur = 8;
+  ctx.fillStyle = "#ffe600";
+  ctx.fillText(USSD_CODE, USSD_COVER.x + USSD_COVER.width / 2, USSD_COVER.y + USSD_COVER.height / 2 + 1);
+  ctx.restore();
+}
+
 function drawRows(ctx: CanvasRenderingContext2D, list: FlyerPackage[], region: Region, color: string) {
   const rows = [...list].sort((a, b) => a.size_gb - b.size_gb).slice(0, 11);
   const rowHeight = region.height / 11;
@@ -100,6 +118,7 @@ MTN • AirtelTigo • Telecel ⚡ Instant Delivery • 24/7 Support
     ctx.setTransform(SCALE, 0, 0, SCALE, 0, 0);
     if (!image) return;
     ctx.drawImage(image, 0, 0, WIDTH, HEIGHT);
+    drawUssdCode(ctx);
     const values = sample ? { name: "DEMO DATA STORE", code: "123456", url: "https://store.example.com", data: { mtn: [{ size_gb: 1, price: 5.5 }, { size_gb: 5, price: 20 }], telecel: [{ size_gb: 2, price: 10 }], airteltigo: [{ size_gb: 3, price: 14 }] } } : { name: storeName, code: accessCode, url: storeUrl, data: packages };
     const nameRegion = px(activeRegions.storeName);
     drawStoreName(ctx, values.name, nameRegion);

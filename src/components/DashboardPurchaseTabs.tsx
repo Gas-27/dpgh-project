@@ -237,7 +237,9 @@ function PurchaseHistory({ ownerType, ownerId, category }: PurchaseHistoryProps)
         }),
         ...apiRows.filter((row: any) => {
           const product = normalize(row.product_type);
-          if (category === "instant") return false;
+          // Normal data/airtime bought through the API appear in Instant Data & Airtime;
+          // cheap-data orders paid from the API wallet stay out of this tab.
+          if (category === "instant") return normalize(row.source) === "partnerapi" && instantServices.includes(product);
           if (category === "services") return utilityServices.includes(product);
           return false;
         }),
