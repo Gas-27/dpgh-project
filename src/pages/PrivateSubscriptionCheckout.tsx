@@ -35,7 +35,7 @@ export default function PrivateSubscriptionCheckout() {
       body: {
         email, amount, phone, access_pin: "0000", service_id: service.id,
         callback_url: `${window.location.origin}/private-subscription/${service.id}?payment=subscription`,
-        metadata: { service_id: service.id, service_name: service.name, service_type: "private_shared", private_delivery_mode: "onsite", source: searchParams.get("source") || "storefront", seller_store_kind: searchParams.get("seller_store_kind") || null, seller_store_id: searchParams.get("seller_store_id") || null },
+        metadata: { type: "service_payment", service_payment: true, service_id: service.id, service_name: service.name, service_type: "private_shared", private_delivery_mode: "onsite", source: searchParams.get("source") || "storefront", seller_store_kind: searchParams.get("seller_store_kind") || null, seller_store_id: searchParams.get("seller_store_id") || null },
       },
     });
     setPurchaseLoading(false);
