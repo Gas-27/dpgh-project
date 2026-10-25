@@ -270,7 +270,7 @@ A live preview shows exactly how your store will look. Click Save to apply chang
 
 • Subagents are sellers who have their own store but operate under you.
 • When a subagent makes a sale, you earn a commission from their profit.
-��������������� You can view all your subagents, their store names, and contact info.
+����������������� You can view all your subagents, their store names, and contact info.
 • Enable/disable subagent registration from Settings.
 
 Subagent Profit Split:
@@ -599,7 +599,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
   // Tabs and menu state
   const [activeTab, setActiveTab] = useState("overview");
   const [afaTabActive, setAfaTabActive] = useState("overview");
-  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities">("cheap-data");
+  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities" | "bulk-sms">("cheap-data");
 
   // API Orders state
   const [apiOrders, setApiOrders] = useState<any[]>([]);
@@ -4062,9 +4062,11 @@ handleMobileNumberChange(digits);
   <Button type="button" variant={apiDocTab === "social-boost" ? "secondary" : "ghost"} className={apiDocTab === "social-boost" ? "bg-background" : ""} onClick={() => setApiDocTab("social-boost")}>Social Boost</Button>
   <Button type="button" variant={apiDocTab === "data-airtime" ? "secondary" : "ghost"} className={apiDocTab === "data-airtime" ? "bg-background" : ""} onClick={() => setApiDocTab("data-airtime")}>Data &amp; Airtime</Button>
   <Button type="button" variant={apiDocTab === "utilities" ? "secondary" : "ghost"} className={apiDocTab === "utilities" ? "bg-background" : ""} onClick={() => setApiDocTab("utilities")}>Utilities</Button>
+<Button type="button" variant={apiDocTab === "bulk-sms" ? "secondary" : "ghost"} className={apiDocTab === "bulk-sms" ? "bg-background" : ""} onClick={() => setApiDocTab("bulk-sms")}>Bulk SMS</Button>
   </div>
   {apiDocTab === "data-airtime" && <PartnerServicesApiDocs variant="data-airtime" />}
   {apiDocTab === "utilities" && <PartnerServicesApiDocs variant="utilities" />}
+{apiDocTab === "bulk-sms" && <PartnerServicesApiDocs variant="bulk-sms" />}
   {apiDocTab === "social-boost" && <Card className="border-cyan-500/30 bg-cyan-500/5">
   <CardHeader><CardTitle>Social Boost API</CardTitle><p className="text-sm text-muted-foreground">Source DataPlug Social Boost services from your own website or application. Your customers can purchase through your integration using your API wallet.</p></CardHeader>
   <CardContent className="space-y-5">

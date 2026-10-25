@@ -16,6 +16,8 @@ const fields = [
   ["sms_packages_page_price", "Packages page SMS price per page"],
   ["sms_storefront_recipient_price", "Storefront SMS price per recipient"],
   ["sms_storefront_page_price", "Storefront SMS price per page"],
+  ["sms_api_recipient_price", "Bulk SMS API price per recipient"],
+  ["sms_api_page_price", "Bulk SMS API price per page"],
   ["dashboard_data_price", "Dashboard data price adjustment"],
   ["packages_data_price", "Packages page data price adjustment"],
   ["storefront_data_price", "Storefront data price adjustment"],
@@ -54,7 +56,7 @@ export default function AdminPricingManager() {
     <Card className="border-primary/30 bg-primary/5">
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><DollarSign className="h-5 w-5 text-primary" /> Pricing Management</CardTitle>
-        <p className="text-sm text-muted-foreground">Set separate SMS recipient/page prices and data pricing by sales channel.</p>
+        <p className="text-sm text-muted-foreground">Set separate SMS recipient/page prices, Bulk SMS API prices (charged to the API wallet and shown in the API docs), and data pricing by sales channel.</p>
       </CardHeader>
       <CardContent className="space-y-5">
         {loading ? <div className="flex items-center gap-2 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" /> Loading pricing...</div> : (

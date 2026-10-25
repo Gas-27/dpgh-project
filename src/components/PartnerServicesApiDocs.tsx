@@ -6,8 +6,9 @@ import { publicSupabase } from "@/integrations/supabase/public-client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 
-export type PartnerServicesDocVariant = "data-airtime" | "utilities";
+export type PartnerServicesDocVariant = "data-airtime" | "utilities" | "bulk-sms";
 
 const ENDPOINT = "https://api.dataplug.store/functions/v1/partner-services";
 
@@ -345,6 +346,133 @@ function UtilitiesDocs() {
   );
 }
 
+const SMS_ENDPOINT = "https://api.dataplug.store/functions/v1/sms-api";
+
+function useSmsApiPricing() {
+  return useQuery({
+    queryKey: ["sms-api-pricing"],
+    staleTime: 60_000,
+    queryFn: async () => {
+      const client = publicSupabase as any;
+      const { data, error } = await client.from("app_settings").select("sms_api_recipient_price, sms_api_page_price").eq("id", 1).maybeSingle();
+      if (error) throw error;
+      return {
+        recipient: Number(data?.sms_api_recipient_price) || 0,
+        page: Number(data?.sms_api_page_price) || 0,
+      };
+    },
+  });
+}
+
+function BulkSmsPricing() {
+  const { data, isLoading, isError } = useSmsApiPricing();
+  const recipient = data?.recipient ?? 0;
+  const page = data?.page ?? 0;
+  const example = recipient * 100 + page * 1;
+  return (
+    <Section title="Pricing">
+      <p>
+        Prices are set by JUSTBUY and charged from your API wallet for every message you send. One page is 160 characters. Longer messages use more pages.
+      </p>
+      {isLoading && <p className="text-xs">Loading current prices...</p>}
+      {isError && <p className="text-xs text-destructive">The live prices could not be loaded. Call the info endpoint below to read them.</p>}
+      {data && (
+        <div className="overflow-x-auto rounded-lg border border-border">
+          <table className="w-full min-w-[420px] text-left text-sm">
+            <thead className="bg-muted">
+              <tr>
+                <th className="p-2">Charge</th>
+                <th className="p-2">Price</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr className="border-t border-border">
+                <td className="p-2 font-medium">Per recipient</td>
+                <td className="p-2 font-mono">GHS {recipient.toFixed(2)}</td>
+              </tr>
+              <tr className="border-t border-border">
+                <td className="p-2 font-medium">Per page (160 characters)</td>
+                <td className="p-2 font-mono">GHS {page.toFixed(2)}</td>
+              </tr>
+              <tr className="border-t border-border">
+                <td className="p-2 font-medium">Example: 100 recipients, 1 page</td>
+                <td className="p-2 font-mono">GHS {example.toFixed(2)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+      <p className="text-xs">
+        Total charge = <Mono>(price per recipient x recipients) + (price per page x pages)</Mono>. Messages that the provider rejects are refunded to your API wallet automatically.
+      </p>
+    </Section>
+  );
+}
+
+function BulkSmsDocs() {
+  return (
+    <Card className="border-cyan-500/30 bg-cyan-500/5">
+      <CardHeader>
+        <CardTitle>Bulk SMS API</CardTitle>
+        <p className="text-sm text-muted-foreground">
+          Send SMS from your own website or app, submit sender IDs for approval and check delivery. Every send is paid from your API wallet, for both User and Agent API keys.
+        </p>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <BulkSmsPricing />
+
+        <Section title="1. Endpoint and authentication">
+          <p>Call this API from your server only. Never place your API key in browser or mobile app code.</p>
+          <div className="rounded-lg border border-border bg-muted p-3 font-mono text-xs break-all">{SMS_ENDPOINT}</div>
+          <Code>{`x-api-key: YOUR_API_KEY        (or Authorization: Bearer YOUR_API_KEY)\nContent-Type: application/json\nidempotency-key: UNIQUE_MESSAGE_ID   (required when sending)`}</Code>
+        </Section>
+
+        <Section title="2. Submit a sender ID for approval">
+          <p>
+            A sender ID is the name recipients see (3 to 11 letters, numbers or spaces, not only digits). Submit it from your site, then wait for approval. It shows up in the JUSTBUY admin SMS section where it is reviewed. You can only send with approved sender IDs.
+          </p>
+          <Code>{`POST ${SMS_ENDPOINT}\n{\n  "action": "submit_sender",\n  "sender_id": "MYSHOP",\n  "phone_number": "0241234567"   // optional contact number\n}`}</Code>
+          <Code>{`201 { "success": true, "sender": { "id": "...", "sender_id": "MYSHOP", "status": "pending" } }\n409 { "success": false, "error": "This sender ID already exists and must be unique" }`}</Code>
+        </Section>
+
+        <Section title="3. Check balance, prices and approved sender IDs">
+          <Code>{`GET ${SMS_ENDPOINT}\n\n200 {\n  "success": true,\n  "pricing": { "currency": "GHS", "per_recipient": 0.0, "per_page": 0.0, "characters_per_page": 160 },\n  "balance": 25.5,\n  "sender_ids": [ { "sender_id": "MYSHOP", "status": "approved" } ]\n}`}</Code>
+          <p>
+            You can also post <Mono>{`{ "action": "senders" }`}</Mono> to list sender IDs only, or <Mono>{`{ "action": "balance" }`}</Mono> for your API wallet balance.
+          </p>
+        </Section>
+
+        <Section title="4. Send bulk SMS">
+          <p>
+            Send up to 1000 Ghana numbers per request. Numbers can be written as <Mono>0241234567</Mono> or <Mono>233241234567</Mono>, and duplicates are removed automatically.
+          </p>
+          <Code>{`POST ${SMS_ENDPOINT}\nidempotency-key: order-10045\n{\n  "action": "send",\n  "sender_id": "MYSHOP",\n  "recipients": ["0241234567", "0551234567"],\n  "message": "Your order has been shipped."\n}`}</Code>
+          <Code>{`200 {\n  "success": true,\n  "id": "MESSAGE_RECORD_ID",\n  "status": "sent",             // sent | partial\n  "sent": 2,\n  "failed": [],\n  "pages": 1,\n  "charge": 0.0,\n  "refunded": 0,\n  "balance": 24.5,\n  "message_ids": [ { "to": "0241234567", "message_id": "..." } ]\n}`}</Code>
+        </Section>
+
+        <Section title="5. Check a message">
+          <Code>{`POST ${SMS_ENDPOINT}\n{ "action": "status", "id": "MESSAGE_RECORD_ID" }`}</Code>
+        </Section>
+
+        <Section title="6. Integration example (Node.js)">
+          <Code>{`const response = await fetch("${SMS_ENDPOINT}", {\n  method: "POST",\n  headers: {\n    "x-api-key": process.env.JUSTBUY_API_KEY,\n    "Content-Type": "application/json",\n    "idempotency-key": crypto.randomUUID(),\n  },\n  body: JSON.stringify({\n    action: "send",\n    sender_id: "MYSHOP",\n    recipients: ["0241234567"],\n    message: "Hello from MYSHOP",\n  }),\n});\nconst result = await response.json();\nif (!result.success) console.error(result.error);`}</Code>
+          <Code>{`curl -X POST "${SMS_ENDPOINT}" \\\n  -H "x-api-key: YOUR_API_KEY" \\\n  -H "idempotency-key: order-10045" \\\n  -H "Content-Type: application/json" \\\n  -d '{"action":"send","sender_id":"MYSHOP","recipients":["0241234567"],"message":"Hello"}'`}</Code>
+        </Section>
+
+        <Section title="Responses and errors">
+          <p>
+            Responses are JSON with <Mono>success</Mono> true or false. <Mono>400</Mono> invalid fields, <Mono>401</Mono> invalid or inactive API key, <Mono>402</Mono> insufficient API wallet (the response includes <Mono>required</Mono> and <Mono>balance</Mono>), <Mono>403</Mono> sender ID not approved or locked, <Mono>409</Mono> sender ID already exists, <Mono>502</Mono> every message failed (wallet refunded), <Mono>503</Mono> SMS pricing or provider not configured.
+          </p>
+        </Section>
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+          <strong>Idempotency:</strong> send a new unique <Mono>idempotency-key</Mono> for every send (max 128 characters). If a request times out, retry with the same key. You will get the original result back and are never charged twice.
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export default function PartnerServicesApiDocs({ variant }: { variant: PartnerServicesDocVariant }) {
+  if (variant === "bulk-sms") return <BulkSmsDocs />;
   return variant === "data-airtime" ? <DataAirtimeDocs /> : <UtilitiesDocs />;
 }

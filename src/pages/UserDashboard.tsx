@@ -159,7 +159,7 @@ const UserDashboard = () => {
   const [buySimLookupError, setBuySimLookupError] = useState(false);
   const [topupReference, setTopupReference] = useState<string>("");
   const [showApiWalletTopup, setShowApiWalletTopup] = useState(false);
-  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities">("cheap-data");
+  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities" | "bulk-sms">("cheap-data");
   const [orderFilter, setOrderFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
   const [totalOrders, setTotalOrders] = useState(0);
   const [topupHistory, setTopupHistory] = useState<any[]>([]);
@@ -2006,12 +2006,27 @@ case "api-key":
             </>
           ) : (
             <>
-              <p className="text-sm text-muted-foreground">Generate an API key to use our programmatic API</p>
+              <div className="space-y-1">
+                <h3 className="font-display text-lg font-semibold">Generate Your API Key</h3>
+                <p className="text-sm text-muted-foreground">
+                  You can generate your API key directly here in your User Dashboard and start using our API immediately.
+                </p>
+              </div>
               <Button onClick={generateApiKey} disabled={generatingApiKey} className="w-full">
                 {generatingApiKey ? "Generating..." : "Generate API Key"}
               </Button>
             </>
           )}
+          <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-4 space-y-3">
+            <h3 className="font-display text-base font-semibold">Want More Benefits? Become an Agent! (Recommended)</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Sign up as a JUSTBUY agent and generate your API key from your Agent Dashboard to enjoy extra benefits, including a free dedicated USSD code for your website, allowing customers to purchase via USSD without additional integration. You can also set your selling prices and earn profits on sales.
+            </p>
+            <p className="text-sm text-muted-foreground">Get started here or become an agent to unlock more benefits!</p>
+            <Button type="button" variant="outline" size="sm" onClick={() => setActiveMenu("become-agent")}>
+              Become an Agent
+            </Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -2097,9 +2112,11 @@ const renderApiDocs = () => (
     <Button type="button" variant={apiDocTab === "social-boost" ? "secondary" : "ghost"} className={apiDocTab === "social-boost" ? "bg-background" : ""} onClick={() => setApiDocTab("social-boost")}>Social Boost</Button>
     <Button type="button" variant={apiDocTab === "data-airtime" ? "secondary" : "ghost"} className={apiDocTab === "data-airtime" ? "bg-background" : ""} onClick={() => setApiDocTab("data-airtime")}>Data &amp; Airtime</Button>
     <Button type="button" variant={apiDocTab === "utilities" ? "secondary" : "ghost"} className={apiDocTab === "utilities" ? "bg-background" : ""} onClick={() => setApiDocTab("utilities")}>Utilities</Button>
+            <Button type="button" variant={apiDocTab === "bulk-sms" ? "secondary" : "ghost"} className={apiDocTab === "bulk-sms" ? "bg-background" : ""} onClick={() => setApiDocTab("bulk-sms")}>Bulk SMS</Button>
   </div>
   {apiDocTab === "data-airtime" && <PartnerServicesApiDocs variant="data-airtime" />}
   {apiDocTab === "utilities" && <PartnerServicesApiDocs variant="utilities" />}
+        {apiDocTab === "bulk-sms" && <PartnerServicesApiDocs variant="bulk-sms" />}
   {apiDocTab === "social-boost" && <Card className="border-cyan-500/30 bg-cyan-500/5">
   <CardHeader><CardTitle>Social Boost API</CardTitle><p className="text-sm text-muted-foreground">Source DataPlug Social Boost services from your own website or application. Your customers can purchase through your integration using your API wallet.</p></CardHeader>
   <CardContent className="space-y-5">

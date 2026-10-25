@@ -22,6 +22,8 @@ type SenderRow = {
   user_email: string | null;
   created_at: string;
   reviewed_at: string | null;
+  phone_number?: string | null;
+  source?: string | null;
 };
 
 const statusStyles: Record<SenderRow["status"], string> = {
@@ -270,9 +272,10 @@ export default function SmsAdmin() {
                 <div className="flex items-center gap-2">
                   <span className="font-mono font-semibold">{row.sender_id}</span>
                   <Badge variant="outline" className={statusStyles[row.status]}>{row.status}</Badge>
+                  {row.source === "api" && <Badge variant="secondary" className="text-[10px]">API</Badge>}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
-                  {row.user_email || "Unknown user"} · {new Date(row.created_at).toLocaleString()}
+                  {row.user_email || "Unknown user"}{row.phone_number ? ` · ${row.phone_number}` : ""} · {new Date(row.created_at).toLocaleString()}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -308,9 +311,10 @@ export default function SmsAdmin() {
                   <span className="font-mono font-semibold">{row.sender_id}</span>
                   <Badge variant="outline" className={statusStyles[row.status]}>{row.status}</Badge>
                   {row.is_global && <Badge variant="secondary" className="text-[10px]">Global</Badge>}
+                  {row.source === "api" && <Badge variant="secondary" className="text-[10px]">API</Badge>}
                 </div>
                 <p className="truncate text-xs text-muted-foreground">
-                  {row.is_global ? "Available to everyone" : row.user_email || "Unknown user"}
+                  {row.is_global ? "Available to everyone" : row.user_email || row.phone_number || "Unknown user"}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
