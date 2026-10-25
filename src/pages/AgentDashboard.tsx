@@ -54,6 +54,7 @@ import SubagentPricesManager from "@/components/SubagentPricesManager";
 import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
 import AgentDigitalServicesPricing from "@/components/AgentDigitalServicesPricing";
 import AgentProductStorePanel from "@/components/AgentProductStorePanel";
+import PublicProductsSection from "@/components/PublicProductsSection";
 import WeeklyOrderTargetMeter from "@/components/WeeklyOrderTargetMeter";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
@@ -125,6 +126,7 @@ const TELECEL_SIZES = [2, 3, 5, 10, 15, 20, 25, 30, 35, 40, 50, 100];
 
 const menuItems = [
   { id: "overview", label: "Overview", icon: BarChart3 },
+  { id: "marketplace", label: "Marketplace", icon: Store },
   { id: "refunds", label: "Refunds", icon: RotateCcw },
  { id: "approvals", label: "Submit for Approval", icon: Send },
   { id: "buy", label: "Buy Data", icon: ShoppingCart },
@@ -270,7 +272,7 @@ A live preview shows exactly how your store will look. Click Save to apply chang
 
 • Subagents are sellers who have their own store but operate under you.
 • When a subagent makes a sale, you earn a commission from their profit.
-������������������� You can view all your subagents, their store names, and contact info.
+��������������������� You can view all your subagents, their store names, and contact info.
 • Enable/disable subagent registration from Settings.
 
 Subagent Profit Split:
@@ -2629,6 +2631,7 @@ return (
           {/* ============================= OVERVIEW ============================= */}
           <TabsContent value="approvals" className="space-y-6 mt-0"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="agent-dashboard" storeId={store?.id} /></CardContent></Card></TabsContent>
   <TabsContent value="overview" className="space-y-6 mt-0">
+            <Card className="border-primary/30 bg-primary/5"><CardContent className="flex items-center justify-between gap-3 p-4"><div><p className="font-semibold">Marketplace</p><p className="text-sm text-muted-foreground">Browse products posted across the site by users and stores.</p></div><Button size="sm" onClick={() => setActiveTab("marketplace")}>Browse Marketplace</Button></CardContent></Card>
   <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="agent" /><Button type="button" size="sm" className="rounded-full border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setActiveTab("withdraw")}>Withdraw</Button></div>
   <WeeklyOrderTargetMeter storeId={store?.id} storeType="agent" />
   <Card className="hidden border-primary/30 bg-primary/5">
@@ -2910,6 +2913,8 @@ return (
             {/* API USER ORDERS SECTION */}
 
           </TabsContent>
+
+          <TabsContent value="marketplace" className="mt-0"><PublicProductsSection siteWide allProductsOnly /></TabsContent>
 
           {/* ============================= BUY DATA ============================= */}
           <TabsContent value="instant-data" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="instant" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>

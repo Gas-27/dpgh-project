@@ -30,6 +30,7 @@ import { useToast } from "@/hooks/use-toast";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
 import AgentProductStorePanel from "@/components/AgentProductStorePanel";
+import PublicProductsSection from "@/components/PublicProductsSection";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import CustomDomainPanel from "@/components/CustomDomainPanel";
 import DomainDashboardPanel from "@/components/DomainDashboardPanel";
@@ -2204,6 +2205,7 @@ const handleSaveStore = async () => {
   }
 
   const menuItems = [
+  { id: "marketplace", label: "Marketplace", icon: Store },
     { id: "overview", label: "Overview", icon: BarChart3 },
  { id: "approvals", label: "Submit for Approval", icon: Send },
     { id: "buy", label: "Buy Data", icon: ShoppingCart },
@@ -2492,7 +2494,9 @@ return (
 
           {/* OVERVIEW */}
           <TabsContent value="approvals" className="mt-0 space-y-6"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="subagent-dashboard" storeId={subagentStore?.id} /></CardContent></Card></TabsContent>
-<TabsContent value="overview" className="mt-0 space-y-6">
+<TabsContent value="marketplace" className="mt-0"><PublicProductsSection siteWide allProductsOnly /></TabsContent>
+          <TabsContent value="overview" className="mt-0 space-y-6">
+            <Card className="border-primary/30 bg-primary/5"><CardContent className="flex items-center justify-between gap-3 p-4"><div><p className="font-semibold">Marketplace</p><p className="text-sm text-muted-foreground">Browse products posted across the site by users and stores.</p></div><Button size="sm" onClick={() => setActiveTab("marketplace")}>Browse Marketplace</Button></CardContent></Card>
   <Button type="button" size="sm" className="rounded-full border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setActiveTab("withdraw")}>Withdraw</Button>
                         {/* Instruction Manual Dropdown */}
   <Card className="hidden border-primary/30 bg-primary/5">

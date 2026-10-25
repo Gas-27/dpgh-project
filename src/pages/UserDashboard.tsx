@@ -39,6 +39,8 @@ import SmsHistory from "@/components/SmsHistory";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
+import AgentProductStorePanel from "@/components/AgentProductStorePanel";
+import PublicProductsSection from "@/components/PublicProductsSection";
 import PromoCodesPanel from "@/components/PromoCodesPanel";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
@@ -227,6 +229,8 @@ const UserDashboard = () => {
 
   const menuItems = [
     { id: "overview", label: "Overview", icon: Home },
+{ id: "marketplace", label: "Marketplace", icon: Store },
+{ id: "post-product", label: "Post Product", icon: Tag },
  { id: "approvals", label: "Submit for Approval", icon: Send },
     { id: "buy-data", label: "Buy Data", icon: ShoppingCart },
     { id: "instant-data", label: "Instant Data", icon: Zap },
@@ -1001,8 +1005,12 @@ const UserDashboard = () => {
             switch (activeMenu) {
   case "approvals":
     return <Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="user-dashboard" /></CardContent></Card>;
-  case "overview":
-        return renderOverview();
+    case "overview":
+      return renderOverview();
+    case "marketplace":
+      return <PublicProductsSection siteWide allProductsOnly />;
+    case "post-product":
+      return <AgentProductStorePanel storeId={effectiveUserId} storeKind="customer" walletBalance={normalWallet} onWalletBalanceChange={() => {}} />;
       case "buy-data":
         return renderBuyData();
       case "instant-data":
@@ -1092,6 +1100,13 @@ case "api-key":
           )}
         </div>
       )}
+
+      <Card className="border-primary/30 bg-primary/5">
+        <CardContent className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div><p className="font-semibold text-foreground">Marketplace</p><p className="text-sm text-muted-foreground">Post products for sale across the site and reach agent, customer, subagent, and sub-subagent customers.</p></div>
+          <div className="flex gap-2"><Button size="sm" onClick={() => setActiveMenu("post-product")}>Post Product</Button><Button size="sm" variant="outline" onClick={() => setActiveMenu("marketplace")}>Browse Marketplace</Button></div>
+        </CardContent>
+      </Card>
 
       {/* Become an Agent CTA Card */}
       <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-pink-500/10">

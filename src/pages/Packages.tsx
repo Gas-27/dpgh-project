@@ -1557,7 +1557,7 @@ const searchOrders = async (input?: string) => {
   </Dialog>
   <div id="storefront-section-content" className="scroll-mt-6" />
         {activeCategory === "products" ? (
-          <PublicProductsSection siteWide />
+          <PublicProductsSection siteWide allProductsOnly />
         ) : activeCategory === "data" ? (
           <>
             <div className="mx-auto mb-6 w-full max-w-5xl">

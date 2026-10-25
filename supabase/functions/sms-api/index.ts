@@ -212,12 +212,16 @@ Deno.serve(async (request) => {
 
     if (request.method === "GET") {
       const price = await pricing();
-      const { data: senders } = await visibleSenders(user);
+      const [{ data: senders }, { data: officialSenders }] = await Promise.all([
+        visibleSenders(user),
+        admin.from("sms_sender_ids").select("id,sender_id,status,is_global,created_at,reviewed_at,source").eq("is_global", true).eq("status", "approved").order("sender_id"),
+      ]);
       return reply({
         success: true,
         pricing: { currency: "GHS", per_recipient: price.recipient, per_page: price.page, characters_per_page: 160 },
         balance: await readBalance(user.id),
         sender_ids: senders ?? [],
+        official_sender_ids: officialSenders ?? [],
       });
     }
     if (request.method !== "POST") return reply({ success: false, error: "Method not allowed" }, 405);

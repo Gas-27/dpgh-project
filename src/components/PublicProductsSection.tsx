@@ -45,6 +45,7 @@ export default function PublicProductsSection({
   storeId,
   storeKind,
   siteWide = false,
+  allProductsOnly = false,
 }: {
   supportPhone?: string | null;
   storeId?: string | null;
@@ -56,7 +57,7 @@ export default function PublicProductsSection({
   const [storeProducts, setStoreProducts] = useState<PublicProduct[]>([]);
   const [globalTotal, setGlobalTotal] = useState(0);
   const [storeTotal, setStoreTotal] = useState(0);
-  const [catalog, setCatalog] = useState<"store" | "global">("store");
+  const [catalog, setCatalog] = useState<"store" | "global">(allProductsOnly ? "global" : "store");
   const [selected, setSelected] = useState<PublicProduct | null>(null);
   const [image, setImage] = useState(0);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
@@ -167,7 +168,7 @@ export default function PublicProductsSection({
         <CardContent className="p-3 sm:p-6">
           <div className="mb-6 text-center">
             <h2 className="font-display text-2xl font-bold">Products</h2>
-            <Tabs
+            {!allProductsOnly && <Tabs
               value={catalog}
               onValueChange={(value) => {
                 setCatalog(value as "store" | "global");
@@ -177,9 +178,9 @@ export default function PublicProductsSection({
             >
               <TabsList className="grid w-full grid-cols-2">
                 <TabsTrigger value="store">Store Products</TabsTrigger>
-                <TabsTrigger value="global">All Products</TabsTrigger>
+                <TabsTrigger value="global">All Marketplace Products</TabsTrigger>
               </TabsList>
-            </Tabs>
+            </Tabs>}
             <input
               value={searchQuery}
               onChange={(event) => {
