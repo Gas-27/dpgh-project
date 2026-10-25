@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
+import { ProductComments, ReportProductButton } from "@/components/ProductReportAndComments";
 
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "product";
@@ -16,6 +17,13 @@ export default function ProductDetail() {
   const [store, setStore] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
+  const [signedIn, setSignedIn] = useState(false);
+
+  useEffect(() => {
+    void supabase.auth.getSession().then(({ data }) => setSignedIn(Boolean(data.session)));
+    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => setSignedIn(Boolean(session)));
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,8 +116,9 @@ export default function ProductDetail() {
           {expandedImage && <img src={expandedImage} alt={`${product.title} enlarged`} className="max-h-[85vh] w-full object-contain" />}
         </DialogContent>
       </Dialog>
-      <div className="flex flex-col justify-center gap-4"><p className="text-sm text-muted-foreground">{store?.store_name}</p><h1 className="text-3xl font-bold text-balance">{product.title}</h1><p className="text-2xl font-semibold text-primary">GHS {Number(product.price).toFixed(2)}</p><p className="whitespace-pre-wrap text-muted-foreground">{product.description}</p>{digits ? <Button asChild><a href={`https://wa.me/${digits}?text=${message}`} target="_blank" rel="noopener noreferrer">Buy on WhatsApp</a></Button> : <p className="text-sm text-muted-foreground">Contact the seller for purchase details.</p>}<Button variant="outline" onClick={() => navigate(-1)}>Back to products</Button></div>
+      <div className="flex flex-col justify-center gap-4"><p className="text-sm text-muted-foreground">{store?.store_name}</p><h1 className="text-3xl font-bold text-balance">{product.title}</h1><p className="text-2xl font-semibold text-primary">GHS {Number(product.price).toFixed(2)}</p><p className="whitespace-pre-wrap text-muted-foreground">{product.description}</p>{digits ? <Button asChild><a href={`https://wa.me/${digits}?text=${message}`} target="_blank" rel="noopener noreferrer">Buy on WhatsApp</a></Button> : <p className="text-sm text-muted-foreground">Contact the seller for purchase details.</p>}<Button variant="outline" onClick={() => navigate(-1)}>Back to products</Button>{product.store_kind && <ReportProductButton productId={product.id} signedIn={signedIn} />}</div>
     </CardContent></Card>
+    {product.store_kind && <Card className="mt-4"><CardContent className="p-5 md:p-8"><ProductComments productId={product.id} signedIn={signedIn} /></CardContent></Card>}
   </main>;
 }
 

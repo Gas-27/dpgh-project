@@ -54,6 +54,7 @@ import SubagentPricesManager from "@/components/SubagentPricesManager";
 import AgentAFAPriceManager from "@/components/AgentAFAPriceManager";
 import AgentDigitalServicesPricing from "@/components/AgentDigitalServicesPricing";
 import AgentProductStorePanel from "@/components/AgentProductStorePanel";
+import MarketplaceBanner from "@/components/MarketplaceBanner";
 import PublicProductsSection from "@/components/PublicProductsSection";
 import WeeklyOrderTargetMeter from "@/components/WeeklyOrderTargetMeter";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
@@ -2631,7 +2632,7 @@ return (
           {/* ============================= OVERVIEW ============================= */}
           <TabsContent value="approvals" className="space-y-6 mt-0"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="agent-dashboard" storeId={store?.id} /></CardContent></Card></TabsContent>
   <TabsContent value="overview" className="space-y-6 mt-0">
-            <Card className="border-primary/30 bg-primary/5"><CardContent className="flex items-center justify-between gap-3 p-4"><div><p className="font-semibold">Marketplace</p><p className="text-sm text-muted-foreground">Browse products posted across the site by users and stores.</p></div><Button size="sm" onClick={() => setActiveTab("marketplace")}>Browse Marketplace</Button></CardContent></Card>
+            <MarketplaceBanner onPost={() => setActiveTab("products")} onBrowse={() => setActiveTab("marketplace")} />
   <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="agent" /><Button type="button" size="sm" className="rounded-full border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setActiveTab("withdraw")}>Withdraw</Button></div>
   <WeeklyOrderTargetMeter storeId={store?.id} storeType="agent" />
   <Card className="hidden border-primary/30 bg-primary/5">
