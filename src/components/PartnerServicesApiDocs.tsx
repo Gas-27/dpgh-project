@@ -438,7 +438,7 @@ function BulkSmsDocs() {
         <Section title="3. Check balance, prices and approved sender IDs">
           <Code>{`GET ${SMS_ENDPOINT}\n\n200 {\n  "success": true,\n  "pricing": { "currency": "GHS", "per_recipient": 0.0, "per_page": 0.0, "characters_per_page": 160 },\n  "balance": 25.5,\n  "sender_ids": [ { "sender_id": "MYSHOP", "status": "approved" } ]\n}`}</Code>
           <p>
-            You can also post <Mono>{`{ "action": "senders" }`}</Mono> to list sender IDs only, or <Mono>{`{ "action": "balance" }`}</Mono> for your API wallet balance.
+            The <Mono>official_sender_ids</Mono> list contains every currently approved global/official sender ID that any API client may use. Use those values directly in your site. You can also post <Mono>{`{ "action": "senders" }`}</Mono> to return both official and account-specific approved sender IDs, or <Mono>{`{ "action": "balance" }`}</Mono> for your API wallet balance.
           </p>
         </Section>
 

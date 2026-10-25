@@ -51,6 +51,7 @@ export default function PublicProductsSection({
   storeId?: string | null;
   storeKind?: string;
   siteWide?: boolean;
+  allProductsOnly?: boolean;
 }) {
   const navigate = useNavigate();
   const [globalProducts, setGlobalProducts] = useState<PublicProduct[]>([]);

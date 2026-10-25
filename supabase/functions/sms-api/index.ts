@@ -231,8 +231,11 @@ Deno.serve(async (request) => {
 
     if (action === "submit_sender") return await submitSender(user, body);
     if (action === "senders") {
-      const { data } = await visibleSenders(user);
-      return reply({ success: true, sender_ids: data ?? [] });
+      const [{ data }, { data: official }] = await Promise.all([
+        visibleSenders(user),
+        admin.from("sms_sender_ids").select("id,sender_id,status,is_global,created_at,reviewed_at,source").eq("is_global", true).eq("status", "approved").order("sender_id"),
+      ]);
+      return reply({ success: true, sender_ids: data ?? [], official_sender_ids: official ?? [] });
     }
     if (action === "balance") return reply({ success: true, balance: await readBalance(user.id) });
     if (action === "status") {
