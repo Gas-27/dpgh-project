@@ -33,16 +33,24 @@ export default function PrivateSubscriptionCheckout() {
     if (!reference || searchParams.get("payment") !== "subscription") return;
     let cancelled = false;
     setPaymentState({ status: "checking" });
-    (async () => {
-      const { data, error } = await supabase.functions.invoke("verify-payment", { body: { reference, payment_type: "service_payment", metadata: { type: "service_payment", service_payment: true, service_id: serviceId, service_type: "private_shared" } } });
-      if (cancelled) return;
-      if (error || !data?.payment_confirmed) { setPaymentState({ status: "error" }); return; }
-      if (data.credentials_ready) {
-        setPaymentState({ status: "paid", login: data.login_identifier, password: data.login_password, instructions: data.customer_instructions });
-      } else if (data.verification_required && data.verification_email) {
-        setPaymentState({ status: "verification", verificationEmail: data.verification_email, assignmentId: data.assignment_id, instructions: data.customer_instructions });
-      } else setPaymentState({ status: "pending", instructions: data.customer_instructions });
-    })();
+
+    const verifyPayment = async () => {
+      let lastError: unknown = null;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        const { data, error } = await supabase.functions.invoke("verify-payment", { body: { reference, payment_type: "service_payment", metadata: { type: "service_payment", service_payment: true, service_id: serviceId, service_type: "private_shared" } } });
+        if (cancelled) return;
+        if (!error && data?.payment_confirmed) {
+          if (data.credentials_ready) setPaymentState({ status: "paid", login: data.login_identifier, password: data.login_password, instructions: data.customer_instructions });
+          else if (data.verification_required && data.verification_email) setPaymentState({ status: "verification", verificationEmail: data.verification_email, assignmentId: data.assignment_id, instructions: data.customer_instructions });
+          else setPaymentState({ status: "pending", instructions: data.customer_instructions });
+          return;
+        }
+        lastError = error || new Error("Payment is not confirmed yet");
+        if (attempt < 2) await new Promise((resolve) => window.setTimeout(resolve, 1500 * (attempt + 1)));
+      }
+      if (!cancelled) setPaymentState({ status: "error", instructions: lastError instanceof Error && /network|fetch|disconnected|failed to send/i.test(lastError.message) ? "Your payment reference was received, but the verification service is temporarily unreachable. Keep this page open and try again." : "Your payment may still be processing. Try checking again in a moment." });
+    };
+    void verifyPayment();
     return () => { cancelled = true; };
   }, [searchParams, serviceId]);
 
@@ -90,6 +98,6 @@ export default function PrivateSubscriptionCheckout() {
           {paymentState.status === "paid" && <div className="mt-5 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950"><strong>Your private login is ready</strong><div><span className="font-semibold">Email / username:</span> {paymentState.login}</div><div><span className="font-semibold">Password:</span> {paymentState.password}</div>{paymentState.instructions && <p className="border-t border-emerald-200 pt-3">{paymentState.instructions}</p>}</div>}
           {paymentState.status === "verification" && <div className="mt-5 space-y-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950"><strong>Email verification required</strong><p>Use this assigned email on {service.name}: <span className="font-semibold break-all">{paymentState.verificationEmail}</span></p><p>Return to the service and request the verification email. When you have requested the code, come back here and check for it.</p>{paymentState.verificationCode ? <div className="rounded-lg border border-blue-300 bg-white p-3 text-center"><span className="block text-xs font-semibold uppercase tracking-wide text-blue-700">Verification code</span><span className="text-2xl font-black tracking-[0.3em]">{paymentState.verificationCode}</span></div> : !paymentState.verificationRequestId ? <Button type="button" onClick={requestVerificationCode} disabled={verificationLoading} className="w-full bg-[#2864e8] hover:bg-[#1d52ca]">{verificationLoading ? "Preparing verification..." : "I requested the code — check here"}</Button> : <Button type="button" onClick={pollVerificationCode} disabled={verificationLoading} className="w-full bg-[#2864e8] hover:bg-[#1d52ca]">{verificationLoading ? "Checking..." : "Show verification code"}</Button>}{paymentState.instructions && <p className="border-t border-blue-200 pt-3">{paymentState.instructions}</p>}</div>}
           {paymentState.status === "pending" && <div className="mt-5 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><strong>Payment verified — verification pending</strong><p className="mt-1">Your payment is confirmed, but the administrator has not added the login password yet. Please return later or contact support.</p>{paymentState.instructions && <p className="mt-2 border-t border-amber-200 pt-2">{paymentState.instructions}</p>}</div>}
-          {paymentState.status === "error" && <div className="mt-5 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900">We could not verify this payment yet. Keep your Paystack receipt and contact support if this continues.</div>}
-          {paymentState.status !== "paid" && <Button onClick={startPaystackCheckout} disabled={purchaseLoading || paymentState.status === "checking"} className="mt-5 w-full bg-[#2864e8] hover:bg-[#1d52ca]">{purchaseLoading ? "Opening secure checkout..." : `Pay with Paystack — GHS ${(Number.isFinite(storefrontPrice) && storefrontPrice > 0 ? storefrontPrice : Number(service.price)).toFixed(2)}`}</Button>}</section></div></div></main>;
+          {paymentState.status === "error" && <div className="mt-5 space-y-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900"><strong>Payment verification is temporarily unavailable</strong><p>{paymentState.instructions || "We could not verify this payment yet. Keep your Paystack receipt and try again."}</p><Button type="button" onClick={() => window.location.reload()} className="w-full bg-red-700 hover:bg-red-800">Check payment again</Button></div>}
+          {paymentState.status !== "paid" && paymentState.status !== "error" && <Button onClick={startPaystackCheckout} disabled={purchaseLoading || paymentState.status === "checking"} className="mt-5 w-full bg-[#2864e8] hover:bg-[#1d52ca]">{purchaseLoading ? "Opening secure checkout..." : `Pay with Paystack — GHS ${(Number.isFinite(storefrontPrice) && storefrontPrice > 0 ? storefrontPrice : Number(service.price)).toFixed(2)}`}</Button>}</section></div></div></main>;
 }
