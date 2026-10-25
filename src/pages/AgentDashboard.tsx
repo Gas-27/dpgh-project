@@ -2915,7 +2915,7 @@ return (
 
           </TabsContent>
 
-          <TabsContent value="marketplace" className="mt-0"><PublicProductsSection siteWide allProductsOnly /></TabsContent>
+          <TabsContent value="marketplace" className="mt-0"><PublicProductsSection siteWide allProductsOnly onCancel={() => setActiveTab("overview")} /></TabsContent>
 
           {/* ============================= BUY DATA ============================= */}
           <TabsContent value="instant-data" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="instant" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>

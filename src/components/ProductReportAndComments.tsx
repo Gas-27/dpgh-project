@@ -1,5 +1,4 @@
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
 import { Flag, Loader2, Send } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -37,10 +36,6 @@ export function ReportProductButton({ productId, signedIn }: { productId: string
     toast({ title: "Report sent", description: "Thank you. Our team will review this post." });
     setOpen(false);
     setNote("");
-  }
-
-  if (!signedIn) {
-    return <Button variant="ghost" asChild><Link to="/login"><Flag className="mr-2 h-4 w-4" />Sign in to report this post</Link></Button>;
   }
 
   return (
@@ -108,15 +103,11 @@ export function ProductComments({ productId, signedIn }: { productId: string; si
   return (
     <section className="mt-6 border-t pt-6" aria-labelledby="comments-heading">
       <h2 id="comments-heading" className="text-lg font-semibold">Comments ({comments.length})</h2>
-      {signedIn ? (
-        <form className="mt-3 flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); void post(); }}>
+      <form className="mt-3 flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); void post(); }}>
           <Label htmlFor="comment-body" className="sr-only">Write a comment</Label>
           <Textarea id="comment-body" value={body} onChange={(e) => setBody(e.target.value)} maxLength={500} placeholder="Write a comment about this post" />
           <Button type="submit" size="sm" className="self-end" disabled={posting || !body.trim()}>{posting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Post comment</Button>
         </form>
-      ) : (
-        <p className="mt-3 text-sm text-muted-foreground"><Link to="/login" className="text-primary underline">Sign in</Link> to leave a comment.</p>
-      )}
       <div className="mt-4 space-y-3">
         {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : comments.length === 0 ? <p className="text-sm text-muted-foreground">No comments yet.</p> : comments.map((comment) => (
           <div key={comment.id} className="rounded-lg border p-3">

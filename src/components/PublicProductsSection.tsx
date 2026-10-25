@@ -46,12 +46,14 @@ export default function PublicProductsSection({
   storeKind,
   siteWide = false,
   allProductsOnly = false,
+  onCancel,
 }: {
   supportPhone?: string | null;
   storeId?: string | null;
   storeKind?: string;
   siteWide?: boolean;
   allProductsOnly?: boolean;
+  onCancel?: () => void;
 }) {
   const navigate = useNavigate();
   const [globalProducts, setGlobalProducts] = useState<PublicProduct[]>([]);
@@ -168,7 +170,7 @@ export default function PublicProductsSection({
       <Card className="border-primary/30">
         <CardContent className="p-3 sm:p-6">
           <div className="mb-6 text-center">
-            <h2 className="font-display text-2xl font-bold">Products</h2>
+            <div className="flex items-center justify-between gap-3"><h2 className="font-display text-2xl font-bold">Products</h2>{onCancel && <Button type="button" variant="outline" size="sm" onClick={onCancel}>Cancel</Button>}</div>
             {!allProductsOnly && <Tabs
               value={catalog}
               onValueChange={(value) => {

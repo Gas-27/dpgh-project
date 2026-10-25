@@ -2495,7 +2495,7 @@ return (
 
           {/* OVERVIEW */}
           <TabsContent value="approvals" className="mt-0 space-y-6"><Card><CardHeader><CardTitle>Submit a number for approval</CardTitle></CardHeader><CardContent><OrderNumberApprovalForm source="subagent-dashboard" storeId={subagentStore?.id} /></CardContent></Card></TabsContent>
-<TabsContent value="marketplace" className="mt-0"><PublicProductsSection siteWide allProductsOnly /></TabsContent>
+<TabsContent value="marketplace" className="mt-0"><PublicProductsSection siteWide allProductsOnly onCancel={() => setActiveTab("overview")} /></TabsContent>
           <TabsContent value="overview" className="mt-0 space-y-6">
             <MarketplaceBanner onPost={() => setActiveTab("products")} onBrowse={() => setActiveTab("marketplace")} />
   <Button type="button" size="sm" className="rounded-full border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setActiveTab("withdraw")}>Withdraw</Button>

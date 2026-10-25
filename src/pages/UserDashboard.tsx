@@ -985,10 +985,10 @@ const UserDashboard = () => {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveMenu(tab.id)}
+              onClick={() => setActiveMenu(activeMenu === tab.id ? "overview" : tab.id)}
               className={`rounded-full border px-3 py-2 text-sm font-semibold transition hover:brightness-95 ${tab.className}`}
             >
-              {tab.label}
+              {activeMenu === tab.id ? "Overview" : tab.label}
             </button>
           ))}
         </div>
@@ -1009,7 +1009,7 @@ const UserDashboard = () => {
     case "overview":
       return renderOverview();
     case "marketplace":
-      return <PublicProductsSection siteWide allProductsOnly />;
+      return <PublicProductsSection siteWide allProductsOnly onCancel={() => setActiveMenu("overview")} />;
     case "post-product":
       return <AgentProductStorePanel storeId={effectiveUserId} storeKind="customer" walletBalance={normalWallet} onWalletBalanceChange={() => {}} />;
       case "buy-data":
