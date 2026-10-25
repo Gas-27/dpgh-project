@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
-type SmsHistoryProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string };
+type SmsHistoryProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; apiUserIds?: string[] };
 type SmsRow = { id: string; sender_id: string; recipients: string[] | null; message: string; status: string; total_charge: number | null; created_at: string; completed_at?: string | null; provider_response?: unknown; provider_message_ids?: string[] | null; last_delivery_check_at?: string | null };
 
 const getMessageIds = (response: unknown) => {
@@ -14,7 +14,7 @@ const getMessageIds = (response: unknown) => {
   return response.map((item: any) => item?.message_id || item?.body?.messageId || item?.body?.message_id || item?.body?.data?.messageId).filter(Boolean);
 };
 
-export default function SmsHistory({ ownerType, ownerId }: SmsHistoryProps) {
+export default function SmsHistory({ ownerType, ownerId, apiUserIds = [] }: SmsHistoryProps) {
   const { toast } = useToast();
   const [rows, setRows] = useState<SmsRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -23,7 +23,13 @@ export default function SmsHistory({ ownerType, ownerId }: SmsHistoryProps) {
   const load = useCallback(async (checkDelivery = false) => {
     if (!ownerId) return;
     setRefreshing(checkDelivery);
-    let query = supabase.from("sms_messages").select("id,sender_id,recipients,message,status,total_charge,created_at,completed_at,provider_response,provider_message_ids,last_delivery_check_at").eq("owner_type", ownerType).eq("owner_id", ownerId).order("created_at", { ascending: false }).limit(50);
+    let query = supabase.from("sms_messages").select("id,sender_id,recipients,message,status,total_charge,created_at,completed_at,provider_response,provider_message_ids,last_delivery_check_at").eq("owner_type", ownerType).order("created_at", { ascending: false }).limit(50);
+    const safeApiUserIds = apiUserIds.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
+    if (safeApiUserIds.length) {
+      query = query.or(`owner_id.eq.${ownerId},api_user_id.in.(${safeApiUserIds.join(",")})`);
+    } else {
+      query = query.eq("owner_id", ownerId);
+    }
     const { data, error } = await query;
     if (error) toast({ title: "Could not load SMS history", description: error.message, variant: "destructive" });
     let next = (data || []) as SmsRow[];
@@ -45,7 +51,7 @@ export default function SmsHistory({ ownerType, ownerId }: SmsHistoryProps) {
     setRows(next);
     setLoading(false);
     setRefreshing(false);
-  }, [ownerId, ownerType, toast]);
+  }, [apiUserIds, ownerId, ownerType, toast]);
 
   useEffect(() => { void load(); }, [load]);
 

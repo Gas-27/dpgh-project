@@ -270,7 +270,7 @@ A live preview shows exactly how your store will look. Click Save to apply chang
 
 • Subagents are sellers who have their own store but operate under you.
 • When a subagent makes a sale, you earn a commission from their profit.
-����������������� You can view all your subagents, their store names, and contact info.
+������������������� You can view all your subagents, their store names, and contact info.
 • Enable/disable subagent registration from Settings.
 
 Subagent Profit Split:
@@ -490,8 +490,9 @@ const localNumber = number.replace(/\D/g, "");
   const [apiKey, setApiKey] = useState<string | null>(null);
   const [wallet, setWallet] = useState<number>(0);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
-  const [loadingApiKey, setLoadingApiKey] = useState(true);
-  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+ const [loadingApiKey, setLoadingApiKey] = useState(true);
+ const [smsApiUserIds, setSmsApiUserIds] = useState<string[]>([]);
+ const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
 
   // Refund state for subagent orders
@@ -555,6 +556,7 @@ const localNumber = number.replace(/\D/g, "");
       const { data: apiUser } = user?.id
         ? await supabase.from("api_users").select("id, identity_id").eq("identity_id", user.id).eq("is_agent", true).maybeSingle()
         : { data: null };
+      setSmsApiUserIds([apiUser?.id, apiUser?.identity_id].filter((value): value is string => Boolean(value)));
       const apiOwnerIds = [user?.id, apiUser?.id, apiUser?.identity_id].filter(Boolean);
       const apiOwnerFilter = apiOwnerIds.length ? apiOwnerIds.map((id) => `user_id.eq.${id}`).join(",") : `agent_store_id.eq.${store.id}`;
       const [rpcResult, apiResult] = await Promise.all([
@@ -3638,7 +3640,7 @@ return (
 
           {/* ============================= SMS ============================= */}
           <TabsContent value="sms" className="space-y-6 mt-0">
-            <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="agent" ownerId={store?.id} storeUrl={storeUrl} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="agent" ownerId={store?.id} /></TabsContent></Tabs>
+            <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="agent" ownerId={store?.id} storeUrl={storeUrl} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="agent" ownerId={store?.id} apiUserIds={smsApiUserIds} /></TabsContent></Tabs>
           </TabsContent>
 
           {/* ============================= TOP UP ============================= */}
