@@ -1,5 +1,8 @@
 {
   "rewrites": [
+    { "source": "/marketplace/product/:productId/:slug", "destination": "/api/product-og?id=:productId" },
+    { "source": "/marketplace/product/:productId", "destination": "/api/product-og?id=:productId" },
+    { "source": "/store/:storeName/product/:productId", "destination": "/api/product-og?id=:productId" },
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "headers": [
