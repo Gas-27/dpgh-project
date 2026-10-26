@@ -4,7 +4,7 @@ const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
 const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
 
-export const corsHeaders = {
+const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Cache-Control": "no-store",
@@ -54,7 +54,10 @@ Deno.serve(async (req) => {
         .from("api_users")
         .update({ api_key: newApiKey, updated_at: new Date().toISOString() })
         .eq("id", existing.id);
-      if (updateError) return json({ error: "Unable to generate API key" }, 400);
+      if (updateError) {
+        console.error("[generate-api-key] update failed:", updateError.message);
+        return json({ error: "Unable to generate API key" }, 500);
+      }
     } else {
       const { error: insertError } = await supabase.from("api_users").insert({
         identity_id: user.id,
@@ -62,9 +65,16 @@ Deno.serve(async (req) => {
         is_agent: Boolean(body.is_agent),
         is_user: Boolean(body.is_user),
         wallet: 0,
+        custom_price: false,
+        rate_limit: 100,
+        order_count: 0,
+        active: true,
         updated_at: new Date().toISOString(),
       });
-      if (insertError) return json({ error: "Unable to generate API key" }, 400);
+      if (insertError) {
+        console.error("[generate-api-key] insert failed:", insertError.message);
+        return json({ error: "Unable to generate API key" }, 500);
+      }
     }
 
     const { data: walletRow, error: walletError } = await supabase
@@ -72,9 +82,15 @@ Deno.serve(async (req) => {
       .select("wallet")
       .eq("identity_id", user.id)
       .maybeSingle();
-    if (walletError || !walletRow) return json({ error: "Unable to generate API key" }, 400);
+    if (walletError || !walletRow) return json({ error: "Unable to generate API key" }, 500);
 
-    return json({ data: { api_key: newApiKey, wallet: Number(walletRow?.wallet || 0) } }, 200);
+    return json(
+      {
+        success: true,
+        data: { api_key: newApiKey, identity_id: user.id, wallet: Number(walletRow.wallet || 0) },
+      },
+      200,
+    );
   } catch {
     return json({ error: "Internal server error" }, 500);
   }
