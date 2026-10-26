@@ -49,24 +49,32 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     // Never touch the wallet balance when rotating a key.
-    const query = existing
-      ? supabase
-          .from("api_users")
-          .update({ api_key: newApiKey, updated_at: new Date().toISOString() })
-          .eq("identity_id", user.id)
-      : supabase.from("api_users").insert({
-          identity_id: user.id,
-          api_key: newApiKey,
-          is_agent: Boolean(body.is_agent),
-          is_user: Boolean(body.is_user),
-          wallet: 0,
-          updated_at: new Date().toISOString(),
-        });
+    if (existing) {
+      const { error: updateError } = await supabase
+        .from("api_users")
+        .update({ api_key: newApiKey, updated_at: new Date().toISOString() })
+        .eq("id", existing.id);
+      if (updateError) return json({ error: "Unable to generate API key" }, 400);
+    } else {
+      const { error: insertError } = await supabase.from("api_users").insert({
+        identity_id: user.id,
+        api_key: newApiKey,
+        is_agent: Boolean(body.is_agent),
+        is_user: Boolean(body.is_user),
+        wallet: 0,
+        updated_at: new Date().toISOString(),
+      });
+      if (insertError) return json({ error: "Unable to generate API key" }, 400);
+    }
 
-    const { data, error } = await query.select("wallet").single();
-    if (error) return json({ error: "Unable to generate API key" }, 400);
+    const { data: walletRow, error: walletError } = await supabase
+      .from("api_users")
+      .select("wallet")
+      .eq("identity_id", user.id)
+      .maybeSingle();
+    if (walletError || !walletRow) return json({ error: "Unable to generate API key" }, 400);
 
-    return json({ data: { api_key: newApiKey, wallet: data?.wallet || 0 } }, 200);
+    return json({ data: { api_key: newApiKey, wallet: Number(walletRow?.wallet || 0) } }, 200);
   } catch {
     return json({ error: "Internal server error" }, 500);
   }

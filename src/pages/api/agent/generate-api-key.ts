@@ -56,19 +56,17 @@ export default async function handler(
           updated_at: new Date().toISOString(),
         });
 
-    const { data, error } = await query.select('wallet').single();
+    const { error } = await query;
+    if (error) return res.status(400).json({ error: 'Unable to generate API key' });
 
-    if (error) {
-      console.error('[API] Error saving API key');
-      return res.status(400).json({ error: 'Unable to generate API key' });
-    }
+    const { data: walletRow, error: walletError } = await supabase
+      .from('api_users')
+      .select('wallet')
+      .eq('identity_id', identityId)
+      .maybeSingle();
+    if (walletError || !walletRow) return res.status(400).json({ error: 'Unable to generate API key' });
 
-    return res.status(200).json({
-      data: {
-        api_key: apiKey,
-        wallet: data?.wallet || 0,
-      },
-    });
+    return res.status(200).json({ data: { api_key: apiKey, wallet: Number(walletRow.wallet || 0) } });
   } catch {
     return res.status(500).json({ error: 'Internal server error' });
   }
