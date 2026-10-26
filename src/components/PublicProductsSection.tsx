@@ -12,6 +12,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { buildWhatsAppProductLink } from "@/lib/whatsappProductMessage";
+import { cn } from "@/lib/utils";
 import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Phone, BadgeCheck } from "lucide-react";
 
 type PublicProduct = {
@@ -41,7 +42,9 @@ export default function PublicProductsSection({
   siteWide = false,
   allProductsOnly = false,
   onCancel,
+  className,
 }: {
+  className?: string;
   supportPhone?: string | null;
   storeId?: string | null;
   storeKind?: string;
@@ -155,8 +158,8 @@ export default function PublicProductsSection({
   };
 
   return (
-    <div className={onCancel ? "-mx-4 w-auto pb-20 sm:mx-0 sm:w-full" : "w-full px-2 pb-20 sm:px-0"}>
-      <Card className={onCancel ? "rounded-none border-x-0 border-primary/30 sm:rounded-lg sm:border-x" : "border-primary/30"}>
+    <div className={cn(onCancel ? "-mx-4 w-auto pb-20 sm:mx-0 sm:w-full" : "w-full pb-20", className)}>
+      <Card className="rounded-none border-x-0 border-primary/30 sm:rounded-lg sm:border-x">
         <CardContent className="p-3 sm:p-6">
           <div className="mb-6 text-center">
             <div className="flex items-center justify-between gap-3"><h2 className="font-display text-2xl font-bold">Products</h2>{onCancel && <Button type="button" variant="outline" size="sm" onClick={onCancel}>Cancel</Button>}</div>
