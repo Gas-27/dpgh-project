@@ -715,54 +715,37 @@ const UserDashboard = () => {
   const generateApiKey = async () => {
     if (generatingApiKey) return;
     setGeneratingApiKey(true);
+    const wasRegeneration = Boolean(apiKey);
     try {
-      const array = new Uint8Array(32);
-      globalThis.crypto.getRandomValues(array);
-      const newApiKey = 'pk_live_' + Array.from(array)
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("Your session has expired. Please sign in again.");
 
-      const { data: existingData } = await supabase
-        .from("api_users")
-        .select("wallet")
-        .eq("identity_id", effectiveUserId)
-        .maybeSingle();
-
-      const existingApiWallet = existingData?.wallet || 0;
-
-      const upsertData: any = {
-        identity_id: effectiveUserId,
-        api_key: newApiKey,
-        is_agent: false,
-        is_user: true,
-        wallet: existingApiWallet,
-        updated_at: new Date().toISOString(),
-        role: 'user',
-        // Populate profile fields so admin can search by name/email
-        ...(user?.email && { email: user.email, user_email: user.email }),
-        ...(user?.user_metadata?.full_name && { full_name: user.user_metadata.full_name }),
-        ...(user?.user_metadata?.name && !user?.user_metadata?.full_name && { full_name: user.user_metadata.name }),
-      };
-
-      const { data, error } = await supabase
-        .from("api_users")
-        .upsert(upsertData, {
-          onConflict: 'identity_id'
-        })
-        .select()
-        .single();
-
-      if (error) {
-        console.error("[v0] Error:", error);
-        toast({ title: "Error", description: error.message || "Failed to generate API key", variant: "destructive" });
-      } else {
-        setApiKey(newApiKey);
-        setApiWallet(existingApiWallet);
-        toast({ title: "Success", description: apiKey || newApiKey ? "API key regenerated successfully" : "API key generated successfully", variant: "default" });
+      const response = await fetch("/api/agent/generate-api-key", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ is_user: true }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.data?.api_key) {
+        throw new Error(result.error || "Failed to generate API key");
       }
+
+      // The server replaces api_key atomically, so the previous key is invalid immediately.
+      setApiKey(result.data.api_key);
+      setApiWallet(Number(result.data.wallet || 0));
+      setShowApiKey(true);
+      toast({
+        title: "Success",
+        description: wasRegeneration ? "API key regenerated. Your previous key is no longer valid." : "API key generated successfully",
+        variant: "default",
+      });
     } catch (err) {
-      console.error("[v0] Error generating API key:", err);
-      toast({ title: "Error", description: "Failed to generate API key", variant: "destructive" });
+      const message = err instanceof Error ? err.message : "Failed to generate API key";
+      toast({ title: "Error", description: message, variant: "destructive" });
     } finally {
       setGeneratingApiKey(false);
     }

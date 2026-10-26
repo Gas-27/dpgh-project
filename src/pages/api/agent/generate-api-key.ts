@@ -34,11 +34,12 @@ export default async function handler(
     const { is_agent, is_user } = req.body || {};
     const apiKey = 'pk_live_' + crypto.randomBytes(32).toString('hex');
 
-    const { data: existing } = await supabase
+    const { data: existing, error: lookupError } = await supabase
       .from('api_users')
       .select('id')
       .eq('identity_id', identityId)
       .maybeSingle();
+    if (lookupError) return res.status(500).json({ error: 'Unable to generate API key' });
 
     // Never touch the wallet balance when rotating a key.
     const query = existing
