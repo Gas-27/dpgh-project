@@ -2825,6 +2825,7 @@ handleMobileNumberChange(digits);
                       { key: "mtn_express", label: "MTN Express" },
                       { key: "airteltigo", label: "AirtelTigo" },
                       { key: "telecel", label: "Telecel" },
+                      { key: "telecel_special", label: "Telecel Special" },
                     ].map(({ key, label }) => (
                       <Button 
                         key={key} 

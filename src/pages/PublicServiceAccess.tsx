@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useLocation, useNavigate, useParams } from "react-router-dom";
+import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Copy, Eye, EyeOff, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ export default function PublicServiceAccess() {
   const { serviceId } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const { toast } = useToast();
   const [service, setService] = useState<Service | null>(null);
   const [loading, setLoading] = useState(true);
@@ -49,6 +50,26 @@ export default function PublicServiceAccess() {
     return () => { cancelled = true; };
   }, [serviceId]);
 
+  useEffect(() => {
+    if (searchParams.get("service_payment") !== "verifying" || !serviceId) return;
+    const pendingRaw = sessionStorage.getItem("pending_service_payment");
+    const reference = pendingRaw ? (JSON.parse(pendingRaw) as { reference?: string }).reference : null;
+    if (!reference) return;
+    let cancelled = false;
+    supabase.functions.invoke("verify-payment", { body: { reference } }).then(async ({ data, error }) => {
+      if (cancelled) return;
+      if (error || data?.error) { setError(data?.error || "Payment could not be verified yet. Please try again."); return; }
+      sessionStorage.removeItem("pending_service_payment");
+      const pending = pendingRaw ? JSON.parse(pendingRaw) as { phone?: string; pin?: string } : {};
+      const accessResult = await supabase.functions.invoke("activate-service", { body: { service_id: serviceId, phone: pending.phone, pin: pending.pin } });
+      if (accessResult.error || (!accessResult.data?.credential && !accessResult.data?.credentials?.length)) { setError(accessResult.data?.error || "Payment was confirmed, but access details are not ready yet."); return; }
+      setPhone(pending.phone || "");
+      setPin(pending.pin || "");
+      setCredentials(accessResult.data.credentials || (accessResult.data.credential ? [accessResult.data.credential] : []));
+    });
+    return () => { cancelled = true; };
+  }, [searchParams, serviceId]);
+
   const unlock = async () => {
     if (!service) return;
     if (!/^\d{10}$/.test(phone) || !/^\d{4}$/.test(pin)) {
@@ -59,7 +80,7 @@ export default function PublicServiceAccess() {
     setUnlocking(true);
     const result = await supabase.functions.invoke("activate-service", { body: { service_id: service.id, phone, pin, free_service: service.is_free === true } });
     setUnlocking(false);
-    if (result.error || !result.data?.credential) {
+    if (result.error || (!result.data?.credential && !result.data?.credentials?.length)) {
       let detail: string = result.data?.error || "";
       const context = (result.error as { context?: Response } | null)?.context;
       if (!detail && context?.clone) {
