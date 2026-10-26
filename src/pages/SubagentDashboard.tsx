@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
  import { debitOwnWallet, refundFailedOrder, transferToChild, creditUpline, newOrderId } from "@/lib/wallet";
-  import { VerificationOrdersCard } from "@/components/VerificationOrdersCard";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { verifyHubtelMsisdn } from "@/services/hubtelService";
@@ -4222,7 +4221,7 @@ handleMobileNumberChange(digits);
               </CardContent>
             </Card>
 
-            <VerificationOrdersCard orders={dateFilteredOrders} actorRole="subagent" onCancelled={() => window.location.reload()} onView={() => { setOrderSearch(" "); document.getElementById("subagent-orders")?.scrollIntoView({ behavior: "smooth" }); }} />
+
   <div id="subagent-orders" className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-border">
                 <CardContent className="pt-6">

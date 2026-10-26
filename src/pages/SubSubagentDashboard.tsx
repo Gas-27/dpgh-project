@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
 import { debitOwnWallet, refundFailedOrder, creditUpline, newOrderId } from "@/lib/wallet";
-  import { VerificationOrdersCard } from "@/components/VerificationOrdersCard";
-  import PromoCodesPanel from "@/components/PromoCodesPanel";
+   import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { verifyHubtelMsisdn } from "@/services/hubtelService";
 import { useAuth } from "@/hooks/useAuth";
@@ -2150,7 +2149,7 @@ return (
             </div>
 
             {/* Stats Cards */}
-            <VerificationOrdersCard orders={dateFilteredOrders} actorRole="sub_subagent" onCancelled={() => window.location.reload()} onView={() => { setOrderSearch(" "); document.getElementById("subsubagent-orders")?.scrollIntoView({ behavior: "smooth" }); }} />
+
   <div id="subsubagent-orders" className="grid grid-cols-2 md:grid-cols-4 gap-4">
 
               <Card className="border-border">

@@ -21,6 +21,8 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Sparkles, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck, ChevronDown, ChevronUp, Video } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
+import { cancelWaitingOrder } from "@/services/waitingOrderCancellation";
+import { toast } from "sonner";
 import { OrderSourceFilter } from "@/components/OrderSourceFilter";
 import { getOrderSource, ORDER_SOURCE_LABELS, type OrderSourceFilterKey } from "@/lib/orderSource";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
@@ -1382,7 +1384,7 @@ case "api-key":
                             Retry this order after MTN approves your number on our portal so we can serve it.
                           </span>
                         ) : (
-                          <span className="text-xs text-muted-foreground">No action needed</span>
+                          ["waiting", "number verifying", "number_verifying"].includes(normalizeOrderStatus(order).toLowerCase()) && ["mtn", "mtn express", "mtn_express"].includes(String(order.network || "").toLowerCase()) && Date.now() - new Date(order.created_at).getTime() >= 72 * 60 * 60 * 1000 ? <Button size="sm" variant="outline" onClick={async () => { if (!window.confirm("Cancel this waiting order after 3 days and refund the amount to your wallet?")) return; try { await cancelWaitingOrder(String(order.id), "user"); toast.success("Waiting order cancelled and refunded"); setRefreshKey((key) => key + 1); } catch (error) { toast.error(error instanceof Error ? error.message : "Unable to cancel order"); } }}>Cancel waiting order</Button> : <span className="text-xs text-muted-foreground">No action needed</span>
                         )}
                       </TableCell>
                       <TableCell>

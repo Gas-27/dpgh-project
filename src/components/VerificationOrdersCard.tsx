@@ -25,7 +25,7 @@ export function VerificationOrdersCard({ orders, onView, actorRole, onCancelled 
   const total = verificationOrders.reduce((sum, order) => sum + Number(order.amount ?? order.selling_price ?? 0), 0);
   const eligibleOrders = verificationOrders.filter((order) => {
     const network = String(order.network ?? "").toLowerCase().replace(/_/g, " ");
-    return (network === "mtn" || network === "mtn express") && Date.now() - new Date(order.created_at).getTime() >= 48 * 60 * 60 * 1000;
+    return (network === "mtn" || network === "mtn express") && Date.now() - new Date(order.created_at).getTime() >= 72 * 60 * 60 * 1000;
   });
 
   const handleCancel = async (order: any) => {
@@ -50,7 +50,7 @@ export function VerificationOrdersCard({ orders, onView, actorRole, onCancelled 
         <span className="rounded-lg bg-amber-100 p-2 text-amber-700"><Clock className="h-5 w-5" /></span>
         <div className="min-w-0">
           <p className="font-semibold">{verificationOrders.length} {verificationOrders.length === 1 ? "order" : "orders"} on hold — being verified</p>
-          <p className="text-xs text-amber-800">GHC {total.toFixed(2)} total · wait 48 hours before cancellation</p>
+          <p className="text-xs text-amber-800">GHC {total.toFixed(2)} total · wait 3 days before cancellation</p>
         </div>
       </div>
       <div className="flex shrink-0 flex-wrap gap-2">

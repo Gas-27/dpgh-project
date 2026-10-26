@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 
-export type WaitingOrderActorRole = "agent" | "subagent" | "sub_subagent";
+export type WaitingOrderActorRole = "agent" | "user" | "customer";
 
 export async function cancelWaitingOrder(orderId: string, actorRole: WaitingOrderActorRole, reason?: string) {
   const { data: sessionData } = await supabase.auth.getSession();
@@ -11,7 +11,7 @@ export async function cancelWaitingOrder(orderId: string, actorRole: WaitingOrde
     p_order_id: orderId,
     p_actor_user_id: actorUserId,
     p_actor_role: actorRole,
-    p_reason: reason || "Waiting order cancelled after 48 hours",
+    p_reason: reason || "Waiting order cancelled after 3 days",
   });
   if (error) throw new Error(error.message || "Unable to cancel this order");
   if (!data?.success) throw new Error(data?.error || "Unable to cancel this order");
