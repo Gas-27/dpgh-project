@@ -151,18 +151,22 @@ Deno.serve(async (req) => {
       const pinHash = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
       const { data: existing } = await supabase.from("digital_service_orders").select("id,credential_id").eq("paystack_reference", reference).maybeSingle();
       if (existing) return new Response(JSON.stringify({ success: true, order_id: existing.id, credential_id: existing.credential_id, already_processed: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      const { data: slots } = await supabase.from("digital_service_credentials").select("id,slot_number").eq("service_id", serviceId).eq("active", true).is("assigned_order_id", null).order("slot_number").limit(4);
+      const { data: service } = await supabase.from("digital_services").select("service_type").eq("id", serviceId).maybeSingle();
+      const isPublicShare = service?.service_type === "public_shared";
+      const { data: slots } = isPublicShare ? { data: [] } : await supabase.from("digital_service_credentials").select("id,slot_number").eq("service_id", serviceId).eq("active", true).is("assigned_order_id", null).order("slot_number").limit(4);
       const slot = slots?.[0];
-      if (!slot) return new Response(JSON.stringify({ error: "This service is currently sold out" }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      const { data: order, error: orderError } = await supabase.from("digital_service_orders").insert({ service_id: serviceId, credential_id: slot.id, customer_id: resolvedCustomerId, customer_phone: phone, access_pin_hash: pinHash, paystack_reference: reference, payment_status: "paid", access_granted_at: new Date().toISOString(), access_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() }).select("id,credential_id").single();
+      if (!isPublicShare && !slot) return new Response(JSON.stringify({ error: "This service is currently sold out" }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const { data: order, error: orderError } = await supabase.from("digital_service_orders").insert({ service_id: serviceId, credential_id: isPublicShare ? null : slot.id, customer_id: resolvedCustomerId, customer_phone: phone, access_pin_hash: pinHash, paystack_reference: reference, payment_status: "paid", access_granted_at: new Date().toISOString(), access_expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString() }).select("id,credential_id").single();
       if (orderError || !order) {
         console.error("[v0] Service order insert failed", { code: orderError?.code, message: orderError?.message, details: orderError?.details, hint: orderError?.hint, reference, serviceId });
         return new Response(JSON.stringify({ error: "Unable to create service order", details: orderError?.message || "The payment was verified but the order could not be assigned." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
-      const { data: assignedCredential, error: assignError } = await supabase.from("digital_service_credentials").update({ assigned_order_id: order.id, assigned_phone: phone, assigned_pin_hash: pinHash, assigned_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", slot.id).is("assigned_order_id", null).select("id").maybeSingle();
-      if (assignError || !assignedCredential) {
-        console.error("[v0] Service credential assignment failed", { code: assignError?.code, message: assignError?.message, orderId: order.id, credentialId: slot.id });
-        return new Response(JSON.stringify({ error: "Unable to assign service access", details: assignError?.message || "That service slot was assigned by another request." }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      if (!isPublicShare) {
+        const { data: assignedCredential, error: assignError } = await supabase.from("digital_service_credentials").update({ assigned_order_id: order.id, assigned_phone: phone, assigned_pin_hash: pinHash, assigned_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq("id", slot.id).is("assigned_order_id", null).select("id").maybeSingle();
+        if (assignError || !assignedCredential) {
+          console.error("[v0] Service credential assignment failed", { code: assignError?.code, message: assignError?.message, orderId: order.id, credentialId: slot.id });
+          return new Response(JSON.stringify({ error: "Unable to assign service access", details: assignError?.message || "That service slot was assigned by another request." }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
       }
       return new Response(JSON.stringify({ success: true, message: "Service payment successful. Your access is ready.", order_id: order.id, credential_id: order.credential_id }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

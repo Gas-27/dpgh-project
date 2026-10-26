@@ -33,7 +33,9 @@ export default function PublicServiceAccess() {
   const [pin, setPin] = useState("");
   const [showPin, setShowPin] = useState(false);
   const [unlocking, setUnlocking] = useState(false);
-  const [credential, setCredential] = useState<Credential | null>((location.state as { credential?: Credential } | null)?.credential ?? null);
+  const initialAccess = location.state as { credential?: Credential; credentials?: Credential[] } | null;
+  const [credentials, setCredentials] = useState<Credential[]>(initialAccess?.credentials || (initialAccess?.credential ? [initialAccess.credential] : []));
+  const credential = credentials[0] || null;
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -67,7 +69,7 @@ export default function PublicServiceAccess() {
       setError(detail || "No paid access was found for these details. Please make payment first.");
       return;
     }
-    setCredential(result.data.credential);
+    setCredentials(result.data.credentials || (result.data.credential ? [result.data.credential] : []));
   };
 
   const copy = async (value: string | null, label: string) => {
@@ -111,16 +113,14 @@ export default function PublicServiceAccess() {
               <>
                 <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#7161f4]">Your access</p>
                 <h2 className="mt-2 text-2xl font-black">Your login is ready</h2>
-                <div className="mt-5 space-y-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0"><span className="font-semibold">Email / username:</span> <span className="break-all">{credential.email}</span></div>
-                    <Button type="button" size="icon" variant="ghost" aria-label="Copy email" onClick={() => copy(credential.email, "Email")}><Copy className="h-4 w-4" /></Button>
-                  </div>
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="min-w-0"><span className="font-semibold">Password:</span> <span className="break-all">{credential.password}</span></div>
-                    <Button type="button" size="icon" variant="ghost" aria-label="Copy password" onClick={() => copy(credential.password, "Password")}><Copy className="h-4 w-4" /></Button>
-                  </div>
-                  {credential.instructions && <p className="border-t border-emerald-200 pt-3 leading-6">{credential.instructions}</p>}
+                <p className="mt-2 text-sm leading-6 text-[#69708a]">Use any of the shared logins below. Public share has no individual slot assignment or per-customer slot limit.</p>
+                <div className="mt-5 space-y-3">
+                  {credentials.map((item, index) => <div key={`${item.email || "login"}-${index}`} className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
+                    <p className="mb-3 font-bold">Shared login {index + 1}</p>
+                    <div className="flex items-center justify-between gap-2"><div className="min-w-0"><span className="font-semibold">Email / username:</span> <span className="break-all">{item.email}</span></div><Button type="button" size="icon" variant="ghost" aria-label={`Copy email ${index + 1}`} onClick={() => copy(item.email, "Email")}><Copy className="h-4 w-4" /></Button></div>
+                    <div className="mt-2 flex items-center justify-between gap-2"><div className="min-w-0"><span className="font-semibold">Password:</span> <span className="break-all">{item.password}</span></div><Button type="button" size="icon" variant="ghost" aria-label={`Copy password ${index + 1}`} onClick={() => copy(item.password, "Password")}><Copy className="h-4 w-4" /></Button></div>
+                    {item.instructions && <p className="mt-3 border-t border-emerald-200 pt-3 leading-6">{item.instructions}</p>}
+                  </div>)}
                 </div>
                 {service.official_url && (
                   <Button asChild className="mt-4 w-full bg-[#2864e8] hover:bg-[#1d52ca]">
@@ -133,7 +133,7 @@ export default function PublicServiceAccess() {
               <>
                 <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#7161f4]">Secure access</p>
                 <h2 className="mt-2 flex items-center gap-2 text-2xl font-black"><Lock className="h-5 w-5" aria-hidden="true" />Enter your details</h2>
-                <p className="mt-2 text-sm leading-6 text-[#69708a]">Enter the phone number and 4-digit access code you used when paying. The login is only shown once payment is confirmed.</p>
+                <p className="mt-2 text-sm leading-6 text-[#69708a]">Enter the phone number and 4-digit access code you used when paying. After payment, you will see all shared emails and login details here.</p>
                 <div className="mt-5 space-y-4">
                   <div className="space-y-1">
                     <Label htmlFor="access-phone">Phone number</Label>

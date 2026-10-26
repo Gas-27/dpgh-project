@@ -19,7 +19,13 @@ Deno.serve(async (req) => {
     let { data: service, error: serviceError } = await db.from("digital_services").select("id,name,is_free,service_type").eq("id", service_id).eq("active", true).single();
     if (serviceError || !service) return json({ error: "Service is unavailable" }, 404);
     let { data: order } = await db.from("digital_service_orders").select("id,credential_id,customer_id,access_expires_at").eq("service_id", service_id).eq("customer_phone", phone).eq("access_pin_hash", hash).in("payment_status", ["paid", "free"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
-    if (order && service.service_type === "public_shared" && (order.customer_id !== customerId || (order.access_expires_at && new Date(order.access_expires_at).getTime() <= Date.now()))) return json({ error: "Payment expired. Please pay again to access this service." }, 402);
+    if (service.service_type === "public_shared") {
+      if (!order && !service.is_free) return json({ error: "No paid access found for these details" }, 403);
+      if (order && order.access_expires_at && new Date(order.access_expires_at).getTime() <= Date.now()) return json({ error: "Payment expired. Please pay again to access this service." }, 402);
+      const { data: credentials, error: credentialsError } = await db.from("digital_service_credentials").select("email,password,instructions").eq("service_id", service_id).eq("active", true).order("slot_number");
+      if (credentialsError || !credentials?.length) return json({ error: "Public service login details are not configured yet." }, 404);
+      return json({ success: true, credentials });
+    }
     if (!order && service.is_free) {
       let { data: slot } = await db.from("digital_service_credentials").select("id,email,password,instructions").eq("service_id", service_id).eq("active", true).is("assigned_order_id", null).order("slot_number").limit(1).maybeSingle();
       if (!slot) {
