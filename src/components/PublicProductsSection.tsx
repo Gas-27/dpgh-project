@@ -57,7 +57,7 @@ export default function PublicProductsSection({
   const [storeProducts, setStoreProducts] = useState<PublicProduct[]>([]);
   const [globalTotal, setGlobalTotal] = useState(0);
   const [storeTotal, setStoreTotal] = useState(0);
-  const [catalog, setCatalog] = useState<"store" | "global">(allProductsOnly ? "global" : "store");
+  const [catalog, setCatalog] = useState<"store" | "global">("global");
   const [selected, setSelected] = useState<PublicProduct | null>(null);
   const [image, setImage] = useState(0);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);

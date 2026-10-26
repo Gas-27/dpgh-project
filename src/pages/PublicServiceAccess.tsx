@@ -134,7 +134,7 @@ export default function PublicServiceAccess() {
               <>
                 <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#7161f4]">Your access</p>
                 <h2 className="mt-2 text-2xl font-black">Your login is ready</h2>
-                <p className="mt-2 text-sm leading-6 text-[#69708a]">Use any of the shared logins below. Public share has no individual slot assignment or per-customer slot limit.</p>
+                <div className="mt-4 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950"><p className="font-bold">⚠️ Please don&apos;t make any changes to the account.</p><p><span className="font-semibold">ℹ️ This is a shared account, so it might show as busy and may log out frequently.</span> You can purchase a private share plan at a very cheap cost to avoid these issues and enjoy uninterrupted access.</p></div><p className="mt-4 text-sm leading-6 text-[#69708a]">Use any of the shared logins below. Public share has no individual slot assignment or per-customer slot limit.</p>
                 <div className="mt-5 space-y-3">
                   {credentials.map((item, index) => <div key={`${item.email || "login"}-${index}`} className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
                     <p className="mb-3 font-bold">Shared login {index + 1}</p>
