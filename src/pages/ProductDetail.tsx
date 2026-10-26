@@ -98,6 +98,7 @@ export default function ProductDetail() {
     `Hello, I want to buy ${product.title} for GHS ${Number(product.price).toFixed(2)}.`,
     `Details: ${product.description || "No description provided"}`,
     `Product page: ${productUrl}`,
+    product.image_urls?.[0] ? `Product image: ${product.image_urls[0]}` : "Product image: Not provided",
   ].join("\n"));
 
   return <main className="mx-auto max-w-4xl p-4 md:p-8">

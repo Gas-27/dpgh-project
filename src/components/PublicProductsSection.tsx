@@ -155,6 +155,7 @@ export default function PublicProductsSection({
         `Hello, I would like to buy ${selected.title} for GHS ${Number(selected.price || 0).toFixed(2)}.`,
         `Details: ${selected.description || "No description provided"}`,
         `Product page: ${productUrl}`,
+        productImage ? `Product image: ${productImage}` : "Product image: Not provided",
       ].join("\n")
     : "";
   const buyLink = sellerPhone
