@@ -29,7 +29,7 @@ type PublicProduct = {
   seller_phone?: string | null;
 };
 
-const PAGE_SIZE = 10;
+const PAGE_SIZE = 12;
 
 function phoneDigits(value?: string | null) {
   const digits = (value ?? "").replace(/\D/g, "");
@@ -208,7 +208,7 @@ export default function PublicProductsSection({
             <p className="py-12 text-center text-muted-foreground">No products are available right now.</p>
           ) : (
             <>
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid grid-cols-2 gap-3 sm:gap-4">
                 {visibleProducts.map((product) => (
                   <button
                     type="button"
