@@ -141,13 +141,9 @@ export default function PublicServiceAccess() {
                     <div className="flex items-center justify-between gap-2"><div className="min-w-0"><span className="font-semibold">Email / username:</span> <span className="break-all">{item.email}</span></div><Button type="button" size="icon" variant="ghost" aria-label={`Copy email ${index + 1}`} onClick={() => copy(item.email, "Email")}><Copy className="h-4 w-4" /></Button></div>
                     <div className="mt-2 flex items-center justify-between gap-2"><div className="min-w-0"><span className="font-semibold">Password:</span> <span className="break-all">{item.password}</span></div><Button type="button" size="icon" variant="ghost" aria-label={`Copy password ${index + 1}`} onClick={() => copy(item.password, "Password")}><Copy className="h-4 w-4" /></Button></div>
                     {item.instructions && <p className="mt-3 border-t border-emerald-200 pt-3 leading-6">{item.instructions}</p>}
+                    {service.official_url && <Button asChild className="mt-4 w-full bg-[#2864e8] hover:bg-[#1d52ca]"><a href={service.official_url} target="_blank" rel="noopener noreferrer">Open {service.name}</a></Button>}
                   </div>)}
                 </div>
-                {service.official_url && (
-                  <Button asChild className="mt-4 w-full bg-[#2864e8] hover:bg-[#1d52ca]">
-                    <a href={service.official_url} target="_blank" rel="noopener noreferrer">Open {service.name}</a>
-                  </Button>
-                )}
                 {helpUrl && <iframe title={`${service.name} help video`} src={helpUrl} className="mt-4 aspect-video w-full rounded-xl" allowFullScreen />}
               </>
             ) : (

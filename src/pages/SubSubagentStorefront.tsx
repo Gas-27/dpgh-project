@@ -601,7 +601,7 @@ export function SubSubagentStorefront() {
   (agentCostRes.data || []).forEach((p: any) => {
   const pkg = (pkgRes.data || []).find((item: any) => item.id === p.package_id);
   const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
-  if (normalizedNetwork !== "telecel_special" && p.base_price != null && !seenAgentCosts.has(p.package_id)) {
+  if (p.base_price != null && !seenAgentCosts.has(p.package_id)) {
   baseCostMap[p.package_id] = Number(p.base_price);
   seenAgentCosts.add(p.package_id);
   }
@@ -610,7 +610,7 @@ export function SubSubagentStorefront() {
   (templatePricesRes.data || []).forEach((p: any) => {
   const pkg = (pkgRes.data || []).find((item: any) => item.id === p.package_id);
   const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
-  if (normalizedNetwork !== "telecel_special" && p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price);
+  if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price);
   });
 
       // Final customer price = sub-subagent's own customer_sell_price if set, else the cost-from-agent.
@@ -678,12 +678,12 @@ export function SubSubagentStorefront() {
       (agentCost.data || []).forEach((p: any) => {
         const pkg = (pkgs.data || []).find((item: any) => item.id === p.package_id);
         const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
-        if (normalizedNetwork !== "telecel_special" && p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price);
+        if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price);
       });
       (templatePrices.data || []).forEach((p: any) => {
         const pkg = (pkgs.data || []).find((item: any) => item.id === p.package_id);
         const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
-        if (normalizedNetwork !== "telecel_special" && p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price);
+        if (p.base_price != null) baseCostMap[p.package_id] = Number(p.base_price);
       });
       // Final: sub-subagent's own customer_sell_price if set, else cost-from-agent.
       // Take only the first (newest) row per package so an older duplicate row can't overwrite it.

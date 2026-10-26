@@ -1019,7 +1019,7 @@ const searchOrders = useCallback(async (input?: string) => {
     }
     return p.network === networkFilter;
   });
-  const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? pkg.price;
+  const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? agentSubagentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
   const displayWhatsApp = store ? formatDisplayPhone(store.whatsapp_number) : "";
