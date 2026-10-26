@@ -66,9 +66,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const source = product ? firstImage(product.image_urls) : null;
     const match = source?.match(/^data:(image\/[a-z0-9.+-]+);base64,(.+)$/i);
     if (!match) return res.status(404).end();
-    res.setHeader('Content-Type', match[1]);
-    res.setHeader('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400');
-    return res.status(200).send(Buffer.from(match[2], 'base64'));
+    const original = Buffer.from(match[2], 'base64');
+    res.setHeader('Cache-Control', 'public, s-maxage=86400, stale-while-revalidate=604800');
+    try {
+      const { default: sharp } = await import('sharp');
+      const maxBytes = 250 * 1024;
+      let output: Buffer = original;
+      for (const [size, quality] of [[800, 82], [640, 74], [480, 66], [360, 58]] as const) {
+        output = await sharp(original)
+          .rotate()
+          .resize({ width: size, height: size, fit: 'inside', withoutEnlargement: true })
+          .flatten({ background: '#ffffff' })
+          .jpeg({ quality, mozjpeg: true })
+          .toBuffer();
+        if (output.length <= maxBytes) break;
+      }
+      res.setHeader('Content-Type', 'image/jpeg');
+      return res.status(200).send(output);
+    } catch {
+      res.setHeader('Content-Type', match[1]);
+      return res.status(200).send(original);
+    }
   }
 
   const templateResponse = await fetch(`${origin}/index.html`);
