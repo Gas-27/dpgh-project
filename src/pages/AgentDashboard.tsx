@@ -842,14 +842,14 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         .eq("is_agent", true)
         .maybeSingle();
       
-      console.log("[v0] API key fetch response:", { data, error });
+      console.log("[v0] API key fetch completed:", { hasData: Boolean(data), error: error?.message });
       
       if (error && error.code !== "PGRST116") {
         console.error("[v0] Error fetching API key:", error);
       }
       
       if (data) {
-        console.log("[v0] API user data found, setting state:", data);
+        console.log("[v0] API user data found, setting wallet state");
         setApiKey(data.api_key || null);
         setWallet(data.wallet || 0);
       } else {
@@ -866,80 +866,40 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
     }
   };
 
-  // Generate API key directly with Supabase (allows regeneration)
   const handleGenerateApiKey = async () => {
-    const effectiveUserId = impersonatedUserId || user?.id;
-    if (!effectiveUserId) return;
+    if (generatingApiKey) return;
     setGeneratingApiKey(true);
+    const wasRegeneration = Boolean(apiKey);
     try {
-      console.log("[v0] Generating API key for user:", effectiveUserId);
-      
-      // Generate a new API key using Web Crypto API
-      const array = new Uint8Array(32);
-      globalThis.crypto.getRandomValues(array);
-      const apiKey = 'pk_live_' + Array.from(array)
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-      
-      console.log("[v0] Generated API key:", apiKey.substring(0, 20) + "...");
-      
-      // First, fetch existing API user record to preserve wallet balance
-      const { data: existingData } = await supabase
-        .from("api_users")
-        .select("wallet")
-        .eq("identity_id", effectiveUserId)
-        .maybeSingle();
-      
-      const existingWallet = existingData?.wallet || 0;
-      
-      // Upsert the API user record, preserving wallet balance
-      const upsertData: any = {
-        identity_id: effectiveUserId,
-        api_key: apiKey,
-        is_agent: true,
-        is_user: false,
-        wallet: existingWallet,
-        updated_at: new Date().toISOString(),
-      };
-      
-      upsertData.role = 'agent';
-      // Populate profile fields so admin can search by name/email/store
-      if (user?.user_metadata?.full_name || user?.user_metadata?.name) {
-        upsertData.full_name = user.user_metadata.full_name || user.user_metadata.name;
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      if (!accessToken) throw new Error("Your session has expired. Please sign in again.");
+
+      const response = await fetch("/api/agent/generate-api-key", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ is_agent: true }),
+      });
+      const result = await response.json();
+      if (!response.ok || !result.data?.api_key) {
+        throw new Error(result.error || "Failed to generate API key");
       }
-      if (user?.email) {
-        upsertData.email = user.email;
-        upsertData.user_email = user.email;
-      }
-      
-      console.log("[v0] Upserting with data:", { ...upsertData, api_key: '****' });
-      
-      const { data, error } = await supabase
-        .from("api_users")
-        .upsert(upsertData, {
-          onConflict: 'identity_id'
-        })
-        .select()
-        .single();
-      
-      console.log("[v0] Upsert result:", { data, error });
-      
-      if (error) {
-        console.error("[v0] Error upserting API key:", error);
-        let errorMsg = error.message || "Failed to generate API key";
-        if (error.message && error.message.includes("row-level security")) {
-          errorMsg = "RLS policy needs to be configured. Please contact admin.";
-        }
-        toast({ title: "Error", description: errorMsg, variant: "destructive" });
-      } else {
-        setApiKey(apiKey);
-        setWallet(data?.wallet || 0);
-        setShowRegenerateConfirm(false);
-        toast({ title: "Success", description: apiKey ? "API key regenerated successfully" : "API key generated successfully", variant: "default" });
-      }
+
+      setApiKey(result.data.api_key);
+      setWallet(Number(result.data.wallet || 0));
+      setShowRegenerateConfirm(false);
+      setShowApiKey(true);
+      toast({
+        title: "Success",
+        description: wasRegeneration ? "API key regenerated. Your previous key is no longer valid." : "API key generated successfully",
+        variant: "default",
+      });
     } catch (err) {
-      console.error("[v0] Error generating API key:", err);
-      toast({ title: "Error", description: "Failed to generate API key", variant: "destructive" });
+      const message = err instanceof Error ? err.message : "Failed to generate API key";
+      toast({ title: "Error", description: message, variant: "destructive" });
     } finally {
       setGeneratingApiKey(false);
     }
