@@ -875,17 +875,12 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       const accessToken = sessionData.session?.access_token;
       if (!accessToken) throw new Error("Your session has expired. Please sign in again.");
 
-      const response = await fetch("/api/agent/generate-api-key", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ is_agent: true }),
+      const { data: result, error: invokeError } = await supabase.functions.invoke("generate-api-key", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: { is_agent: true },
       });
-      const result = await response.json();
-      if (!response.ok || !result.data?.api_key) {
-        throw new Error(result.error || "Failed to generate API key");
+      if (invokeError || !result?.data?.api_key) {
+        throw new Error(result?.error || invokeError?.message || "Failed to generate API key");
       }
 
       setApiKey(result.data.api_key);

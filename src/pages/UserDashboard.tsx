@@ -721,17 +721,12 @@ const UserDashboard = () => {
       const accessToken = sessionData.session?.access_token;
       if (!accessToken) throw new Error("Your session has expired. Please sign in again.");
 
-      const response = await fetch("/api/agent/generate-api-key", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${accessToken}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ is_user: true }),
+      const { data: result, error: invokeError } = await supabase.functions.invoke("generate-api-key", {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: { is_user: true },
       });
-      const result = await response.json();
-      if (!response.ok || !result.data?.api_key) {
-        throw new Error(result.error || "Failed to generate API key");
+      if (invokeError || !result?.data?.api_key) {
+        throw new Error(result?.error || invokeError?.message || "Failed to generate API key");
       }
 
       // The server replaces api_key atomically, so the previous key is invalid immediately.
