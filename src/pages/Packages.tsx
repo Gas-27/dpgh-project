@@ -1658,17 +1658,19 @@ const searchOrders = async (input?: string) => {
             </section>
           </>
         ) : activeCategory === "subscription" ? (
-          <DigitalServicesCatalog onBuy={(service) => {
-            setSelectedService(service);
-            toast({ title: "Service selected", description: `${service.name} is ready for secure activation.` });
-          }} />
+          <div className="-mx-8 w-auto sm:mx-0 sm:w-full">
+            <DigitalServicesCatalog onBuy={(service) => {
+              setSelectedService(service);
+              toast({ title: "Service selected", description: `${service.name} is ready for secure activation.` });
+            }} />
+          </div>
         ) : activeCategory === "services" ? (
-          <div className="storefront-light-form"><HubtelPurchasePanel mode="services" /></div>
+          <div className="storefront-light-form -mx-8 w-auto sm:mx-0 sm:w-full"><HubtelPurchasePanel mode="services" /></div>
         ) : activeCategory === "vouchers" ? (
-          <div className="storefront-light-form"><HubtelPurchasePanel mode="instant" /></div>
+          <div className="storefront-light-form -mx-8 w-auto sm:mx-0 sm:w-full"><HubtelPurchasePanel mode="instant" /></div>
   ) : activeCategory === "sms" ? (
-  <section className="storefront-light-form mx-auto w-full max-w-4xl" aria-labelledby="packages-sms-heading">
-    <Card className="border-primary/30 bg-primary/5">
+  <section className="storefront-light-form -mx-8 w-auto sm:mx-0 sm:w-full" aria-labelledby="packages-sms-heading">
+    <Card className="rounded-none border-x-0 border-primary/30 bg-primary/5 sm:rounded-lg sm:border-x">
       <CardContent className="p-4 sm:p-6">
         <h2 id="packages-sms-heading" className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2>
         <p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p>
@@ -1678,8 +1680,8 @@ const searchOrders = async (input?: string) => {
   </section>
   ) : activeCategory === "bulk" ? (
   
-  <div className="storefront-light-form max-w-3xl mx-auto">
-            <Card className="border-yellow-500/30 bg-yellow-500/5">
+  <div className="storefront-light-form -mx-8 w-auto sm:mx-0 sm:w-full">
+            <Card className="rounded-none border-x-0 border-yellow-500/30 bg-yellow-500/5 sm:rounded-lg sm:border-x">
               <CardContent className="p-6 space-y-6">
                 <div className="text-center mb-4">
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-yellow-500/20 mb-4">
@@ -1885,11 +1887,11 @@ const searchOrders = async (input?: string) => {
             </Card>
           </div>
         ) : activeCategory === "social-boost" ? (
-  <div className="w-full pb-20">
+  <div className="-mx-8 w-auto pb-20 sm:mx-0 sm:w-full">
     <SocialBoostPurchasePanel walletBalance={0} ownerType="storefront" checkoutMode="paystack" pricingMode="user" purchaseSource="Packages page" showHistory={false} requireAuth />
   </div>
         ) : activeCategory === "afa" ? (
-  <div className="storefront-light-form w-full pb-20 space-y-6">
+  <div className="storefront-light-form -mx-8 w-auto pb-20 space-y-6 sm:mx-0 sm:w-full">
   <AFARegistrationTracker />
             <AFAPackagesDisplay
   onRegisterClick={(packageId, packageName, price) => {

@@ -1072,7 +1072,7 @@ const searchOrders = useCallback(async (input?: string) => {
       </>
       )}
 
-<main className="mx-auto max-w-6xl px-0 py-6 space-y-6 sm:px-4">
+<main className="w-full px-0 py-6 space-y-6 sm:px-4">
   <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "vouchers" : id as typeof activeSection)} onBecomeAgent={() => setShowSubSubagentForm(true)} />
   <div id="storefront-section-content" className="scroll-mt-6" />
   <ActiveTabMaintenance active={activeSection === "vouchers" ? "instant" : activeSection} label={activeSection === "data" ? "Cheap Data" : activeSection === "vouchers" ? "Airtime & Data" : activeSection} onReturn={() => setActiveSection("data")} />
@@ -1112,7 +1112,7 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
         {networkFilter === "telecel" && <TelecelSubTabs value={telecelPackageType} onChange={setTelecelPackageType} />}
         </>}
 
-        {activeSection === "sms" && <Card className="border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="subagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card>}
+        {activeSection === "sms" && <Card className="rounded-none border-x-0 sm:rounded-lg sm:border-x border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="subagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card>}
 
         {/* AFA Bundles Section */}
         {activeSection === "afa" ? (
@@ -1132,7 +1132,7 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
 
         {/* Bulk Orders Section */}
         {activeSection === "bulk" ? (
-          <Card className="border-primary/30 bg-primary/5">
+          <Card className="rounded-none border-x-0 sm:rounded-lg sm:border-x border-primary/30 bg-primary/5">
             <CardContent className="p-6 space-y-6">
               <div className="text-center mb-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4" style={{ backgroundColor: `${primaryColor}20` }}>

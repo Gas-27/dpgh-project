@@ -2918,11 +2918,11 @@ return (
           <TabsContent value="marketplace" className="mt-0"><PublicProductsSection siteWide allProductsOnly onCancel={() => setActiveTab("overview")} /></TabsContent>
 
           {/* ============================= BUY DATA ============================= */}
-          <TabsContent value="instant-data" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="instant" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
-  <TabsContent value="subscription" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription" /></TabsContent>
-  <TabsContent value="subscription-price" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription-price" /></TabsContent>
+          <TabsContent value="instant-data" className="-mx-8 sm:mx-0 mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="instant" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
+  <TabsContent value="subscription" className="-mx-8 sm:mx-0 mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription" /></TabsContent>
+  <TabsContent value="subscription-price" className="-mx-8 sm:mx-0 mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="subscription-price" /></TabsContent>
   <TabsContent value="promo" className="mt-0"><PromoCodesPanel walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} /></TabsContent>
-  <TabsContent value="social-boost" className="mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="social-boost" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
+  <TabsContent value="social-boost" className="-mx-8 sm:mx-0 mt-0"><DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} canSetPrices initialTab="social-boost" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
   <TabsContent value="buy" className="space-y-4 mt-0">
             {store && (<Card className={`border-border ${hasPendingWithdrawal ? "border-orange-500/30 bg-orange-500/5" : "bg-secondary/30"}`}>
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GHC {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
@@ -3379,7 +3379,7 @@ return (
           </TabsContent>
 
           {/* ============================= BULK ORDERS ============================= */}
-          <TabsContent value="bulk" className="space-y-6 mt-0">
+          <TabsContent value="bulk" className="-mx-8 sm:mx-0 space-y-6 mt-0">
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2"><Layers className="h-5 w-5" /> Bulk Orders</CardTitle>
@@ -3645,7 +3645,7 @@ return (
           </TabsContent>
 
           {/* ============================= SMS ============================= */}
-          <TabsContent value="sms" className="space-y-6 mt-0">
+          <TabsContent value="sms" className="-mx-8 sm:mx-0 space-y-6 mt-0">
             <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="agent" ownerId={store?.id} storeUrl={storeUrl} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="agent" ownerId={store?.id} apiUserIds={smsApiUserIds} /></TabsContent></Tabs>
           </TabsContent>
 
@@ -4882,7 +4882,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   </TabsContent>
 
   {/* ============================= SERVICES ============================= */}
-  <TabsContent value="services" className="mt-0 space-y-6">
+  <TabsContent value="services" className="-mx-8 sm:mx-0 mt-0 space-y-6">
   <DashboardPurchaseTabs walletBalance={Number(store?.wallet_balance ?? 0)} ownerType="agent" ownerId={store?.id} initialTab="services" onMaintenanceReturn={() => setActiveTab("overview")} />
   </TabsContent>
 
@@ -5299,7 +5299,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   </TabsContent>
 
           {/* ============================= AFA BUNDLES ============================= */}
-          <TabsContent value="afa" className="mt-0 space-y-6">
+          <TabsContent value="afa" className="-mx-8 sm:mx-0 mt-0 space-y-6">
             {/* AFA Profit Card */}
             {store && (
               <Card className="border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">

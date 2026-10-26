@@ -3196,7 +3196,7 @@ return (
           </Sheet>
 
           {/* Main Content Area */}
-          <div className="flex-1 p-4 lg:p-8 overflow-auto">
+          <div className={`min-w-0 flex-1 overflow-auto lg:p-8 ${["buy-data", "instant-data", "services", "subscription", "private-subscriptions", "social-boost", "sms", "afa-registration"].includes(activeMenu) ? "p-0" : "p-4"}`}>
             {renderContent()}
           </div>
         </div>

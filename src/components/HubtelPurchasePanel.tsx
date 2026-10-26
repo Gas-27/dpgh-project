@@ -651,12 +651,12 @@ const resultRoot = (record.results || record.result || record) as Record<string,
   return (
   <>
   {paymentSuccess && (
-    <div className="mx-auto mb-4 w-full max-w-4xl rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-200" role="status">
+    <div className="mb-4 w-full rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-200" role="status">
       <p className="font-semibold">Payment successful</p>
       <p className="text-sm">Your purchase service is on its way.</p>
     </div>
   )}
-  <Card className="storefront-light-form mx-auto w-full max-w-4xl overflow-hidden border-primary/25 shadow-sm">
+  <Card className="storefront-light-form w-full overflow-hidden rounded-none border-x-0 border-primary/25 shadow-sm sm:rounded-lg sm:border-x">
   <CardHeader>
             <CardTitle>Airtime & Instant Data</CardTitle>
             <CardDescription>
@@ -897,12 +897,12 @@ The registered name could not be confirmed. You can still
   return (
   <>
   {paymentSuccess && (
-    <div className="mx-auto mb-4 w-full max-w-5xl rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-200" role="status">
+    <div className="mb-4 w-full rounded-lg border border-emerald-500/30 bg-emerald-500/10 p-4 text-emerald-200" role="status">
       <p className="font-semibold">Payment successful</p>
       <p className="text-sm">Your purchase service is on its way.</p>
     </div>
   )}
-  <Card className="storefront-light-form mx-auto w-full max-w-5xl border-primary/25 shadow-sm">
+  <Card className="storefront-light-form w-full rounded-none border-x-0 border-primary/25 shadow-sm sm:rounded-lg sm:border-x">
   <CardHeader className="text-center">
         <CardTitle className="text-3xl">Pay Bills & Utilities</CardTitle>
         <CardDescription>

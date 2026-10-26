@@ -1214,11 +1214,11 @@ const searchOrders = useCallback(async (input?: string) => {
   ) : activeCategory === "social-boost" ? (
   <div className="w-full pb-20"><SocialBoostPurchasePanel walletBalance={0} ownerType="agent" storeId={store?.id} checkoutMode="paystack" showHistory={false} purchaseSource="Storefront" /></div>
   ) : activeCategory === "services" ? (
-  <div className="container pb-20"><HubtelPurchasePanel mode="services" ownerType="agent" ownerId={store?.id} purchaseSource="storefront" /></div>
+  <div className="w-full px-0 pb-20 sm:px-4"><HubtelPurchasePanel mode="services" ownerType="agent" ownerId={store?.id} purchaseSource="storefront" /></div>
   ) : activeCategory === "vouchers" ? (
-  <div className="container pb-20"><HubtelPurchasePanel mode="instant" ownerType="agent" ownerId={store?.id} purchaseSource="storefront" /></div>
+  <div className="w-full px-0 pb-20 sm:px-4"><HubtelPurchasePanel mode="instant" ownerType="agent" ownerId={store?.id} purchaseSource="storefront" /></div>
       ) : activeCategory === "sms" ? (
-        <div className="container pb-20"><Card className="mx-auto max-w-none border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card></div>
+        <div className="w-full px-0 pb-20 sm:px-4"><Card className="max-w-none rounded-none border-x-0 sm:rounded-lg sm:border-x border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="agent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card></div>
       ) : activeCategory === "data" ? (
         <>
           {/* ── Order Tracking ── */}
@@ -1472,8 +1472,8 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
           </div>
         </>
       ) : activeCategory === "bulk" ? (
-        <div className="container pb-20">
-          <Card className="border-primary/30 bg-primary/5 max-w-none mx-auto">
+        <div className="w-full px-0 pb-20 sm:px-4">
+          <Card className="max-w-none rounded-none border-x-0 sm:rounded-lg sm:border-x border-primary/30 bg-primary/5">
             <CardContent className="p-6 space-y-6">
               <div className="text-center mb-4">
                 <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-primary/20 mb-4">
@@ -1700,7 +1700,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
           />
         </div>
       ) : activeCategory === "subscription" ? (
-        <div className="container pb-20">
+        <div className="w-full px-0 pb-20 sm:px-4">
           <DigitalServicesCatalog agentStoreId={store?.id} storefrontKind="agent" storefrontId={store?.id} onBuy={(service) => setSelectedService(service)} />
         </div>
       ) : (
