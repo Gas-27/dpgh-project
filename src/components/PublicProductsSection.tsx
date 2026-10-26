@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { buildWhatsAppProductLink } from "@/lib/whatsappProductMessage";
 import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Phone, BadgeCheck } from "lucide-react";
 
 type PublicProduct = {
@@ -29,16 +30,9 @@ type PublicProduct = {
   seller_phone?: string | null;
 };
 
-const PAGE_SIZE = 12;
+const PAGE_SIZE = 18;
 
-function phoneDigits(value?: string | null) {
-  const digits = (value ?? "").replace(/\D/g, "");
-  if (!digits) return "";
-  if (digits.startsWith("233")) return digits.slice(0, 12);
-  if (digits.startsWith("0")) return `233${digits.slice(1, 10)}`;
-  if (digits.length === 9) return `233${digits}`;
-  return digits;
-} 
+type SortOrder = "newest" | "price_asc" | "price_desc";
 
 export default function PublicProductsSection({
   supportPhone,
@@ -67,6 +61,7 @@ export default function PublicProductsSection({
   const [searchQuery, setSearchQuery] = useState("");
   const [effectiveSearch, setEffectiveSearch] = useState("");
   const [page, setPage] = useState(0);
+  const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
 
   useEffect(() => {
     const timer = window.setTimeout(() => setEffectiveSearch(searchQuery.trim()), 250);
@@ -107,7 +102,7 @@ export default function PublicProductsSection({
           setLoading(false);
           return;
         }
-        const result = await queryProducts(supabase.from("store_products").select(fields, { count: "exact" }).eq("store_id", storeId).eq("status", "active").eq("available", true).order("created_at", { ascending: false }).range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1));
+        const result = await queryProducts(supabase.from("store_products").select(fields, { count: "exact" }).eq("store_id", storeId).eq("status", "active").eq("available", true).order(...(sortOrder === "newest" ? ["created_at", { ascending: false }] : ["price", { ascending: sortOrder === "price_asc" }]) as [string, { ascending: boolean }]).range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1));
         if (!cancelled) {
           setStoreProducts(await addSellerContacts((result.data ?? []) as PublicProduct[]));
           setStoreTotal(result.count ?? 0);
@@ -123,6 +118,7 @@ export default function PublicProductsSection({
         p_search: effectiveSearch,
         p_page: page,
         p_page_size: PAGE_SIZE,
+        p_sort: sortOrder,
       });
       if (pageError) throw pageError;
       const normalizeRpcProduct = (product: any): PublicProduct => ({
@@ -141,7 +137,7 @@ export default function PublicProductsSection({
 
     loadProducts().catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [catalog, effectiveSearch, page, siteWide, storeId, storeKind]);
+  }, [catalog, effectiveSearch, page, sortOrder, siteWide, storeId, storeKind]);
 
   const visibleProducts = catalog === "store" ? storeProducts : globalProducts;
   const totalProducts = catalog === "store" ? storeTotal : globalTotal;
@@ -150,16 +146,8 @@ export default function PublicProductsSection({
   const productImage = selected?.image_urls?.[0];
   const productSlug = selected ? selected.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") : "product";
   const productUrl = selected ? new URL(`/marketplace/product/${selected.id}/${productSlug || "product"}`, window.location.origin).toString() : "";
-  const sellerMessage = selected
-    ? [
-        `Hello, I would like to buy ${selected.title} for GHS ${Number(selected.price || 0).toFixed(2)}.`,
-        `Details: ${selected.description || "No description provided"}`,
-        `Product page: ${productUrl}`,
-        productImage ? `Product image: ${productImage}` : "Product image: Not provided",
-      ].join("\n")
-    : "";
-  const buyLink = sellerPhone
-    ? `https://wa.me/${phoneDigits(sellerPhone)}?text=${encodeURIComponent(sellerMessage)}`
+  const buyLink = selected
+    ? buildWhatsAppProductLink(sellerPhone, { title: selected.title, description: selected.description, price: selected.price, productUrl, imageUrl: productImage })
     : undefined;
 
   const contactSeller = () => {
@@ -195,6 +183,22 @@ export default function PublicProductsSection({
               aria-label="Search products"
               className="mx-auto mt-4 block w-full max-w-xl rounded-xl border border-primary/30 bg-background px-4 py-3 text-sm outline-none focus:border-primary"
             />
+            <div className="mx-auto mt-3 flex w-full max-w-xl items-center justify-end gap-2">
+              <label htmlFor="product-sort" className="text-sm text-muted-foreground">Sort by</label>
+              <select
+                id="product-sort"
+                value={sortOrder}
+                onChange={(event) => {
+                  setSortOrder(event.target.value as SortOrder);
+                  setPage(0);
+                }}
+                className="rounded-lg border border-primary/30 bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              >
+                <option value="newest">Newest</option>
+                <option value="price_asc">Price: Lowest to Highest</option>
+                <option value="price_desc">Price: Highest to Lowest</option>
+              </select>
+            </div>
             <p className="mt-1 text-sm text-muted-foreground">Explore our products</p>
             <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-muted-foreground">
               Browse available products, open any product to view its details and images, then contact the seller to complete your purchase.

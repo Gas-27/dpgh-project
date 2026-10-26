@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { ProductComments, ReportProductButton } from "@/components/ProductReportAndComments";
+import { buildWhatsAppProductLink } from "@/lib/whatsappProductMessage";
 
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "product";
@@ -91,15 +92,14 @@ export default function ProductDetail() {
   if (loading) return <main className="mx-auto max-w-3xl p-6"><p className="text-muted-foreground">Loading product...</p></main>;
   if (!product) return <main className="mx-auto max-w-3xl p-6"><p className="text-muted-foreground">Product not found or no longer available.</p></main>;
 
-  const rawDigits = String(store?.whatsapp_number || store?.support_number || "").replace(/\D/g, "");
-  const digits = rawDigits.startsWith("233") ? rawDigits.slice(0, 12) : rawDigits.startsWith("0") ? `233${rawDigits.slice(1, 10)}` : rawDigits.length === 9 ? `233${rawDigits}` : rawDigits;
   const productUrl = new URL(`/marketplace/product/${product.id}/${slugify(product.title)}`, window.location.origin).toString();
-  const message = encodeURIComponent([
-    `Hello, I want to buy ${product.title} for GHS ${Number(product.price).toFixed(2)}.`,
-    `Details: ${product.description || "No description provided"}`,
-    `Product page: ${productUrl}`,
-    product.image_urls?.[0] ? `Product image: ${product.image_urls[0]}` : "Product image: Not provided",
-  ].join("\n"));
+  const buyLink = buildWhatsAppProductLink(store?.whatsapp_number || store?.support_number, {
+    title: product.title,
+    description: product.description,
+    price: product.price,
+    productUrl,
+    imageUrl: product.image_urls?.[0],
+  });
 
   return <main className="mx-auto max-w-4xl p-4 md:p-8">
     <Card><CardContent className="grid gap-6 p-5 md:grid-cols-2 md:p-8">
@@ -117,7 +117,7 @@ export default function ProductDetail() {
           {expandedImage && <img src={expandedImage} alt={`${product.title} enlarged`} className="max-h-[85vh] w-full object-contain" />}
         </DialogContent>
       </Dialog>
-      <div className="flex flex-col justify-center gap-4"><p className="text-sm text-muted-foreground">{store?.store_name}</p><h1 className="text-3xl font-bold text-balance">{product.title}</h1><p className="text-2xl font-semibold text-primary">GHS {Number(product.price).toFixed(2)}</p><p className="whitespace-pre-wrap text-muted-foreground">{product.description}</p>{digits ? <Button asChild><a href={`https://wa.me/${digits}?text=${message}`} target="_blank" rel="noopener noreferrer">Buy on WhatsApp</a></Button> : <p className="text-sm text-muted-foreground">Contact the seller for purchase details.</p>}<Button variant="outline" onClick={() => navigate(-1)}>Back to products</Button>{product.store_kind && <ReportProductButton productId={product.id} signedIn={signedIn} />}</div>
+      <div className="flex flex-col justify-center gap-4"><p className="text-sm text-muted-foreground">{store?.store_name}</p><h1 className="text-3xl font-bold text-balance">{product.title}</h1><p className="text-2xl font-semibold text-primary">GHS {Number(product.price).toFixed(2)}</p><p className="whitespace-pre-wrap text-muted-foreground">{product.description}</p>{buyLink ? <Button asChild><a href={buyLink} target="_blank" rel="noopener noreferrer">Buy on WhatsApp</a></Button> : <p className="text-sm text-muted-foreground">Contact the seller for purchase details.</p>}<Button variant="outline" onClick={() => navigate(-1)}>Back to products</Button>{product.store_kind && <ReportProductButton productId={product.id} signedIn={signedIn} />}</div>
     </CardContent></Card>
     {product.store_kind && <Card className="mt-4"><CardContent className="p-5 md:p-8"><ProductComments productId={product.id} signedIn={signedIn} /></CardContent></Card>}
   </main>;
