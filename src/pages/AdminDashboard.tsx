@@ -2598,10 +2598,11 @@ const AdminDashboard = () => {
   const canSee = (section: Section) => currentUserSections.includes(section);
 
   const filteredPackages = packages.filter((p) => {
-    if (networkFilter === "airteltigo") {
-      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
-    }
-    return p.network === networkFilter;
+  const normalizedNetwork = String(p.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+  if (networkFilter === "airteltigo") {
+  return normalizedNetwork === "airteltigo" || normalizedNetwork === "atbigtime" || normalizedNetwork === "atbigshare";
+  }
+  return normalizedNetwork === networkFilter;
   });
   const failedCount = orders.filter((o) => o.fulfillment_status === "failed").length;
   const refundedCount = orders.filter((o) => o.fulfillment_status === "refunded" || o.status === "refunded").length;
@@ -2841,6 +2842,7 @@ const AdminDashboard = () => {
                     { key: "mtn_express", label: "MTN Express" },
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
+                    { key: "telecel_special", label: "Telecel Special" },
                   ].map(({ key, label }) => (
                     <Button
                       key={key}
@@ -5115,10 +5117,11 @@ const AdminDashboard = () => {
                 {[
                   { key: "mtn", label: "MTN" },
                   { key: "mtn_express", label: "MTN Express" },
-                  { key: "airteltigo", label: "AirtelTigo" },
-                  { key: "telecel", label: "Telecel" },
-                ].map(({ key, label }) => (
-                  <Button
+                    { key: "airteltigo", label: "AirtelTigo" },
+                    { key: "telecel", label: "Telecel" },
+                    { key: "telecel_special", label: "Telecel Special" },
+                  ].map(({ key, label }) => (
+                    <Button
                     key={key}
                     variant={agentPriceNetworkFilter === key ? "hero" : "outline"}
                     size="sm"

@@ -1541,7 +1541,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       appliedCount++;
     }
     setEditedPrices(newEdited);
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" && telecelPackageType === "special" ? "Telecel Special" : "Telecel";
     toast({
       title: `Markup applied to ${networkName} packages`,
       description: `${percent}% markup applied to the base price of ${appliedCount} packages. Remember to click "Save Prices" to keep these changes.`,

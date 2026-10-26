@@ -653,13 +653,15 @@ const SubSubagentDashboard = () => {
         const basePriceMap: Record<string, number> = {};
         // 1. Ultimate fallback: admin/default package price
         (packagesResult.data || []).forEach((p: any) => {
-          basePriceMap[p.id] = p.price;
+          basePriceMap[p.id] = Number(p.agent_price ?? p.price);
         });
         // 2. Fall back to the parent subagent's own cost from their agent.
         //    Also record it separately (agent->subagent price) for 3-tier profit split.
         const agentToSubMap: Record<string, number> = {};
         (parentSubagentCostResult.data || []).forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
+          const pkg = (packagesResult.data || []).find((item: any) => item.id === p.package_id);
+          const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+          if (normalizedNetwork !== "telecel_special" && p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
             agentToSubMap[p.package_id] = Number(p.base_price);
           }
@@ -667,7 +669,9 @@ const SubSubagentDashboard = () => {
         setAgentToSubagentCost(agentToSubMap);
         // 3. Override with the parent subagent's sub-subagent template price (highest priority)
         (parentTemplatePricesResult.data || []).forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
+          const pkg = (packagesResult.data || []).find((item: any) => item.id === p.package_id);
+          const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+          if (normalizedNetwork !== "telecel_special" && p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
           }
         });
@@ -772,18 +776,22 @@ const SubSubagentDashboard = () => {
         // Build base prices = "Cost from Agent" for this sub-subagent.
         const basePriceMap: Record<string, number> = {};
         (packagesResult.data || []).forEach((p: any) => {
-          basePriceMap[p.id] = p.price;
+          basePriceMap[p.id] = Number(p.agent_price ?? p.price);
         });
         const agentToSubMap: Record<string, number> = {};
         (parentSubagentCostResult.data || []).forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
+          const pkg = (packagesResult.data || []).find((item: any) => item.id === p.package_id);
+          const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+          if (normalizedNetwork !== "telecel_special" && p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
             agentToSubMap[p.package_id] = Number(p.base_price);
           }
         });
         setAgentToSubagentCost(agentToSubMap);
         (parentTemplatePricesResult.data || []).forEach((p: any) => {
-          if (p.base_price !== null && p.base_price !== undefined) {
+          const pkg = (packagesResult.data || []).find((item: any) => item.id === p.package_id);
+          const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+          if (normalizedNetwork !== "telecel_special" && p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
           }
         });
@@ -1298,7 +1306,7 @@ const handleSaveStore = async () => {
     }
 
     const markup = parseFloat(markupPercent) / 100;
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" && telecelPackageType === "special" ? "Telecel Special" : "Telecel";
     
     filteredPackages.forEach(pkg => {
       const basePrice = basePrices[pkg.id] || pkg.price || 0;

@@ -623,7 +623,9 @@ export function SubagentStorefront() {
       });
       const seenBasePrices = new Set<string>();
       (agentSubagentBasePriceRes.data || []).forEach((p: any) => {
-        if (p.base_price != null && !seenBasePrices.has(p.package_id)) {
+        const pkg = (pkgRes.data || []).find((item: any) => item.id === p.package_id);
+        const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+        if (normalizedNetwork !== "telecel_special" && p.base_price != null && !seenBasePrices.has(p.package_id)) {
           priceMap[p.package_id] = Number(p.base_price);
           seenBasePrices.add(p.package_id);
         }
@@ -687,7 +689,9 @@ export function SubagentStorefront() {
       packages.forEach((p: any) => { priceMap[p.id] = Number(p.agent_price ?? p.price); });
       const seenBasePrices = new Set<string>();
       (agentSubagentBasePriceRes.data || []).forEach((p: any) => {
-        if (p.base_price != null && !seenBasePrices.has(p.package_id)) {
+        const pkg = packages.find((item: any) => item.id === p.package_id);
+        const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
+        if (normalizedNetwork !== "telecel_special" && p.base_price != null && !seenBasePrices.has(p.package_id)) {
           priceMap[p.package_id] = Number(p.base_price);
           seenBasePrices.add(p.package_id);
         }
