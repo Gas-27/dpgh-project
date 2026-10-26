@@ -886,7 +886,6 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       setApiKey(result.data.api_key);
       setWallet(Number(result.data.wallet || 0));
       setShowRegenerateConfirm(false);
-      setShowApiKey(true);
       toast({
         title: "Success",
         description: wasRegeneration ? "API key regenerated. Your previous key is no longer valid." : "API key generated successfully",
