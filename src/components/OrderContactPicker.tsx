@@ -88,7 +88,7 @@ export default function OrderContactPicker({ ownerType, ownerId, onContacts }: P
       const { data: rows } = await supabase.from("sub_subagent_stores").select("id").eq("subagent_store_id", ownerId);
       sourceIds = (rows || []).map((row) => row.id);
     }
-    let query = supabase.from("orders").select("customer_number,created_at,status,fulfillment_status,order_status").limit(5000);
+    let query = supabase.from("orders").select("customer_number,created_at,status,fulfillment_status,order_status").limit(100);
     if (audience === "all") query = query.gte("created_at", formatDate(window.from)).lte("created_at", formatDate(window.to));
     let data: { customer_number: string | null; created_at: string | null; status: string | null; fulfillment_status: string | null; order_status: string | null }[] = [];
     let error: { message: string } | null = null;

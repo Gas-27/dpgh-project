@@ -11,7 +11,7 @@ export default function ActiveTabMaintenance({ active, label, onReturn }: Props)
     let mounted = true;
     const load = () => fetchTabControls().then((next) => { if (mounted) setControls(next); });
     load();
-    const interval = window.setInterval(load, 15000);
+    const interval = window.setInterval(() => { if (document.visibilityState === "visible") void load(); }, 60000);
     const channel = supabase.channel("tab-controls-live").on("postgres_changes", { event: "*", schema: "public", table: "app_settings" }, load).subscribe();
     return () => { mounted = false; window.clearInterval(interval); void supabase.removeChannel(channel); };
   }, []);

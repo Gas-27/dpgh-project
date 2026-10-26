@@ -35,7 +35,7 @@ export default function DeliveryProgressAdmin() {
     setLoading(true);
     const [{ data: settingRows, error: settingsError }, { data: orderRows, error: ordersError }] = await Promise.all([
       supabase.from("delivery_progress_settings").select("network, enabled, is_default, source, min_minutes, max_minutes, rotation_minutes, fake_enabled, fake_prefix, fake_count, skip_contacts, status_color, message").order("network"),
-      supabase.from("orders").select("id, customer_number, network, order_status, status, fulfillment_status, created_at").order("created_at", { ascending: false }).limit(300),
+      supabase.from("orders").select("id, customer_number, network, order_status, status, fulfillment_status, created_at").order("created_at", { ascending: false }).limit(100),
     ]);
     if (settingsError || ordersError) toast({ title: "Could not load delivery controls", description: settingsError?.message || ordersError?.message, variant: "destructive" });
     const rows = settingRows ?? [];

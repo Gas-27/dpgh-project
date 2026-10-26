@@ -1365,7 +1365,7 @@ const AdminDashboard = () => {
         console.error("[v0] Auto-retry error:", error);
       }
     };
-    const interval = setInterval(autoRetryPendingOrders, 30000); // 30 seconds
+    const interval = setInterval(() => { if (document.visibilityState === "visible") void autoRetryPendingOrders(); }, 60000); // 60 seconds
     return () => clearInterval(interval);
   }, []);
 

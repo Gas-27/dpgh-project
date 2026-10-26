@@ -311,7 +311,8 @@ const UserDashboard = () => {
   .from("orders")
   .select("id, customer_id, user_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at", { count: "exact" })
   .or(`customer_id.eq.${effectiveUserId},user_id.eq.${effectiveUserId}`)
-  .order("created_at", { ascending: false });
+  .order("created_at", { ascending: false })
+  .limit(100);
 
         console.log("[v0] Orders fetch result - Error:", ordersError, "Data:", ordersData);
 

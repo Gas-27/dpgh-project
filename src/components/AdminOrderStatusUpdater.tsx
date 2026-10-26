@@ -44,7 +44,7 @@ export default function AdminOrderStatusUpdater() {
   const preview = async () => {
     if (!canSearch) { toast({ title: "Complete the filters", description: "Choose a valid start and end date.", variant: "destructive" }); return; }
     setLoading(true);
-    let query = supabase.from("orders").select("id, network, fulfillment_status, order_status, fulfillment_provider, created_at, customer_number, payment_method, paystack_reference, amount, agent_store_id, subagent_store_id, sub_subagent_store_id").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(5000);
+    let query = supabase.from("orders").select("id, network, fulfillment_status, order_status, fulfillment_provider, created_at, customer_number, payment_method, paystack_reference, amount, agent_store_id, subagent_store_id, sub_subagent_store_id").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(100);
     if (network !== "all") {
       if (network === "telecel_special") {
         query = query.or("network.ilike.telecel special,network.ilike.telecel_special,network.ilike.telecel-special");

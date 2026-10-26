@@ -249,7 +249,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     setAudienceLoading(true);
     try {
       const column = ownerType === "agent" ? "agent_store_id" : ownerType === "subagent" ? "subagent_store_id" : ownerType === "subsubagent" ? "sub_subagent_store_id" : "customer_id";
-      let query = supabase.from("orders").select("customer_number,created_at").not("customer_number", "is", null).order("created_at", { ascending: false }).limit(2000);
+      let query = supabase.from("orders").select("customer_number,created_at").not("customer_number", "is", null).order("created_at", { ascending: false }).limit(100);
       if (ownerType === "customer") {
         const { data: auth } = await supabase.auth.getUser();
         if (!auth.user?.id) throw new Error("Your sign-in session has expired.");

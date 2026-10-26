@@ -646,7 +646,7 @@ const SubagentDashboard = () => {
           subSubagentsResult,
           recipientsResult
         ] = await Promise.all([
-          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
+          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
@@ -696,7 +696,7 @@ const SubagentDashboard = () => {
             .from("orders")
             .select("*")
             .in("sub_subagent_store_id", subSubagentIds)
-            .range(0, 99999);
+            .range(0, 99);
           
           const subSubagentOrdersList = subSubagentOrders || [];
           setSubSubagentOrdersCount(subSubagentOrdersList.length);
@@ -829,7 +829,7 @@ const SubagentDashboard = () => {
           subSubagentsResult,
           recipientsResult
         ] = await Promise.all([
-          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99999999),
+          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
@@ -880,7 +880,7 @@ const SubagentDashboard = () => {
             .from("orders")
             .select("*")
             .in("sub_subagent_store_id", subSubagentIds)
-            .range(0, 99999);
+            .range(0, 99);
           
           const subSubagentOrdersList = subSubagentOrders || [];
           setSubSubagentOrdersCount(subSubagentOrdersList.length);
