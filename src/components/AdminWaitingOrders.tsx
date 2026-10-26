@@ -44,6 +44,16 @@ export default function AdminWaitingOrders({ orders, onRefresh }: { orders: Orde
     URL.revokeObjectURL(link.href);
   }
 
+  async function markCanceled(ids: string[]) {
+    if (!ids.length) return;
+    setSaving(true);
+    const results = await Promise.all(ids.map((id) => (supabase as any).rpc("archive_canceled_waiting_order", { p_order_id: id })));
+    const error = results.find((result) => result.error)?.error ?? null;
+    setSaving(false);
+    if (error) toast({ title: "Could not cancel orders", description: error.message, variant: "destructive" });
+    else { toast({ title: "Orders moved to canceled" }); setSelectedIds([]); onRefresh(); }
+  }
+
   async function markSeen(ids: string[]) {
     if (!ids.length) return;
     setSaving(true);
@@ -61,7 +71,7 @@ export default function AdminWaitingOrders({ orders, onRefresh }: { orders: Orde
   return <Card>
     <CardHeader className="flex flex-row items-center justify-between gap-3"><div><CardTitle>Waiting and canceled numbers</CardTitle><p className="text-sm text-muted-foreground">Numbers canceled by storefront owners or still waiting for verification.</p></div><Button variant="outline" size="sm" onClick={onRefresh}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button></CardHeader>
     <CardContent className="space-y-4">
-      <div className="flex flex-wrap gap-2"><Button variant={view === "waiting" ? "default" : "outline"} onClick={() => { setView("waiting"); setSelectedIds([]); }}>Waiting for admin ({relevant.filter((order) => isWaiting(order) && !order.admin_seen).length})</Button><Button variant={view === "canceled" ? "default" : "outline"} onClick={() => { setView("canceled"); setSelectedIds([]); }}>Canceled ({canceledOrders.length})</Button><Button variant={view === "seen" ? "default" : "outline"} onClick={() => { setView("seen"); setSelectedIds([]); }}>Seen ({relevant.filter((order) => order.admin_seen && !isCanceled(order)).length})</Button><Button variant="outline" onClick={copyNumbers} disabled={!visible.length}><Clipboard className="mr-2 h-4 w-4" />Copy numbers</Button><Button variant="outline" onClick={downloadSelected} disabled={!selectedIds.length}><Download className="mr-2 h-4 w-4" />Download selected</Button><span className="ml-auto self-center text-sm text-muted-foreground">{visible.length} orders · GHC {total.toFixed(2)}</span></div>
+      <div className="flex flex-wrap gap-2"><Button variant={view === "waiting" ? "default" : "outline"} onClick={() => { setView("waiting"); setSelectedIds([]); }}>Waiting for admin ({relevant.filter((order) => isWaiting(order) && !order.admin_seen).length})</Button><Button variant={view === "canceled" ? "default" : "outline"} onClick={() => { setView("canceled"); setSelectedIds([]); }}>Canceled ({canceledOrders.length})</Button><Button variant={view === "seen" ? "default" : "outline"} onClick={() => { setView("seen"); setSelectedIds([]); }}>Seen ({relevant.filter((order) => order.admin_seen && !isCanceled(order)).length})</Button>{view === "waiting" && <Button variant="destructive" onClick={() => void markCanceled(selectedIds)} disabled={!selectedIds.length || saving}>Mark canceled</Button>}<Button variant="outline" onClick={copyNumbers} disabled={!visible.length}><Clipboard className="mr-2 h-4 w-4" />Copy numbers</Button><Button variant="outline" onClick={downloadSelected} disabled={!selectedIds.length}><Download className="mr-2 h-4 w-4" />Download selected</Button><span className="ml-auto self-center text-sm text-muted-foreground">{visible.length} orders · GHC {total.toFixed(2)}</span></div>
       <Input placeholder="Search number, order ID, or network" value={search} onChange={(event) => setSearch(event.target.value)} />
       <div className="space-y-2">{visible.length === 0 ? <p className="py-8 text-center text-sm text-muted-foreground">No {view === "canceled" ? "canceled" : "waiting"} orders found.</p> : visible.map((order) => <div key={order.id} className="flex flex-col gap-3 rounded-lg border p-3 sm:flex-row sm:items-center"><label className="flex items-start gap-3"><input type="checkbox" aria-label={`Select order ${order.id}`} checked={selectedIds.includes(order.id)} onChange={() => toggleSelected(order.id)} className="mt-1 h-4 w-4" /><span className="min-w-0 flex-1"><span className="flex flex-wrap items-center gap-2"><strong className="font-mono">{order.customer_number}</strong><Badge variant={isCanceled(order) ? "destructive" : "secondary"}>{isCanceled(order) ? "canceled by storefront" : "waiting"}</Badge></span><span className="block text-xs text-muted-foreground">{order.network || ""} · Order {order.id} · {order.created_at ? new Date(order.created_at).toLocaleString() : ""}</span></span></label>{view === "waiting" && <Button size="sm" onClick={() => void markSeen([order.id])} disabled={saving}><Eye className="mr-2 h-4 w-4" />Mark seen</Button>}{view === "seen" && <Badge variant="outline"><Check className="mr-1 h-3 w-3" />Seen</Badge>}</div>)}</div>
     </CardContent>

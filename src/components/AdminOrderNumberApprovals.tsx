@@ -25,13 +25,15 @@ export default function AdminOrderNumberApprovals() {
 
   async function load() {
     setLoading(true);
-    const status = view === "pending" ? "pending" : "approved";
-    let query = supabase.from("order_number_submissions").select("id, normalized_phone, order_id, source, status, created_at, updated_at").eq("status", status).order(view === "submitted" ? "updated_at" : "created_at", { ascending: false }).range(page * pageSize, (page + 1) * pageSize);
+    let query: any = view === "pending"
+      ? (supabase as any).from("order_number_submissions").select("id, normalized_phone, order_id, source, status, created_at, updated_at").eq("status", "pending").order("created_at", { ascending: false })
+      : (supabase as any).from("order_number_submitted_queue").select("id, normalized_phone, order_id, source, submitted_at").order("submitted_at", { ascending: false });
+    query = query.range(page * pageSize, (page + 1) * pageSize);
     if (fromDate) query = query.gte("created_at", `${fromDate}T00:00:00.000Z`);
     if (toDate) query = query.lt("created_at", `${toDate}T23:59:59.999Z`);
     const { data, error } = await query;
     if (error) toast({ title: "Could not load numbers", description: error.message, variant: "destructive" });
-    setRows((data ?? []) as Submission[]);
+    setRows((data ?? []).map((row: any) => ({ ...row, status: view === "submitted" ? "approved" : row.status, created_at: row.created_at || row.submitted_at, updated_at: row.updated_at || row.submitted_at })) as Submission[]);
     setHasMore((data?.length ?? 0) === pageSize + 1);
     if ((data?.length ?? 0) > pageSize) setRows((data ?? []).slice(0, pageSize) as Submission[]);
     setSelected([]);
@@ -45,7 +47,8 @@ export default function AdminOrderNumberApprovals() {
   async function markSubmitted(ids: string[]) {
     if (!ids.length) return;
     setSaving(true);
-    const { error } = await supabase.from("order_number_submissions").update({ status: "approved", updated_at: new Date().toISOString() }).in("id", ids);
+    const results = await Promise.all(ids.map((id) => (supabase as any).rpc("archive_submitted_order_number", { p_submission_id: id })));
+    const error = results.find((result) => result.error)?.error ?? null;
     setSaving(false);
     if (error) toast({ title: "Could not mark submitted", description: error.message, variant: "destructive" });
     else {

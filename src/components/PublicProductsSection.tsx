@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Phone } from "lucide-react";
+import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Phone, BadgeCheck } from "lucide-react";
 
 type PublicProduct = {
   id: string;
@@ -222,7 +222,7 @@ export default function PublicProductsSection({
                       <div className="aspect-[4/3] bg-primary/10" aria-hidden="true" />
                     )}
                     <div className="space-y-2 p-4">
-                      <h3 className="font-semibold">{product.title}</h3>
+                      <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">{product.title}</h3>{((product.boost_global && (!product.boost_global_expires_at || new Date(product.boost_global_expires_at) > new Date())) || (product.boost_sitewide && (!product.boost_sitewide_expires_at || new Date(product.boost_sitewide_expires_at) > new Date()))) && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary"><BadgeCheck className="h-3.5 w-3.5" /> Boosted</span>}</div>
                       <p className="line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
                       <p className="font-bold text-primary">GHS {Number(product.price).toFixed(2)}</p>
                       {product.seller_phone && <p className="text-xs text-muted-foreground">Seller: {product.seller_phone}</p>}
