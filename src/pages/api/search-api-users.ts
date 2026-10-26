@@ -35,7 +35,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       `email.ilike.%${term}%`,
       `user_email.ilike.%${term}%`,
       `store_name.ilike.%${term}%`,
-      `api_key.ilike.%${term}%`,
     ];
 
     // Add UUID exact matches if applicable

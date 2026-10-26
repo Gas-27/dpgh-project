@@ -7,46 +7,59 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
+const authClient = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!
+);
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  res.setHeader('Cache-Control', 'no-store');
   if (req.method !== 'POST') {
-    console.log('[API] Method not POST, returning 405');
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
   try {
-    const { identity_id, is_agent, is_user } = req.body;
-    if (!identity_id) {
-      return res.status(400).json({ error: 'identity_id is required' });
-    }
+    // The key can only be issued to the signed-in caller for their own account.
+    const header = req.headers.authorization;
+    const token = header?.startsWith('Bearer ') ? header.slice(7) : null;
+    if (!token) return res.status(401).json({ error: 'Authentication required' });
 
-    // Generate a new API key
+    const { data: { user }, error: authError } = await authClient.auth.getUser(token);
+    if (authError || !user) return res.status(401).json({ error: 'Authentication required' });
+
+    const identityId = user.id;
+    const { is_agent, is_user } = req.body || {};
     const apiKey = 'pk_live_' + crypto.randomBytes(32).toString('hex');
 
-    // Upsert the API user record (update if exists, insert if not)
-    const { data, error } = await supabase
+    const { data: existing } = await supabase
       .from('api_users')
-      .upsert(
-        {
-          identity_id,
+      .select('id')
+      .eq('identity_id', identityId)
+      .maybeSingle();
+
+    // Never touch the wallet balance when rotating a key.
+    const query = existing
+      ? supabase
+          .from('api_users')
+          .update({ api_key: apiKey, updated_at: new Date().toISOString() })
+          .eq('identity_id', identityId)
+      : supabase.from('api_users').insert({
+          identity_id: identityId,
           api_key: apiKey,
-          is_agent: is_agent || false,
-          is_user: is_user || false,
+          is_agent: Boolean(is_agent),
+          is_user: Boolean(is_user),
           wallet: 0,
           updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict: 'identity_id',
-        }
-      )
-      .select()
-      .single();
+        });
+
+    const { data, error } = await query.select('wallet').single();
 
     if (error) {
-      console.error('[API] Error upserting API key:', error);
-      return res.status(400).json({ error: error.message });
+      console.error('[API] Error saving API key');
+      return res.status(400).json({ error: 'Unable to generate API key' });
     }
 
     return res.status(200).json({
@@ -55,8 +68,7 @@ export default async function handler(
         wallet: data?.wallet || 0,
       },
     });
-  } catch (err) {
-    console.error('[API] Exception:', err);
+  } catch {
     return res.status(500).json({ error: 'Internal server error' });
   }
 }

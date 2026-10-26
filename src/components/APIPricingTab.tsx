@@ -23,7 +23,6 @@ interface APIUser {
   email?: string;
   user_email?: string;
   store_name?: string;
-  api_key: string;
   wallet: number;
   active: boolean;
   custom_price: boolean;
@@ -83,7 +82,6 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
         `email.ilike.%${term}%`,
         `user_email.ilike.%${term}%`,
         `store_name.ilike.%${term}%`,
-        `api_key.ilike.%${term}%`,
       ];
 
       // Only add UUID exact matches if the term is a valid UUID format
@@ -94,7 +92,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
 
       const { data, error } = await supabase
         .from("api_users")
-        .select("id, full_name, user_email, email, store_name, api_key, wallet, active, custom_price, topup_reference, identity_id")
+        .select("id, full_name, user_email, email, store_name, wallet, active, custom_price, topup_reference, identity_id")
         .or(filters.join(","))
         .limit(20);
 
@@ -109,14 +107,13 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
           u.full_name?.toLowerCase() === tl ||
           u.email?.toLowerCase() === tl ||
           u.user_email?.toLowerCase() === tl ||
-          u.store_name?.toLowerCase() === tl ||
-          u.api_key?.toLowerCase() === tl
+          u.store_name?.toLowerCase() === tl
         );
       }
 
       setApiUsers(results);
       if (results.length === 0) {
-        toast({ title: "No API user found", description: `No results for "${term}". Try topup reference, name, email, store name, API key or user ID.`, variant: "destructive" });
+        toast({ title: "No API user found", description: `No results for "${term}". Try topup reference, name, email, store name or user ID.`, variant: "destructive" });
       }
     } catch (err: any) {
       toast({ title: "Search failed", description: err.message, variant: "destructive" });
@@ -167,11 +164,16 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
         custom_price: Number(custom_price),
       }));
 
-      const res = await fetch("https://api.dataplug.store/functions/v1/admin-set-custom-prices", {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData?.session?.access_token;
+      const res = await fetch("/api/admin/set-custom-prices", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
+        },
         body: JSON.stringify({
-          api_key: selectedUser.api_key,
+          api_user_id: selectedUser.id,
           custom_prices,
         }),
       });
@@ -207,7 +209,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
             Set Custom API Package Prices
           </CardTitle>
           <p className="text-sm text-muted-foreground">
-            Search for an API user by top-up reference, full name, email, store name or API key and set custom prices per package. These override the default API price for that user only.
+            Search for an API user by top-up reference, full name, email or store name and set custom prices per package. These override the default API price for that user only.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -217,7 +219,7 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
               <div className="relative flex-1">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
-                  placeholder="Search by top-up reference, name, email, store name or API key..."
+                  placeholder="Search by top-up reference, name, email or store name..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                   onKeyDown={(e) => {
@@ -260,7 +262,6 @@ export function APIPricingTab({ supabase, packages }: APIPricingTabProps) {
                         {user.topup_reference && (
                           <Badge variant="outline" className="text-xs font-mono text-cyan-400 border-cyan-500/40">{user.topup_reference}</Badge>
                         )}
-                        <Badge variant="outline" className="text-xs font-mono">{user.api_key.slice(0, 16)}...</Badge>
                         {user.custom_price && <Badge className="text-xs bg-blue-500/20 text-blue-400 border-blue-500/30">Custom Prices</Badge>}
                         <Badge variant={user.active ? "default" : "secondary"} className="text-xs">{user.active ? "Active" : "Inactive"}</Badge>
                       </div>

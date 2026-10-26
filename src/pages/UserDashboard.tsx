@@ -2186,7 +2186,7 @@ const renderApiDocs = () => (
   <div className="rounded-lg border border-border bg-muted p-3 font-mono text-xs break-all">GET https://api.dataplug.store/functions/v1/delivery-progress?network=mtn</div>
   <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`curl "https://api.dataplug.store/functions/v1/delivery-progress?network=mtn" \\\n  -H "Authorization: Bearer YOUR_API_KEY"`}</pre>
   <p className="text-sm font-semibold">Embeddable card</p>
-  <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`<iframe src="https://api.dataplug.store/api/delivery-progress-widget?api_key=YOUR_API_KEY&network=mtn" style="width:100%;min-height:360px;border:0" title="Delivery Progress"></iframe>`}</pre>
+  <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`<iframe src="https://api.dataplug.store/api/delivery-progress-widget?network=mtn" style="width:100%;min-height:360px;border:0" title="Delivery Progress"></iframe>`}</pre>
   <p className="text-xs text-muted-foreground">Your configured message, provider status, estimated window, last delivered order, timestamps, and duration are returned by the API and reflected in the widget.</p>
   </CardContent>
   </Card>

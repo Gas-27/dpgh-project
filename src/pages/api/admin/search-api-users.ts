@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     .from('api_users')
     .select('id, full_name, user_email, email, store_name, wallet, active, custom_price, topup_reference')
     .or(
-      `topup_reference.ilike.%${term}%,full_name.ilike.%${term}%,email.ilike.%${term}%,user_email.ilike.%${term}%,store_name.ilike.%${term}%,api_key.ilike.%${term}%`
+      `topup_reference.ilike.%${term}%,full_name.ilike.%${term}%,email.ilike.%${term}%,user_email.ilike.%${term}%,store_name.ilike.%${term}%`
     )
     .limit(20);
 

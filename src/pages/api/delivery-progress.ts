@@ -34,15 +34,18 @@ function hasApiAccess(value: unknown) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
 
-  const apiKey = String(req.headers["x-api-key"] || req.query.api_key || "").trim();
-  if (!hasApiAccess(apiKey)) return res.status(401).json({ error: "Provide an API key using x-api-key or api_key" });
-
-  const { data: apiUser, error: apiUserError } = await supabase
-    .from("api_users")
-    .select("id, api_key, is_active")
-    .eq("api_key", apiKey)
-    .maybeSingle();
-  if (apiUserError || !apiUser || apiUser.is_active === false) return res.status(401).json({ error: "Invalid or inactive API key" });
+  // Keys are only accepted in a header so they never end up in URLs, logs or page source.
+  // The delivery status itself is public, non-sensitive information, so the key is optional.
+  const apiKey = String(req.headers["x-api-key"] || "").trim();
+  if (apiKey) {
+    if (!hasApiAccess(apiKey)) return res.status(401).json({ error: "Invalid API key" });
+    const { data: apiUser, error: apiUserError } = await supabase
+      .from("api_users")
+      .select("id, is_active")
+      .eq("api_key", apiKey)
+      .maybeSingle();
+    if (apiUserError || !apiUser || apiUser.is_active === false) return res.status(401).json({ error: "Invalid or inactive API key" });
+  }
 
   const network = normalizeNetwork(req.query.network);
   const { data: setting, error: settingError } = await supabase
