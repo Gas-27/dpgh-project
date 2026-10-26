@@ -147,6 +147,7 @@ const UserDashboard = () => {
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiWallet, setApiWallet] = useState(0);
   const [normalWallet, setNormalWallet] = useState(0);
+  const [customerWalletOwnerId, setCustomerWalletOwnerId] = useState<string | null>(null);
   const [customTopupAmount, setCustomTopupAmount] = useState("");
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
@@ -393,9 +394,10 @@ const UserDashboard = () => {
         }
 
         let customerPkId: string | null = null;
-        if (customerData) {
-          customerPkId = customerData.id;
-          setNormalWallet(customerData.wallet_balance || 0);
+  if (customerData) {
+  customerPkId = customerData.id;
+  setCustomerWalletOwnerId(customerData.id);
+  setNormalWallet(customerData.wallet_balance || 0);
           setTopupReference(customerData.topup_reference || "");
         }
 
@@ -826,7 +828,7 @@ const UserDashboard = () => {
         try {
           debit = await debitOwnWallet({
             ownerType: "customer",
-            ownerId: effectiveUserId,
+            ownerId: customerWalletOwnerId || effectiveUserId,
             amount: price,
             kind: "data_purchase",
             reference: walletOrderId,
