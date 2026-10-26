@@ -154,12 +154,12 @@ export default function PublicServiceAccess() {
                 <div className="mt-5 space-y-4">
                   <div className="space-y-1">
                     <Label htmlFor="access-phone">Phone number</Label>
-                    <Input id="access-phone" inputMode="numeric" maxLength={10} placeholder="0241234567" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} />
+                    <Input id="access-phone" inputMode="numeric" maxLength={10} placeholder="0241234567" value={phone} onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))} className="border-[#b8c0d4] bg-white text-[#111936] placeholder:text-[#69708a] caret-[#2864e8]" />
                   </div>
                   <div className="space-y-1">
                     <Label htmlFor="access-pin">4-digit access code</Label>
                     <div className="relative">
-                      <Input id="access-pin" inputMode="numeric" maxLength={4} type={showPin ? "text" : "password"} placeholder="0000" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) unlock(); }} />
+                      <Input id="access-pin" inputMode="numeric" maxLength={4} type={showPin ? "text" : "password"} placeholder="0000" value={pin} onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))} onKeyDown={(e) => { if (e.key === "Enter" && !e.nativeEvent.isComposing) unlock(); }} className="border-[#b8c0d4] bg-white pr-12 text-[#111936] placeholder:text-[#69708a] caret-[#2864e8]" />
                       <button type="button" aria-label={showPin ? "Hide access code" : "Show access code"} className="absolute right-3 top-1/2 -translate-y-1/2 text-[#69708a]" onClick={() => setShowPin(!showPin)}>
                         {showPin ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>

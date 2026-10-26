@@ -101,9 +101,9 @@ export default function ProductDetail() {
     imageUrl: product.image_urls?.[0],
   });
 
-  return <main className="mx-auto max-w-4xl p-4 md:p-8">
-    <Card><CardContent className="grid gap-6 p-5 md:grid-cols-2 md:p-8">
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-1">
+  return <main className="mx-auto w-full max-w-6xl overflow-x-hidden px-3 py-4 sm:px-5 md:p-8">
+    <Card className="w-full overflow-hidden"><CardContent className="grid min-w-0 gap-6 p-4 sm:p-5 md:grid-cols-2 md:p-8">
+      <div className="grid min-w-0 grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-1">
         {(product.image_urls?.length ? product.image_urls : [null]).map((image: string | null, index: number) => image ? (
           <button key={image} type="button" onClick={() => setExpandedImage(image)} className="group relative overflow-hidden rounded-xl bg-muted text-left" aria-label={`View ${product.title} image ${index + 1} full size`}>
             <img src={image} alt={`${product.title} ${index + 1}`} className="aspect-[4/3] max-h-[34rem] w-full object-contain transition-transform duration-200 group-hover:scale-[1.02]" />
@@ -117,7 +117,7 @@ export default function ProductDetail() {
           {expandedImage && <img src={expandedImage} alt={`${product.title} enlarged`} className="max-h-[85vh] w-full object-contain" />}
         </DialogContent>
       </Dialog>
-      <div className="flex flex-col justify-center gap-4"><p className="text-sm text-muted-foreground">{store?.store_name}</p><h1 className="text-3xl font-bold text-balance">{product.title}</h1><p className="text-2xl font-semibold text-primary">GHS {Number(product.price).toFixed(2)}</p><p className="whitespace-pre-wrap text-muted-foreground">{product.description}</p>{buyLink ? <Button asChild><a href={buyLink} target="_blank" rel="noopener noreferrer">Buy on WhatsApp</a></Button> : <p className="text-sm text-muted-foreground">Contact the seller for purchase details.</p>}<Button variant="outline" onClick={() => navigate(-1)}>Back to products</Button>{product.store_kind && <ReportProductButton productId={product.id} signedIn={signedIn} />}</div>
+      <div className="flex min-w-0 flex-col justify-center gap-4"><p className="text-sm text-muted-foreground">{store?.store_name}</p><h1 className="break-words text-3xl font-bold text-balance">{product.title}</h1><p className="text-2xl font-semibold text-primary">GHS {Number(product.price).toFixed(2)}</p><p className="whitespace-pre-wrap break-words text-muted-foreground">{product.description}</p>{buyLink ? <Button asChild className="w-full"><a href={buyLink} target="_blank" rel="noopener noreferrer">Buy on WhatsApp</a></Button> : <p className="text-sm text-muted-foreground">Contact the seller for purchase details.</p>}<Button className="w-full" variant="outline" onClick={() => navigate(-1)}>Back to products</Button>{product.store_kind && <ReportProductButton productId={product.id} signedIn={signedIn} />}</div>
     </CardContent></Card>
     {product.store_kind && <Card className="mt-4"><CardContent className="p-5 md:p-8"><ProductComments productId={product.id} signedIn={signedIn} /></CardContent></Card>}
   </main>;
