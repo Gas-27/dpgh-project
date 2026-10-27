@@ -121,7 +121,52 @@ Deno.serve(async (req) => {
     // PRIVATE-SHARE SUBSCRIPTION PAYMENT
     // =====================================
     if (paymentType === "service_payment" || paymentType === "subscription" || metadata.service_payment === true || metadata.service_payment === "true") {
-      const { data: subscription } = await supabase.from("private_share_subscriptions").select("id, payment_status, confirmation_status, whatsapp_url, payment_reference, service_name").eq("payment_reference", reference).maybeSingle();
+      const subscriptionColumns = "id, payment_status, confirmation_status, whatsapp_url, payment_reference, service_name";
+      let { data: subscription } = await supabase.from("private_share_subscriptions").select(subscriptionColumns).eq("payment_reference", reference).maybeSingle();
+      if (!subscription) {
+        // The Paystack webhook may be delayed or unconfigured. The transaction was
+        // verified above, so create the paid record here; the unique payment_reference
+        // keeps this idempotent against a concurrent webhook delivery.
+        const serviceId = metadata.service_id ? String(metadata.service_id) : null;
+        const { data: service } = serviceId ? await supabase.from("digital_services").select("name,service_type").eq("id", serviceId).maybeSingle() : { data: null };
+        const amountPaid = Number(txData.amount || 0) / 100;
+        const sellerStoreKind = String(metadata.seller_store_kind || (metadata.subsubagent_store_id ? "subsubagent" : metadata.subagent_store_id ? "subagent" : metadata.agent_store_id ? "agent" : "")).trim();
+        const sellerStoreId = metadata.seller_store_id || metadata.subsubagent_store_id || metadata.subagent_store_id || metadata.agent_store_id || null;
+        const baseAmount = Number(metadata.base_amount || amountPaid);
+        const paidAt = new Date().toISOString();
+        const { data: inserted, error: insertError } = await supabase.from("private_share_subscriptions").insert({
+          payment_reference: reference,
+          customer_id: authenticatedUserId || null,
+          customer_name: String(metadata.customer_name || txData.customer?.first_name || "").trim() || null,
+          customer_email: paystackEmail || null,
+          customer_phone: String(metadata.customer_phone || metadata.phone || txData.customer?.phone || "").trim() || null,
+          service_id: serviceId,
+          service_name: String(metadata.service_name || service?.name || "Private-share subscription").trim(),
+          amount: amountPaid,
+          fee_amount: Number(metadata.fee_amount || 0),
+          selling_price: baseAmount,
+          seller_store_kind: ["agent", "subagent", "subsubagent"].includes(sellerStoreKind) ? sellerStoreKind : null,
+          seller_store_id: sellerStoreId,
+          payment_status: "paid",
+          confirmation_status: "pending",
+          paid_at: paidAt,
+          delivery_mode: "onsite",
+          provider_payload: { event: "verify-payment", data: txData },
+          updated_at: paidAt,
+        }).select(subscriptionColumns).single();
+        if (inserted) {
+          subscription = inserted;
+          if (sellerStoreId && ["agent", "subagent", "subsubagent"].includes(sellerStoreKind)) {
+            const table = sellerStoreKind === "agent" ? "agent_stores" : sellerStoreKind === "subagent" ? "subagent_stores" : "sub_subagent_stores";
+            const { data: store } = await supabase.from(table).select("wallet_balance").eq("id", sellerStoreId).maybeSingle();
+            if (store) await supabase.from(table).update({ wallet_balance: Number(store.wallet_balance || 0) + baseAmount }).eq("id", sellerStoreId);
+          }
+        } else {
+          console.error("[v0] Private subscription insert failed", { code: insertError?.code, message: insertError?.message, reference });
+          const { data: raced } = await supabase.from("private_share_subscriptions").select(subscriptionColumns).eq("payment_reference", reference).maybeSingle();
+          subscription = raced;
+        }
+      }
       if (!subscription) return new Response(JSON.stringify({ error: "Payment verified, but subscription record is still being processed", payment_confirmed: true, retryable: true }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       const { data: assignmentResult, error: assignmentError } = await supabase.rpc("private_share_assign", { p_subscription_id: subscription.id });
       if (assignmentError) console.error("[v0] Private subscription assignment retry failed", { code: assignmentError.code, reference });
