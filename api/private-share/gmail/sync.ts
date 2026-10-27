@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { UserAuthorizationRequiredError } from '@vercel/connect'
-import { syncCentralInbox } from '../../_lib/gmail-inbox'
+import { syncCentralInbox } from '../../_lib/gmail-inbox.js'
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' })

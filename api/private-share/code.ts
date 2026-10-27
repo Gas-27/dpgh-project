@@ -1,4 +1,4 @@
-import { serviceClient, syncCentralInbox } from '../_lib/gmail-inbox'
+import { serviceClient, syncCentralInbox } from '../_lib/gmail-inbox.js'
 
 const REFERENCE_PATTERN = /^[A-Za-z0-9_.-]{6,100}$/
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
