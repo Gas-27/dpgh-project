@@ -29,9 +29,38 @@ type PublicProduct = {
   boost_sitewide?: boolean;
   boost_sitewide_expires_at?: string | null;
   seller_phone?: string | null;
+  has_inline_image?: boolean;
 };
 
 const PAGE_SIZE = 18;
+
+const inlineImageCache = new Map<string, string | null>();
+
+function ProductThumbnail({ product }: { product: PublicProduct }) {
+  const directUrl = product.image_urls?.[0];
+  const needsLazyLoad = !directUrl && !!product.has_inline_image;
+  const [lazyUrl, setLazyUrl] = useState<string | null>(inlineImageCache.get(product.id) ?? null);
+
+  useEffect(() => {
+    if (!needsLazyLoad || inlineImageCache.has(product.id)) {
+      setLazyUrl(inlineImageCache.get(product.id) ?? null);
+      return;
+    }
+    let cancelled = false;
+    supabase.rpc("marketplace_product_image", { p_id: product.id }).then(({ data }) => {
+      inlineImageCache.set(product.id, typeof data === "string" ? data : null);
+      if (!cancelled) setLazyUrl(typeof data === "string" ? data : null);
+    });
+    return () => { cancelled = true; };
+  }, [needsLazyLoad, product.id]);
+
+  const src = directUrl || lazyUrl;
+  return src ? (
+    <img src={src} alt={product.title} loading="lazy" decoding="async" className="aspect-[4/3] w-full object-cover" />
+  ) : (
+    <div className="aspect-[4/3] bg-primary/10" aria-hidden="true" />
+  );
+}
 
 type SortOrder = "newest" | "price_asc" | "price_desc";
 
@@ -224,11 +253,7 @@ export default function PublicProductsSection({
                     onClick={() => navigate(`/marketplace/product/${product.id}/${product.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "product"}`)}
                     className="overflow-hidden rounded-xl border border-primary/30 bg-card text-left transition hover:-translate-y-0.5 hover:border-primary hover:shadow-lg"
                   >
-                    {product.image_urls?.[0] ? (
-                      <img src={product.image_urls[0]} alt={product.title} className="aspect-[4/3] w-full object-cover" />
-                    ) : (
-                      <div className="aspect-[4/3] bg-primary/10" aria-hidden="true" />
-                    )}
+                    <ProductThumbnail product={product} />
                     <div className="space-y-2 p-4">
                       <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">{product.title}</h3>{((product.boost_global && (!product.boost_global_expires_at || new Date(product.boost_global_expires_at) > new Date())) || (product.boost_sitewide && (!product.boost_sitewide_expires_at || new Date(product.boost_sitewide_expires_at) > new Date()))) && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary"><BadgeCheck className="h-3.5 w-3.5" /> Boosted</span>}</div>
                       <p className="line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
