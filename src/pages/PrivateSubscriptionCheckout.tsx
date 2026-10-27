@@ -37,7 +37,15 @@ export default function PrivateSubscriptionCheckout() {
     const verifyPayment = async () => {
       let lastError: unknown = null;
       for (let attempt = 0; attempt < 12; attempt += 1) {
-        const { data, error } = await supabase.functions.invoke("verify-payment", { body: { reference, payment_type: "service_payment", metadata: { type: "service_payment", service_payment: true, service_id: serviceId, service_type: "private_shared" } } });
+        let data: any = null;
+        let error: unknown = null;
+        try {
+          const response = await fetch("/api/private-share/verify", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ reference }) });
+          data = await response.json().catch(() => null);
+          if (!response.ok && !data?.payment_confirmed) error = new Error(data?.error || "Verification failed");
+        } catch (fetchError) {
+          error = fetchError;
+        }
         if (cancelled) return;
         // A 202 response can include payment_confirmed while the webhook is still
         // creating the subscription row. Do not discard that response as an error.
