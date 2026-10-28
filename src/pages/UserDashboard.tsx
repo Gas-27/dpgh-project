@@ -1368,9 +1368,9 @@ case "api-key":
                         )}
                       </TableCell>
                       <TableCell>
-                        {((order as any).source === "api" || order.payment_method === "api_wallet") && normalizeOrderStatus(order) === "delivered" ? (
-                          <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>
-                        ) : <span className="text-xs text-muted-foreground">—</span>}
+{normalizeOrderStatus(order) === "delivered" ? (
+  <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>
+  ) : <span className="text-xs text-muted-foreground">—</span>}
                       </TableCell>
                     </TableRow>
                   ))}
@@ -3350,7 +3350,7 @@ return (
           open={Boolean(apiReportOrder)}
           onOpenChange={(open) => { if (!open) setApiReportOrder(null); }}
           order={{ id: apiReportOrder.id, customer_number: apiReportOrder.customer_number, network: apiReportOrder.network, size_gb: Number(apiReportOrder.size_gb || 0), amount: Number(apiReportOrder.selling_price || apiReportOrder.amount || 0), created_at: apiReportOrder.created_at, fulfillment_status: apiReportOrder.fulfillment_status || "delivered", status: apiReportOrder.status || "delivered" }}
-          complaintType="api_order"
+          complaintType={(apiReportOrder.source === "api" || apiReportOrder.payment_method === "api_wallet") ? "api_order" : "storefront"}
         />
       )}
 
