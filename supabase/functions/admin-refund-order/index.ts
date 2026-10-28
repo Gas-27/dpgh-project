@@ -11,8 +11,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
   const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-  const secret = Deno.env.get("PAYSTACK_API_KEY") ?? Deno.env.get("PAYSTACK_SECRET_KEY");
-  if (!serviceKey || !secret) return json({ error: "Refund service is not configured" }, 500);
+  if (!serviceKey) return json({ error: "Refund service is not configured" }, 500);
 
   const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "").trim();
   const admin = createClient(supabaseUrl, serviceKey, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -31,19 +30,7 @@ Deno.serve(async (req) => {
   const amount = Number(order.amount ?? order.total_amount ?? 0);
   if (!reference || !Number.isFinite(amount) || amount <= 0) return json({ error: "This order has no valid Paystack reference or refundable amount." }, 400);
 
-  const { data: existing } = await admin.from("paystack_refunds").select("id,status").eq("order_id", orderId).in("status", ["pending", "processing", "processed", "completed"]).maybeSingle();
-  if (existing) return json({ success: true, status: "already_refunded", refund_id: existing.id, amount, message: "This order has already been refunded or has a refund in progress." });
-
-  const { data: record, error: recordError } = await admin.from("paystack_refunds").insert({ order_id: orderId, amount, paystack_reference: reference, status: "processing", reason: "Admin Paystack refund" }).select("id").single();
-  if (recordError) return json({ error: recordError.message }, 409);
-  const response = await fetch("https://api.paystack.co/refund", { method: "POST", headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" }, body: JSON.stringify({ transaction: reference, amount: Math.round(amount * 100), currency: "GHS" }) });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok || payload?.status === false) {
-    await admin.from("paystack_refunds").update({ status: "failed", reason: payload?.message ?? "Paystack refund failed", provider_payload: payload, updated_at: new Date().toISOString() }).eq("id", record.id);
-    return json({ error: payload?.message ?? "Paystack refund failed" }, 502);
-  }
-  const status = ["processed", "completed"].includes(String(payload?.data?.status).toLowerCase()) ? "processed" : "pending";
-  await admin.from("paystack_refunds").update({ status, paystack_refund_id: String(payload?.data?.id ?? ""), provider_payload: payload, processed_at: status === "processed" ? new Date().toISOString() : null, updated_at: new Date().toISOString() }).eq("id", record.id);
-  await admin.from("orders").update({ status: "refunded", fulfillment_status: "refunded", refunded_amount: amount, refunded_at: new Date().toISOString() }).eq("id", orderId);
-  return json({ success: true, status, refund_id: record.id, amount, message: "Paystack refund submitted successfully." });
+  const { data, error } = await admin.rpc("admin_allocate_order_refund", { p_order_id: orderId, p_actor: auth.user.id });
+  if (error) return json({ error: error.message }, 400);
+  return json({ success: true, status: data?.status ?? "allocated", amount: data?.amount, owner_type: data?.owner_type, owner_id: data?.owner_id, already_allocated: data?.already_allocated ?? false, message: "The seller wallet has been credited. The owning seller must initiate the Paystack refund from their Refund section." });
 });

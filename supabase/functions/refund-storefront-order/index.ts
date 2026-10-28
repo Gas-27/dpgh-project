@@ -51,27 +51,20 @@ Deno.serve(async (req) => {
   const storedReference = String(order.paystack_reference ?? "").trim();
   if (!storedReference) return json({ error: "This order has no Paystack reference and cannot be refunded." }, 400);
   if (storedReference !== reference) return json({ error: "The Paystack reference does not match this order." }, 400);
-  const serverAmount = Number(order.amount ?? order.total_amount ?? order.selling_price ?? order.agent_price ?? order.base_price ?? 0);
-  if (!Number.isFinite(serverAmount) || serverAmount <= 0) return json({ error: "This order has no valid refundable amount." }, 400);
+  const allocationAmount = Number(order.refund_allocation_amount ?? 0);
+  if (!Number.isFinite(allocationAmount) || allocationAmount <= 0) return json({ error: "An admin must allocate the seller's recorded base price before this refund can be initiated." }, 400);
 
   const { data: existingRefund } = await admin.from("paystack_refunds").select("id, status, paystack_refund_id").eq("order_id", orderId).eq("paystack_reference", storedReference).in("status", ["pending", "processing", "completed"]).maybeSingle();
-  if (existingRefund) {
-    return json({ success: true, refund_id: existingRefund.id, status: existingRefund.status, message: "This refund has already been submitted for the order." });
-  }
+  if (existingRefund) return json({ success: true, refund_id: existingRefund.id, status: existingRefund.status, message: "This refund has already been submitted for the order." });
 
-  const { data: reservation, error: reservationError } = await admin.rpc("refund_storefront_order", {
-    p_order_id: orderId,
-    p_actor_user_id: actorUserId,
-    p_actor_role: role,
-    p_storefront_id: storefrontId,
-    p_amount: serverAmount,
-    p_phone: String(order.customer_number ?? phone).trim() || null,
-    p_paystack_reference: storedReference,
-    p_reason: body?.reason ? String(body.reason).slice(0, 500) : null,
-  });
-  if (reservationError) return json({ error: reservationError.message }, 400);
+  const { data: debit, error: debitError } = await admin.rpc("seller_debit_order_refund", { p_order_id: orderId, p_actor: actorUserId });
+  if (debitError) return json({ error: debitError.message }, 400);
+  const serverAmount = allocationAmount;
+  if (!Number.isFinite(serverAmount) || serverAmount <= 0) return json({ error: "This order has no valid allocated refund amount." }, 400);
+  const { data: reservation, error: reservationError } = await admin.from("paystack_refunds").insert({ order_id: orderId, amount: serverAmount, paystack_reference: storedReference, status: "processing", reason: body?.reason ? String(body.reason).slice(0, 500) : "Seller-initiated Paystack refund", wallet_deduction_status: "deducted" }).select("id").single();
+  if (reservationError) return json({ error: reservationError.message }, 409);
 
-  const refundId = reservation.refund_id as string;
+  const refundId = reservation.id as string;
   const paystack = await fetch("https://api.paystack.co/refund", {
     method: "POST",
     headers: { Authorization: `Bearer ${secret}`, "Content-Type": "application/json" },
@@ -80,10 +73,20 @@ Deno.serve(async (req) => {
   const paystackBody = await paystack.json().catch(() => ({}));
 
   if (!paystack.ok || paystackBody?.status === false) {
-    await admin.rpc("restore_storefront_refund_wallet", {
-      p_refund_id: refundId,
-      p_reason: paystackBody?.message ?? "Paystack refund failed",
-    });
+    const { data: orderForRestore } = await admin.from("orders").select("refund_allocation_owner_type, refund_allocation_owner_id").eq("id", orderId).single();
+    if (orderForRestore?.refund_allocation_owner_type && orderForRestore?.refund_allocation_owner_id) {
+      await admin.rpc("wallet_apply_internal", {
+        p_owner_type: orderForRestore.refund_allocation_owner_type,
+        p_owner_id: orderForRestore.refund_allocation_owner_id,
+        p_delta: allocationAmount,
+        p_kind: "refund_debit_reversal",
+        p_reference: `${orderId}:refund-reversal`,
+        p_note: paystackBody?.message ?? "Paystack refund failed; seller wallet debit restored",
+        p_actor: actorUserId,
+        p_allow_negative: false,
+      });
+      await admin.from("orders").update({ refund_allocation_status: "allocated", refund_wallet_debit_at: null }).eq("id", orderId);
+    }
     await admin.from("paystack_refunds").update({ status: "failed", reason: paystackBody?.message ?? "Paystack refund failed", provider_payload: paystackBody, updated_at: new Date().toISOString() }).eq("id", refundId);
     return json({ error: paystackBody?.message ?? "Paystack could not start the refund" }, 502);
   }
@@ -91,5 +94,5 @@ Deno.serve(async (req) => {
   const paystackStatus = String(paystackBody?.data?.status ?? "pending").toLowerCase();
   const status = paystackStatus === "processed" || paystackStatus === "completed" ? "processed" : paystackStatus === "failed" ? "failed" : "pending";
   await admin.from("paystack_refunds").update({ paystack_refund_id: String(paystackBody?.data?.id ?? ""), status, provider_payload: paystackBody, processed_at: status === "processed" ? new Date().toISOString() : null, wallet_deduction_status: status === "processed" ? "deducted" : "reserved", updated_at: new Date().toISOString() }).eq("id", refundId);
-  return json({ success: true, refund_id: refundId, status, message: "Refund through Paystack submitted. Refunds usually take 20 minutes to 72 hours. The money returns to the original payment account or number, and Paystack will notify the customer." });
+  return json({ success: true, refund_id: refundId, status, message: `Refund through Paystack submitted using the allocated seller wallet amount (${serverAmount.toFixed(2)}). Refunds usually take 20 minutes to 72 hours. The money returns to the original payment account or number, and Paystack will notify the customer.` });
 });
