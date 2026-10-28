@@ -1825,6 +1825,34 @@ const AdminDashboard = () => {
     let successCount = 0;
     let errorCount = 0;
 
+    // Refunds are executed atomically by the database. The dashboard must never
+    // credit a wallet directly because the order update can invoke refund logic too.
+    for (const orderId of idsToProcess) {
+      const { data, error } = await supabase.rpc("admin_refund_order", { p_order_id: orderId });
+      if (error) {
+        console.error("[v0] Database refund failed:", orderId, error);
+        errorCount++;
+        continue;
+      }
+      if (data?.status === "refunded" || data?.status === "already_refunded") {
+        successCount++;
+        setOrders((prev) => prev.map((o) => o.id === orderId
+          ? { ...o, status: "refunded", fulfillment_status: "refunded", order_status: "refunded", refunded_amount: Number(data.amount) }
+          : o));
+      } else {
+        errorCount++;
+      }
+    }
+    setRefundingOrders(new Set());
+    setSelectedOrderIds(new Set());
+    setRefundAction("");
+    toast({
+      title: "Refund Complete",
+      description: `${successCount} refunded, ${errorCount} failed`,
+      variant: errorCount > 0 ? "destructive" : "default",
+    });
+    return;
+
     // Resolve the authoritative base price the admin gave the agent for this package.
     // Storefront orders only store the customer-facing "amount", so we must look up the
     // real admin base price: a per-agent custom base price first, then the global package
