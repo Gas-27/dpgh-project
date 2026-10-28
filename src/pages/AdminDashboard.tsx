@@ -1827,7 +1827,7 @@ const AdminDashboard = () => {
     // credit a wallet directly because the order update can invoke refund logic too.
     for (const orderId of idsToProcess) {
       const order = orders.find((candidate) => candidate.id === orderId);
-      const isPaystackOrder = String(order?.payment_method ?? "").toLowerCase() === "paystack" && Boolean(order?.paystack_reference);
+      const isPaystackOrder = (String(order?.payment_method ?? "").toLowerCase() === "paystack" && Boolean(order?.paystack_reference)) || Boolean(order?.api_user) || String(order?.source ?? "").toLowerCase() === "api" || String(order?.payment_method ?? "").toLowerCase() === "api_wallet";
       const { data, error } = isPaystackOrder
         ? await supabase.functions.invoke("admin-refund-order", { body: { order_id: orderId } })
         : await supabase.rpc("admin_refund_order", { p_order_id: orderId });
@@ -1853,7 +1853,7 @@ const AdminDashboard = () => {
     setRefundAction("");
     toast({
       title: "Refund actions complete",
-      description: `${successCount} completed, ${errorCount} failed. Paystack orders are allocated to the seller wallet for the seller to initiate the customer refund.`,
+      description: `${successCount} completed, ${errorCount} failed. Paystack orders are allocated to the seller wallet, while API orders are returned to the API wallet.`,
       variant: errorCount > 0 ? "destructive" : "default",
     });
     return;

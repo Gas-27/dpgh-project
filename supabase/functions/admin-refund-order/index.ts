@@ -26,9 +26,10 @@ Deno.serve(async (req) => {
   const { data: order, error: orderError } = await admin.from("orders").select("*").eq("id", orderId).maybeSingle();
   if (orderError) return json({ error: orderError.message }, 500);
   if (!order) return json({ error: "Order not found" }, 404);
+  const isApiOrder = Boolean(order.api_user) || String(order.source ?? "").toLowerCase() === "api" || String(order.payment_method ?? "").toLowerCase() === "api_wallet";
   const reference = String(order.paystack_reference ?? "").trim();
   const amount = Number(order.amount ?? order.total_amount ?? 0);
-  if (!reference || !Number.isFinite(amount) || amount <= 0) return json({ error: "This order has no valid Paystack reference or refundable amount." }, 400);
+  if ((!isApiOrder && !reference) || !Number.isFinite(amount) || amount <= 0) return json({ error: "This order has no valid provider reference or refundable amount." }, 400);
 
   const { data, error } = await admin.rpc("admin_allocate_order_refund", { p_order_id: orderId, p_actor: auth.user.id });
   if (error) return json({ error: error.message }, 400);
