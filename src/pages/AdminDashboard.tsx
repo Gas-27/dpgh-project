@@ -1663,9 +1663,7 @@ const AdminDashboard = () => {
       if (network !== "all") {
         if (network === "airtel") {
           query = query.in("network", ["airteltigo", "atbigtime", "atbigshare"]);
-        } else if (network === "telecel_special") {
-          query = query.or("network.ilike.telecel special,network.ilike.telecel_special,network.ilike.telecel-special");
-        } else {
+  } else {
           query = query.eq("network", network);
         }
       }
@@ -2870,8 +2868,7 @@ const AdminDashboard = () => {
                     { key: "mtn_express", label: "MTN Express" },
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
-                    { key: "telecel_special", label: "Telecel Special" },
-                  ].map(({ key, label }) => (
+                                    ].map(({ key, label }) => (
                     <Button
                       key={key}
                       variant={networkFilter === key ? "hero" : "outline"}
@@ -3052,7 +3049,7 @@ const AdminDashboard = () => {
                     <SelectItem value="mtn_express">MTN Express</SelectItem>
                     <SelectItem value="airtel">AirtelTigo</SelectItem>
                     <SelectItem value="telecel">Telecel</SelectItem>
-                    <SelectItem value="telecel_special">Telecel Special</SelectItem>
+                    
                   </SelectContent>
                 </Select>
 
@@ -4502,7 +4499,7 @@ const AdminDashboard = () => {
                         <SelectItem value="mtn">MTN</SelectItem>
                         <SelectItem value="airteltigo">AirtelTigo</SelectItem>
                         <SelectItem value="telecel">Telecel</SelectItem>
-                    <SelectItem value="telecel_special">Telecel Special</SelectItem>
+                    
                       </SelectContent>
                     </Select>
                   </div>
@@ -5114,7 +5111,7 @@ const AdminDashboard = () => {
           <DialogHeader><DialogTitle className="font-display">Add New Package</DialogTitle><DialogDescription>Create a new data package.</DialogDescription></DialogHeader>
           <div className="space-y-4 pt-2">
             <div className="space-y-2"><Label>Network</Label><Select value={newPkg.network} onValueChange={(v) => setNewPkg((p) => ({ ...p, network: v }))}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="mtn">MTN</SelectItem><SelectItem value="mtn_express">MTN Express</SelectItem><SelectItem value="airteltigo">AirtelTigo</SelectItem><SelectItem value="telecel">Telecel</SelectItem>
-                    <SelectItem value="telecel_special">Telecel Special</SelectItem></SelectContent></Select></div>
+                    </SelectContent></Select></div>
             <div className="space-y-2"><Label>Size (GB)</Label><Input type="number" placeholder="e.g. 5" value={newPkg.size_gb} onChange={(e) => setNewPkg((p) => ({ ...p, size_gb: e.target.value }))} /></div>
             <div className="space-y-2"><Label>User Price (GHC)</Label><Input type="number" step="0.01" placeholder="e.g. 15.00" value={newPkg.price} onChange={(e) => setNewPkg((p) => ({ ...p, price: e.target.value }))} /></div>
             <div className="space-y-2"><Label>Agent Price (GHC)</Label><Input type="number" step="0.01" placeholder="e.g. 12.00" value={newPkg.agent_price} onChange={(e) => setNewPkg((p) => ({ ...p, agent_price: e.target.value }))} /></div>
@@ -5147,8 +5144,7 @@ const AdminDashboard = () => {
                   { key: "mtn_express", label: "MTN Express" },
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
-                    { key: "telecel_special", label: "Telecel Special" },
-                  ].map(({ key, label }) => (
+                                    ].map(({ key, label }) => (
                     <Button
                     key={key}
                     variant={agentPriceNetworkFilter === key ? "hero" : "outline"}

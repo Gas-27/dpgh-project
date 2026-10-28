@@ -238,7 +238,7 @@ const SubSubagentDashboard = () => {
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [markupPercent, setMarkupPercent] = useState("");
   const [networkFilter, setNetworkFilter] = useState("mtn");
- const [telecelPackageType, setTelecelPackageType] = useState<"cheap" | "special">("cheap");
+
   const [savingPrices, setSavingPrices] = useState(false);
   // Wallet top-up (Paystack) state
   const [paystackTopupAmount, setPaystackTopupAmount] = useState("");
@@ -661,7 +661,7 @@ const SubSubagentDashboard = () => {
         (parentSubagentCostResult.data || []).forEach((p: any) => {
           const pkg = (packagesResult.data || []).find((item: any) => item.id === p.package_id);
           const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
-          if (normalizedNetwork !== "telecel_special" && p.base_price !== null && p.base_price !== undefined) {
+          if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
             agentToSubMap[p.package_id] = Number(p.base_price);
           }
@@ -671,7 +671,7 @@ const SubSubagentDashboard = () => {
         (parentTemplatePricesResult.data || []).forEach((p: any) => {
           const pkg = (packagesResult.data || []).find((item: any) => item.id === p.package_id);
           const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
-          if (normalizedNetwork !== "telecel_special" && p.base_price !== null && p.base_price !== undefined) {
+          if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
           }
         });
@@ -782,7 +782,7 @@ const SubSubagentDashboard = () => {
         (parentSubagentCostResult.data || []).forEach((p: any) => {
           const pkg = (packagesResult.data || []).find((item: any) => item.id === p.package_id);
           const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
-          if (normalizedNetwork !== "telecel_special" && p.base_price !== null && p.base_price !== undefined) {
+          if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
             agentToSubMap[p.package_id] = Number(p.base_price);
           }
@@ -791,7 +791,7 @@ const SubSubagentDashboard = () => {
         (parentTemplatePricesResult.data || []).forEach((p: any) => {
           const pkg = (packagesResult.data || []).find((item: any) => item.id === p.package_id);
           const normalizedNetwork = String(pkg?.network || "").toLowerCase().trim().replace(/[\s-]+/g, "_");
-          if (normalizedNetwork !== "telecel_special" && p.base_price !== null && p.base_price !== undefined) {
+          if (p.base_price !== null && p.base_price !== undefined) {
             basePriceMap[p.package_id] = Number(p.base_price);
           }
         });
@@ -1285,7 +1285,7 @@ const handleSaveStore = async () => {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
     const packageNetwork = String(p.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecelspecial" : networkFilter.replace(/[^a-z0-9]/g, "");
+    const selectedNetwork = networkFilter.replace(/[^a-z0-9]/g, "");
     return packageNetwork === selectedNetwork;
   });
 
@@ -1306,7 +1306,7 @@ const handleSaveStore = async () => {
     }
 
     const markup = parseFloat(markupPercent) / 100;
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" && telecelPackageType === "special" ? "Telecel Special" : "Telecel";
+    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
     
     filteredPackages.forEach(pkg => {
       const basePrice = basePrices[pkg.id] || pkg.price || 0;
@@ -2348,7 +2348,7 @@ return (
               </CardContent>
             </Card>
             <DeliveryProgressCard selectedNetwork={networkFilter} />
-  <NetworkTabs value={networkFilter as any} onChange={(value) => { setNetworkFilter(value); if (value !== "telecel") setTelecelPackageType("cheap"); }} telecelPackageType={telecelPackageType} onTelecelPackageTypeChange={setTelecelPackageType} />
+  <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {filteredPackages.map(pkg => {
                 const basePrice = basePrices[pkg.id] || pkg.price || 0;
@@ -2825,8 +2825,7 @@ handleMobileNumberChange(digits);
                       { key: "mtn_express", label: "MTN Express" },
                       { key: "airteltigo", label: "AirtelTigo" },
                       { key: "telecel", label: "Telecel" },
-                      { key: "telecel_special", label: "Telecel Special" },
-                    ].map(({ key, label }) => (
+                                        ].map(({ key, label }) => (
                       <Button 
                         key={key} 
                         variant={networkFilter === key ? "hero" : "outline"} 

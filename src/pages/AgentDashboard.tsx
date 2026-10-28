@@ -375,7 +375,6 @@ const AgentDashboard = () => {
   const [subagentProfitForAgent, setSubagentProfitForAgent] = useState(0);
   const [loading, setLoading] = useState(true);
   const [networkFilter, setNetworkFilter] = useState("mtn");
- const [telecelPackageType, setTelecelPackageType] = useState<"cheap" | "special">("cheap");
   const [savingPrices, setSavingPrices] = useState(false);
   const [editingStore, setEditingStore] = useState(false);
   const [orderSearch, setOrderSearch] = useState("");
@@ -1528,7 +1527,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
                   return p.network === "mtn_mashup" || p.network === "mashup";
       }
       const packageNetwork = String(p.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecelspecial" : networkFilter.replace(/[^a-z0-9]/g, "");
+    const selectedNetwork = networkFilter.replace(/[^a-z0-9]/g, "");
     return packageNetwork === selectedNetwork;
     });
     let appliedCount = 0;
@@ -1541,7 +1540,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       appliedCount++;
     }
     setEditedPrices(newEdited);
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "telecel" && telecelPackageType === "special" ? "Telecel Special" : "Telecel";
+    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
     toast({
       title: `Markup applied to ${networkName} packages`,
       description: `${percent}% markup applied to the base price of ${appliedCount} packages. Remember to click "Save Prices" to keep these changes.`,
@@ -2340,7 +2339,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
       return p.network === "airteltigo" || p.network === "atbigtime";
     }
     const packageNetwork = String(p.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecelspecial" : networkFilter.replace(/[^a-z0-9]/g, "");
+    const selectedNetwork = networkFilter.replace(/[^a-z0-9]/g, "");
     return packageNetwork === selectedNetwork;
   });
   const storeSlug = store ? store.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") : "";
@@ -2882,7 +2881,7 @@ return (
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GHC {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
             </Card>)}
             <DeliveryProgressCard selectedNetwork={networkFilter} />
-  <NetworkTabs value={networkFilter as any} onChange={(value) => { setNetworkFilter(value); if (value !== "telecel") setTelecelPackageType("cheap"); }} telecelPackageType={telecelPackageType} onTelecelPackageTypeChange={setTelecelPackageType} />
+  <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {packages.filter(p => {
                 if (false && networkFilter === "mtn_mashup") {
@@ -2892,7 +2891,7 @@ return (
         return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
       }
       const packageNetwork = String(p.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecelspecial" : networkFilter.replace(/[^a-z0-9]/g, "");
+    const selectedNetwork = networkFilter.replace(/[^a-z0-9]/g, "");
     return packageNetwork === selectedNetwork;
               }).map((pkg) => {
                 const price = Number(pkg.agent_price || pkg.price);
@@ -3192,8 +3191,7 @@ return (
                   { key: "mtn_express", label: "MTN Express" },
                   { key: "airteltigo", label: "AirtelTigo" },
                   { key: "telecel", label: "Telecel" },
-                  { key: "telecel_special", label: "Telecel Special" },
-                ].map(({ key, label }) => (
+                                ].map(({ key, label }) => (
                   <Button 
                     key={key} 
                     variant={networkFilter === key ? "hero" : "outline"} 
@@ -4695,7 +4693,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                         return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
                       }
                       const packageNetwork = String(p.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecelspecial" : networkFilter.replace(/[^a-z0-9]/g, "");
+    const selectedNetwork = networkFilter.replace(/[^a-z0-9]/g, "");
     return packageNetwork === selectedNetwork;
                     }).map((pkg) => {
                       const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
@@ -4715,7 +4713,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
                     }
                     const packageNetwork = String(p.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecelspecial" : networkFilter.replace(/[^a-z0-9]/g, "");
+    const selectedNetwork = networkFilter.replace(/[^a-z0-9]/g, "");
     return packageNetwork === selectedNetwork;
                   }).length === 0 && (
                     <div className="col-span-full text-center py-8 text-muted-foreground">
@@ -5322,7 +5320,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div>{buySimName && <div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">SIM registered to</span><span className="text-right font-semibold">{buySimName}</span></div>}
               </>
-            <div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GHC {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">⚠������ You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-xs text-red-400 leading-relaxed"><span className="font-semibold block mb-1">Important Notice</span>Make sure the recipient number has no outstanding airtime, MoMo, or bundle debt. Network providers will not deliver data to numbers with unpaid balances — this is a network rule we cannot override.</div><div className="space-y-2"><Label>Payment Method</Label><div className="grid grid-cols-1 gap-2"><div className="flex gap-2 items-stretch">
+            <div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GHC {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">��������� You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-xs text-red-400 leading-relaxed"><span className="font-semibold block mb-1">Important Notice</span>Make sure the recipient number has no outstanding airtime, MoMo, or bundle debt. Network providers will not deliver data to numbers with unpaid balances — this is a network rule we cannot override.</div><div className="space-y-2"><Label>Payment Method</Label><div className="grid grid-cols-1 gap-2"><div className="flex gap-2 items-stretch">
                     <button type="button" onClick={() => setBuyPaymentMethod("wallet")} aria-pressed={buyPaymentMethod === "wallet"} className={`flex-1 flex items-center justify-between rounded-lg border p-3 text-left transition-colors ${buyPaymentMethod === "wallet" ? "border-primary bg-primary/5" : "border-border hover:border-primary/50"}`}><span className="flex items-center gap-2"><span className={`flex h-4 w-4 items-center justify-center rounded-full border-2 ${buyPaymentMethod === "wallet" ? "border-primary" : "border-muted-foreground"}`}>{buyPaymentMethod === "wallet" && <span className="h-2 w-2 rounded-full bg-primary" />}</span><Wallet className="h-4 w-4" />Wallet (GHC {store?.wallet_balance?.toFixed(2) ?? "0.00"})</span><span className="text-xs text-green-400 font-medium">No fee added</span></button>
                     <button
                       type="button"

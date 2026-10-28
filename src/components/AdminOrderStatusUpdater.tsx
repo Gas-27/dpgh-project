@@ -15,7 +15,6 @@ const networks = [
   ["mtn", "MTN"],
   ["mtn_express", "MTN Express"],
   ["telecel", "Telecel"],
-  ["telecel_special", "Telecel Special"],
   ["airteltigo", "AirtelTigo"],
 ] as const;
 const statuses = ["pending", "processing", "waiting", "in-queue", "completed", "delivered", "failed"];
@@ -46,9 +45,7 @@ export default function AdminOrderStatusUpdater() {
     setLoading(true);
     let query = supabase.from("orders").select("id, network, fulfillment_status, order_status, fulfillment_provider, created_at, customer_number, payment_method, paystack_reference, amount, agent_store_id, subagent_store_id, sub_subagent_store_id").gte("created_at", `${from}T${fromTime}:00.000Z`).lte("created_at", `${to}T${toTime}:59.999Z`).order("created_at", { ascending: false }).limit(100);
     if (network !== "all") {
-      if (network === "telecel_special") {
-        query = query.or("network.ilike.telecel special,network.ilike.telecel_special,network.ilike.telecel-special");
-      } else {
+      {
         const networkValues = network === "mtn_express"
           ? ["mtn_express", "mtn-express", "mtnexpress"]
           : network === "airteltigo"

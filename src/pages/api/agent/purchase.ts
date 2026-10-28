@@ -59,9 +59,7 @@ export default async function handler(
 
     const normalizedNetwork = String(network).toLowerCase().trim().replace(/[\s-]+/g, "_");
     const normalizedPhone = String(phone_number).replace(/\D/g, "");
-    if (normalizedNetwork === "telecel_special" && !/^(020|050)\d{7}$/.test(normalizedPhone)) {
-      return res.status(400).json({ error: "Telecel Special packages require a Telecel number" });
-    }
+
 
     // Calculate amount and pricing
     const amount = Number(packageData.agent_price) || 0;
@@ -74,7 +72,7 @@ export default async function handler(
       .insert({
         customer_number: phone_number,
         package_id: package_id,
-        network: normalizedNetwork === "telecel_special" ? "telecel special" : network,
+        network,
         size_gb: sizeGb,
         size_gb_text: packageData.name || null,
         amount: amount,

@@ -86,8 +86,6 @@ export const phoneMatchesNetwork = (phone: string, expectedNetwork: string): boo
   if (detectedNetwork === "unknown") return true; // Don't block if we can't detect
   
   const normalizedExpected = expectedNetwork.toLowerCase().replace(/[\s-]+/g, "_");
-  if (normalizedExpected === "telecel_special") return detectedNetwork === "telecel";
-  
   // Handle variations of network names (atbigtime and atbigshare are AirtelTigo products)
   if (
     normalizedExpected === "at" ||

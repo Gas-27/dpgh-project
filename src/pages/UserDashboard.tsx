@@ -152,7 +152,6 @@ const UserDashboard = () => {
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [networkFilter, setNetworkFilter] = useState("mtn");
-  const [telecelPackageType, setTelecelPackageType] = useState<"cheap" | "special">("cheap");
   const [buyDialogOpen, setBuyDialogOpen] = useState(false);
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
   const [buyPhone, setBuyPhone] = useState("");
@@ -1401,14 +1400,14 @@ case "api-key":
         <CardContent className="space-y-4">
           <DeliveryProgressCard selectedNetwork={networkFilter} />
 
-          <NetworkTabs value={networkFilter as any} onChange={(value) => { setNetworkFilter(value); if (value !== "telecel") setTelecelPackageType("cheap"); }} telecelPackageType={telecelPackageType} onTelecelPackageTypeChange={setTelecelPackageType} />
+          <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
 
           {/* Packages Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {packages
               .filter(pkg => {
                 const packageNetwork = String(pkg.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-                const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecelspecial" : networkFilter.replace(/[^a-z0-9]/g, "");
+                const selectedNetwork = networkFilter.replace(/[^a-z0-9]/g, "");
                 return packageNetwork === selectedNetwork;
               })
               .map(pkg => (

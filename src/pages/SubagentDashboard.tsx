@@ -233,7 +233,7 @@ const SubagentDashboard = () => {
   const [editedPrices, setEditedPrices] = useState<Record<string, number | string>>({});
   const [markupPercent, setMarkupPercent] = useState("");
   const [networkFilter, setNetworkFilter] = useState("mtn");
- const [telecelPackageType, setTelecelPackageType] = useState<"cheap" | "special">("cheap");
+
   const [savingPrices, setSavingPrices] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [openManualSection, setOpenManualSection] = useState<number | null>(null);
@@ -1693,7 +1693,7 @@ const handleSaveStore = async () => {
       return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
     }
     const packageNetwork = String(p.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-    const selectedNetwork = networkFilter === "telecel" && telecelPackageType === "special" ? "telecelspecial" : networkFilter.replace(/[^a-z0-9]/g, "");
+    const selectedNetwork = networkFilter.replace(/[^a-z0-9]/g, "");
     return packageNetwork === selectedNetwork;
   });
 
@@ -2809,7 +2809,7 @@ return (
               </CardContent>
             </Card>
             <DeliveryProgressCard selectedNetwork={networkFilter} />
-  <NetworkTabs value={networkFilter as any} onChange={(value) => { setNetworkFilter(value); if (value !== "telecel") setTelecelPackageType("cheap"); }} telecelPackageType={telecelPackageType} onTelecelPackageTypeChange={setTelecelPackageType} />
+  <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {filteredPackages.map(pkg => {
                 const basePrice = basePrices[pkg.id] || pkg.price || 0;
@@ -3825,8 +3825,7 @@ handleMobileNumberChange(digits);
                       { key: "mtn_express", label: "MTN Express" },
                       { key: "airteltigo", label: "AirtelTigo" },
                       { key: "telecel", label: "Telecel" },
-                      { key: "telecel_special", label: "Telecel Special" },
-                    ].map(({ key, label }) => (
+                                        ].map(({ key, label }) => (
                       <Button 
                         key={key} 
                         variant={networkFilter === key ? "hero" : "outline"} 
@@ -4312,8 +4311,7 @@ handleMobileNumberChange(digits);
                       { key: "mtn_express", label: "MTN Express" },
                       { key: "airteltigo", label: "AirtelTigo" },
                       { key: "telecel", label: "Telecel" },
-                      { key: "telecel_special", label: "Telecel Special" },
-                    ].map(({ key, label }) => (
+                                        ].map(({ key, label }) => (
                       <Button 
                         key={key} 
                         variant={subSubagentNetworkFilterForSubsub === key ? "hero" : "outline"} 

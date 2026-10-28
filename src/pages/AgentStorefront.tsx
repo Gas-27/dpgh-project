@@ -34,7 +34,6 @@ import DraggableFAB from "@/components/DraggableFAB";
 import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
-import { TelecelSubTabs, type TelecelPackageType } from "@/components/NetworkTabs";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -605,7 +604,6 @@ const AgentStorefront = () => {
   const [agentSubagentPrices, setAgentSubagentPrices] = useState<Record<string, number>>({});
   const [storeProducts, setStoreProducts] = useState<Array<{ id: string; title: string; description: string; price: number; image_urls: string[] }>>([]);
   const [networkFilter, setNetworkFilter] = useState("mtn");
-  const [telecelPackageType, setTelecelPackageType] = useState<TelecelPackageType>("cheap");
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
@@ -1015,7 +1013,7 @@ const searchOrders = useCallback(async (input?: string) => {
     }
     if (networkFilter === "telecel") {
       const packageNetwork = String(p.network || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-      return packageNetwork === (telecelPackageType === "special" ? "telecelspecial" : "telecel");
+      return packageNetwork === "telecel";
     }
     return p.network === networkFilter;
   });
@@ -1382,7 +1380,6 @@ const searchOrders = useCallback(async (input?: string) => {
                 </Button>
               ))}
             </div>
-            {networkFilter === "telecel" && <TelecelSubTabs value={telecelPackageType} onChange={setTelecelPackageType} />}
           </div>
 
           {/* USSD Info Banner */}

@@ -24,7 +24,6 @@ import DraggableFAB from "@/components/DraggableFAB";
 import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
   import DeliveryProgressCard from "@/components/DeliveryProgressCard";
-import { TelecelSubTabs, type TelecelPackageType } from "@/components/NetworkTabs";
   import NotificationPopup from "@/components/NotificationPopup";
 import SmsComposer from "@/components/SmsComposer";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
@@ -474,8 +473,7 @@ export function SubSubagentStorefront() {
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [subagentPrices, setSubagentPrices] = useState<Record<string, number>>({});
   const [networkFilter, setNetworkFilter] = useState("mtn");
-  const [telecelPackageType, setTelecelPackageType] = useState<TelecelPackageType>("cheap");
-  const [loading, setLoading] = useState(true);
+   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
   const [paymentOpen, setPaymentOpen] = useState(false);
@@ -672,8 +670,7 @@ export function SubSubagentStorefront() {
       ]);
       
       const baseCostMap: Record<string, number> = {};
-      // Telecel Special always starts from Admin's data_packages.agent_price.
-      (pkgs.data || []).forEach((p: any) => { baseCostMap[p.id] = Number(p.agent_price ?? p.price); });
+           (pkgs.data || []).forEach((p: any) => { baseCostMap[p.id] = Number(p.agent_price ?? p.price); });
       // Other networks may use the parent subagent and template base prices.
       (agentCost.data || []).forEach((p: any) => {
         const pkg = (pkgs.data || []).find((item: any) => item.id === p.package_id);
@@ -890,7 +887,7 @@ const searchOrders = useCallback(async (input?: string) => {
     }
     if (networkFilter === "telecel") {
       const packageNetwork = String(p.network || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-      return packageNetwork === (telecelPackageType === "special" ? "telecelspecial" : "telecel");
+      return packageNetwork === "telecel";
     }
     return p.network === networkFilter;
   });
@@ -1122,7 +1119,7 @@ const searchOrders = useCallback(async (input?: string) => {
           ))}
 
   </div>
-  {networkFilter === "telecel" && <TelecelSubTabs value={telecelPackageType} onChange={setTelecelPackageType} />}
+
   </>}
   
   {activeSection === "sms" && <Card className="rounded-none border-x-0 sm:rounded-lg sm:border-x border-primary/30 bg-primary/5"><CardContent className="p-4 sm:p-6"><h2 className="mb-2 text-center font-display text-2xl font-bold">Bulk SMS</h2><p className="mb-6 text-center text-sm text-muted-foreground">Send SMS and pay securely with Paystack. Sign-in is not required.</p><SmsComposer ownerType="subsubagent" ownerId={store?.id} publicMode storeUrl={typeof window !== "undefined" ? window.location.href : undefined} /></CardContent></Card>}
