@@ -18,7 +18,7 @@ export type StoreType = "agent" | "subagent";
  */
 export const STORE_NAME_PATTERN = /^[A-Za-z0-9 ]+$/;
 
-export const sanitizeStoreName = (name: string): string => name.replace(/[^A-Za-z0-9 ]/g, "");
+export const sanitizeStoreName = (name: string): string => name.replace(/[^A-Za-z0-9 ]/g, "").replace(/\s+/g, " ").trim();
 
 export const isValidStoreName = (name: string): boolean => {
   const value = name.trim();

@@ -609,7 +609,7 @@ const SubSubagentDashboard = () => {
           parentTemplatePricesResult,
           parentSubagentCostResult
         ] = await Promise.all([
-          supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99),
+          supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "sub_subagent").order("created_at", { ascending: false }),
           supabase.from("transfer_recipients").select("*").eq("user_id", user?.id ?? "").eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
@@ -742,7 +742,7 @@ const SubSubagentDashboard = () => {
           parentTemplatePricesResult,
           parentSubagentCostResult
         ] = await Promise.all([
-          supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99),
+          supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "sub_subagent").order("created_at", { ascending: false }),
           supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
@@ -990,7 +990,9 @@ const SubSubagentDashboard = () => {
   };
 
 const handleSaveStore = async () => {
-  if (!isValidStoreName(storeForm.store_name || "")) { toast({ title: "Invalid store name", description: STORE_NAME_RULE, variant: "destructive" }); return; }
+  const normalizedStoreName = sanitizeStoreName(storeForm.store_name || "");
+  setStoreForm((current) => ({ ...current, store_name: normalizedStoreName }));
+  if (!isValidStoreName(normalizedStoreName)) { toast({ title: "Invalid store name", description: STORE_NAME_RULE, variant: "destructive" }); return; }
   try {
       setSaving(true);
       

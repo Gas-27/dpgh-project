@@ -21,7 +21,7 @@ export default function AdminOrderNumberApprovals() {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [hasMore, setHasMore] = useState(false);
-  const pageSize = view === "pending" ? 1000 : 50;
+  const pageSize = 1000;
 
   async function load() {
     setLoading(true);

@@ -646,7 +646,7 @@ const SubagentDashboard = () => {
           subSubagentsResult,
           recipientsResult
         ] = await Promise.all([
-          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99),
+          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
@@ -695,8 +695,9 @@ const SubagentDashboard = () => {
           const { data: subSubagentOrders } = await supabase
             .from("orders")
             .select("*")
-            .in("sub_subagent_store_id", subSubagentIds)
-            .range(0, 99);
+.in("sub_subagent_store_id", subSubagentIds)
+    .neq("source", "api")
+    .range(0, 999);
           
           const subSubagentOrdersList = subSubagentOrders || [];
           setSubSubagentOrdersCount(subSubagentOrdersList.length);
@@ -829,7 +830,7 @@ const SubagentDashboard = () => {
           subSubagentsResult,
           recipientsResult
         ] = await Promise.all([
-          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 99),
+          supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
           supabase.from("data_packages").select("*").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
@@ -879,8 +880,9 @@ const SubagentDashboard = () => {
           const { data: subSubagentOrders } = await supabase
             .from("orders")
             .select("*")
-            .in("sub_subagent_store_id", subSubagentIds)
-            .range(0, 99);
+.in("sub_subagent_store_id", subSubagentIds)
+    .neq("source", "api")
+    .range(0, 999);
           
           const subSubagentOrdersList = subSubagentOrders || [];
           setSubSubagentOrdersCount(subSubagentOrdersList.length);
@@ -1337,7 +1339,9 @@ const SubagentDashboard = () => {
   };
 
 const handleSaveStore = async () => {
-  if (!isValidStoreName(storeForm.store_name || "")) { toast({ title: "Invalid store name", description: STORE_NAME_RULE, variant: "destructive" }); return; }
+  const normalizedStoreName = sanitizeStoreName(storeForm.store_name || "");
+  setStoreForm((current) => ({ ...current, store_name: normalizedStoreName }));
+  if (!isValidStoreName(normalizedStoreName)) { toast({ title: "Invalid store name", description: STORE_NAME_RULE, variant: "destructive" }); return; }
   try {
       setSaving(true);
       

@@ -191,7 +191,7 @@ const AdminDashboard = () => {
   const [userPage, setUserPage] = useState(1);
   const [withdrawalPage, setWithdrawalPage] = useState(1);
   const [topupPage, setTopupPage] = useState(1);
-  const PAGE_SIZE = 100;
+  const PAGE_SIZE = 1000;
 
   // Lazy loading state - tracks which tabs have been clicked and loaded
   // Start with withdrawals tab (loads first)
@@ -1829,6 +1829,7 @@ const AdminDashboard = () => {
       const { data, error } = await supabase.rpc("admin_refund_order", { p_order_id: orderId });
       if (error) {
         console.error("[v0] Database refund failed:", orderId, error);
+        toast({ title: "Refund failed", description: error.message || "The database refund could not be completed. Only wallet-paid orders can use this refund action.", variant: "destructive" });
         errorCount++;
         continue;
       }

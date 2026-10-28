@@ -121,7 +121,9 @@ const AgentOnboarding = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!isValidStoreName(storeName)) {
+    const normalizedStoreName = sanitizeStoreName(storeName);
+  setStoreName(normalizedStoreName);
+  if (!isValidStoreName(normalizedStoreName)) {
       toast({ title: "Invalid store name", description: STORE_NAME_RULE, variant: "destructive" });
       return;
     }
