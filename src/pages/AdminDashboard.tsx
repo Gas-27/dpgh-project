@@ -1826,17 +1826,21 @@ const AdminDashboard = () => {
     // Refunds are executed atomically by the database. The dashboard must never
     // credit a wallet directly because the order update can invoke refund logic too.
     for (const orderId of idsToProcess) {
-      const { data, error } = await supabase.rpc("admin_refund_order", { p_order_id: orderId });
+      const order = orders.find((candidate) => candidate.id === orderId);
+      const isPaystackOrder = String(order?.payment_method ?? "").toLowerCase() === "paystack" && Boolean(order?.paystack_reference);
+      const { data, error } = isPaystackOrder
+        ? await supabase.functions.invoke("admin-refund-order", { body: { order_id: orderId } })
+        : await supabase.rpc("admin_refund_order", { p_order_id: orderId });
       if (error) {
         console.error("[v0] Database refund failed:", orderId, error);
         toast({ title: "Refund failed", description: error.message || "The database refund could not be completed. Only wallet-paid orders can use this refund action.", variant: "destructive" });
         errorCount++;
         continue;
       }
-      if (data?.status === "refunded" || data?.status === "already_refunded") {
+      if (data?.success || data?.status === "refunded" || data?.status === "already_refunded") {
         successCount++;
         setOrders((prev) => prev.map((o) => o.id === orderId
-          ? { ...o, status: "refunded", fulfillment_status: "refunded", order_status: "refunded", refunded_amount: Number(data.amount) }
+          ? { ...o, status: "refunded", fulfillment_status: "refunded", order_status: "refunded", refunded_amount: Number(data.amount ?? order?.amount ?? 0) }
           : o));
       } else {
         errorCount++;
