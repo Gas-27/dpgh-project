@@ -47,7 +47,7 @@ begin
     and not (o.refund_allocation_owner_type='subsubagent' and exists (select 1 from public.sub_subagent_stores ss join public.subagent_stores s on s.id=ss.subagent_store_id join public.agent_stores a on a.id=ss.agent_store_id where ss.id=o.refund_allocation_owner_id and (s.user_id=p_actor or a.user_id=p_actor)))
   then raise exception 'Only the owning seller or its parent agent can initiate this refund' using errcode='42501'; end if;
   v_owner := o.refund_allocation_owner_id;
-  v_debit := round(coalesce(o.amount,o.total_amount,o.selling_price,o.agent_price,o.base_price,0),2);
+  v_debit := round(coalesce(o.amount,o.selling_price,o.base_price,0),2);
   if v_debit <= 0 then raise exception 'Order has no valid customer refund amount'; end if;
   v_ledger := public.wallet_apply_internal(o.refund_allocation_owner_type,v_owner,-v_debit,'refund_debit',p_order_id::text,'Paystack customer refund including seller profit reversal',p_actor);
   update public.orders set refund_allocation_status='debited',refund_wallet_debit_at=now() where id=p_order_id;
