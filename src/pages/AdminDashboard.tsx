@@ -1822,6 +1822,7 @@ const AdminDashboard = () => {
     setRefundingOrders(idsToProcess);
     let successCount = 0;
     let errorCount = 0;
+    const refundErrors: string[] = [];
 
     // Refunds are executed atomically by the database. The dashboard must never
     // credit a wallet directly because the order update can invoke refund logic too.
@@ -1833,7 +1834,9 @@ const AdminDashboard = () => {
         : await supabase.rpc("admin_refund_order", { p_order_id: orderId });
       if (error) {
         console.error("[v0] Database refund failed:", orderId, error);
-        toast({ title: "Refund failed", description: error.message || "The database refund could not be completed. Only wallet-paid orders can use this refund action.", variant: "destructive" });
+        const failureMessage = error.message || "The database refund could not be completed.";
+        refundErrors.push(failureMessage);
+        toast({ title: "Refund failed", description: failureMessage, variant: "destructive" });
         errorCount++;
         continue;
       }
@@ -1853,7 +1856,7 @@ const AdminDashboard = () => {
     setRefundAction("");
     toast({
       title: "Refund actions complete",
-      description: `${successCount} completed, ${errorCount} failed. Paystack orders are allocated to the seller wallet, while API orders are returned to the API wallet.`,
+      description: `${successCount} completed, ${errorCount} failed.${refundErrors.length ? ` ${refundErrors[0]}` : ""} Paystack orders are allocated to the seller wallet, while API orders are returned to the API wallet.`,
       variant: errorCount > 0 ? "destructive" : "default",
     });
     return;
