@@ -177,6 +177,7 @@ const AdminDashboard = () => {
   // Multi-select and refund state for orders
   const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
   const [refundingOrders, setRefundingOrders] = useState<Set<string>>(new Set());
+ const refundInFlightRef = useRef(false);
   const [refundAction, setRefundAction] = useState<"" | "refund">("") ;
   const [showRefundedOnly, setShowRefundedOnly] = useState(false);
   const [paystackRefundOrderIds, setPaystackRefundOrderIds] = useState<Set<string>>(new Set());
@@ -1819,15 +1820,33 @@ const AdminDashboard = () => {
       return;
     }
 
-    setRefundingOrders(idsToProcess);
+    if (refundInFlightRef.current) return;
+    refundInFlightRef.current = true;
+
+    const isAlreadyRefunded = (orderId: string) => {
+      const existing = orders.find((candidate) => candidate.id === orderId);
+      return String(existing?.status ?? "").toLowerCase() === "refunded"
+        || String(existing?.order_status ?? "").toLowerCase() === "refunded"
+        || !!existing?.refund_allocation_status;
+    };
+    const refundableIds = new Set([...idsToProcess].filter((id) => !isAlreadyRefunded(id)));
+    const skippedCount = idsToProcess.size - refundableIds.size;
+    if (refundableIds.size === 0) {
+      refundInFlightRef.current = false;
+      setSelectedOrderIds(new Set());
+      setRefundAction("");
+      toast({ title: "Already refunded", description: "The selected orders were already refunded. No wallet was credited again." });
+      return;
+    }
+
+    setRefundingOrders(refundableIds);
     let successCount = 0;
     let errorCount = 0;
     const refundErrors: string[] = [];
 
     // Refunds are executed atomically by the database. The dashboard must never
     // credit a wallet directly because the order update can invoke refund logic too.
-    for (const orderId of idsToProcess) {
-      const order = orders.find((candidate) => candidate.id === orderId);
+    for (const orderId of refundableIds) {
       const { data, error } = await supabase.functions.invoke("admin-refund-order", { body: { order_id: orderId } });
       if (error) {
         console.error("[v0] Database refund failed:", orderId, error);
@@ -1846,12 +1865,13 @@ const AdminDashboard = () => {
         errorCount++;
       }
     }
+    refundInFlightRef.current = false;
     setRefundingOrders(new Set());
     setSelectedOrderIds(new Set());
     setRefundAction("");
     toast({
       title: "Refund actions complete",
-      description: `${successCount} completed, ${errorCount} failed.${refundErrors.length ? ` ${refundErrors[0]}` : ""} Refunds are allocated to the customer, agent, subagent, subsubagent, or API wallet based on the order owner.`,
+      description: `${successCount} completed, ${errorCount} failed${skippedCount ? `, ${skippedCount} already refunded (skipped)` : ""}.${refundErrors.length ? ` ${refundErrors[0]}` : ""} The base price at purchase is credited to the user, agent, parent agent (subagent orders), parent subagent (subsubagent orders), or API wallet.`,
       variant: errorCount > 0 ? "destructive" : "default",
     });
     return;
