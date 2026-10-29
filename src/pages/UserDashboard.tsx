@@ -312,7 +312,7 @@ const UserDashboard = () => {
   .select("id, customer_id, user_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at", { count: "exact" })
   .or(`customer_id.eq.${effectiveUserId},user_id.eq.${effectiveUserId}`)
   .order("created_at", { ascending: false })
-  .limit(100);
+  .limit(1000);
 
         console.log("[v0] Orders fetch result - Error:", ordersError, "Data:", ordersData);
 
@@ -589,7 +589,7 @@ const UserDashboard = () => {
   .or(ownerFilter)
   .eq("source", "api")
     .order("created_at", { ascending: false })
-    .limit(500);
+    .limit(1000);
 
   if (error) {
     console.log("[v0] API order history query failed:", error);
