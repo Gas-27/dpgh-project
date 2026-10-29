@@ -13,7 +13,7 @@ begin
   if not exists (select 1 from public.user_roles where user_id=p_actor and role::text='admin') then raise exception 'Admin authorization required' using errcode='42501'; end if;
   select * into o from public.orders where id=p_order_id for update;
   if not found then raise exception 'Order not found' using errcode='P0002'; end if;
-  if lower(coalesce(o.payment_method,'')) <> 'paystack' and o.api_user is null and lower(coalesce(o.source,'')) <> 'api' and lower(coalesce(o.payment_method,'')) <> 'api_wallet' then raise exception 'Only Paystack or API orders can use this refund allocation'; end if;
+  if o.payment_method is null and o.source is null then raise exception 'Order has no payment source'; end if;
   if o.refund_allocation_status in ('allocated','debited','submitted','completed') then
     return jsonb_build_object('status',o.refund_allocation_status,'amount',o.refund_allocation_amount,'owner_type',o.refund_allocation_owner_type,'owner_id',o.refund_allocation_owner_id,'already_allocated',true);
   end if;
@@ -26,7 +26,8 @@ begin
   elsif o.sub_subagent_store_id is not null then v_type := 'subsubagent'; v_owner := o.sub_subagent_store_id;
   elsif o.subagent_store_id is not null then v_type := 'subagent'; v_owner := o.subagent_store_id;
   elsif o.agent_store_id is not null then v_type := 'agent'; v_owner := o.agent_store_id;
-  else raise exception 'Order has no seller storefront owner'; end if;
+  elsif o.customer_id is not null then v_type := 'customer'; v_owner := o.customer_id;
+  else raise exception 'Order has no wallet owner'; end if;
   v_ledger := public.wallet_apply_internal(v_type,v_owner,v_amount,'refund_allocation',p_order_id::text,'Admin refund allocation for Paystack order',p_actor);
   update public.orders set refund_allocation_status='allocated',refund_allocation_amount=v_amount,refund_allocation_owner_type=v_type,refund_allocation_owner_id=v_owner,refund_allocation_at=now() where id=p_order_id;
   return jsonb_build_object('status','allocated','amount',v_amount,'owner_type',v_type,'owner_id',v_owner,'ledger_id',v_ledger.id,'already_allocated',false);

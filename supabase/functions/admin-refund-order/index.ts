@@ -26,12 +26,10 @@ Deno.serve(async (req) => {
   const { data: order, error: orderError } = await admin.from("orders").select("*").eq("id", orderId).maybeSingle();
   if (orderError) return json({ error: orderError.message }, 500);
   if (!order) return json({ error: "Order not found" }, 404);
-  const isApiOrder = Boolean(order.api_user) || String(order.source ?? "").toLowerCase() === "api" || String(order.payment_method ?? "").toLowerCase() === "api_wallet";
-  const reference = String(order.paystack_reference ?? "").trim();
-  const amount = Number(order.amount ?? order.total_amount ?? 0);
-  if ((!isApiOrder && !reference) || !Number.isFinite(amount) || amount <= 0) return json({ error: "This order has no valid provider reference or refundable amount." }, 400);
+  const amount = Number(order.amount ?? order.selling_price ?? order.base_price ?? 0);
+  if (!Number.isFinite(amount) || amount <= 0) return json({ error: "This order has no valid refundable amount." }, 400);
 
   const { data, error } = await admin.rpc("admin_allocate_order_refund", { p_order_id: orderId, p_actor: auth.user.id });
   if (error) return json({ error: error.message }, 400);
-  return json({ success: true, status: data?.status ?? "allocated", amount: data?.amount, owner_type: data?.owner_type, owner_id: data?.owner_id, already_allocated: data?.already_allocated ?? false, message: "The seller wallet has been credited. The owning seller must initiate the Paystack refund from their Refund section." });
+  return json({ success: true, status: data?.status ?? "allocated", amount: data?.amount, owner_type: data?.owner_type, owner_id: data?.owner_id, already_allocated: data?.already_allocated ?? false, message: "The correct wallet has been credited with the recorded admin base price. The wallet owner can continue the provider refund when required." });
 });

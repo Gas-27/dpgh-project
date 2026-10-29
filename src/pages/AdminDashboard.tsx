@@ -1828,10 +1828,7 @@ const AdminDashboard = () => {
     // credit a wallet directly because the order update can invoke refund logic too.
     for (const orderId of idsToProcess) {
       const order = orders.find((candidate) => candidate.id === orderId);
-      const isPaystackOrder = (String(order?.payment_method ?? "").toLowerCase() === "paystack" && Boolean(order?.paystack_reference)) || Boolean(order?.api_user) || String(order?.source ?? "").toLowerCase() === "api" || String(order?.payment_method ?? "").toLowerCase() === "api_wallet";
-      const { data, error } = isPaystackOrder
-        ? await supabase.functions.invoke("admin-refund-order", { body: { order_id: orderId } })
-        : await supabase.rpc("admin_refund_order", { p_order_id: orderId });
+      const { data, error } = await supabase.functions.invoke("admin-refund-order", { body: { order_id: orderId } });
       if (error) {
         console.error("[v0] Database refund failed:", orderId, error);
         const failureMessage = error.message || "The database refund could not be completed.";
@@ -1843,9 +1840,7 @@ const AdminDashboard = () => {
       if (data?.success || data?.status === "refunded" || data?.status === "already_refunded") {
         successCount++;
         setOrders((prev) => prev.map((o) => o.id === orderId
-          ? (isPaystackOrder
-            ? { ...o, refund_allocation_status: data.status ?? "allocated", refund_allocation_amount: Number(data.amount ?? 0), refund_allocation_owner_type: data.owner_type, refund_allocation_owner_id: data.owner_id }
-            : { ...o, status: "refunded", fulfillment_status: "refunded", order_status: "refunded", refunded_amount: Number(data.amount ?? order?.amount ?? 0) })
+          ? { ...o, refund_allocation_status: data.status ?? "allocated", refund_allocation_amount: Number(data.amount ?? 0), refund_allocation_owner_type: data.owner_type, refund_allocation_owner_id: data.owner_id }
           : o));
       } else {
         errorCount++;
@@ -1856,7 +1851,7 @@ const AdminDashboard = () => {
     setRefundAction("");
     toast({
       title: "Refund actions complete",
-      description: `${successCount} completed, ${errorCount} failed.${refundErrors.length ? ` ${refundErrors[0]}` : ""} Paystack orders are allocated to the seller wallet, while API orders are returned to the API wallet.`,
+      description: `${successCount} completed, ${errorCount} failed.${refundErrors.length ? ` ${refundErrors[0]}` : ""} Refunds are allocated to the customer, agent, subagent, subsubagent, or API wallet based on the order owner.`,
       variant: errorCount > 0 ? "destructive" : "default",
     });
     return;
