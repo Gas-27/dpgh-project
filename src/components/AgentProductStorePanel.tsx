@@ -127,22 +127,17 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
   async function renewPlan(plan: PlanType) {
     if (!storeId) return;
     const price = plan === "monthly" ? MONTHLY_PRICE : WEEKLY_PRICE;
-    const limit = plan === "monthly" ? INCLUDED_MONTHLY_POSTS : INCLUDED_WEEKLY_POSTS;
-    const durationDays = plan === "monthly" ? MONTHLY_DURATION_DAYS : 7;
     if (walletBalance < price) { toast({ title: "Insufficient wallet balance", description: `You need GHS ${price.toFixed(2)} to renew.`, variant: "destructive" }); return; }
     setSaving(true);
-    let balanceAfter: number;
-    try {
-      ({ balanceAfter } = await debitOwnWallet({ ownerType: storeKind, ownerId: storeId, amount: price, kind: "product_plan", reference: newOrderId(), note: `${plan} product plan` }));
-    } catch (err: any) {
-      toast({ title: "Renewal failed", description: err.message, variant: "destructive" });
+    // The wallet charge and plan activation run in one database transaction, so a failure never leaves a charge without a plan.
+    const { data: purchase, error: purchaseError } = await supabase.rpc("purchase_store_product_plan", { p_store_kind: storeKind, p_store_id: storeId, p_plan: plan });
+    if (purchaseError) {
+      toast({ title: "Renewal failed", description: purchaseError.message, variant: "destructive" });
       setSaving(false);
       return;
     }
-    onWalletBalanceChange?.(balanceAfter);
-    const expires = new Date(); expires.setDate(expires.getDate() + durationDays);
-    const { error: entitlementError } = await supabase.from("store_product_entitlements").upsert({ store_id: storeId, store_kind: storeKind, paid_post_limit: limit, paid_post_expires_at: expires.toISOString(), plan_type: plan, updated_at: new Date().toISOString() }, { onConflict: "store_id" });
-    if (entitlementError) { toast({ title: "Plan not activated", description: "Your wallet was charged but the plan could not be activated. Contact support with this time and amount.", variant: "destructive" }); setSaving(false); return; }
+    const balanceAfter = Number((purchase as { balance_after?: number } | null)?.balance_after);
+    if (Number.isFinite(balanceAfter)) onWalletBalanceChange?.(balanceAfter);
     toast({ title: "Product plan renewed", description: plan === "monthly" ? "Thirty product posts are available for thirty days." : "Five product posts are available for seven days." });
     await load(); setSaving(false);
   }

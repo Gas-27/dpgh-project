@@ -1847,7 +1847,7 @@ const AdminDashboard = () => {
     // Refunds are executed atomically by the database. The dashboard must never
     // credit a wallet directly because the order update can invoke refund logic too.
     for (const orderId of refundableIds) {
-      const { data, error } = await supabase.functions.invoke("admin-refund-order", { body: { order_id: orderId } });
+      const { data, error } = await supabase.rpc("admin_refund_order_wallet", { p_order_id: orderId });
       if (error) {
         console.error("[v0] Database refund failed:", orderId, error);
         const failureMessage = error.message || "The database refund could not be completed.";
@@ -3251,7 +3251,7 @@ const AdminDashboard = () => {
                                   {order.refunded_amount ? (
                                     <span className="text-green-600 font-semibold">GHC {Number(order.refunded_amount).toFixed(2)}</span>
                                   ) : (
-                                    <span className="text-slate-400">—</span>
+                                    <span className="text-slate-400">��</span>
                                   )}
                                 </TableCell>
                                 <TableCell>
