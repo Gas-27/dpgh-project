@@ -54,6 +54,12 @@ Deno.serve(async (req) => {
   const allocationAmount = Number(order.refund_allocation_amount ?? 0);
   if (!Number.isFinite(allocationAmount) || allocationAmount <= 0) return json({ error: "An admin must allocate the seller's recorded base price before this refund can be initiated." }, 400);
 
+  const { data: forward, error: forwardError } = await admin.rpc("forward_order_refund", { p_order_id: orderId, p_actor: actorUserId });
+  if (forwardError) return json({ error: forwardError.message }, 400);
+  if (forward?.forwarded) {
+    return json({ success: true, forwarded: true, status: "forwarded", message: `Refund of ${Number(forward.amount).toFixed(2)} passed down to the ${forward.holder_type} wallet. They can now refund the customer from their own Refund section.` });
+  }
+
   const { data: existingRefund } = await admin.from("paystack_refunds").select("id, status, paystack_refund_id").eq("order_id", orderId).eq("paystack_reference", storedReference).in("status", ["pending", "processing", "completed"]).maybeSingle();
   if (existingRefund) return json({ success: true, refund_id: existingRefund.id, status: existingRefund.status, message: "This refund has already been submitted for the order." });
 
