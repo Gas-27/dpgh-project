@@ -31,5 +31,5 @@ Deno.serve(async (req) => {
 
   const { data, error } = await admin.rpc("admin_allocate_order_refund", { p_order_id: orderId, p_actor: auth.user.id });
   if (error) return json({ error: error.message }, 400);
-  return json({ success: true, status: data?.status ?? "allocated", amount: data?.amount, owner_type: data?.owner_type, owner_id: data?.owner_id, already_allocated: data?.already_allocated ?? false, message: "The correct wallet has been credited with the recorded admin base price. The wallet owner can continue the provider refund when required." });
+  return json({ success: true, status: data?.status ?? "allocated", amount: data?.amount, owner_type: data?.owner_type, owner_id: data?.owner_id, already_allocated: data?.already_allocated ?? false, message: data?.already_allocated ? "This order has already been refunded and the wallet credit was not repeated." : "Refund completed. The correct wallet was credited with the recorded admin base price." });
 });

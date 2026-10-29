@@ -29,7 +29,7 @@ begin
   elsif o.customer_id is not null then v_type := 'customer'; v_owner := o.customer_id;
   else raise exception 'Order has no wallet owner'; end if;
   v_ledger := public.wallet_apply_internal(v_type,v_owner,v_amount,'refund_allocation',p_order_id::text,'Admin refund allocation for Paystack order',p_actor);
-  update public.orders set refund_allocation_status='allocated',refund_allocation_amount=v_amount,refund_allocation_owner_type=v_type,refund_allocation_owner_id=v_owner,refund_allocation_at=now() where id=p_order_id;
+  update public.orders set refund_allocation_status='allocated',refund_allocation_amount=v_amount,refund_allocation_owner_type=v_type,refund_allocation_owner_id=v_owner,refund_allocation_at=now(),status='refunded',fulfillment_status='refunded',refunded_amount=v_amount,refunded_at=now() where id=p_order_id;
   return jsonb_build_object('status','allocated','amount',v_amount,'owner_type',v_type,'owner_id',v_owner,'ledger_id',v_ledger.id,'already_allocated',false);
 end $$;
 revoke all on function public.admin_allocate_order_refund(uuid,uuid) from public,anon,authenticated;
