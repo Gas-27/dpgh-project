@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import SocialBoostSuccessDialog from "@/components/SocialBoostSuccessDialog";
+import SocialBoostWalletBar from "@/components/SocialBoostWalletBar";
 import { fetchAllRows } from "@/lib/fetchAllRows";
 import { getSocialBoostPlatform } from "@/lib/socialBoostPlatforms";
 import {
@@ -902,6 +903,7 @@ value={quantity}
           {requireAuth && !user ? "Sign in to purchase" : "Purchase Now"}
           <ArrowRight className="ml-2 h-5 w-5 transition group-hover:translate-x-1" />
         </Button>
+        {checkoutMode === "wallet" && <SocialBoostWalletBar balance={walletBalance} ownerType={ownerType} ownerId={storeId} />}
       </div>
 
       <SocialBoostSuccessDialog

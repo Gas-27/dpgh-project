@@ -2548,7 +2548,8 @@ const AdminDashboard = () => {
         return [];
       }
 
-      const visibleCustomers = (data || []).filter((customer: any) => !customer.user_id || !subSubagentIds.has(customer.user_id));
+      const isInternalSocialBoostAccount = (customer: any) => String(customer.email || "").toLowerCase().startsWith("social_boost_");
+      const visibleCustomers = (data || []).filter((customer: any) => !isInternalSocialBoostAccount(customer) && (!customer.user_id || !subSubagentIds.has(customer.user_id)));
       console.log("[v0] Fetched customers:", visibleCustomers.length);
       setCustomers(visibleCustomers);
       return visibleCustomers;
