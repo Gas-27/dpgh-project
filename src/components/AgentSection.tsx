@@ -25,7 +25,7 @@ const AgentSection = () => {
             Set your prices, manage your store, and start earning today.
           </p>
           <Button variant="hero" size="lg" asChild>
-            <Link to="/signup">Become an Agent</Link>
+            <Link to="/signup?role=agent">Become an Agent</Link>
           </Button>
         </div>
 
