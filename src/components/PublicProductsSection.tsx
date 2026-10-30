@@ -28,6 +28,7 @@ type PublicProduct = {
   boost_global_expires_at?: string | null;
   boost_sitewide?: boolean;
   boost_sitewide_expires_at?: string | null;
+  admin_boost?: boolean;
   seller_phone?: string | null;
   has_inline_image?: boolean;
 };
@@ -106,7 +107,7 @@ export default function PublicProductsSection({
     setLoading(true);
 
     const loadProducts = async () => {
-      const fields = "id,title,description,price,image_urls,created_at,store_id,store_kind,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at";
+      const fields = "id,title,description,price,image_urls,created_at,store_id,store_kind,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,admin_boost";
       const queryProducts = (query: any) => effectiveSearch
         ? query.or(`title.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%,description.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%`)
         : query;
@@ -134,7 +135,7 @@ export default function PublicProductsSection({
           setLoading(false);
           return;
         }
-        const result = await queryProducts(supabase.from("store_products").select(fields, { count: "exact" }).eq("store_id", storeId).eq("status", "active").eq("available", true).order(...(sortOrder === "newest" ? ["created_at", { ascending: false }] : ["price", { ascending: sortOrder === "price_asc" }]) as [string, { ascending: boolean }]).range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1));
+        const result = await queryProducts(supabase.from("store_products").select(fields, { count: "exact" }).eq("store_id", storeId).eq("status", "active").eq("available", true).order("admin_boost", { ascending: false }).order(...(sortOrder === "newest" ? ["created_at", { ascending: false }] : ["price", { ascending: sortOrder === "price_asc" }]) as [string, { ascending: boolean }]).range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1));
         if (!cancelled) {
           setStoreProducts(await addSellerContacts((result.data ?? []) as PublicProduct[]));
           setStoreTotal(result.count ?? 0);
@@ -251,11 +252,13 @@ export default function PublicProductsSection({
                     type="button"
                     key={product.id}
                     onClick={() => navigate(`/marketplace/product/${product.id}/${product.title.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "product"}`)}
-                    className="overflow-hidden rounded-xl border border-primary/30 bg-card text-left transition hover:-translate-y-0.5 hover:border-primary hover:shadow-lg"
+                    className={product.admin_boost
+                      ? "overflow-hidden rounded-xl border-2 border-amber-400 bg-gradient-to-b from-amber-400/15 to-card text-left shadow-[0_0_18px_rgba(251,191,36,0.35)] transition hover:-translate-y-0.5 hover:shadow-[0_0_26px_rgba(251,191,36,0.55)]"
+                      : "overflow-hidden rounded-xl border border-primary/30 bg-card text-left transition hover:-translate-y-0.5 hover:border-primary hover:shadow-lg"}
                   >
                     <ProductThumbnail product={product} />
                     <div className="space-y-2 p-4">
-                      <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">{product.title}</h3>{((product.boost_global && (!product.boost_global_expires_at || new Date(product.boost_global_expires_at) > new Date())) || (product.boost_sitewide && (!product.boost_sitewide_expires_at || new Date(product.boost_sitewide_expires_at) > new Date()))) && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary"><BadgeCheck className="h-3.5 w-3.5" /> Boosted</span>}</div>
+                      <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">{product.title}</h3>{product.admin_boost ? <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 px-2 py-1 text-xs font-bold text-amber-950"><BadgeCheck className="h-3.5 w-3.5" /> Golden Boost</span> : ((product.boost_global && (!product.boost_global_expires_at || new Date(product.boost_global_expires_at) > new Date())) || (product.boost_sitewide && (!product.boost_sitewide_expires_at || new Date(product.boost_sitewide_expires_at) > new Date()))) && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary"><BadgeCheck className="h-3.5 w-3.5" /> Boosted</span>}</div>
                       <p className="line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
                       <p className="font-bold text-primary">GHS {Number(product.price).toFixed(2)}</p>
                       {product.seller_phone && <p className="text-xs text-muted-foreground">Seller: {product.seller_phone}</p>}

@@ -545,6 +545,7 @@ const noteLines = String(service.notes || service.note || "No additional note ha
 
   return (
     <section className="social-boost-phone-shell space-y-3 rounded-[22px] bg-[#020c22] p-3 text-white sm:p-4">
+      {checkoutMode === "wallet" && <div className="sticky top-0 z-20 -mx-1 sm:hidden"><SocialBoostWalletBar balance={walletBalance} ownerType={ownerType} ownerId={storeId} /></div>}
       {/* Hero */}
       <div className="relative overflow-hidden rounded-2xl border border-cyan-400/40 bg-gradient-to-br from-[#0b3fb4] via-[#0a2f8f] to-[#3a0f8f] p-5 sm:p-8">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_78%_25%,rgba(56,189,248,0.35),transparent_55%)]" />
@@ -903,7 +904,7 @@ value={quantity}
           {requireAuth && !user ? "Sign in to purchase" : "Purchase Now"}
           <ArrowRight className="ml-2 h-5 w-5 transition group-hover:translate-x-1" />
         </Button>
-        {checkoutMode === "wallet" && <SocialBoostWalletBar balance={walletBalance} ownerType={ownerType} ownerId={storeId} />}
+        {checkoutMode === "wallet" && <div className="hidden sm:block"><SocialBoostWalletBar balance={walletBalance} ownerType={ownerType} ownerId={storeId} /></div>}
       </div>
 
       <SocialBoostSuccessDialog

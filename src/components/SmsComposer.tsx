@@ -19,6 +19,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Check, ChevronDown, Clock, Loader2, Send, Sparkles, Upload, UserPlus, Video, Wallet } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import OrderContactPicker from "@/components/OrderContactPicker";
+import SmsNumberGenerator from "@/components/SmsNumberGenerator";
 
 type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; storeUrl?: string; publicMode?: boolean; hideSenderPhone?: boolean };
 type SmsAudience = "all" | "recent" | "inactive" | "custom";
@@ -610,6 +611,16 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     {audience === "custom" && <div className="flex items-center gap-2"><Input type="number" min="1" value={customInactiveDays} onChange={(event) => setCustomInactiveDays(event.target.value)} className="w-24" aria-label="Days without purchase" /><span className="text-sm text-muted-foreground">days without a purchase</span><Button type="button" size="sm" onClick={() => void loadAudience("custom")} disabled={audienceLoading}>Apply</Button></div>}
     <p className="text-xs text-muted-foreground">For agent and subagent SMS, the order source and date picker above controls the exact customer numbers added here.</p>
   </div>}
+  {!publicMode && <SmsNumberGenerator
+    ownerType={ownerType}
+    ownerId={ownerId}
+    walletBalance={walletBalance}
+    onBalanceChange={setWalletBalance}
+    onGenerated={(generated) => setRecipients((current) => {
+      const existing = current.split(/[\s,;]+/).map((item) => item.trim()).filter(Boolean);
+      return Array.from(new Set([...existing, ...generated])).join(",");
+    })}
+  />}
   <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label>Recipients ({numbers.length})</Label>

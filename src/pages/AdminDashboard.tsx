@@ -40,6 +40,7 @@ import AdminDigitalServicesManager from "@/components/AdminDigitalServicesManage
 import AdminPrivateShareManager from "@/components/AdminPrivateShareManager";
 import SubscriptionPaymentsPanel from "@/components/SubscriptionPaymentsPanel";
 import AdminPublicProductsManager from "@/components/AdminPublicProductsManager";
+import AdminProductsBoostManager from "@/components/AdminProductsBoostManager";
 import AdminReportedProducts from "@/components/AdminReportedProducts";
 import { Flag } from "lucide-react";
 import AdminDomainPurchasesPanel from "@/components/AdminDomainPurchasesPanel";
@@ -111,7 +112,7 @@ interface SpinSegment {
   label: string;
   weight: number;
 }
-type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "network_routing" | "sms" | "public_products" | "reported_posts" | "settings" | "subscriptions" | "price_reduction_requests";
+type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | "topup" | "withdrawals" | "users" | "customers" | "notifications" | "push" | "spinwheel" | "afa" | "afa_bundles" | "complaints" | "api_errors" | "delivery_status" | "delivery_automation" | "digital_services" | "network_routing" | "sms" | "public_products" | "products" | "reported_posts" | "settings" | "subscriptions" | "price_reduction_requests";
 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
@@ -1157,7 +1158,7 @@ const AdminDashboard = () => {
 
   // ======================== Admin permissions ========================
   const fetchCurrentUserPermissions = async (userId: string) => {
-    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "delivery_automation", "digital_services", "network_routing", "sms", "public_products", "reported_posts", "settings"];
+    const allSections: Section[] = ["prices", "orders", "agents", "subagents", "sub_subagents", "topup", "withdrawals", "users", "customers", "notifications", "push", "spinwheel", "afa", "afa_bundles", "complaints", "delivery_status", "delivery_automation", "digital_services", "network_routing", "sms", "public_products", "products", "reported_posts", "settings"];
     
     const { data, error } = await supabase
       .from("admin_permissions")
@@ -2860,6 +2861,7 @@ const AdminDashboard = () => {
   <TabsTrigger value="network_routing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Route className="h-3 w-3 md:h-4 md:w-4" /> Network Routing</TabsTrigger>
                 <TabsTrigger value="sms" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><MessageCircle className="h-3 w-3 md:h-4 md:w-4" /> SMS</TabsTrigger>
  <TabsTrigger value="public_products" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Package className="h-3 w-3 md:h-4 md:w-4" /> Store Products</TabsTrigger>
+<TabsTrigger value="products" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Crown className="h-3 w-3 md:h-4 md:w-4" /> Products</TabsTrigger>
  <TabsTrigger value="reported_posts" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Flag className="h-3 w-3 md:h-4 md:w-4" /> Reported Posts</TabsTrigger>
   <TabsTrigger value="settings" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Settings2 className="h-3 w-3 md:h-4 md:w-4" /> Settings</TabsTrigger>
             <TabsTrigger value="price_reduction_requests" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Price requests</TabsTrigger>
@@ -4833,6 +4835,10 @@ const AdminDashboard = () => {
 
   {canSee("public_products") && (
   <TabsContent value="public_products" className="space-y-6"><AdminPublicProductsManager /></TabsContent>
+  )}
+
+  {canSee("products") && (
+  <TabsContent value="products" className="space-y-6"><AdminProductsBoostManager /></TabsContent>
   )}
 
   {canSee("reported_posts") && (
