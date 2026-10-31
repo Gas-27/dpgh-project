@@ -4134,9 +4134,31 @@ handleMobileNumberChange(digits);
                   </div>
                   <div className="bg-muted p-3 rounded-lg border border-border">
                     <p className="text-xs text-muted-foreground mb-2">Example:</p>
-                    <p className="font-mono text-xs">GET /get-packages?network=mtn</p>
-                  </div>
-                </CardContent>
+              <p className="font-mono text-xs">GET https://api.dataplug.store/functions/v1/get-packages?network=mtn</p>
+            </div>
+            <div className="bg-muted p-3 rounded-lg border border-border">
+              <p className="text-xs text-muted-foreground mb-2">Successful JSON response (200):</p>
+              <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap">{`{
+  "success": true,
+  "network": "mtn",
+  "packages": [
+    {
+      "bundle_size": "2GB",
+      "api_price": 8.5,
+      "validity": "30 days",
+      "available": true
+    },
+    {
+      "bundle_size": "5GB",
+      "api_price": 18,
+      "validity": "30 days",
+      "available": true
+    }
+  ]
+}`}</pre>
+              <p className="mt-2 text-xs text-muted-foreground">The package list, prices, validity and availability are live and may change. Use the exact package identifier returned by the live response when placing an order.</p>
+            </div>
+          </CardContent>
               </Card>
 
               {/* POST /purchase */}
