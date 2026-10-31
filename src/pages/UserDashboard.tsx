@@ -2222,23 +2222,14 @@ const renderApiDocs = () => (
               <p className="text-xs text-muted-foreground mb-2">Successful JSON response (200):</p>
               <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap">{`{
   "success": true,
-  "network": "mtn",
-  "packages": [
-    {
-      "bundle_size": "2GB",
-      "api_price": 8.5,
-      "validity": "30 days",
-      "available": true
-    },
-    {
-      "bundle_size": "5GB",
-      "api_price": 18,
-      "validity": "30 days",
-      "available": true
-    }
+  "count": 14,
+  "data": [
+    { "network": "mtn", "size_gb": 1, "price": 3.9 },
+    { "network": "mtn", "size_gb": 2, "price": 7.8 },
+    { "network": "mtn", "size_gb": 3, "price": 11.75 }
   ]
 }`}</pre>
-              <p className="mt-2 text-xs text-muted-foreground">The package list, prices, validity and availability are live and may change. Use the exact package identifier returned by the live response when placing an order.</p>
+              <p className="mt-2 text-xs text-muted-foreground">Sample shortened to 3 of 14 packages. Each package has only network, size_gb (GB) and price (GHS, your API price). The response does not include validity or availability fields; only active packages are listed. Omit the network parameter to get every network. Prices are live and may change, and use size_gb exactly as returned when calling /purchase.</p>
             </div>
           </CardContent>
         </Card>
@@ -2281,15 +2272,29 @@ const renderApiDocs = () => (
   "success": true,
   "message": "Purchase successful",
   "data": {
-    "order_id": "550e8400-e29b-41d4",
-    "provider_reference": "REF_12345",
+    "order_id": "9b2f3c1e-6d4a-4f0b-8a57-2c1e9d7f4a10",
+    "provider_reference": "API_1782860161668_k3x9ab",
     "network": "mtn",
     "size_gb": 2,
-    "phone": "024XXXXXXX",
-    "amount": 7.59,
-    "wallet_balance": 92.41,
+    "size_gb_text": null,
+    "phone": "0241234567",
+    "amount": 7.8,
+    "wallet_balance": 92.2,
     "status": "completed"
   }
+}
+
+Error 402 - insufficient wallet balance:
+{
+  "error": "Insufficient wallet balance",
+  "wallet_balance": 1.5,
+  "required": 7.8,
+  "deficit": "6.30"
+}
+
+Error 404 - package not found:
+{
+  "error": "Package not found"
 }`}
               </pre>
             </div>
