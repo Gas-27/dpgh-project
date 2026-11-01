@@ -232,6 +232,7 @@ const UserDashboard = () => {
 
   const menuItems = [
     { id: "overview", label: "Overview", icon: Home },
+    { id: "gamehub", label: "GameHub", icon: Store },
 { id: "marketplace", label: "Marketplace", icon: Store },
 { id: "post-product", label: "Post Product", icon: Tag },
  { id: "approvals", label: "Submit for Approval", icon: Send },
@@ -949,6 +950,7 @@ const UserDashboard = () => {
   // Render content based on active menu
   const renderContent = () => {
     const miniTabs = [
+      { id: "gamehub", label: "GameHub", className: "border-purple-500/50 bg-purple-500/10 text-purple-700" },
       { id: "buy-data", label: "Buy Data", className: "border-cyan-500/50 bg-cyan-500/10 text-cyan-700" },
       { id: "instant-data", label: "Instant Data", className: "border-amber-500/50 bg-amber-500/10 text-amber-700" },
       { id: "services", label: "Services", className: "border-orange-500/50 bg-orange-500/10 text-orange-700" },
@@ -967,7 +969,7 @@ const UserDashboard = () => {
             <button
               key={tab.id}
               type="button"
-              onClick={() => setActiveMenu(activeMenu === tab.id ? "overview" : tab.id)}
+              onClick={() => tab.id === "gamehub" ? window.open("https://gamehubgh.com", "_blank", "noopener,noreferrer") : setActiveMenu(activeMenu === tab.id ? "overview" : tab.id)}
               className={`rounded-full border px-3 py-2 text-sm font-semibold transition hover:brightness-95 ${tab.className}`}
             >
               {activeMenu === tab.id ? "Overview" : tab.label}

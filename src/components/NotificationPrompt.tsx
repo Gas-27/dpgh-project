@@ -28,13 +28,10 @@ export default function NotificationPrompt() {
     const checkAndShow = async () => {
       // Don't show if not supported
       if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
-      
-      // Don't show if already dismissed recently (within 1 day)
-      const dismissed = localStorage.getItem("notification-prompt-dismissed");
-      if (dismissed) {
-        const dismissedTime = parseInt(dismissed);
-        if (Date.now() - dismissedTime < 24 * 60 * 60 * 1000) return; // 1 day
-      }
+
+      // Ask once per browser. Users can still enable notifications from the bell/settings control later.
+      if (localStorage.getItem("notification-prompt-seen") === "1") return;
+      localStorage.setItem("notification-prompt-seen", "1");
 
       // Don't show if permission already granted or denied permanently
       if (Notification.permission === "granted") return;

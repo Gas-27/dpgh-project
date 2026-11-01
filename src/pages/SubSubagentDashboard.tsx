@@ -1815,6 +1815,7 @@ const handleSaveStore = async () => {
   const menuItems = [
   { id: "marketplace", label: "Marketplace", icon: Store },
     { id: "overview", label: "Overview", icon: BarChart3 },
+    { id: "gamehub", label: "GameHub", icon: Store },
  { id: "approvals", label: "Submit for Approval", icon: Send },
     { id: "buy", label: "Buy Data", icon: ShoppingCart },
   { id: "subscription", label: "Subscription", icon: CreditCard },
@@ -2021,7 +2022,7 @@ return (
                   {menuItems.map(item => (
                     <SheetClose asChild key={item.id}>
                       <button
-                        onClick={() => setActiveTab(item.id)}
+                        onClick={() => item.id === "gamehub" ? window.open("https://gamehubgh.com", "_blank", "noopener,noreferrer") : setActiveTab(item.id)}
                         className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left w-full"
                       >
                         <item.icon className="h-5 w-5 text-primary" />
@@ -2081,7 +2082,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
-  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa-registrations", label: "AFA Registration" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "flyer", label: "Flyer Generator" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
+  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa-registrations", label: "AFA Registration" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "flyer", label: "Flyer Generator" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => item.id === "gamehub" ? window.open("https://gamehubgh.com", "_blank", "noopener,noreferrer") : setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
   <TabsContent value="domains" className="mt-0"><DomainDashboardPanel walletBalance={Number(subagentStore?.wallet_balance ?? 0)} walletLabel="Wallet" agentStoreId={subagentStore?.id ?? null} storeKind="subsubagent" /></TabsContent>
   <TabsContent value="products" className="mt-0"><AgentProductStorePanel storeId={subagentStore?.id} storeKind="subsubagent" walletBalance={Number(subagentStore?.wallet_balance ?? 0)} onWalletBalanceChange={(wallet_balance) => setSubagentStore((current) => current ? { ...current, wallet_balance } : current)} /></TabsContent>
   <TabsContent value="instant-data" className="-mx-8 sm:mx-0 mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subsubagent" ownerId={subagentStore?.id} canSetPrices initialTab="instant" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
@@ -2483,7 +2484,7 @@ onClick={handleBuyContinue}
                           const storedProfit = order.profit ?? null;
                           
                           // Fallback calculation for old orders
-                          const fallbackBaseCost = order.package_id ? (basePrices[order.package_id] || 0) : 0;
+                          const fallbackBaseCost = Number(order.agent_base_price ?? order.base_cost ?? (order.package_id ? basePrices[order.package_id] : 0)) || 0;
                           const fallbackProfit = order.amount - fallbackBaseCost;
                           
                           // Use stored values if they exist and are non-zero

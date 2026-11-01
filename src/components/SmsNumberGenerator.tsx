@@ -17,9 +17,9 @@ type Props = {
 };
 
 const PACKAGES = [
-  { count: 250, price: 3 },
-  { count: 500, price: 6 },
-  { count: 1000, price: 12 },
+  { count: 250, price: 1.5 },
+  { count: 500, price: 3 },
+  { count: 1000, price: 6 },
 ] as const;
 
 const NETWORKS: { value: Network; label: string }[] = [

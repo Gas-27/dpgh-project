@@ -40,8 +40,11 @@ export default function AdminDigitalServicesManager() {
     if (pricingError) { setSaving(null); toast({ title: "Service not deleted", description: pricingError.message, variant: "destructive" }); return; }
     const { error } = await supabase.from("digital_services").delete().eq("id", service.id);
     setSaving(null);
-    if (error) toast({ title: "Service not deleted", description: error.message, variant: "destructive" });
-    else { toast({ title: "Service permanently deleted" }); await load(); }
+    if (error) {
+      const { error: deactivateError } = await supabase.from("digital_services").update({ active: false }).eq("id", service.id);
+      toast({ title: deactivateError ? "Service not deleted" : "Service deactivated", description: deactivateError ? error.message : "This service has linked records, so it was hidden instead of permanently deleted.", variant: deactivateError ? "destructive" : "default" });
+      await load();
+    } else { toast({ title: "Service permanently deleted" }); await load(); }
   };
   const updateSlot = (serviceId: string, slotNumber: number, patch: Partial<Credential>) => setCredentials((current) => ({ ...current, [serviceId]: (current[serviceId] || []).map((slot) => slot.slot_number === slotNumber ? { ...slot, ...patch } : slot) }));
   const addSlot = (serviceId: string) => setCredentials((current) => { const slots = current[serviceId] || []; const next = Math.max(0, ...slots.map((slot) => slot.slot_number)) + 1; return { ...current, [serviceId]: [...slots, emptySlot(serviceId, next)] }; });
