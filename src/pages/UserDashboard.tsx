@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import ProductViewBadge from "@/components/ProductViewBadge";
 import { openGameHubIfAvailable } from "@/lib/tabControls";
 import { debitOwnWallet, refundFailedOrder, newOrderId } from "@/lib/wallet";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
@@ -1417,7 +1418,7 @@ case "api-key":
                 <Card key={pkg.id} className={`border-0 bg-[#2f176d] text-white shadow-none ${pkg.active ? "" : "opacity-50"}`}>
                   <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
                     {!pkg.active && <Badge variant="secondary">Offline</Badge>}
-                    <p className="font-display text-4xl font-extrabold leading-none">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
+                    <p className="font-display text-4xl font-extrabold leading-none">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p><ProductViewBadge packageId={pkg.id} initialCount={pkg.view_count} />
                     <p className="text-sm font-bold uppercase text-yellow-300">{pkg.network}</p>
   <div className="flex items-center justify-center text-sm font-semibold text-white/75">
   <span>API price: <strong className="text-cyan-300">{Number(pkg.api_price ?? pkg.price).toFixed(2)}</strong></span>
@@ -2545,7 +2546,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           </CardHeader>
           <CardContent>
             <ul className="text-sm text-muted-foreground space-y-2 ml-4">
-              <li>• Prices are automatically determined from the package database</li>
+              <li>�� Prices are automatically determined from the package database</li>
               <li>• Wallet balance is deducted immediately upon successful purchase</li>
               <li>• Provider reference is saved for order tracking</li>
               <li>• Keep your API key secure and never share it publicly</li>

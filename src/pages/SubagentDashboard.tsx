@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
+import ProductViewBadge from "@/components/ProductViewBadge";
  import { debitOwnWallet, refundFailedOrder, transferToChild, creditUpline, newOrderId } from "@/lib/wallet";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
@@ -651,7 +652,7 @@ const SubagentDashboard = () => {
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
-          supabase.from("data_packages").select("*").order("size_gb"),
+          supabase.from("data_packages").select("*, view_count").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
@@ -835,7 +836,7 @@ const SubagentDashboard = () => {
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "subagent").order("created_at", { ascending: false }),
-          supabase.from("data_packages").select("*").order("size_gb"),
+          supabase.from("data_packages").select("*, view_count").order("size_gb"),
           supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", store.agent_store_id).is("subagent_store_id", null).order("created_at", { ascending: false }),
           supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", store.agent_store_id),
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
@@ -2830,7 +2831,7 @@ const fallbackBaseCost = Number(order.agent_base_price ?? order.base_cost ?? (or
                       </div>
                     )}
                     <CardContent>
-                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p><ProductViewBadge packageId={pkg.id} initialCount={pkg.view_count} />
                       <p className="text-lg font-bold text-cyan-400">GHC {Number(basePrice).toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Price</p>
                       <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => { if (!isInactive) { acknowledgedNewNumber.current = false; setShowNewNumberWarning(false); setBuyStep("phone"); setBuyCustomerNumber(""); setBuyingPkg(pkg); } }} disabled={isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>

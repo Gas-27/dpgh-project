@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react"
 import { useParams, useNavigate } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
+import ProductViewBadge from "@/components/ProductViewBadge";
 import { getStoreNameFromSubdomain, findStoreByName, fetchAllStores } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1453,7 +1454,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                         <>
                           <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-2 px-5 py-6 text-center w-full">
                             {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />}
-                            <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
+                            <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p><ProductViewBadge packageId={pkg.id} initialCount={pkg.view_count} />
                             <p className="text-sm font-bold uppercase" style={{ color: getNetworkLabelColor(networkFilter) }}>{formatNetworkName(networkFilter)}</p>
                             <p className="text-sm font-semibold text-white/80">User price: <strong className="text-cyan-300">GHC {Number(price).toFixed(2)}</strong></p>
                             {showAgentPrice && <p className="text-xs text-white/60">Agent price: GHC {Number(agentSubagentPrices[pkg.id] ?? pkg.agent_price ?? pkg.price).toFixed(2)}</p>}

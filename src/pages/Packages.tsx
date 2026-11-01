@@ -5,6 +5,7 @@ import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
+import ProductViewBadge from "@/components/ProductViewBadge";
 import HubtelPurchasePanel from "@/components/HubtelPurchasePanel";
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import PublicProductsSection from "@/components/PublicProductsSection";
@@ -1365,7 +1366,7 @@ const Packages = () => {
   });
 
   // Fetch packages with caching - include size_gb_text for mtn_mashup packages
-  supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active").order("size_gb", { ascending: true })
+  supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count").order("size_gb", { ascending: true })
       .then(({ data, error }) => {
         if (error) console.error("[v0] Failed to fetch data packages:", error);
         setPackages(data ?? []);
@@ -1379,7 +1380,7 @@ const Packages = () => {
     async () => {
       const { data, error } = await supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active")
+        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count")
         .order("size_gb", { ascending: true });
       if (error) throw error;
       return data ?? [];
@@ -1402,7 +1403,7 @@ const Packages = () => {
     const refreshPackages = async () => {
       const { data } = await supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active")
+        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count")
         .order("size_gb", { ascending: true });
       if (data) setPackages(data);
     };
@@ -1619,7 +1620,7 @@ const searchOrders = async (input?: string) => {
                     return (
                       <Card key={pkg.id} style={{ backgroundColor: "#2f176d", color: "#ffffff" }} className={`package-reference-card border-0 shadow-none ${available ? "" : "opacity-45"}`}>
                         <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
-  <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p>
+  <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p><ProductViewBadge packageId={pkg.id} initialCount={pkg.view_count} />
   <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
   {(pkg.bundle_name || pkg.package_name || pkg.name || pkg.title) && <p className="text-sm font-semibold text-white">{pkg.bundle_name || pkg.package_name || pkg.name || pkg.title}</p>}
   {(pkg.description || pkg.details) && <p className="max-w-md text-xs leading-relaxed text-white/70">{pkg.description || pkg.details}</p>}

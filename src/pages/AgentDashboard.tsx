@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { supabase } from "@/integrations/supabase/client";
+import ProductViewBadge from "@/components/ProductViewBadge";
   import { debitOwnWallet, refundFailedOrder, transferToChild, newOrderId } from "@/lib/wallet";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
 import PartnerServicesApiDocs from "@/components/PartnerServicesApiDocs";
@@ -938,7 +939,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         .maybeSingle();
 
       const [pkgR, priceR, agentOrdersR, apiOrdersR, personalOrdersR, payoutR, subagentR, customBasePriceR, subagentPriceR, specialMTNR, recipientsR] = await Promise.all([
-        supabase.from("data_packages").select("*").order("size_gb"),
+        supabase.from("data_packages").select("*, view_count").order("size_gb"),
         supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", sd.id),
         // Fetch normal agent store orders with subagent info
         supabase.from("orders").select("*, subagent_stores(store_name), sub_subagent_stores(store_name)", { count: "exact" }).eq("agent_store_id", sd.id).order("created_at", { ascending: false }).range(0, 999),
@@ -1066,7 +1067,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       );
       await fetchTotalProfit();
     } else {
-          const { data: pkgData } = await supabase.from("data_packages").select("*").order("size_gb");
+          const { data: pkgData } = await supabase.from("data_packages").select("*, view_count").order("size_gb");
       setPackages(pkgData ?? []);
     }
     setLoading(false);
@@ -2910,7 +2911,7 @@ return (
                       </div>
                     )}
                     <CardContent>
-                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p><ProductViewBadge packageId={pkg.id} initialCount={pkg.view_count} />
                       <p className="text-lg font-bold text-cyan-400">GHC {price.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Price</p>
                       {wouldUnderflow && !isInactive ? <p className="text-xs text-orange-400">Blocked ��� pending withdrawal</p> : null}
@@ -4732,7 +4733,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       return (
                         <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
                           <CardContent>
-                            <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                            <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p><ProductViewBadge packageId={pkg.id} initialCount={pkg.view_count} />
                             <p className="text-lg font-bold text-cyan-400">GHC {apiPrice.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">API Price</p>
                           </CardContent>
