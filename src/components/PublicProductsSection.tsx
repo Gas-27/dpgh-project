@@ -109,7 +109,7 @@ export default function PublicProductsSection({
     setLoading(true);
 
     const loadProducts = async () => {
-      const fields = "id,title,description,price,image_urls,created_at,store_id,store_kind,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,admin_boost";
+      const fields = "id,title,description,price,image_urls,created_at,store_id,store_kind,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,admin_boost,marketplace_view_count";
       const queryProducts = (query: any) => effectiveSearch
         ? query.or(`title.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%,description.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%`)
         : query;
@@ -161,7 +161,13 @@ export default function PublicProductsSection({
         image_urls: Array.isArray(product.image_urls) ? product.image_urls : [],
         store_kind: product.store_kind || "agent",
       });
-      const products = await addSellerContacts((pageRows ?? []).map(normalizeRpcProduct));
+      const rpcProducts = (pageRows ?? []).map(normalizeRpcProduct);
+      const [storeViewRows, adminViewRows] = await Promise.all([
+        (supabase as any).from("store_products").select("id,marketplace_view_count").in("id", rpcProducts.filter((item) => item.store_kind !== "admin").map((item) => item.id)),
+        (supabase as any).from("public_store_products").select("id,marketplace_view_count").in("id", rpcProducts.filter((item) => item.store_kind === "admin").map((item) => item.id)),
+      ]);
+      const viewCounts = new Map<string, number>([...((storeViewRows.data as any[]) || []), ...((adminViewRows.data as any[]) || [])].map((row: any) => [row.id, Number(row.marketplace_view_count || 0)]));
+      const products = await addSellerContacts(rpcProducts.map((item) => ({ ...item, marketplace_view_count: viewCounts.get(item.id) ?? Number(item.marketplace_view_count || 0) })));
       const total = Number((pageRows?.[0] as any)?.total_count ?? 0);
       if (!cancelled) {
         setGlobalProducts(products);
