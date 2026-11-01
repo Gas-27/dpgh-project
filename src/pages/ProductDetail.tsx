@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getMarketplaceDisplayViews } from "@/utils/marketplaceViews";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
@@ -63,7 +64,7 @@ export default function ProductDetail() {
         if (item?.id) {
           const source = item.store_kind === "admin" ? "admin" : "store";
           const { data: count } = await (supabase as any).rpc("marketplace_product_view", { p_product_id: item.id, p_source: source });
-          if (!cancelled && typeof count === "number") setWeightedViews(count * (item.admin_boost || (item.boost_global && (!item.boost_global_expires_at || new Date(item.boost_global_expires_at) > new Date())) || (item.boost_sitewide && (!item.boost_sitewide_expires_at || new Date(item.boost_sitewide_expires_at) > new Date())) ? 1006 : 562));
+          if (!cancelled && typeof count === "number") setWeightedViews(getMarketplaceDisplayViews(item, count));
         }
       }
     }
