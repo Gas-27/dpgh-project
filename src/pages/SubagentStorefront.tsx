@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react"
 import { useParams } from "react-router-dom";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
-import ProductViewBadge from "@/components/ProductViewBadge";
 import { findStoreByName, fetchAllStores } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1406,7 +1405,7 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
                         </>
                       ) : (
                         <>
-                          <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p><ProductViewBadge packageId={pkg.id} initialCount={pkg.view_count} />
+                          <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
                           <p className="text-sm font-bold uppercase" style={{ color: getNetworkColor(pkg.network) }}>{formatNetworkName(pkg.network)}</p>
                           <div className="space-y-1 leading-tight">{theme.show_agent_price && <p className="text-xs font-semibold text-white/60">Agent price: <span className="text-cyan-300">GHC {Number(pkg.price).toFixed(2)}</span></p>}{theme.show_subsubagent_price && <p className="text-xs font-semibold text-white/60">Subagent price: <span className="text-cyan-300">GHC {Number(price).toFixed(2)}</span></p>}<p className="text-xs font-semibold text-white/75">Your price:</p><p className="text-2xl font-extrabold text-white">GHC {Number(price).toFixed(2)}</p></div>
                           <Button size="lg" disabled={isInactive} className="mt-1 h-9 w-full rounded-full border border-white/30 bg-white/10 font-bold text-white hover:bg-white/20" onClick={(event) => { event.stopPropagation(); if (!isInactive) { setPaymentPkg(pkg); setPaymentOpen(true); } }}>{isInactive ? "Not Available" : "Buy Now"}</Button>

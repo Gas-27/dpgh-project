@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { supabase } from "@/integrations/supabase/client";
-import ProductViewBadge from "@/components/ProductViewBadge";
   import { debitOwnWallet, refundFailedOrder, transferToChild, newOrderId } from "@/lib/wallet";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
 import PartnerServicesApiDocs from "@/components/PartnerServicesApiDocs";
@@ -2911,7 +2910,7 @@ return (
                       </div>
                     )}
                     <CardContent>
-                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p><ProductViewBadge packageId={pkg.id} initialCount={pkg.view_count} />
+                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
                       <p className="text-lg font-bold text-cyan-400">GHC {price.toFixed(2)}</p>
                       <p className="text-xs text-muted-foreground">Agent Price</p>
                       {wouldUnderflow && !isInactive ? <p className="text-xs text-orange-400">Blocked ��� pending withdrawal</p> : null}
@@ -4733,7 +4732,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       return (
                         <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
                           <CardContent>
-                            <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p><ProductViewBadge packageId={pkg.id} initialCount={pkg.view_count} />
+                            <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
                             <p className="text-lg font-bold text-cyan-400">GHC {apiPrice.toFixed(2)}</p>
                             <p className="text-xs text-muted-foreground">API Price</p>
                           </CardContent>
