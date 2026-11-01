@@ -113,6 +113,13 @@ export default function PublicProductsSection({
       const queryProducts = (query: any) => effectiveSearch
         ? query.or(`title.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%,description.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%`)
         : query;
+      const recordMarketplaceViews = async (items: PublicProduct[]) => {
+        const counted = await Promise.all(items.map(async (item) => {
+          const { data } = await (supabase as any).rpc("marketplace_product_view", { p_product_id: item.id, p_source: item.store_kind === "admin" ? "admin" : "store" });
+          return { ...item, marketplace_view_count: typeof data === "number" ? data : Number(item.marketplace_view_count || 0) };
+        }));
+        return counted;
+      };
       const addSellerContacts = async (items: PublicProduct[]) => {
         const idsByKind = new Map<string, string[]>();
         items.forEach((item) => {
@@ -139,7 +146,8 @@ export default function PublicProductsSection({
         }
         const result = await queryProducts(supabase.from("store_products").select(fields, { count: "exact" }).eq("store_id", storeId).eq("status", "active").eq("available", true).order("admin_boost", { ascending: false }).order(...(sortOrder === "newest" ? ["created_at", { ascending: false }] : ["price", { ascending: sortOrder === "price_asc" }]) as [string, { ascending: boolean }]).range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1));
         if (!cancelled) {
-          setStoreProducts(await addSellerContacts((result.data ?? []) as PublicProduct[]));
+          const countedStoreProducts = await recordMarketplaceViews((result.data ?? []) as PublicProduct[]);
+          setStoreProducts(await addSellerContacts(countedStoreProducts));
           setStoreTotal(result.count ?? 0);
           setLoading(false);
         }
@@ -166,8 +174,11 @@ export default function PublicProductsSection({
         (supabase as any).from("store_products").select("id,marketplace_view_count").in("id", rpcProducts.filter((item) => item.store_kind !== "admin").map((item) => item.id)),
         (supabase as any).from("public_store_products").select("id,marketplace_view_count").in("id", rpcProducts.filter((item) => item.store_kind === "admin").map((item) => item.id)),
       ]);
-      const viewCounts = new Map<string, number>([...((storeViewRows.data as any[]) || []), ...((adminViewRows.data as any[]) || [])].map((row: any) => [row.id, Number(row.marketplace_view_count || 0)]));
-      const products = await addSellerContacts(rpcProducts.map((item) => ({ ...item, marketplace_view_count: viewCounts.get(item.id) ?? Number(item.marketplace_view_count || 0) })));
+      const storeRows = (storeViewRows.data || []) as any[];
+      const adminRows = (adminViewRows.data || []) as any[];
+      const viewCounts = new Map<string, number>([...storeRows, ...adminRows].map((row: any) => [row.id, Number(row.marketplace_view_count || 0)]));
+      const productsWithStoredCounts = rpcProducts.map((item) => ({ ...item, marketplace_view_count: viewCounts.get(item.id) ?? Number(item.marketplace_view_count || 0) }));
+      const products = await addSellerContacts(await recordMarketplaceViews(productsWithStoredCounts));
       const total = Number((pageRows?.[0] as any)?.total_count ?? 0);
       if (!cancelled) {
         setGlobalProducts(products);
