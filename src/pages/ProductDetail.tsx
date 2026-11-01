@@ -19,6 +19,7 @@ export default function ProductDetail() {
   const [loading, setLoading] = useState(true);
   const [expandedImage, setExpandedImage] = useState<string | null>(null);
   const [signedIn, setSignedIn] = useState(false);
+  const [weightedViews, setWeightedViews] = useState<number | null>(null);
 
   useEffect(() => {
     void supabase.auth.getSession().then(({ data }) => setSignedIn(Boolean(data.session)));
@@ -37,11 +38,11 @@ export default function ProductDetail() {
         const ownerResult = await supabase.from("agent_stores").select("id,store_name,support_number,whatsapp_number").eq("store_name", storeName).maybeSingle();
         owner = ownerResult.data;
         if (owner && productId) {
-          const itemResult = await supabase.from("store_products").select("id,title,description,price,image_urls,store_id").eq("id", productId).eq("store_id", owner.id).eq("status", "active").eq("available", true).maybeSingle();
+          const itemResult = await supabase.from("store_products").select("id,title,description,price,image_urls,store_id,store_kind,admin_boost,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at").eq("id", productId).eq("store_id", owner.id).eq("status", "active").eq("available", true).maybeSingle();
           item = itemResult.data;
         }
       } else if (productId) {
-        const storeResult = await supabase.from("store_products").select("id,title,description,price,image_urls,store_id,store_kind,status,available").eq("id", productId).eq("status", "active").eq("available", true).maybeSingle();
+        const storeResult = await supabase.from("store_products").select("id,title,description,price,image_urls,store_id,store_kind,status,available,admin_boost,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at").eq("id", productId).eq("status", "active").eq("available", true).maybeSingle();
         item = storeResult.data;
         if (item?.store_id) {
           const table = item.store_kind === "subagent" ? "subagent_stores" : item.store_kind === "subsubagent" ? "sub_subagent_stores" : "agent_stores";
@@ -49,8 +50,8 @@ export default function ProductDetail() {
           owner = ownerResult.data;
         }
         if (!item) {
-          const adminResult = await supabase.from("public_store_products").select("id,title,description,price,image_urls,active").eq("id", productId).eq("active", true).maybeSingle();
-          item = adminResult.data;
+          const adminResult = await supabase.from("public_store_products").select("id,title,description,price,image_urls,active,admin_boost").eq("id", productId).eq("active", true).maybeSingle();
+          item = adminResult.data ? { ...(adminResult.data as any), store_kind: "admin" } : null;
           owner = item ? { store_name: "Marketplace", support_number: null, whatsapp_number: null } : null;
         }
       }
@@ -59,6 +60,11 @@ export default function ProductDetail() {
         setStore(owner);
         setProduct(item);
         setLoading(false);
+        if (item?.id) {
+          const source = item.store_kind === "admin" ? "admin" : "store";
+          const { data: count } = await (supabase as any).rpc("marketplace_product_view", { p_product_id: item.id, p_source: source });
+          if (!cancelled && typeof count === "number") setWeightedViews(count * (item.admin_boost || (item.boost_global && (!item.boost_global_expires_at || new Date(item.boost_global_expires_at) > new Date())) || (item.boost_sitewide && (!item.boost_sitewide_expires_at || new Date(item.boost_sitewide_expires_at) > new Date())) ? 1006 : 562));
+        }
       }
     }
     void load();
@@ -117,7 +123,7 @@ export default function ProductDetail() {
           {expandedImage && <img src={expandedImage} alt={`${product.title} enlarged`} className="max-h-[85vh] w-full object-contain" />}
         </DialogContent>
       </Dialog>
-      <div className="flex min-w-0 flex-col justify-center gap-4"><p className="text-sm text-muted-foreground">{store?.store_name}</p><h1 className="break-words text-3xl font-bold text-balance">{product.title}</h1><p className="text-2xl font-semibold text-primary">GHS {Number(product.price).toFixed(2)}</p><p className="whitespace-pre-wrap break-words text-muted-foreground">{product.description}</p>{buyLink ? <Button asChild className="w-full"><a href={buyLink} target="_blank" rel="noopener noreferrer">Buy on WhatsApp</a></Button> : <p className="text-sm text-muted-foreground">Contact the seller for purchase details.</p>}<Button className="w-full" variant="outline" onClick={() => navigate(-1)}>Back to products</Button>{product.store_kind && <ReportProductButton productId={product.id} signedIn={signedIn} />}</div>
+      <div className="flex min-w-0 flex-col justify-center gap-4"><p className="text-sm text-muted-foreground">{store?.store_name}</p><h1 className="break-words text-3xl font-bold text-balance">{product.title}</h1><p className="text-2xl font-semibold text-primary">GHS {Number(product.price).toFixed(2)}</p><p className="text-sm font-medium text-muted-foreground">{(weightedViews ?? 0).toLocaleString()} views</p><p className="whitespace-pre-wrap break-words text-muted-foreground">{product.description}</p>{buyLink ? <Button asChild className="w-full"><a href={buyLink} target="_blank" rel="noopener noreferrer">Buy on WhatsApp</a></Button> : <p className="text-sm text-muted-foreground">Contact the seller for purchase details.</p>}<Button className="w-full" variant="outline" onClick={() => navigate(-1)}>Back to products</Button>{product.store_kind && <ReportProductButton productId={product.id} signedIn={signedIn} />}</div>
     </CardContent></Card>
     {product.store_kind && <Card className="mt-4"><CardContent className="p-5 md:p-8"><ProductComments productId={product.id} signedIn={signedIn} /></CardContent></Card>}
   </main>;

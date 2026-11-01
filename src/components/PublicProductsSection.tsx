@@ -31,6 +31,8 @@ type PublicProduct = {
   admin_boost?: boolean;
   seller_phone?: string | null;
   has_inline_image?: boolean;
+  marketplace_view_count?: number;
+  view_weight?: number;
 };
 
 const PAGE_SIZE = 18;
@@ -260,7 +262,7 @@ export default function PublicProductsSection({
                     <div className="space-y-2 p-4">
                       <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">{product.title}</h3>{product.admin_boost ? <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 px-2 py-1 text-xs font-bold text-amber-950"><BadgeCheck className="h-3.5 w-3.5" /> Golden Boost</span> : ((product.boost_global && (!product.boost_global_expires_at || new Date(product.boost_global_expires_at) > new Date())) || (product.boost_sitewide && (!product.boost_sitewide_expires_at || new Date(product.boost_sitewide_expires_at) > new Date()))) && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary"><BadgeCheck className="h-3.5 w-3.5" /> Boosted</span>}</div>
                       <p className="line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
-                      <p className="font-bold text-primary">GHS {Number(product.price).toFixed(2)}</p>
+                      <p className="font-bold text-primary">GHS {Number(product.price).toFixed(2)}</p><p className="text-xs font-medium text-muted-foreground">{(Number(product.marketplace_view_count || 0) * Number(product.view_weight || (product.admin_boost ? 1006 : 562))).toLocaleString()} views</p>
                       {product.seller_phone && <p className="text-xs text-muted-foreground">Seller: {product.seller_phone}</p>}
                     </div>
                   </button>
