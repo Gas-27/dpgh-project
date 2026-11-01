@@ -93,6 +93,23 @@ Deno.serve(async (req) => {
       const serviceId = metadata?.service_id ? String(metadata.service_id) : null;
       const { data: service } = serviceId ? await supabaseClient.from("digital_services").select("service_type,private_delivery_mode").eq("id", serviceId).maybeSingle() : { data: null };
       const serviceType = String(service?.service_type || metadata?.service_type || "private_shared");
+      if (serviceType === "public_shared" && serviceId) {
+        const publicPhone = String(metadata?.customer_phone || metadata?.phone || "").replace(/\D/g, "");
+        const publicPin = String(metadata?.access_pin || "").trim();
+        if (!/^\d{10}$/.test(publicPhone) || !/^\d{4}$/.test(publicPin)) return new Response(JSON.stringify({ error: "Invalid service payment metadata" }), { status: 400, headers: corsHeaders });
+        const { data: existingPublicOrder } = await supabaseClient.from("digital_service_orders").select("id").eq("paystack_reference", reference).maybeSingle();
+        if (existingPublicOrder) return new Response(JSON.stringify({ success: true, already_processed: true, order_id: existingPublicOrder.id }), { status: 200, headers: corsHeaders });
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(publicPin));
+        const publicPinHash = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+        const grantedAt = Date.now();
+        const { data: publicOrder, error: publicOrderError } = await supabaseClient.from("digital_service_orders").insert({ service_id: serviceId, credential_id: null, customer_id: metadata?.user_id || metadata?.customer_id || null, customer_phone: publicPhone, access_pin_hash: publicPinHash, paystack_reference: reference, payment_status: "paid", access_granted_at: new Date(grantedAt).toISOString(), access_expires_at: new Date(grantedAt + 7 * 24 * 60 * 60 * 1000).toISOString() }).select("id").single();
+        if (publicOrderError || !publicOrder) {
+          const { data: raced } = await supabaseClient.from("digital_service_orders").select("id").eq("paystack_reference", reference).maybeSingle();
+          if (raced) return new Response(JSON.stringify({ success: true, already_processed: true, order_id: raced.id }), { status: 200, headers: corsHeaders });
+          return new Response(JSON.stringify({ error: "Could not record public share payment", details: publicOrderError?.message }), { status: 500, headers: corsHeaders });
+        }
+        return new Response(JSON.stringify({ success: true, payment_confirmed: true, order_id: publicOrder.id }), { status: 200, headers: corsHeaders });
+      }
       const deliveryMode = serviceType === "private_shared" ? String(service?.private_delivery_mode || metadata?.private_delivery_mode || "whatsapp") : "onsite";
       if (!serviceName || !reference) return new Response(JSON.stringify({ error: "Subscription metadata is incomplete" }), { status: 400, headers: corsHeaders });
       const { data: existing } = await supabaseClient.from("private_share_subscriptions").select("id, payment_status, whatsapp_url").eq("payment_reference", reference).maybeSingle();

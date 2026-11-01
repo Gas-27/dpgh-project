@@ -24,7 +24,7 @@ Deno.serve(async (req) => {
       if (order && order.access_expires_at && new Date(order.access_expires_at).getTime() <= Date.now()) return json({ error: "Payment expired. Please pay again to access this service." }, 402);
       const { data: credentials, error: credentialsError } = await db.from("digital_service_credentials").select("email,password,instructions").eq("service_id", service_id).eq("active", true).order("slot_number");
       if (credentialsError || !credentials?.length) return json({ error: "Public service login details are not configured yet." }, 404);
-      return json({ success: true, credentials });
+      return json({ success: true, credentials, access_expires_at: order?.access_expires_at || null });
     }
     if (!order && service.is_free) {
       let { data: slot } = await db.from("digital_service_credentials").select("id,email,password,instructions").eq("service_id", service_id).eq("active", true).is("assigned_order_id", null).order("slot_number").limit(1).maybeSingle();

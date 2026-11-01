@@ -118,6 +118,34 @@ Deno.serve(async (req) => {
     }
 
     // =====================================
+    // PUBLIC-SHARE PAYMENT: 7-day access order keyed by phone + access code
+    // =====================================
+    if (metadata.service_payment === true || metadata.service_payment === "true") {
+      const publicServiceId = String(metadata.service_id || "").trim();
+      const { data: publicService } = publicServiceId ? await supabase.from("digital_services").select("service_type").eq("id", publicServiceId).maybeSingle() : { data: null };
+      if (publicService?.service_type === "public_shared") {
+        const phone = String(metadata.customer_phone || metadata.phone || "").replace(/\D/g, "");
+        const pin = String(metadata.access_pin || "").trim();
+        if (!/^\d{10}$/.test(phone) || !/^\d{4}$/.test(pin)) {
+          return new Response(JSON.stringify({ error: "Invalid service payment metadata" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(pin));
+        const pinHash = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+        const { data: existingOrder } = await supabase.from("digital_service_orders").select("id,access_expires_at").eq("paystack_reference", reference).maybeSingle();
+        if (existingOrder) return new Response(JSON.stringify({ success: true, payment_confirmed: true, order_id: existingOrder.id, access_expires_at: existingOrder.access_expires_at, already_processed: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        const now = Date.now();
+        const { data: newOrder, error: newOrderError } = await supabase.from("digital_service_orders").insert({ service_id: publicServiceId, credential_id: null, customer_id: resolvedCustomerId, customer_phone: phone, access_pin_hash: pinHash, paystack_reference: reference, payment_status: "paid", access_granted_at: new Date(now).toISOString(), access_expires_at: new Date(now + 7 * 24 * 60 * 60 * 1000).toISOString() }).select("id,access_expires_at").single();
+        if (newOrderError || !newOrder) {
+          const { data: raced } = await supabase.from("digital_service_orders").select("id,access_expires_at").eq("paystack_reference", reference).maybeSingle();
+          if (raced) return new Response(JSON.stringify({ success: true, payment_confirmed: true, order_id: raced.id, access_expires_at: raced.access_expires_at, already_processed: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+          console.error("[v0] Public share order insert failed", { code: newOrderError?.code, message: newOrderError?.message, reference });
+          return new Response(JSON.stringify({ error: "Unable to create service order", details: newOrderError?.message || "The payment was verified but the order could not be created." }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+        return new Response(JSON.stringify({ success: true, payment_confirmed: true, message: "Payment successful. Your 7-day access is ready.", order_id: newOrder.id, access_expires_at: newOrder.access_expires_at }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+    }
+
+    // =====================================
     // PRIVATE-SHARE SUBSCRIPTION PAYMENT
     // =====================================
     if (paymentType === "service_payment" || paymentType === "subscription" || metadata.service_payment === true || metadata.service_payment === "true") {

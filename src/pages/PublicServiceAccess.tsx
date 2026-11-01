@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
-import { Copy, Eye, EyeOff, Lock } from "lucide-react";
+import { Copy, ExternalLink, Eye, EyeOff, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -38,6 +38,8 @@ export default function PublicServiceAccess() {
   const [credentials, setCredentials] = useState<Credential[]>(initialAccess?.credentials || (initialAccess?.credential ? [initialAccess.credential] : []));
   const credential = credentials[0] || null;
   const [error, setError] = useState<string | null>(null);
+  const [expiresAt, setExpiresAt] = useState<string | null>(null);
+  const expiryLabel = expiresAt ? new Date(expiresAt).toLocaleDateString(undefined, { day: "numeric", month: "short", year: "numeric" }) : null;
 
   useEffect(() => {
     let cancelled = false;
@@ -65,6 +67,7 @@ export default function PublicServiceAccess() {
       if (accessResult.error || (!accessResult.data?.credential && !accessResult.data?.credentials?.length)) { setError(accessResult.data?.error || "Payment was confirmed, but access details are not ready yet."); return; }
       setPhone(pending.phone || "");
       setPin(pending.pin || "");
+      setExpiresAt(accessResult.data.access_expires_at || null);
       setCredentials(accessResult.data.credentials || (accessResult.data.credential ? [accessResult.data.credential] : []));
     });
     return () => { cancelled = true; };
@@ -90,6 +93,7 @@ export default function PublicServiceAccess() {
       setError(detail || "No paid access was found for these details. Please make payment first.");
       return;
     }
+    setExpiresAt(result.data.access_expires_at || null);
     setCredentials(result.data.credentials || (result.data.credential ? [result.data.credential] : []));
   };
 
@@ -126,7 +130,9 @@ export default function PublicServiceAccess() {
             <div className="mt-5 rounded-xl border border-[#e1e4ef] bg-[#f7f8fc] p-4">
               <div className="flex items-center justify-between text-sm"><span>Price</span><strong>{service.is_free ? "Free" : `GHS ${Number(service.price).toFixed(2)}`}</strong></div>
               <div className="mt-3 flex items-center justify-between border-t border-[#e1e4ef] pt-3 text-sm"><span>Delivery</span><strong>Shared login</strong></div>
+              {!service.is_free && <div className="mt-3 flex items-center justify-between border-t border-[#e1e4ef] pt-3 text-sm"><span>Access period</span><strong>7 days</strong></div>}
             </div>
+            {service.official_url && <Button asChild variant="outline" className="mt-4 w-full border-[#b8c0d4] bg-white text-[#111936] hover:bg-[#eef2f8]"><a href={service.official_url} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-2 h-4 w-4" aria-hidden="true" />Visit {service.name} site</a></Button>}
           </section>
 
           <section className="rounded-2xl border border-[#e1e4ef] bg-white p-5 shadow-sm">
@@ -134,6 +140,7 @@ export default function PublicServiceAccess() {
               <>
                 <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#7161f4]">Your access</p>
                 <h2 className="mt-2 text-2xl font-black">Your login is ready</h2>
+                {!service.is_free && <p className="mt-3 rounded-xl border border-[#c9d4f5] bg-[#eef2fd] p-3 text-sm leading-6 text-[#243b86]"><strong>7-day access.</strong> {expiryLabel ? `Your access is valid until ${expiryLabel}.` : "Your access is valid for 7 days from payment."} Keep your phone number and access code to log back in.</p>}
                 <div className="mt-4 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm leading-6 text-amber-950"><p className="font-bold">⚠️ Please don&apos;t make any changes to the account.</p><p><span className="font-semibold">ℹ️ This is a shared account, so it might show as busy and may log out frequently.</span> You can purchase a private share plan at a very cheap cost to avoid these issues and enjoy uninterrupted access.</p></div><p className="mt-4 text-sm leading-6 text-[#69708a]">Use any of the shared logins below. Public share has no individual slot assignment or per-customer slot limit.</p>
                 <div className="mt-5 space-y-3">
                   {credentials.map((item, index) => <div key={`${item.email || "login"}-${index}`} className="rounded-xl border border-emerald-200 bg-emerald-50 p-4 text-sm text-emerald-950">
@@ -151,6 +158,7 @@ export default function PublicServiceAccess() {
                 <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-[#7161f4]">Secure access</p>
                 <h2 className="mt-2 flex items-center gap-2 text-2xl font-black"><Lock className="h-5 w-5" aria-hidden="true" />Enter your details</h2>
                 <p className="mt-2 text-sm leading-6 text-[#69708a]">Enter the phone number and 4-digit access code you used when paying. After payment, you will see all shared emails and login details here.</p>
+                {!service.is_free && <p className="mt-3 rounded-xl border border-[#c9d4f5] bg-[#eef2fd] p-3 text-sm leading-6 text-[#243b86]"><strong>Public share is a 7-day access.</strong> Your phone number and access code work for 7 days from the time you pay. After that, you will need to pay again.</p>}
                 <div className="mt-5 space-y-4">
                   <div className="space-y-1">
                     <Label htmlFor="access-phone">Phone number</Label>
