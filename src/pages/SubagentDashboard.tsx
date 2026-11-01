@@ -52,6 +52,7 @@ import SubagentAFABundleRegistrations from "@/components/SubagentAFABundleRegist
 import { DOMAINS } from "@/config/domains";
 import ChatBot from "@/components/ChatBot";
 import ReportCenter from "@/components/ReportCenter";
+import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
@@ -175,6 +176,7 @@ const SubagentDashboard = () => {
 
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [reportOrder, setReportOrder] = useState<any | null>(null);
   const [allRefundedOrders, setAllRefundedOrders] = useState<Order[]>([]);
   const [refundedOrdersTotal, setRefundedOrdersTotal] = useState(0);
   const [sourceDialogOpen, setSourceDialogOpen] = useState(false);
@@ -2932,6 +2934,7 @@ onClick={handleBuyContinue}
                           <TableHead>Profit</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Date</TableHead>
+                          <TableHead>Report</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -2963,12 +2966,26 @@ onClick={handleBuyContinue}
                               <TableCell className="text-sm text-muted-foreground">
                                 {new Date(order.created_at).toLocaleString()}
                               </TableCell>
+                              <TableCell>
+                                {(order.fulfillment_status === "delivered" || order.status === "delivered") ? (
+                                  <Button size="sm" variant="outline" onClick={() => setReportOrder(order)}>Report not received</Button>
+                                ) : <span className="text-xs text-muted-foreground">—</span>}
+                              </TableCell>
                             </TableRow>
                           );
                         })}
                       </TableBody>
                     </Table>
                   </div>
+                )}
+                {reportOrder && (
+                  <ReportComplaintDialog
+                    open={Boolean(reportOrder)}
+                    onOpenChange={(open) => { if (!open) setReportOrder(null); }}
+                    order={{ id: reportOrder.id, customer_number: reportOrder.customer_number, network: reportOrder.network, size_gb: Number(reportOrder.size_gb || 0), amount: Number(reportOrder.selling_price || reportOrder.amount || 0), created_at: reportOrder.created_at, fulfillment_status: reportOrder.fulfillment_status || "delivered", status: reportOrder.status || "delivered" }}
+                    complaintType="api_order"
+                    subagentStoreId={subagentStore?.id}
+                  />
                 )}
               </CardContent>
             </Card>

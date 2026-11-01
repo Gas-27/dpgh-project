@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
-import { RefreshCw } from "lucide-react";
+import { RefreshCw, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 const terminalStatuses = new Set(["completed", "complete", "delivered", "canceled", "cancelled", "failed", "failure"]);
 
@@ -18,6 +19,7 @@ export default function AdminSocialBoostOrders() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [search, setSearch] = useState("");
 
   const load = useCallback(async (sync = true) => {
     setLoading(true);
@@ -52,11 +54,14 @@ export default function AdminSocialBoostOrders() {
     setLoading(false);
   }, []);
 
+  const query = search.trim().replace(/^#/, "").toLowerCase();
+  const filteredOrders = query ? orders.filter((order) => String(order.order_number ?? "").toLowerCase().includes(query) || String(order.provider_order_id ?? "").toLowerCase().includes(query)) : orders;
+
   useEffect(() => {
     void load(true);
   }, [load]);
 
-  return <div className="space-y-4"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Social Boost Orders</h2><p className="text-sm text-muted-foreground">Live provider status, exact remaining quantity, and start count. Use Refresh when you want to sync provider status.</p></div><Button variant="outline" onClick={() => void load()} disabled={loading || syncing}><RefreshCw className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />{syncing ? "Syncing…" : "Refresh"}</Button></div><div className="overflow-x-auto rounded-xl border"><Table className="min-w-[1250px]"><TableHeader><TableRow className="bg-[#dddff5]"><TableHead>Date</TableHead><TableHead>Order</TableHead><TableHead>Source</TableHead><TableHead>Link</TableHead><TableHead>Charge</TableHead><TableHead>Start count</TableHead><TableHead>Quantity</TableHead><TableHead>Service</TableHead><TableHead>Status</TableHead><TableHead>Remains</TableHead></TableRow></TableHeader><TableBody>{loading ? <TableRow><TableCell colSpan={10}>Loading live order data…</TableCell></TableRow> : orders.map((order) => <TableRow key={order.order_number}><TableCell className="whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="whitespace-nowrap">#{order.order_number}</TableCell><TableCell className="whitespace-nowrap">{order.owner_type === "api" ? "API user" : order.seller_store_kind ? `${order.seller_store_kind} storefront` : order.owner_type === "subsubagent" ? "Sub-subagent" : order.owner_type === "subagent" ? "Subagent" : order.owner_type === "agent" ? "Agent" : order.owner_type === "customer" ? "Customer" : order.payment_reference ? "Direct Paystack" : "Direct wallet"}</TableCell><TableCell className="max-w-[260px] truncate text-blue-600" title={order.target_link}>{order.target_link}</TableCell><TableCell className="whitespace-nowrap">{Number(order.amount ?? order.selling_amount ?? 0).toFixed(2)}</TableCell><TableCell>{order.start_count ?? "—"}</TableCell><TableCell>{order.quantity}</TableCell><TableCell>{order.service}</TableCell><TableCell>{order.provider_status ?? "Processing"}</TableCell><TableCell>{order.remains ?? order.quantity}</TableCell></TableRow>)}</TableBody></Table></div></div>;
+  return <div className="space-y-4"><div className="flex items-center justify-between"><div><h2 className="text-xl font-bold">Social Boost Orders</h2><p className="text-sm text-muted-foreground">Live provider status, exact remaining quantity, and start count. Use Refresh when you want to sync provider status.</p></div><Button variant="outline" onClick={() => void load()} disabled={loading || syncing}><RefreshCw className={`mr-2 h-4 w-4 ${syncing ? "animate-spin" : ""}`} />{syncing ? "Syncing…" : "Refresh"}</Button></div><div className="relative"><Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search by order number, e.g. 1182" inputMode="numeric" className="pl-9" /></div><div className="overflow-x-auto rounded-xl border"><Table className="min-w-[1250px]"><TableHeader><TableRow className="bg-[#dddff5]"><TableHead>Date</TableHead><TableHead>Order</TableHead><TableHead>Source</TableHead><TableHead>Link</TableHead><TableHead>Charge</TableHead><TableHead>Start count</TableHead><TableHead>Quantity</TableHead><TableHead>Service</TableHead><TableHead>Status</TableHead><TableHead>Remains</TableHead></TableRow></TableHeader><TableBody>{loading ? <TableRow><TableCell colSpan={10}>Loading live order data…</TableCell></TableRow> : filteredOrders.length === 0 ? <TableRow><TableCell colSpan={10}>No orders match that order number.</TableCell></TableRow> : filteredOrders.map((order) => <TableRow key={order.order_number}><TableCell className="whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell><TableCell className="whitespace-nowrap">#{order.order_number}</TableCell><TableCell className="whitespace-nowrap">{order.owner_type === "api" ? "API user" : order.seller_store_kind ? `${order.seller_store_kind} storefront` : order.owner_type === "subsubagent" ? "Sub-subagent" : order.owner_type === "subagent" ? "Subagent" : order.owner_type === "agent" ? "Agent" : order.owner_type === "customer" ? "Customer" : order.payment_reference ? "Direct Paystack" : "Direct wallet"}</TableCell><TableCell className="max-w-[260px] truncate text-blue-600" title={order.target_link}>{order.target_link}</TableCell><TableCell className="whitespace-nowrap">{Number(order.amount ?? order.selling_amount ?? 0).toFixed(2)}</TableCell><TableCell>{order.start_count ?? "—"}</TableCell><TableCell>{order.quantity}</TableCell><TableCell>{order.service}</TableCell><TableCell>{order.provider_status ?? "Processing"}</TableCell><TableCell>{order.remains ?? order.quantity}</TableCell></TableRow>)}</TableBody></Table></div></div>;
 }
 
 export async function refreshSocialBoostOrderStatus(order: any) {

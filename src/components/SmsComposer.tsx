@@ -628,9 +628,18 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
             <Textarea
               value={recipients}
               onChange={(event) => setRecipients(event.target.value)}
+              onCopy={(event) => event.preventDefault()}
+              onCut={(event) => event.preventDefault()}
+              onDragStart={(event) => event.preventDefault()}
+              onContextMenu={(event) => event.preventDefault()}
+              onKeyDown={(event) => {
+                if ((event.ctrlKey || event.metaKey) && ["c", "x", "insert"].includes(event.key.toLowerCase())) event.preventDefault();
+              }}
+              className="select-none"
               placeholder="Paste numbers, one per line or comma-separated. +233 numbers are auto-converted to 0..."
               rows={4}
             />
+            <p className="text-xs text-muted-foreground">You can paste contacts here, but numbers in this box cannot be copied out.</p>
             <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
               <Button
                 type="button"

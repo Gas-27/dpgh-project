@@ -184,7 +184,7 @@ export default function ReportComplaintDialog({
       };
 
       // Upload screenshot 1 only for non-API complaints.
-      const screenshotUrl = !isApiOrderComplaint && screenshotFile
+      const screenshotUrl = screenshotFile
         ? await uploadViaApi(screenshotFile, "complaint")
         : "";
 
@@ -465,6 +465,41 @@ Please investigate and assist. Thank You.`;
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {isApiOrderComplaint && (
+              <div className="space-y-2">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <Label className="text-sm font-medium">Attach {networkLabel} screenshot (optional)</Label>
+                  <span className="text-xs text-muted-foreground">Attach evidence to make resolution faster</span>
+                </div>
+                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileChange} />
+                {!screenshotPreview ? (
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex w-full flex-col items-center gap-1 rounded-lg border-2 border-dashed border-border bg-muted/30 py-5 transition-colors hover:border-primary"
+                  >
+                    <Upload className="h-6 w-6 text-muted-foreground" />
+                    <p className="text-sm font-medium">Tap to attach a screenshot</p>
+                    <p className="text-xs text-muted-foreground">
+                      {isMTN(network) ? "Data balance (*124#) screenshot" : `${networkLabel} app balance screenshot`} — JPG, PNG, max 5MB
+                    </p>
+                  </button>
+                ) : (
+                  <div className="relative overflow-hidden rounded-lg border border-primary">
+                    <img src={screenshotPreview} alt="Attached evidence" className="max-h-52 w-full bg-muted object-contain" />
+                    <button
+                      type="button"
+                      aria-label="Remove screenshot"
+                      onClick={() => { setScreenshotFile(null); setScreenshotPreview(null); }}
+                      className="absolute right-2 top-2 rounded-full border border-border bg-background/80 p-1 hover:bg-destructive/20"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
             <div className="flex gap-2 pt-2">

@@ -16,6 +16,7 @@ export default function PrivateSubscriptionCheckout() {
   const [purchaseLoading, setPurchaseLoading] = useState(false);
   const [paymentState, setPaymentState] = useState<{ status: "idle" | "checking" | "paid" | "pending" | "verification" | "error"; login?: string | null; password?: string | null; instructions?: string | null; verificationEmail?: string | null; assignmentId?: string | null; verificationRequestId?: string | null; verificationCode?: string | null }>({ status: "idle" });
   const [verificationLoading, setVerificationLoading] = useState(false);
+  const [soldOut, setSoldOut] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -124,6 +125,7 @@ export default function PrivateSubscriptionCheckout() {
 
   const startPaystackCheckout = async () => {
     if (!service) return;
+    setSoldOut(false);
     setPurchaseLoading(true);
     const amount = Number.isFinite(storefrontPrice) && storefrontPrice > 0 ? storefrontPrice : Number(service.price);
     const phone = `000000${Date.now().toString().slice(-4)}`;
@@ -136,7 +138,13 @@ export default function PrivateSubscriptionCheckout() {
       },
     });
     setPurchaseLoading(false);
-    if (error || !data?.authorization_url) { toast({ title: "Payment unavailable", description: error?.message || data?.error || "Secure checkout could not be started.", variant: "destructive" }); return; }
+    if (error || !data?.authorization_url) {
+      const response = (error as { context?: Response } | null)?.context;
+      const body = data ?? (response && typeof response.json === "function" ? await response.clone().json().catch(() => null) : null);
+      if (response?.status === 409 || /sold out/i.test(String(body?.error ?? ""))) {
+        setSoldOut(true);
+        return;
+      } toast({ title: "Payment unavailable", description: error?.message || data?.error || "Secure checkout could not be started.", variant: "destructive" }); return; }
     window.location.assign(data.authorization_url);
   };
 
@@ -149,5 +157,6 @@ export default function PrivateSubscriptionCheckout() {
           {paymentState.status === "verification" && <div className="mt-5 space-y-3 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950"><strong>Email verification required</strong><p>Use this assigned email on {service.name}: <span className="font-semibold break-all">{paymentState.verificationEmail}</span></p><p>Return to the service and request the verification email. When you have requested the code, come back here and check for it.</p>{paymentState.verificationCode ? <div className="rounded-lg border border-blue-300 bg-white p-3 text-center"><span className="block text-xs font-semibold uppercase tracking-wide text-blue-700">Verification code</span><span className="text-2xl font-black tracking-[0.3em]">{paymentState.verificationCode}</span></div> : !paymentState.verificationRequestId ? <Button type="button" onClick={requestVerificationCode} disabled={verificationLoading} className="w-full bg-[#2864e8] hover:bg-[#1d52ca]">{verificationLoading ? "Preparing verification..." : "I requested the code — check here"}</Button> : <Button type="button" onClick={async () => { setVerificationLoading(true); const done = await pollVerificationCode(paymentState.verificationRequestId!); if (!done) toast({ title: "Code not received yet", description: "Make sure you requested the code on the service. We keep checking automatically." }); setVerificationLoading(false); }} disabled={verificationLoading} className="w-full bg-[#2864e8] hover:bg-[#1d52ca]">{verificationLoading ? "Checking inbox..." : "Show verification code"}</Button>}{paymentState.instructions && <p className="border-t border-blue-200 pt-3">{paymentState.instructions}</p>}</div>}
           {paymentState.status === "pending" && <div className="mt-5 space-y-3 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><strong>{isNetflix ? "Your Netflix private access is being prepared" : "Private access is being assigned"}</strong><p className="mt-1">Your payment is confirmed. {isNetflix ? "Your assigned Netflix email will appear here first. Keep this page open, use that email to request Netflix’s verification code, then return here to retrieve the code and finish signing in." : "Your private slot and login details will appear here as soon as the assignment finishes."}</p>{paymentState.instructions && <p className="border-t border-amber-200 pt-2">{paymentState.instructions}</p>}<Button type="button" onClick={() => window.location.reload()} className="w-full bg-amber-700 hover:bg-amber-800">Check assignment again</Button></div>}
           {paymentState.status === "error" && <div className="mt-5 space-y-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-900"><strong>Payment verification is temporarily unavailable</strong><p>{paymentState.instructions || "We could not verify this payment yet. Keep your Paystack receipt and try again."}</p><Button type="button" onClick={() => window.location.reload()} className="w-full bg-red-700 hover:bg-red-800">Check payment again</Button></div>}
+          {soldOut && <div role="alert" className="mt-5 space-y-1 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950"><strong>All available slots are finished</strong><p>No payment was started and you have not been charged. New slots will open soon, so please come back later.</p></div>}
           {(paymentState.status === "idle" || paymentState.status === "error") && <Button onClick={startPaystackCheckout} disabled={purchaseLoading || paymentState.status === "checking"} className="mt-5 w-full bg-[#2864e8] hover:bg-[#1d52ca]">{purchaseLoading ? "Opening secure checkout..." : `Pay with Paystack — GHS ${(Number.isFinite(storefrontPrice) && storefrontPrice > 0 ? storefrontPrice : Number(service.price)).toFixed(2)}`}</Button>}</section></div></div></main>;
 }
