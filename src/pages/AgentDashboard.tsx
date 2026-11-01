@@ -16,6 +16,7 @@ import { RefundStatusCell } from "@/components/RefundStatusCell";
 import { useStorefrontRefunds } from "@/hooks/useStorefrontRefunds";
 import { Navigate, Link, useNavigate } from "react-router-dom";
 import { DOMAINS } from "@/config/domains";
+import { openGameHubIfAvailable } from "@/lib/tabControls";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -2438,7 +2439,9 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
         const base = order.agent_base_price ?? order.base_price ?? 0;
         profit += Number(order.agent_profit) || Number(order.profit) || (Number(order.selling_price ?? order.amount ?? 0) - Number(base));
       } else {
-        profit += Number(order.agent_subagent_profit) || Number(order.agent_profit) || 0;
+        const sourceProfit = Number(order.agent_subagent_profit ?? order.subagent_profit ?? order.sub_subagent_profit ?? order.subsubagent_profit ?? order.agent_profit ?? order.profit);
+        const sourceBase = Number(order.agent_base_price ?? order.base_price ?? order.cost_price ?? 0);
+        profit += sourceProfit || (Number(order.selling_price ?? order.amount ?? 0) - sourceBase);
       }
     }
     return { revenue, profit, spent };
@@ -2547,7 +2550,7 @@ return (
                 <div className="flex flex-col gap-2 pb-4">
                   {menuItems.map(item => (
                     <SheetClose asChild key={item.id}>
-                      <button onClick={() => item.id === "gamehub" ? window.open("https://gamehubgh.com", "_blank", "noopener,noreferrer") : setActiveTab(item.id)} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left w-full">
+                      <button onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(item.id)} className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-secondary transition-colors text-left w-full">
                         <item.icon className="h-5 w-5 text-primary" /><span className="font-medium">{item.label}</span>
                       </button>
                     </SheetClose>
@@ -2575,7 +2578,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
-  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "flyer", label: "Flyer Generator" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => item.id === "gamehub" ? window.open("https://gamehubgh.com", "_blank", "noopener,noreferrer") : setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
+  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "flyer", label: "Flyer Generator" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
   
 
   {/* ============================= DOMAINS ============================= */}

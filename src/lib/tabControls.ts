@@ -23,6 +23,17 @@ export async function fetchTabControls() {
   return (data?.tab_controls as TabControls | null) ?? defaultTabControls;
 }
 
+export async function openGameHubIfAvailable() {
+  const controls = await fetchTabControls();
+  const control = controls.gamehub;
+  if (isTabUnavailable(control)) {
+    window.alert(control?.message || "GameHub is currently unavailable. Please come back later.");
+    return false;
+  }
+  window.open("https://gamehubgh.com", "_blank", "noopener,noreferrer");
+  return true;
+}
+
 export async function saveTabControls(tab_controls: TabControls) {
   return supabase.from("app_settings").upsert({ id: 1, tab_controls, updated_at: new Date().toISOString() });
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { openGameHubIfAvailable } from "@/lib/tabControls";
 import { debitOwnWallet, refundFailedOrder, newOrderId } from "@/lib/wallet";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
 import PartnerServicesApiDocs from "@/components/PartnerServicesApiDocs";
@@ -969,7 +970,7 @@ const UserDashboard = () => {
             <button
               key={tab.id}
               type="button"
-              onClick={() => tab.id === "gamehub" ? window.open("https://gamehubgh.com", "_blank", "noopener,noreferrer") : setActiveMenu(activeMenu === tab.id ? "overview" : tab.id)}
+              onClick={() => tab.id === "gamehub" ? void openGameHubIfAvailable() : setActiveMenu(activeMenu === tab.id ? "overview" : tab.id)}
               className={`rounded-full border px-3 py-2 text-sm font-semibold transition hover:brightness-95 ${tab.className}`}
             >
               {activeMenu === tab.id ? "Overview" : tab.label}
