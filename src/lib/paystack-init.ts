@@ -471,7 +471,7 @@ Deno.serve(async (req) => {
       .from("data_packages")
       .select("agent_price, price, size_gb, network")
       .eq("id", metadata.package_id)
-      .single();
+      .maybeSingle();
 
     if (packageError || !packageData) {
       console.error("Package not found:", metadata.package_id);

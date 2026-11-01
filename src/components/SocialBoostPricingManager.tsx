@@ -33,7 +33,7 @@ const removedServiceNames = new Set([
       let pricingUserId = user.user?.id ?? null;
       if (ownerId) {
         const table = ownerType === "agent" ? "agent_stores" : ownerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
-        const { data: store } = await (supabase as any).from(table).select("user_id,owner_id,created_by").eq("id", ownerId).maybeSingle();
+        const { data: store } = await (supabase as any).from(table).select("user_id").eq("id", ownerId).maybeSingle();
         pricingUserId = store?.user_id ?? store?.owner_id ?? store?.created_by ?? pricingUserId;
       }
       if (pricingUserId && rows.length) {
@@ -67,7 +67,7 @@ const removedServiceNames = new Set([
     let pricingUserId = data.user.id;
     if (ownerId) {
       for (const table of ["agent_stores", "subagent_stores", "sub_subagent_stores"]) {
-        const { data: store } = await (supabase as any).from(table).select("user_id,owner_id,created_by").eq("id", ownerId).maybeSingle();
+        const { data: store } = await (supabase as any).from(table).select("user_id").eq("id", ownerId).maybeSingle();
         if (store) { pricingUserId = store.user_id ?? store.owner_id ?? store.created_by ?? pricingUserId; break; }
       }
     }

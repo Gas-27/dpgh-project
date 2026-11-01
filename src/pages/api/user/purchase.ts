@@ -38,9 +38,9 @@ export default async function handler(
     // Fetch package details — include api_price (the default API price)
     const { data: packageData, error: packageError } = await supabase
       .from('data_packages')
-      .select('id, price, api_price, name')
+      .select('id, price, api_price, size_gb_text, network, size_gb')
       .eq('id', package_id)
-      .single();
+      .maybeSingle();
 
     if (packageError || !packageData) {
       return res.status(404).json({ error: 'Package not found' });
@@ -63,7 +63,7 @@ export default async function handler(
     const normalizedPhone = String(phone_number).replace(/\D/g, "");
 
 
-    const sizeMatch = packageData.name?.match(/(\d+(?:\.\d+)?)/);
+    const sizeMatch = packageData.size_gb_text?.match(/(\d+(?:\.\d+)?)/);
     const sizeGb = sizeMatch ? parseFloat(sizeMatch[1]) : 0;
     const rawNetwork = normalizedNetwork;
     const routedNetwork = ["mtn_xpress", "mtnexpress", "express_mtn"].includes(rawNetwork) ? "mtn_express" : ["airtel_tigo", "airtel", "tigo"].includes(rawNetwork) ? "airteltigo" : rawNetwork === "vodafone" ? "telecel" : rawNetwork;
@@ -82,7 +82,7 @@ export default async function handler(
         package_id: package_id,
         network,
         size_gb: sizeGb,
-        size_gb_text: packageData.name || null,
+        size_gb_text: packageData.size_gb_text || null,
         amount: amount,
         // API requests are authorized against the API user's prepaid balance,
         // so the order is paid at creation just like a wallet order.
@@ -95,7 +95,6 @@ export default async function handler(
         user_id: apiUser.identity_id,
         source: 'api',
         purchase_provider: purchaseProvider,
-        purchase_provider_source: 'api',
         fulfillment_provider: purchaseProvider,
         api_user: apiUser.id,
         selling_price: amount,

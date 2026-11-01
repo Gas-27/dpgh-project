@@ -848,7 +848,7 @@ const SubagentDashboard = () => {
         // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
         const enrichedOrders2 = await Promise.all((ordersResult.data || []).map(async (order: any) => {
           if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
-            const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, bundle_id").eq("id", order.package_id).single();
+            const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, bundle_id").eq("id", order.package_id).maybeSingle();
             return { ...order, size_gb_text: pkg?.size_gb_text, bundle_id: pkg?.bundle_id };
           }
           return order;

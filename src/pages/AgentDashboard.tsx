@@ -993,7 +993,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       // Enrich mtn_mashup and mashup orders with size_gb_text and data_package_id
       const enrichedOrders = await Promise.all(os.map(async (order: any) => {
         if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
-          const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, bundle_id").eq("id", order.package_id).single();
+          const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, bundle_id").eq("id", order.package_id).maybeSingle();
           return { ...order, size_gb_text: pkg?.size_gb_text, bundle_id: pkg?.bundle_id };
         }
         return order;

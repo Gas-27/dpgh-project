@@ -1,28 +1,51 @@
 import { createClient } from "@supabase/supabase-js";
 import webpush from "web-push";
 
-const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// VAPID keys for web push - you should generate your own
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY || "BEl62iUYgUivxIkv69yViEuiBIa-Ib9-SkvMeAtA3LFgDzkrxZJjSgSnfckjBJuBkr3qBUYIHBQFLXYp5Nksh8U";
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY || "UUxI4O8-FbRouAf7-fG-hSJMC7O4y0rJmB1qgFgKbXY";
+const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
+const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
+const VAPID_SUBJECT = process.env.VAPID_EMAIL ? `mailto:${process.env.VAPID_EMAIL.replace(/^mailto:/, "")}` : "mailto:admin@datapluggh.com";
+
+async function authenticateAdmin(req, supabase) {
+  const header = req.headers.authorization;
+  const token = header && header.startsWith("Bearer ") ? header.slice(7).trim() : "";
+  if (!token) return { status: 401, error: "Authentication required" };
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) return { status: 401, error: "Authentication required" };
+
+  const { data: role } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", data.user.id)
+    .in("role", ["admin", "sub_admin"])
+    .limit(1)
+    .maybeSingle();
+  if (!role) return { status: 403, error: "Administrator access required" };
+  return { user: data.user };
+}
 
 export default async function handler(req, res) {
-  // Handle CORS
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
-
-  if (req.method === "OPTIONS") {
-    return res.status(200).end();
-  }
+  res.removeHeader("X-Powered-By");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("Cache-Control", "no-store");
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
 
+  if (!supabaseUrl || !supabaseKey || !VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
+    console.error("[send-push-notification] server configuration is incomplete");
+    return res.status(503).json({ error: "Service unavailable" });
+  }
+
   try {
+    const authClient = createClient(supabaseUrl, supabaseKey, { auth: { persistSession: false } });
+    const authResult = await authenticateAdmin(req, authClient);
+    if (authResult.error) return res.status(authResult.status).json({ error: authResult.error });
+
     const { title, body, url } = req.body;
 
     if (!title || !body) {
@@ -30,14 +53,10 @@ export default async function handler(req, res) {
     }
 
     // Configure web-push
-    webpush.setVapidDetails(
-      "mailto:admin@datapluggh.com",
-      VAPID_PUBLIC_KEY,
-      VAPID_PRIVATE_KEY
-    );
+    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
 
     // Get ALL subscriptions by paginating (Supabase default max is 1000 per request)
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    const supabase = authClient;
     let allSubscriptions = [];
     let page = 0;
     const pageSize = 1000;
@@ -123,6 +142,6 @@ export default async function handler(req, res) {
     });
   } catch (error) {
     console.error("Error sending push notifications:", error);
-    return res.status(500).json({ error: error.message || "Failed to send notifications" });
+    return res.status(500).json({ error: "Failed to send notifications" });
   }
 }

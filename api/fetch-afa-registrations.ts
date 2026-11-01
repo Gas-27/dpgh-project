@@ -1,16 +1,15 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { createClient } from '@supabase/supabase-js';
-
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-const adminSupabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
+import { hardenResponse, requireAdmin } from './_lib/auth';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
+  hardenResponse(res);
   if (req.method !== 'GET') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
+  const auth = await requireAdmin(req, res);
+  if (!auth) return;
+  const adminSupabase = auth.admin;
   try {
-    if (!adminSupabase) return res.status(503).json({ error: 'Supabase server configuration is missing' });
     // Fetch all registrations with store name lookups
     const { data: rows, error } = await adminSupabase
       .from('afa_registrations')
@@ -52,7 +51,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     return res.status(200).json({ data });
   } catch (err: any) {
-    console.error('[fetch-afa-registrations] error:', err.message);
-    return res.status(500).json({ error: err.message });
+    console.error('[fetch-afa-registrations] error:', err?.message);
+    return res.status(500).json({ error: 'Unable to load registrations' });
   }
 }

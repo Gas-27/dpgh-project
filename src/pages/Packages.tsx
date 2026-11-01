@@ -1407,27 +1407,12 @@ const Packages = () => {
       if (data) setPackages(data);
     };
 
-    const refreshSiteConfig = async () => {
-      const { data } = await supabase
-        .from("site_config")
-        .select("*")
-        .eq("id", 1)
-        .maybeSingle();
-      if (data) {
-        setSiteConfig(
-          !data.spin_wheel_segments
-            ? { ...data, default_network: data.default_network as Network }
-  : { ...data, default_network: data.default_network as Network, placement_targets: Array.isArray(data.placement_targets) ? data.placement_targets : ["packages"], segments: (data.segments as SpinSegment[]).filter(s => !(s.type === "gb" && Number(s.value) === 10)) }
-        );
-      }
-    };
-
+    // TODO: the `site_config` table does not exist in the database, so the periodic
+    // refresh was removed. The spin_config query above remains the source of site settings.
     const packagesTimer = setInterval(refreshPackages, 5 * 60 * 1000);
-    const siteConfigTimer = setInterval(refreshSiteConfig, 5 * 60 * 1000);
 
     return () => {
       clearInterval(packagesTimer);
-      clearInterval(siteConfigTimer);
     };
   }, []);
 
@@ -1499,7 +1484,7 @@ const searchOrders = async (input?: string) => {
     // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
     const enrichedOrders = await Promise.all(refreshedData.map(async (order: any) => {
       if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
-        const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, bundle_id").eq("id", order.package_id).single();
+        const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, bundle_id").eq("id", order.package_id).maybeSingle();
         return { ...order, size_gb_text: pkg?.size_gb_text, bundle_id: pkg?.bundle_id };
       }
       return order;
