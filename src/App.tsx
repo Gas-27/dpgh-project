@@ -3,6 +3,7 @@ import { useParams, BrowserRouter, Route, Routes } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
+import GameHubDialog from "@/components/GameHubDialog";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import AuthGuard from "@/components/AuthGuard";
 import { AuthProvider } from "@/hooks/useAuth";
@@ -286,6 +287,7 @@ return (
         <Sonner />
         <PWAInstallPrompt />
         <NotificationPrompt />
+        <GameHubDialog />
         <BrowserRouter>
           <RouteSeoGuard />
           <PaymentVerifier />

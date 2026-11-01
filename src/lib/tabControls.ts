@@ -30,7 +30,7 @@ export async function openGameHubIfAvailable() {
     window.alert(control?.message || "GameHub is currently unavailable. Please come back later.");
     return false;
   }
-  window.open("https://gamehubgh.com", "_blank", "noopener,noreferrer");
+  window.dispatchEvent(new CustomEvent("open-gamehub"));
   return true;
 }
 
