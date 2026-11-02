@@ -7,36 +7,62 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { adminSetGameReward, fetchGameRewardSettings, type GameRewardSetting } from "@/lib/gameHubApi";
+import { adminSetGameRules, fetchGameRewardSettings, type GameRewardSetting } from "@/lib/gameHubApi";
 
 const QUERY_KEY = ["gamehub-reward-settings"];
 
 function RewardRow({ setting }: { setting: GameRewardSetting }) {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const timed = setting.required_seconds !== null;
   const [gb, setGb] = useState(String(setting.reward_gb));
   const [enabled, setEnabled] = useState(setting.enabled);
+  const [level, setLevel] = useState(String(setting.target_level ?? ""));
+  const [price, setPrice] = useState(String(setting.life_price));
+  const [minutes, setMinutes] = useState(String((setting.required_seconds ?? 0) / 60));
 
   useEffect(() => {
     setGb(String(setting.reward_gb));
     setEnabled(setting.enabled);
-  }, [setting.reward_gb, setting.enabled]);
+    setLevel(String(setting.target_level ?? ""));
+    setPrice(String(setting.life_price));
+    setMinutes(String((setting.required_seconds ?? 0) / 60));
+  }, [setting]);
 
-  const parsed = Number(gb);
-  const valid = Number.isFinite(parsed) && parsed > 0 && parsed <= 100;
-  const dirty = parsed !== setting.reward_gb || enabled !== setting.enabled;
+  const parsedGb = Number(gb);
+  const parsedLevel = Number(level);
+  const parsedPrice = Number(price);
+  const parsedSeconds = Math.round(Number(minutes) * 60);
+  const maxLevel = setting.max_level ?? 1;
+
+  const levelValid = timed || (Number.isInteger(parsedLevel) && parsedLevel >= 1 && parsedLevel <= maxLevel);
+  const timeValid = !timed || (parsedSeconds >= 30 && parsedSeconds <= 3600);
+  const valid = Number.isFinite(parsedGb) && parsedGb > 0 && parsedGb <= 100 && parsedPrice > 0 && parsedPrice <= 500 && levelValid && timeValid;
+  const dirty =
+    parsedGb !== setting.reward_gb ||
+    enabled !== setting.enabled ||
+    parsedPrice !== setting.life_price ||
+    (timed ? parsedSeconds !== setting.required_seconds : parsedLevel !== setting.target_level);
 
   const save = useMutation({
-    mutationFn: () => adminSetGameReward(setting.game_id, parsed, enabled),
+    mutationFn: () =>
+      adminSetGameRules({
+        gameId: setting.game_id,
+        gb: parsedGb,
+        enabled,
+        targetLevel: timed ? null : parsedLevel,
+        lifePrice: parsedPrice,
+        requiredSeconds: timed ? parsedSeconds : null,
+      }),
     onSuccess: () => {
-      toast({ title: "Reward updated", description: `${setting.title} now rewards ${parsed}GB${enabled ? "" : " (claims switched off)"}.` });
+      toast({ title: "Game rules updated", description: `${setting.title} now rewards ${parsedGb}GB${enabled ? "" : " (claims switched off)"}.` });
       void queryClient.invalidateQueries({ queryKey: QUERY_KEY });
     },
     onError: (error: Error) => toast({ title: "Could not save", description: error.message, variant: "destructive" }),
   });
 
   return (
-    <div className="flex flex-col gap-3 rounded-lg border p-4 sm:flex-row sm:items-end sm:justify-between">
+    <div className="flex flex-col gap-3 rounded-lg border p-4">
       <div className="min-w-0">
         <p className="font-medium">{setting.title}</p>
         <p className="text-xs text-muted-foreground">Applies to new runs. A player who already cleared a game keeps the GB they earned.</p>
@@ -44,17 +70,22 @@ function RewardRow({ setting }: { setting: GameRewardSetting }) {
       <div className="flex flex-wrap items-end gap-3">
         <div className="space-y-1">
           <Label htmlFor={`gb-${setting.game_id}`}>MTN GB reward</Label>
-          <Input
-            id={`gb-${setting.game_id}`}
-            type="number"
-            inputMode="decimal"
-            min={1}
-            max={100}
-            step={1}
-            value={gb}
-            onChange={(event) => setGb(event.target.value)}
-            className="w-28"
-          />
+          <Input id={`gb-${setting.game_id}`} type="number" inputMode="decimal" min={1} max={100} step={1} value={gb} onChange={(event) => setGb(event.target.value)} className="w-28" />
+        </div>
+        {timed ? (
+          <div className="space-y-1">
+            <Label htmlFor={`min-${setting.game_id}`}>Minutes to play</Label>
+            <Input id={`min-${setting.game_id}`} type="number" inputMode="decimal" min={0.5} max={60} step={0.5} value={minutes} onChange={(event) => setMinutes(event.target.value)} className="w-28" />
+          </div>
+        ) : (
+          <div className="space-y-1">
+            <Label htmlFor={`lvl-${setting.game_id}`}>Level to win (1-{maxLevel})</Label>
+            <Input id={`lvl-${setting.game_id}`} type="number" inputMode="numeric" min={1} max={maxLevel} step={1} value={level} onChange={(event) => setLevel(event.target.value)} className="w-28" />
+          </div>
+        )}
+        <div className="space-y-1">
+          <Label htmlFor={`price-${setting.game_id}`}>Extra life (GH&#8373;)</Label>
+          <Input id={`price-${setting.game_id}`} type="number" inputMode="decimal" min={0.5} max={500} step={0.5} value={price} onChange={(event) => setPrice(event.target.value)} className="w-28" />
         </div>
         <div className="flex items-center gap-2 pb-2">
           <Switch id={`on-${setting.game_id}`} checked={enabled} onCheckedChange={setEnabled} />
@@ -75,9 +106,9 @@ export default function AdminGameRewards() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>JustBuy Games rewards</CardTitle>
+        <CardTitle>JustBuy Games rules</CardTitle>
         <CardDescription>
-          Set how many GB of MTN data each game gives when a player completes it, or switch a game&apos;s claims off. Players claim by entering their MTN number once the server has verified their run.
+          For each game set the MTN reward, the level (or play time) a player must reach, and the price of an extra life. The reward size must match an active MTN package.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

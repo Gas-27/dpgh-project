@@ -21,8 +21,10 @@ export const tagClasses: Record<GameTag, string> = {
 const img = (slug: string) => `/game-previews/${slug}.webp`;
 
 export const hubGames: HubGame[] = [
-  { id: "cup-shuffle", name: "Cup Shuffle", tag: "Puzzle", blurb: "Reach level 12 to win a free MTN 5GB! 2 lives, extra life GH\u20B54.", rating: 4.9, image: "/game-previews/cup-shuffle.png", native: { src: "/games/cup-shuffle.html", targetLevel: 12 } },
-  { id: "snap-fit", name: "Snap Fit", tag: "Action", blurb: "Reach level 20 to win a free MTN 5GB! 2 lives, extra life GH\u20B54.", rating: 4.9, image: "/game-previews/snap-fit.png", native: { src: "/games/snap-fit.html", targetLevel: 20 } },
+  { id: "cup-shuffle", name: "Cup Shuffle", tag: "Puzzle", blurb: "Reach level 12 to win free MTN data!", rating: 4.9, image: "/game-previews/cup-shuffle.png", native: { src: "/games/cup-shuffle.html", targetLevel: 12 } },
+  { id: "snap-fit", name: "Snap Fit", tag: "Action", blurb: "Reach level 20 to win free MTN data!", rating: 4.9, image: "/game-previews/snap-fit.png", native: { src: "/games/snap-fit.html", targetLevel: 20 } },
+  { id: "nail-hit", name: "Nail Hit", tag: "Action", blurb: "Hammer every nail into the spinning log without touching another. Reach stage 12 to win free MTN data!", rating: 4.7, image: "/game-previews/nail-hit.png", native: { src: "/games/nail-hit.html", targetLevel: 12 } },
+  { id: "cut-score", name: "Cut & Score", tag: "Action", blurb: "Time your cut and score the perfect shot. Reach level 24 to win free MTN data!", rating: 4.6, image: "/game-previews/cut-score.png", native: { src: "/games/cut-score.html", targetLevel: 24 } },
   { id: "aim-for-it", name: "Aim For It", tag: "Action", blurb: "Master the art of archery and hit bullseyes!", rating: 3.9, image: img("aim-for-it") },
   { id: "timer-challenge", name: "Timer Challenge", tag: "Action", blurb: "Stop the timer at exactly the right moment!", rating: 4.0, image: img("timer-challenge") },
   { id: "snake-game", name: "Snake Game", tag: "Strategy", blurb: "Grow your snake by eating food!", rating: 3.8, image: img("snake-game") },
@@ -49,7 +51,7 @@ export const hubGames: HubGame[] = [
   { id: "three-mens-morris-online", name: "Align 3 (Online)", tag: "Online", blurb: "Challenge a friend online \u2014 place and slide pieces to align three in a row!", rating: 3.2, image: img("three-mens-morris") },
   { id: "ludo", name: "Ludo", tag: "Strategy", blurb: "Classic Ludo for 2-6 players \u2014 vs the computer or pass and play on one phone, with customizable rules!", rating: 3.8, image: img("ludo") },
   { id: "ludo-online", name: "Ludo Online", tag: "Online", blurb: "Create a room code and play Ludo online with 2, 3, 4, 5 or 6 friends!", rating: 4.3, image: img("ludo") },
-  { id: "basketball", name: "Basketball", tag: "Action", blurb: "Tap Get free data: play 10 minutes without missing a shot to win free MTN data. 1 life, extra life GH\u20B54.", rating: 4.5, image: img("basketball"), native: { src: "/games/basketball.html", targetLevel: 1, timedMinutes: 10, cta: "Get free data" } },
+  { id: "basketball", name: "Basketball", tag: "Action", blurb: "Play 10 minutes without missing a shot to win free MTN data.", rating: 4.5, image: img("basketball"), native: { src: "/games/basketball.html", targetLevel: 1, timedMinutes: 10, cta: "Get free data" } },
   { id: "basketball-online", name: "Basketball (Online)", tag: "Online", blurb: "Share a code and out-shoot a friend online in a timed basketball duel!", rating: 3.9, image: img("basketball") },
   { id: "brain-memory", name: "Memory Match Pro", tag: "Puzzle", blurb: "Test your memory by matching pairs!", rating: 4.1, image: img("brain-memory") },
   { id: "candy-crush", name: "Candy Match Saga", tag: "Puzzle", blurb: "Match colorful candies in this sweet puzzle!", rating: 4.0, image: img("candy-crush") },

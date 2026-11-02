@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Gift, Heart, ShieldCheck, Wallet } from "lucide-react";
+import { ArrowLeft, Gift, Heart, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   buyGameLife,
@@ -22,8 +22,6 @@ type RewardPlayerProps = {
 };
 
 type GameMessage = { source?: string; type?: string; level?: number };
-
-const LIFE_PRICE = 4;
 
 function walletHintFromPath(pathname: string): string {
   const path = pathname.toLowerCase();
@@ -55,9 +53,10 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
   const [phone, setPhone] = useState("");
   const [claimedPhone, setClaimedPhone] = useState<string | null>(null);
 
-  const target = game.native?.targetLevel ?? 0;
+  const target = run?.target ?? game.native?.targetLevel ?? 0;
   const timedMinutes = game.native?.timedMinutes ?? 0;
   const rewardGb = run?.reward_gb ?? 5;
+  const LIFE_PRICE = run?.life_price ?? 4;
   const gameSrc = `${game.native?.src ?? ""}?hub=1&k=${frameKey}`;
   const tickTimerRef = useRef<number | null>(null);
 
@@ -85,6 +84,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
     post({
       type: "gh-state",
       level: current.level,
+      target: current.target,
       lives: current.lives,
       status: current.status,
       playSeconds: current.play_seconds,
@@ -294,13 +294,6 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
           </div>
         ) : null}
       </header>
-
-      <div className="flex items-start gap-2 border-b border-amber-300/20 bg-amber-400/10 px-3 py-2 text-xs leading-relaxed text-amber-100">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
-        <p>
-          Fair play: every level, life and reward is verified on our servers. Bots, scripts, edited game code or replayed requests are detected, void the reward and can get the account suspended.
-        </p>
-      </div>
 
       <div className="relative min-h-0 flex-1">
         {!signedIn ? (

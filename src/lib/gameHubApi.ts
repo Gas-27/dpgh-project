@@ -73,16 +73,41 @@ export type GameRewardSetting = {
   reward_gb: number;
   enabled: boolean;
   updated_at: string;
+  target_level: number | null;
+  max_level: number | null;
+  life_price: number;
+  required_seconds: number | null;
 };
 
 export async function fetchGameRewardSettings(): Promise<GameRewardSetting[]> {
-  const { data, error } = await db.from("gamehub_game_settings").select("game_id, title, reward_gb, enabled, updated_at").order("title");
+  const { data, error } = await db.from("gamehub_game_settings").select("game_id, title, reward_gb, enabled, updated_at, target_level, max_level, life_price, required_seconds").order("title");
   if (error) throw error;
-  return ((data ?? []) as GameRewardSetting[]).map((row) => ({ ...row, reward_gb: Number(row.reward_gb) }));
+  return ((data ?? []) as GameRewardSetting[]).map((row) => ({ ...row, reward_gb: Number(row.reward_gb), life_price: Number(row.life_price) }));
 }
 
 export async function adminSetGameReward(gameId: string, gb: number, enabled: boolean): Promise<void> {
   const { error } = await db.rpc("admin_set_gamehub_reward", { p_game_id: gameId, p_gb: gb, p_enabled: enabled });
+  if (error) throw error;
+}
+
+export type GameRulesInput = {
+  gameId: string;
+  gb: number;
+  enabled: boolean;
+  targetLevel: number | null;
+  lifePrice: number;
+  requiredSeconds: number | null;
+};
+
+export async function adminSetGameRules(input: GameRulesInput): Promise<void> {
+  const { error } = await db.rpc("admin_set_gamehub_rules", {
+    p_game_id: input.gameId,
+    p_gb: input.gb,
+    p_enabled: input.enabled,
+    p_target_level: input.targetLevel,
+    p_life_price: input.lifePrice,
+    p_required_seconds: input.requiredSeconds,
+  });
   if (error) throw error;
 }
 

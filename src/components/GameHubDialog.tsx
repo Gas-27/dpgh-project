@@ -9,7 +9,6 @@ import {
   Play,
   Puzzle,
   Share2,
-  ShieldCheck,
   Star,
   Trophy,
   Users,
@@ -108,22 +107,6 @@ function FeaturedCarousel({ videos, onPlay }: { videos: GameVideo[]; onPlay: (ga
   );
 }
 
-function FairPlayCard() {
-  return (
-    <section className="rounded-3xl border border-emerald-400/30 bg-emerald-950/40 p-5">
-      <h3 className="flex items-center gap-2 text-lg font-bold text-white">
-        <ShieldCheck className="h-5 w-5 text-emerald-300" aria-hidden="true" /> Play games and win free data
-      </h3>
-      <p className="mt-2 text-sm leading-relaxed text-violet-100/85">
-        Play, share and challenge your friends to climb the leaderboard.
-      </p>
-      <p className="mt-2 text-sm leading-relaxed text-violet-100/85">
-        <strong className="font-semibold text-white">Skill games only.</strong> No betting, no gambling - just how good and skillful you are.
-      </p>
-    </section>
-  );
-}
-
 function IntroCard({ onBrowse }: { onBrowse: () => void }) {
   const stats = [
     { icon: Gamepad2, value: `${hubGames.length}+`, label: "Games" },
@@ -185,7 +168,7 @@ function GameCard({ game, className = "", onPlay, onShare }: { game: HubGame; cl
         <p className="text-xs leading-relaxed text-violet-200/75">{game.blurb}</p>
         <p className="mt-auto flex items-center gap-1 pt-2 text-xs text-violet-200/80"><Star className="h-3.5 w-3.5 fill-violet-300/60 text-violet-300/60" aria-hidden="true" /> {game.rating.toFixed(1)}</p>
         <div className="flex gap-2">
-          <button type="button" onClick={() => onPlay(game)} className="flex-1 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500">Play Now</button>
+          <button type="button" onClick={() => onPlay(game)} className="flex-1 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500">{game.native?.cta ?? "Play Now"}</button>
           <button type="button" onClick={() => onShare(game)} aria-label={`Share ${game.name}`} className="flex w-10 items-center justify-center rounded-xl border border-violet-400/30 text-violet-100 hover:bg-violet-800/60">
             <Share2 className="h-4 w-4" aria-hidden="true" />
           </button>
@@ -216,10 +199,6 @@ function RewardGamesSection({ onPlay, onShare }: GameActions) {
   return (
     <section aria-labelledby="gamehub-rewards" className="space-y-3">
       <SectionHeader id="gamehub-rewards" icon={Trophy} title="Play & Win Free Data" count={rewardGames.length} />
-      <p className="flex items-start gap-2 rounded-2xl border border-amber-300/30 bg-amber-950/30 px-3 py-2 text-xs leading-relaxed text-amber-100/90">
-        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
-        Fair play: every level, life and reward is verified on our servers. Bots, scripts or edited game code void the reward and can get the account suspended.
-      </p>
       <div className="grid grid-cols-2 gap-3">
         {rewardGames.map((game) => <GameCard key={game.id} game={game} onPlay={onPlay} onShare={onShare} />)}
       </div>
@@ -230,9 +209,8 @@ function RewardGamesSection({ onPlay, onShare }: GameActions) {
 function GamesTab({ videos, onPlay, onShare }: GameActions & { videos: GameVideo[] }) {
   return (
     <div className="space-y-5">
-      <RewardGamesSection onPlay={onPlay} onShare={onShare} />
       <FeaturedCarousel videos={videos} onPlay={onPlay} />
-      <FairPlayCard />
+      <RewardGamesSection onPlay={onPlay} onShare={onShare} />
       <IntroCard onBrowse={() => document.getElementById("gamehub-all")?.scrollIntoView({ behavior: "smooth", block: "start" })} />
       <GamesStrip onPlay={onPlay} />
       <section aria-labelledby="gamehub-hot">

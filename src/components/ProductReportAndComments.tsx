@@ -8,6 +8,20 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { useToast } from "@/hooks/use-toast";
 import { REPORT_REASONS } from "@/lib/marketplaceRules";
 
+const GUEST_KEY_STORAGE = "justbuy-guest-key";
+
+function getGuestKey(): string {
+  try {
+    const existing = window.localStorage.getItem(GUEST_KEY_STORAGE);
+    if (existing && existing.length >= 16) return existing;
+    const created = crypto.randomUUID();
+    window.localStorage.setItem(GUEST_KEY_STORAGE, created);
+    return created;
+  } catch {
+    return crypto.randomUUID();
+  }
+}
+
 type Comment = { id: string; author_name: string; body: string; created_at: string };
 
 export function ReportProductButton({ productId, signedIn }: { productId: string; signedIn: boolean }) {
@@ -20,15 +34,23 @@ export function ReportProductButton({ productId, signedIn }: { productId: string
 
   async function submit() {
     setSaving(true);
-    const { error } = await supabase.from("marketplace_product_reports").insert({
-      product_id: productId,
-      reason,
-      offers_site_service: offersSiteService === "yes",
-      note: note.trim() || null,
-    });
+    const { error } = signedIn
+      ? await supabase.from("marketplace_product_reports").insert({
+          product_id: productId,
+          reason,
+          offers_site_service: offersSiteService === "yes",
+          note: note.trim() || null,
+        })
+      : await supabase.rpc("submit_guest_marketplace_report" as never, {
+          p_product_id: productId,
+          p_reason: reason,
+          p_offers_site_service: offersSiteService === "yes",
+          p_note: note.trim() || null,
+          p_guest_key: getGuestKey(),
+        } as never);
     setSaving(false);
     if (error) {
-      const duplicate = error.code === "23505";
+      const duplicate = "code" in error && error.code === "23505";
       toast({ title: duplicate ? "Already reported" : "Could not send report", description: duplicate ? "You have already reported this post. Our team will review it." : error.message, variant: duplicate ? "default" : "destructive" });
       if (duplicate) setOpen(false);
       return;
@@ -82,6 +104,7 @@ export function ProductComments({ productId, signedIn }: { productId: string; si
   const [loading, setLoading] = useState(true);
   const [body, setBody] = useState("");
   const [posting, setPosting] = useState(false);
+  const [guestName, setGuestName] = useState("");
 
   async function load() {
     const { data } = await supabase.from("marketplace_product_comments").select("id,author_name,body,created_at").eq("product_id", productId).order("created_at", { ascending: false }).limit(100);
@@ -93,7 +116,14 @@ export function ProductComments({ productId, signedIn }: { productId: string; si
   async function post() {
     if (!body.trim()) return;
     setPosting(true);
-    const { error } = await supabase.from("marketplace_product_comments").insert({ product_id: productId, body: body.trim() });
+    const { error } = signedIn
+      ? await supabase.from("marketplace_product_comments").insert({ product_id: productId, body: body.trim() })
+      : await supabase.rpc("post_guest_marketplace_comment" as never, {
+          p_product_id: productId,
+          p_body: body.trim(),
+          p_guest_name: guestName,
+          p_guest_key: getGuestKey(),
+        } as never);
     setPosting(false);
     if (error) { toast({ title: "Could not post comment", description: error.message, variant: "destructive" }); return; }
     setBody("");
@@ -104,6 +134,12 @@ export function ProductComments({ productId, signedIn }: { productId: string; si
     <section className="mt-6 border-t pt-6" aria-labelledby="comments-heading">
       <h2 id="comments-heading" className="text-lg font-semibold">Comments ({comments.length})</h2>
       <form className="mt-3 flex flex-col gap-2" onSubmit={(e) => { e.preventDefault(); void post(); }}>
+          {!signedIn ? (
+            <>
+              <Label htmlFor="comment-guest-name" className="sr-only">Your name (optional)</Label>
+              <input id="comment-guest-name" value={guestName} onChange={(e) => setGuestName(e.target.value)} maxLength={30} placeholder="Your name (optional)" className="h-10 rounded-md border border-input bg-background px-3 text-sm" />
+            </>
+          ) : null}
           <Label htmlFor="comment-body" className="sr-only">Write a comment</Label>
           <Textarea id="comment-body" value={body} onChange={(e) => setBody(e.target.value)} maxLength={500} placeholder="Write a comment about this post" />
           <Button type="submit" size="sm" className="self-end" disabled={posting || !body.trim()}>{posting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}Post comment</Button>
