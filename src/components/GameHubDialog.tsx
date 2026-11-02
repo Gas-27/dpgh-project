@@ -331,7 +331,7 @@ export default function GameHubDialog() {
           </div>
         </Tabs>
         {activeGame?.native ? (
-          <GameHubRewardPlayer game={activeGame} signedIn={Boolean(user)} onClose={() => setActiveGame(null)} />
+          <GameHubRewardPlayer game={activeGame} signedIn={Boolean(user)} rule={settings.find((row) => row.game_id === activeGame.id)} onClose={() => setActiveGame(null)} />
         ) : activeGame ? (
           <GameHubPlayer game={activeGame} userEmail={user?.email ?? null} signedIn={Boolean(user)} onClose={() => setActiveGame(null)} />
         ) : null}

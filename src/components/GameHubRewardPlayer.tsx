@@ -16,6 +16,7 @@ import {
   startGameRun,
   timedBegin,
   timedTick,
+  type GameRewardSetting,
   type GameRun,
 } from "@/lib/gameHubApi";
 import type { HubGame } from "@/lib/gameHubGames";
@@ -23,6 +24,7 @@ import type { HubGame } from "@/lib/gameHubGames";
 type RewardPlayerProps = {
   game: HubGame;
   signedIn: boolean;
+  rule?: GameRewardSetting;
   onClose: () => void;
 };
 
@@ -40,7 +42,8 @@ function formatCedis(value: number | null): string {
   return value === null ? "-" : `GH\u20B5${value.toFixed(2)}`;
 }
 
-export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardPlayerProps) {
+export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: RewardPlayerProps) {
+  const guest = !signedIn;
   const { toast } = useToast();
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const runRef = useRef<GameRun | null>(null);
@@ -67,14 +70,13 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
   const { data: ads } = useQuery({
     queryKey: ["game-hub-ads"],
     queryFn: fetchGameHubAds,
-    enabled: signedIn,
     staleTime: 5 * 60 * 1000,
   });
   adsRef.current = ads ?? [];
 
-  const target = run?.target ?? game.native?.targetLevel ?? 0;
   const timedMinutes = game.native?.timedMinutes ?? 0;
-  const rewardGb = run?.reward_gb ?? 5;
+  const target = run?.target ?? rule?.target_level ?? game.native?.targetLevel ?? 0;
+  const rewardGb = run?.reward_gb ?? rule?.reward_gb ?? 5;
   const LIFE_PRICE = run?.life_price ?? 4;
   const gameSrc = `${game.native?.src ?? ""}?hub=1&k=${frameKey}`;
   const tickTimerRef = useRef<number | null>(null);
@@ -122,7 +124,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
 
   // After a failure, a boosted marketplace ad is shown once before the buy-a-life options.
   const openContinueOptions = useCallback(() => {
-    void refreshBalance();
+    if (!guest) void refreshBalance();
     if (adOpenRef.current) return;
     if (!adShownRef.current) {
       const ad = pickGameHubAd(adsRef.current);
@@ -134,7 +136,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
       }
     }
     setBuyOpen(true);
-  }, [refreshBalance]);
+  }, [guest, refreshBalance]);
 
   const closeAd = useCallback(() => {
     adOpenRef.current = false;
@@ -154,6 +156,28 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
     async (forceNew: boolean) => {
       setLoadError(null);
       frameReadyRef.current = false;
+      if (guest) {
+        // Guests play locally: no wallet, no paid lives and nothing is saved to an account.
+        const requiredSeconds = rule?.required_seconds ?? (timedMinutes > 0 ? timedMinutes * 60 : null);
+        applyRun({
+          run_id: "guest",
+          game_id: game.id,
+          level: 1,
+          lives: 1,
+          status: "active",
+          target: requiredSeconds ? 1 : (rule?.target_level ?? game.native?.targetLevel ?? 1),
+          lives_bought: 0,
+          claimed: false,
+          reward_claimed: false,
+          life_price: 0,
+          reward_gb: rule?.reward_gb ?? 5,
+          reward_enabled: rule?.enabled ?? true,
+          required_seconds: requiredSeconds,
+          play_seconds: 0,
+        });
+        if (forceNew) setFrameKey((value) => value + 1);
+        return;
+      }
       try {
         const next = await startGameRun(game.id, hintRef.current, forceNew);
         applyRun(next);
@@ -163,11 +187,11 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
         setLoadError((error as Error).message);
       }
     },
-    [applyRun, game.id, pushState],
+    [applyRun, game.id, game.native?.targetLevel, guest, pushState, rule?.enabled, rule?.required_seconds, rule?.reward_gb, rule?.target_level, timedMinutes],
   );
 
   useEffect(() => {
-    if (signedIn) void beginRun(false);
+    void beginRun(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [signedIn, game.id]);
 
@@ -190,6 +214,26 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
 
       const current = runRef.current;
       if (!current) return;
+
+      if (guest) {
+        if (data.type === "gh-life-lost") {
+          applyRun({ ...current, lives: 0 });
+          openContinueOptions();
+        } else if (data.type === "gh-level-complete") {
+          const claimedLevel = Number(data.level);
+          const cleared = claimedLevel >= current.target;
+          const next: GameRun = cleared
+            ? { ...current, status: "cleared", level: current.target }
+            : { ...current, level: Math.max(current.level, claimedLevel + 1) };
+          applyRun(next);
+          post({ type: "gh-level-result", ok: true, level: next.level, lives: next.lives, status: next.status, playSeconds: next.play_seconds });
+        } else if (data.type === "gh-open-buy") {
+          if (current.status === "active" && current.lives <= 0) openContinueOptions();
+        } else if (data.type === "gh-open-claim") {
+          if (current.status === "cleared") setClaimOpen(true);
+        }
+        return;
+      }
 
       if (data.type === "gh-timed-start") {
         if (current.status !== "active" || current.required_seconds === null || tickTimerRef.current !== null) return;
@@ -261,7 +305,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [applyRun, openContinueOptions, post, pushState, stopTicking, toast]);
+  }, [applyRun, guest, openContinueOptions, post, pushState, stopTicking, toast]);
 
   const handleBuyLife = async () => {
     const current = runRef.current;
@@ -288,7 +332,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
     if (!current || busy) return;
     setBusy(true);
     try {
-      await endGameRun(current.run_id);
+      if (!guest) await endGameRun(current.run_id);
       adShownRef.current = false;
       setBuyOpen(false);
       setClaimOpen(false);
@@ -322,7 +366,14 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
 
   const requiredMinutes = run?.required_seconds ? Math.round(run.required_seconds / 60) : timedMinutes;
   const isTimed = requiredMinutes > 0;
-  const rulesList = [
+  const guestRules = [
+    isTimed
+      ? `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"} without missing a single shot.`
+      : `Reach level ${target} to complete the challenge.`,
+    "Playing is free and needs no account. There are no lives to buy, so if you miss you simply start again.",
+    `Sign in from your dashboard to have your win verified and claim free MTN ${rewardGb}GB.`,
+  ];
+  const rulesList = guest ? guestRules : [
     isTimed
       ? `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"} without missing a single shot.`
       : `Reach level ${target} to complete the challenge.`,
@@ -352,12 +403,10 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
         <button type="button" onClick={() => setRulesOpen(true)} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 px-3 py-2 text-xs font-bold text-emerald-950">
           <Gift className="h-4 w-4" aria-hidden="true" /> Win free data
         </button>
-        {signedIn ? (
-          <button type="button" onClick={() => setShareOpen(true)} aria-label="Share my score" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-900/70 text-white">
-            <Share2 className="h-4 w-4" aria-hidden="true" />
-          </button>
-        ) : null}
-        {run ? (
+        <button type="button" onClick={() => setShareOpen(true)} aria-label="Share my score" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-900/70 text-white">
+          <Share2 className="h-4 w-4" aria-hidden="true" />
+        </button>
+        {run && !guest ? (
           <div className="flex items-center gap-1.5 rounded-xl bg-violet-900/70 px-3 py-2 text-sm font-semibold text-white" aria-label={`${run.lives} lives left`}>
             <Heart className="h-4 w-4 fill-rose-500 text-rose-500" aria-hidden="true" />
             {run.lives}
@@ -366,13 +415,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
       </header>
 
       <div className="relative min-h-0 flex-1">
-        {!signedIn ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white">
-            <Gift className="h-10 w-10 text-amber-300" aria-hidden="true" />
-            <p className="text-lg font-bold">Sign in to play for free data</p>
-            <p className="text-sm text-violet-200">Rewards, lives and progress are saved to your account. Log in from your dashboard, then open this game again.</p>
-          </div>
-        ) : loadError ? (
+        {loadError ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white">
             <p className="text-lg font-bold">Could not start the game</p>
             <p className="text-sm text-violet-200">{loadError}</p>
@@ -436,7 +479,29 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
 
         {activeAd ? <GameHubProductAd ad={activeAd} onOpen={openAd} onClose={closeAd} /> : null}
 
-        {buyOpen && run ? (
+        {buyOpen && run && guest ? (
+          <div role="dialog" aria-modal="true" aria-labelledby="guest-over-title" className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-4">
+            <div className="w-full max-w-sm rounded-2xl border border-violet-400/30 bg-[#150a30] p-5 text-white shadow-2xl">
+              <h3 id="guest-over-title" className="mb-2 text-lg font-bold">Game over</h3>
+              <p className="text-sm text-violet-200">
+                {timedMinutes > 0
+                  ? `You made it to ${Math.floor(run.play_seconds / 60)}:${String(Math.floor(run.play_seconds % 60)).padStart(2, "0")}. `
+                  : `You reached level ${run.level} of ${target}. `}
+                Have another go, it&apos;s free.
+              </p>
+              <div className="mt-4 flex flex-col gap-2">
+                <button type="button" onClick={() => void handleGameOver()} disabled={busy} className="rounded-xl bg-gradient-to-r from-fuchsia-500 to-violet-500 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
+                  Play again
+                </button>
+                <button type="button" onClick={onClose} className="rounded-xl bg-violet-900/80 px-4 py-3 text-sm font-semibold text-white">
+                  Back to Game Hub
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
+
+        {buyOpen && run && !guest ? (
           <div role="dialog" aria-modal="true" aria-labelledby="buy-life-title" className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-4">
             <div className="w-full max-w-sm rounded-2xl border border-violet-400/30 bg-[#150a30] p-5 text-white shadow-2xl">
               <div className="mb-3 flex items-center gap-2">
@@ -483,7 +548,19 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
                 <Gift className="h-6 w-6 text-emerald-300" aria-hidden="true" />
                 <h3 id="claim-title" className="text-lg font-bold">{claimedPhone ? "Reward claimed" : timedMinutes > 0 ? `You played ${timedMinutes} minutes without a miss` : `You cleared all ${target} levels`}</h3>
               </div>
-              {claimedPhone ? (
+              {guest ? (
+                <>
+                  <p className="text-sm text-emerald-100">Free MTN {rewardGb}GB rewards are verified and sent to signed-in accounts. Log in from your dashboard and beat this game again to claim it.</p>
+                  <div className="mt-4 flex flex-col gap-2">
+                    <button type="button" onClick={() => void handleGameOver()} disabled={busy} className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-bold text-emerald-950">
+                      Play again
+                    </button>
+                    <button type="button" onClick={onClose} className="rounded-xl bg-emerald-900/70 px-4 py-3 text-sm font-semibold text-white">
+                      Back to Game Hub
+                    </button>
+                  </div>
+                </>
+              ) : claimedPhone ? (
                 <>
                   <p className="text-sm text-emerald-100">Your free MTN {rewardGb}GB is being delivered to {claimedPhone}. You can check it under your orders.</p>
                   <div className="mt-4 flex flex-col gap-2">
