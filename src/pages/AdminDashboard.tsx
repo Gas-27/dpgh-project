@@ -50,6 +50,7 @@ import AdminAFABundleManager from "@/components/AdminAFABundleManager";
 import AdminAFABundleRegistrations from "@/components/AdminAFABundleRegistrations";
 import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminGameHubVideos from "@/components/AdminGameHubVideos";
+import AdminGameRewards from "@/components/AdminGameRewards";
 import AdminAFAManager from "@/components/AdminAFAManager";
 import AnnouncementManager from "@/components/AnnouncementManager";
 import DeliveryAutomationAdmin from "@/components/DeliveryAutomationAdmin";
@@ -2832,6 +2833,7 @@ const AdminDashboard = () => {
   <TabsTrigger value="social-boost" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Social Boost</TabsTrigger>
   <TabsTrigger value="promo-codes" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Promo Codes</TabsTrigger>
   <TabsTrigger value="gamehub-videos" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Game Hub</TabsTrigger>
+                <TabsTrigger value="gamehub-rewards" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Games</TabsTrigger>
 <TabsTrigger value="social-boost-orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Boost Orders</TabsTrigger>
             <TabsTrigger value="order_approvals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><ClipboardList className="h-3 w-3 md:h-4 md:w-4" /> Approvals</TabsTrigger>
             <TabsTrigger value="waiting_numbers" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Eye className="h-3 w-3 md:h-4 md:w-4" /> Waiting numbers</TabsTrigger>
@@ -2883,6 +2885,7 @@ const AdminDashboard = () => {
   <TabsContent value="social-boost" className="space-y-6"><AdminSocialBoostProviders /><AdminSocialBoostPricing /></TabsContent>
   <TabsContent value="promo-codes" className="space-y-6"><PromoCodesPanel walletBalance={0} adminMode /></TabsContent>
   <TabsContent value="gamehub-videos" className="space-y-6"><AdminGameHubVideos /></TabsContent>
+                <TabsContent value="gamehub-rewards" className="space-y-6"><AdminGameRewards /></TabsContent>
 <TabsContent value="social-boost-orders" className="space-y-6"><AdminSocialBoostOrders /></TabsContent>
 
   {/* PRICES TAB */}

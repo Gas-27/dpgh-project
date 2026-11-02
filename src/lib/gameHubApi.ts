@@ -61,7 +61,42 @@ export type GameRun = {
   claimed: boolean;
   reward_claimed: boolean;
   life_price: number;
+  reward_gb: number;
+  reward_enabled: boolean;
+  required_seconds: number | null;
+  play_seconds: number;
 };
+
+export type GameRewardSetting = {
+  game_id: string;
+  title: string;
+  reward_gb: number;
+  enabled: boolean;
+  updated_at: string;
+};
+
+export async function fetchGameRewardSettings(): Promise<GameRewardSetting[]> {
+  const { data, error } = await db.from("gamehub_game_settings").select("game_id, title, reward_gb, enabled, updated_at").order("title");
+  if (error) throw error;
+  return ((data ?? []) as GameRewardSetting[]).map((row) => ({ ...row, reward_gb: Number(row.reward_gb) }));
+}
+
+export async function adminSetGameReward(gameId: string, gb: number, enabled: boolean): Promise<void> {
+  const { error } = await db.rpc("admin_set_gamehub_reward", { p_game_id: gameId, p_gb: gb, p_enabled: enabled });
+  if (error) throw error;
+}
+
+export async function timedBegin(runId: string): Promise<GameRun> {
+  const { data, error } = await db.rpc("gamehub_timed_begin", { p_run_id: runId });
+  if (error) throw error;
+  return data as GameRun;
+}
+
+export async function timedTick(runId: string): Promise<GameRun> {
+  const { data, error } = await db.rpc("gamehub_timed_tick", { p_run_id: runId });
+  if (error) throw error;
+  return data as GameRun;
+}
 
 export type LevelResult = { ok: boolean; reason?: string; run: GameRun };
 
@@ -96,10 +131,10 @@ export async function endGameRun(runId: string): Promise<GameRun> {
   return data as GameRun;
 }
 
-export async function claimGameReward(runId: string, phone: string): Promise<{ order_id: string; phone: string }> {
+export async function claimGameReward(runId: string, phone: string): Promise<{ order_id: string; phone: string; reward_gb: number }> {
   const { data, error } = await db.rpc("gamehub_claim_reward", { p_run_id: runId, p_phone: phone });
   if (error) throw error;
-  return data as { order_id: string; phone: string };
+  return data as { order_id: string; phone: string; reward_gb: number };
 }
 
 export async function fetchGameWalletBalance(walletHint: string | null): Promise<number | null> {

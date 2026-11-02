@@ -9,6 +9,8 @@ import {
   fetchGameWalletBalance,
   loseGameLife,
   startGameRun,
+  timedBegin,
+  timedTick,
   type GameRun,
 } from "@/lib/gameHubApi";
 import type { HubGame } from "@/lib/gameHubGames";
@@ -54,7 +56,19 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
   const [claimedPhone, setClaimedPhone] = useState<string | null>(null);
 
   const target = game.native?.targetLevel ?? 0;
+  const timedMinutes = game.native?.timedMinutes ?? 0;
+  const rewardGb = run?.reward_gb ?? 5;
   const gameSrc = `${game.native?.src ?? ""}?hub=1&k=${frameKey}`;
+  const tickTimerRef = useRef<number | null>(null);
+
+  const stopTicking = useCallback(() => {
+    if (tickTimerRef.current !== null) {
+      window.clearInterval(tickTimerRef.current);
+      tickTimerRef.current = null;
+    }
+  }, []);
+
+  useEffect(() => stopTicking, [stopTicking]);
 
   const post = useCallback((message: Record<string, unknown>) => {
     iframeRef.current?.contentWindow?.postMessage({ source: "gamehub-parent", ...message }, window.location.origin);
@@ -68,7 +82,15 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
   const pushState = useCallback(() => {
     const current = runRef.current;
     if (!current || !frameReadyRef.current) return;
-    post({ type: "gh-state", level: current.level, lives: current.lives, status: current.status });
+    post({
+      type: "gh-state",
+      level: current.level,
+      lives: current.lives,
+      status: current.status,
+      playSeconds: current.play_seconds,
+      requiredSeconds: current.required_seconds,
+      rewardGb: current.reward_gb,
+    });
   }, [post]);
 
   const refreshBalance = useCallback(async () => {
@@ -120,7 +142,34 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
       const current = runRef.current;
       if (!current) return;
 
+      if (data.type === "gh-timed-start") {
+        if (current.status !== "active" || current.required_seconds === null || tickTimerRef.current !== null) return;
+        enqueue(async () => {
+          try {
+            applyRun(await timedBegin(current.run_id));
+          } catch (error) {
+            toast({ title: "Could not start the timer", description: (error as Error).message, variant: "destructive" });
+            return;
+          }
+          tickTimerRef.current = window.setInterval(() => {
+            const active = runRef.current;
+            if (!active) return;
+            enqueue(async () => {
+              try {
+                const next = await timedTick(active.run_id);
+                applyRun(next);
+                post({ type: "gh-timer", playSeconds: next.play_seconds });
+              } catch {
+                // a missed heartbeat only slows the server clock, it never speeds it up
+              }
+            });
+          }, 5000);
+        });
+        return;
+      }
+
       if (data.type === "gh-life-lost") {
+        stopTicking();
         enqueue(async () => {
           try {
             const next = await loseGameLife(current.run_id);
@@ -134,6 +183,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
           }
         });
       } else if (data.type === "gh-level-complete") {
+        stopTicking();
         enqueue(async () => {
           const claimedLevel = Number(data.level);
           try {
@@ -145,6 +195,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
               level: result.run.level,
               lives: result.run.lives,
               status: result.run.status,
+              playSeconds: result.run.play_seconds,
               message: result.ok
                 ? undefined
                 : result.run.status === "flagged"
@@ -178,7 +229,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
       applyRun(result.run);
       setBalance(result.balance);
       setBuyOpen(false);
-      post({ type: "gh-continue", lives: result.run.lives });
+      post({ type: "gh-continue", lives: result.run.lives, playSeconds: result.run.play_seconds });
       toast({ title: "Life added", description: `GH\u20B5${LIFE_PRICE} was taken from your wallet. Keep going!` });
     } catch (error) {
       toast({ title: "Could not buy a life", description: (error as Error).message, variant: "destructive" });
@@ -214,7 +265,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
       const result = await claimGameReward(current.run_id, phone);
       applyRun({ ...current, claimed: true, reward_claimed: true });
       setClaimedPhone(result.phone);
-      toast({ title: "Reward claimed", description: `Your free MTN 5GB is on its way to ${result.phone}.` });
+      toast({ title: "Reward claimed", description: `Your free MTN ${result.reward_gb ?? rewardGb}GB is on its way to ${result.phone}.` });
     } catch (error) {
       toast({ title: "Could not claim reward", description: (error as Error).message, variant: "destructive" });
     } finally {
@@ -232,7 +283,9 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
         </button>
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-base font-bold text-white">{game.name}</h2>
-          <p className="truncate text-xs text-emerald-300">Reach level {target} to win a free MTN 5GB</p>
+          <p className="truncate text-xs text-emerald-300">
+            {timedMinutes > 0 ? `Play ${timedMinutes} minutes without a miss to win free MTN ${rewardGb}GB` : `Reach level ${target} to win a free MTN ${rewardGb}GB`}
+          </p>
         </div>
         {run ? (
           <div className="flex items-center gap-1.5 rounded-xl bg-violet-900/70 px-3 py-2 text-sm font-semibold text-white" aria-label={`${run.lives} lives left`}>
@@ -283,7 +336,10 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
                 <h3 id="buy-life-title" className="text-lg font-bold">Out of lives</h3>
               </div>
               <p className="text-sm text-violet-200">
-                You are on level {run.level} of {target}. Buy 1 life for GH&#8373;{LIFE_PRICE} from your wallet to continue exactly where you stopped, or end the game and start again from level 1.
+                {timedMinutes > 0
+                  ? `You are ${Math.floor(run.play_seconds / 60)}:${String(Math.floor(run.play_seconds % 60)).padStart(2, "0")} into your ${timedMinutes}-minute run. `
+                  : `You are on level ${run.level} of ${target}. `}
+                Buy 1 life for GH&#8373;{LIFE_PRICE} from your wallet to continue exactly where you stopped, or end the game and start again.
               </p>
               <div className="my-4 flex items-center justify-between rounded-xl bg-violet-950 px-3 py-2 text-sm">
                 <span className="flex items-center gap-2 text-violet-200">
@@ -317,11 +373,11 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
             <div className="w-full max-w-sm rounded-2xl border border-emerald-400/30 bg-[#0b1f1a] p-5 text-white shadow-2xl">
               <div className="mb-3 flex items-center gap-2">
                 <Gift className="h-6 w-6 text-emerald-300" aria-hidden="true" />
-                <h3 id="claim-title" className="text-lg font-bold">{claimedPhone ? "Reward claimed" : `You cleared all ${target} levels`}</h3>
+                <h3 id="claim-title" className="text-lg font-bold">{claimedPhone ? "Reward claimed" : timedMinutes > 0 ? `You played ${timedMinutes} minutes without a miss` : `You cleared all ${target} levels`}</h3>
               </div>
               {claimedPhone ? (
                 <>
-                  <p className="text-sm text-emerald-100">Your free MTN 5GB is being delivered to {claimedPhone}. You can check it under your orders.</p>
+                  <p className="text-sm text-emerald-100">Your free MTN {rewardGb}GB is being delivered to {claimedPhone}. You can check it under your orders.</p>
                   <div className="mt-4 flex flex-col gap-2">
                     <button type="button" onClick={() => void handleGameOver()} disabled={busy} className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-bold text-emerald-950">
                       Play again
@@ -333,7 +389,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
                 </>
               ) : (
                 <form onSubmit={handleClaim} className="flex flex-col gap-3">
-                  <p className="text-sm text-emerald-100">Enter the MTN number that should receive the free 5GB. Each account can claim this reward once per game.</p>
+                  <p className="text-sm text-emerald-100">Enter the MTN number that should receive the free {rewardGb}GB. Each account can claim this reward once per game.</p>
                   <label htmlFor="reward-phone" className="sr-only">MTN number</label>
                   <input
                     id="reward-phone"
@@ -345,7 +401,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
                     className="rounded-xl border border-emerald-400/30 bg-emerald-950 px-3 py-3 text-sm text-white placeholder:text-emerald-300/50"
                   />
                   <button type="submit" disabled={busy || phone.length < 10} className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-bold text-emerald-950 disabled:opacity-50">
-                    {busy ? "Claiming" : "Claim free MTN 5GB"}
+                    {busy ? "Claiming" : `Claim free MTN ${rewardGb}GB`}
                   </button>
                   <button type="button" onClick={() => setClaimOpen(false)} className="px-4 py-1 text-xs text-emerald-200 underline">
                     Later

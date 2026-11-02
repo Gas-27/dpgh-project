@@ -8,7 +8,7 @@ export type HubGame = {
   rating: number;
   image: string;
   stripName?: string;
-  native?: { src: string; targetLevel: number };
+  native?: { src: string; targetLevel: number; timedMinutes?: number; cta?: string };
 };
 
 export const tagClasses: Record<GameTag, string> = {
@@ -49,7 +49,7 @@ export const hubGames: HubGame[] = [
   { id: "three-mens-morris-online", name: "Align 3 (Online)", tag: "Online", blurb: "Challenge a friend online \u2014 place and slide pieces to align three in a row!", rating: 3.2, image: img("three-mens-morris") },
   { id: "ludo", name: "Ludo", tag: "Strategy", blurb: "Classic Ludo for 2-6 players \u2014 vs the computer or pass and play on one phone, with customizable rules!", rating: 3.8, image: img("ludo") },
   { id: "ludo-online", name: "Ludo Online", tag: "Online", blurb: "Create a room code and play Ludo online with 2, 3, 4, 5 or 6 friends!", rating: 4.3, image: img("ludo") },
-  { id: "basketball", name: "Basketball", tag: "Action", blurb: "Swipe to shoot hoops \u2014 solo or 2 players on the same phone!", rating: 4.5, image: img("basketball") },
+  { id: "basketball", name: "Basketball", tag: "Action", blurb: "Tap Get free data: play 10 minutes without missing a shot to win free MTN data. 1 life, extra life GH\u20B54.", rating: 4.5, image: img("basketball"), native: { src: "/games/basketball.html", targetLevel: 1, timedMinutes: 10, cta: "Get free data" } },
   { id: "basketball-online", name: "Basketball (Online)", tag: "Online", blurb: "Share a code and out-shoot a friend online in a timed basketball duel!", rating: 3.9, image: img("basketball") },
   { id: "brain-memory", name: "Memory Match Pro", tag: "Puzzle", blurb: "Test your memory by matching pairs!", rating: 4.1, image: img("brain-memory") },
   { id: "candy-crush", name: "Candy Match Saga", tag: "Puzzle", blurb: "Match colorful candies in this sweet puzzle!", rating: 4.0, image: img("candy-crush") },
