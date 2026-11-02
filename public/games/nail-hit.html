@@ -60,7 +60,7 @@ if(HUB)addEventListener('message',e=>{
 function hubAdvance(){
   mode='sync';
   new Promise(r=>{hub.pending=r;hubSend({type:'gh-level-complete',level:stage})}).then(d=>{
-    if(!d.ok){hubNote=d.message||'That stage could not be verified. Play it again.';hubNoteT=3;mode='play';newStage(stage);return}
+    if(!d.ok){const next=d.level>0?d.level:stage;if(d.lives!=null)hub.lives=d.lives;hub.level=next;hubNote=d.message||'That stage could not be verified. Play it again.';hubNoteT=3;mode='play';newStage(next);return}
     hub.level=d.level;hub.lives=d.lives;hub.status=d.status;
     if(d.status==='cleared'){won=true;mode='over';overT=0;logPop=0;hubSend({type:'gh-open-claim'});return}
     mode='play';newStage(stage+1);

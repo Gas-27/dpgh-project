@@ -191,6 +191,7 @@ if(HUB)window.addEventListener('message',e=>{
  const d=e.data;if(!d||d.source!=='gamehub-parent')return;
  if(d.type==='gh-state'){hub.ready=true;hub.lives=d.lives;hub.status=d.status;hub.req=d.requiredSeconds||600;hub.gb=d.rewardGb||5;setPlay(d.playSeconds||0);hubOnState()}
  else if(d.type==='gh-timer'){setPlay(d.playSeconds)}
+ else if(d.type==='gh-start-challenge'){if(state==='menu'&&hub.ready&&!hub.mode)$('reward').click()}
  else if(d.type==='gh-level-result'&&hub.pending){const p=hub.pending;hub.pending=null;p(d)}
  else if(d.type==='gh-continue'){hub.lives=Math.max(1,d.lives||1);hub.status='active';setPlay(d.playSeconds||hub.play);resumeAfterLife()}
 });
