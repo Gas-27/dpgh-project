@@ -47,6 +47,48 @@ export async function fetchLeaderboard(gameId: string | null, period: Leaderboar
   return ((data ?? []) as LeaderboardRow[]).map((row) => ({ ...row, rank: Number(row.rank), score: Number(row.score) }));
 }
 
+export type AdminWalletOption = { type: "customer" | "agent" | "subagent" | "subsubagent"; label: string; balance: number };
+
+export type AdminLeaderboardRow = {
+  rank: number;
+  user_id: string;
+  email: string;
+  score: number;
+  games_played: number;
+  topup_reference: string | null;
+  store_name: string | null;
+  wallets: AdminWalletOption[];
+};
+
+export async function adminFetchLeaderboard(gameId: string | null, period: LeaderboardPeriod): Promise<AdminLeaderboardRow[]> {
+  const { data, error } = await db.rpc("gamehub_admin_leaderboard", { p_game_id: gameId, p_period: period, p_limit: 100 });
+  if (error) throw error;
+  return ((data ?? []) as AdminLeaderboardRow[]).map((row) => ({
+    ...row,
+    rank: Number(row.rank),
+    score: Number(row.score),
+    wallets: (row.wallets ?? []).map((wallet) => ({ ...wallet, balance: Number(wallet.balance) })),
+  }));
+}
+
+export async function adminRewardWallet(input: {
+  userId: string;
+  walletType: AdminWalletOption["type"];
+  amount: number;
+  note: string;
+  reference: string;
+}): Promise<{ balance_after: number }> {
+  const { data, error } = await db.rpc("gamehub_admin_reward_wallet", {
+    p_user_id: input.userId,
+    p_wallet_type: input.walletType,
+    p_amount: input.amount,
+    p_note: input.note,
+    p_reference: input.reference,
+  });
+  if (error) throw error;
+  return data as { balance_after: number };
+}
+
 export async function submitScore(gameId: string, score: number): Promise<number> {
   const { data, error } = await db.rpc("gamehub_submit_score", { p_game_id: gameId, p_score: Math.floor(score) });
   if (error) throw error;
