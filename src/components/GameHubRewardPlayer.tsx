@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Gift, Heart, Share2, Wallet, X } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import GameHubProductAd from "@/components/GameHubProductAd";
 import ShareScoreButtons from "@/components/ShareScoreButtons";
 import { useToast } from "@/hooks/use-toast";
+import { fetchGameHubAds, pickGameHubAd, type GameHubAd } from "@/lib/gameHubAds";
 import {
   buildGameShareUrl,
   buyGameLife,
@@ -56,6 +59,18 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
   const [busy, setBusy] = useState(false);
   const [phone, setPhone] = useState("");
   const [claimedPhone, setClaimedPhone] = useState<string | null>(null);
+  const [activeAd, setActiveAd] = useState<GameHubAd | null>(null);
+  const adShownRef = useRef(false);
+  const adOpenRef = useRef(false);
+  const adsRef = useRef<GameHubAd[]>([]);
+
+  const { data: ads } = useQuery({
+    queryKey: ["game-hub-ads"],
+    queryFn: fetchGameHubAds,
+    enabled: signedIn,
+    staleTime: 5 * 60 * 1000,
+  });
+  adsRef.current = ads ?? [];
 
   const target = run?.target ?? game.native?.targetLevel ?? 0;
   const timedMinutes = game.native?.timedMinutes ?? 0;
@@ -104,6 +119,36 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
       setBalance(null);
     }
   }, []);
+
+  // After a failure, a boosted marketplace ad is shown once before the buy-a-life options.
+  const openContinueOptions = useCallback(() => {
+    void refreshBalance();
+    if (adOpenRef.current) return;
+    if (!adShownRef.current) {
+      const ad = pickGameHubAd(adsRef.current);
+      if (ad) {
+        adShownRef.current = true;
+        adOpenRef.current = true;
+        setActiveAd(ad);
+        return;
+      }
+    }
+    setBuyOpen(true);
+  }, [refreshBalance]);
+
+  const closeAd = useCallback(() => {
+    adOpenRef.current = false;
+    setActiveAd(null);
+    setBuyOpen(true);
+  }, []);
+
+  const openAd = useCallback(
+    (ad: GameHubAd) => {
+      window.open(ad.url, "_blank", "noopener,noreferrer");
+      closeAd();
+    },
+    [closeAd],
+  );
 
   const beginRun = useCallback(
     async (forceNew: boolean) => {
@@ -178,10 +223,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
           try {
             const next = await loseGameLife(current.run_id);
             applyRun(next);
-            if (next.lives <= 0 && next.status === "active") {
-              void refreshBalance();
-              setBuyOpen(true);
-            }
+            if (next.lives <= 0 && next.status === "active") openContinueOptions();
           } catch (error) {
             toast({ title: "Could not update lives", description: (error as Error).message, variant: "destructive" });
           }
@@ -211,10 +253,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
           }
         });
       } else if (data.type === "gh-open-buy") {
-        if (current.status === "active" && current.lives <= 0) {
-          void refreshBalance();
-          setBuyOpen(true);
-        }
+        if (current.status === "active" && current.lives <= 0) openContinueOptions();
       } else if (data.type === "gh-open-claim") {
         if (current.status === "cleared" && !current.claimed) setClaimOpen(true);
       }
@@ -222,7 +261,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [applyRun, post, pushState, refreshBalance, toast]);
+  }, [applyRun, openContinueOptions, post, pushState, stopTicking, toast]);
 
   const handleBuyLife = async () => {
     const current = runRef.current;
@@ -233,6 +272,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
       applyRun(result.run);
       setBalance(result.balance);
       setBuyOpen(false);
+      adShownRef.current = false;
       post({ type: "gh-continue", lives: result.run.lives, playSeconds: result.run.play_seconds });
       toast({ title: "Life added", description: `GH\u20B5${LIFE_PRICE} was taken from your wallet. Keep going!` });
     } catch (error) {
@@ -249,6 +289,7 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
     setBusy(true);
     try {
       await endGameRun(current.run_id);
+      adShownRef.current = false;
       setBuyOpen(false);
       setClaimOpen(false);
       setClaimedPhone(null);
@@ -364,8 +405,15 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
                   <li key={rule}>{rule}</li>
                 ))}
               </ol>
-              <button type="button" onClick={() => setRulesOpen(false)} className="mt-4 w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-bold text-emerald-950">
-                Got it
+              <button
+                type="button"
+                onClick={() => {
+                  setRulesOpen(false);
+                  if (timedMinutes > 0) post({ type: "gh-start-challenge" });
+                }}
+                className="mt-4 w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-bold text-emerald-950"
+              >
+                {timedMinutes > 0 ? "Play - Win free data" : "Got it"}
               </button>
             </div>
           </div>
@@ -385,6 +433,8 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
             </div>
           </div>
         ) : null}
+
+        {activeAd ? <GameHubProductAd ad={activeAd} onOpen={openAd} onClose={closeAd} /> : null}
 
         {buyOpen && run ? (
           <div role="dialog" aria-modal="true" aria-labelledby="buy-life-title" className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-4">

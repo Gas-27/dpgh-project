@@ -183,7 +183,7 @@ function resumeAfterLife(){
  show('hubp',0);flying=[];resetBall();streak=0;hub.running=false;setPlay(hub.play);startAt=performance.now()+3000;state='play';show('turbo',1)}
 function hubOnState(){
  const b=$('reward');b.classList.remove('hide');
- b.textContent=hub.status==='cleared'?'Claim free data':hub.play>5?'Continue - '+fmt(Math.max(0,Math.round(hub.req-hub.play)))+' left':'Win free data';
+ b.textContent=hub.status==='cleared'?'Claim free data':hub.play>5?'Continue - '+fmt(Math.max(0,Math.round(hub.req-hub.play)))+' left':'Play - Win free data';
  if(state!=='menu')return;
  if(hub.status==='cleared')showWin();else if(hub.lives<=0&&hub.status==='active')showLostCard(false)}
 if(HUB)window.addEventListener('message',e=>{
@@ -195,6 +195,7 @@ if(HUB)window.addEventListener('message',e=>{
  else if(d.type==='gh-level-result'&&hub.pending){const p=hub.pending;hub.pending=null;p(d)}
  else if(d.type==='gh-continue'){hub.lives=Math.max(1,d.lives||1);hub.status='active';setPlay(d.playSeconds||hub.play);resumeAfterLife()}
 });
+if(HUB)hubSend({type:'gh-ready'});
 
 
 function resetBall(){ball={x:0,y:90,z:0,vx:0,vy:0,vz:0,rot:0,spawn:0,prevY:90,life:0,rim:false,done:false}}
