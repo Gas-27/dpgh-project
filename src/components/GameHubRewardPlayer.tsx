@@ -163,7 +163,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
           run_id: "guest",
           game_id: game.id,
           level: 1,
-          lives: 1,
+          lives: game.id === "basketball" ? 2 : 1,
           status: "active",
           target: requiredSeconds ? 1 : (rule?.target_level ?? game.native?.targetLevel ?? 1),
           lives_bought: 0,
@@ -217,8 +217,9 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
 
       if (guest) {
         if (data.type === "gh-life-lost") {
-          applyRun({ ...current, lives: 0 });
-          openContinueOptions();
+          const remaining = Math.max(0, current.lives - 1);
+          applyRun({ ...current, lives: remaining });
+          if (remaining <= 0) openContinueOptions();
         } else if (data.type === "gh-level-complete") {
           const claimedLevel = Number(data.level);
           const cleared = claimedLevel >= current.target;
@@ -368,16 +369,22 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
   const isTimed = requiredMinutes > 0;
   const guestRules = [
     isTimed
-      ? `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"} without missing a single shot.`
+      ? game.id === "basketball"
+        ? `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"}. You have 2 lives, so you can miss twice.`
+        : `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"} without missing a single shot.`
       : `Reach level ${target} to complete the challenge.`,
     "Playing is free and needs no account. There are no lives to buy, so if you miss you simply start again.",
     `Sign in from your dashboard to have your win verified and claim free MTN ${rewardGb}GB.`,
   ];
   const rulesList = guest ? guestRules : [
     isTimed
-      ? `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"} without missing a single shot.`
+      ? game.id === "basketball"
+        ? `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"}. You can miss up to 2 shots.`
+        : `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"} without missing a single shot.`
       : `Reach level ${target} to complete the challenge.`,
-    "You start with 1 life. When you miss or lose it, the run pauses.",
+    game.id === "basketball"
+      ? "You start with 2 lives, so you can miss twice. Your third miss pauses the run."
+      : "You start with 1 life. When you miss or lose it, the run pauses.",
     `Buy 1 extra life for GH\u20B5${LIFE_PRICE} from your wallet to continue exactly where you stopped, or end the game and start again.`,
     `Finish the challenge to win free MTN ${rewardGb}GB, sent to the MTN number you enter.`,
     "Everything is checked by our servers, so cheating or speeding up the game disables your reward.",
@@ -397,7 +404,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
         <div className="min-w-0 flex-1">
           <h2 className="truncate text-base font-bold text-white">{game.name}</h2>
           <p className="truncate text-xs text-emerald-300">
-            {timedMinutes > 0 ? `Play ${timedMinutes} minutes without a miss to win free MTN ${rewardGb}GB` : `Reach level ${target} to win a free MTN ${rewardGb}GB`}
+            {timedMinutes > 0 ? game.id === "basketball" ? `Play ${timedMinutes} minutes with 2 lives to win free MTN ${rewardGb}GB` : `Play ${timedMinutes} minutes without a miss to win free MTN ${rewardGb}GB` : `Reach level ${target} to win a free MTN ${rewardGb}GB`}
           </p>
         </div>
         <button type="button" onClick={() => setRulesOpen(true)} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 px-3 py-2 text-xs font-bold text-emerald-950">
@@ -546,7 +553,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
             <div className="w-full max-w-sm rounded-2xl border border-emerald-400/30 bg-[#0b1f1a] p-5 text-white shadow-2xl">
               <div className="mb-3 flex items-center gap-2">
                 <Gift className="h-6 w-6 text-emerald-300" aria-hidden="true" />
-                <h3 id="claim-title" className="text-lg font-bold">{claimedPhone ? "Reward claimed" : timedMinutes > 0 ? `You played ${timedMinutes} minutes without a miss` : `You cleared all ${target} levels`}</h3>
+                <h3 id="claim-title" className="text-lg font-bold">{claimedPhone ? "Reward claimed" : timedMinutes > 0 ? `You played ${timedMinutes} minutes` : `You cleared all ${target} levels`}</h3>
               </div>
               {guest ? (
                 <>

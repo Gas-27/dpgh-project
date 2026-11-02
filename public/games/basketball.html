@@ -156,17 +156,22 @@ function hubTick(now){
  if(hubLeft(now)<=0)hubFinish()}
 function hubMiss(){
  if(state!=='play')return;
- state='lost';drag=null;hub.running=false;hub.lives=0;show('turbo',0);tone(180,.4,'sawtooth',.15,90);
+ state='lost';drag=null;hub.running=false;hub.lives=Math.max(0,hub.lives-1);show('turbo',0);tone(180,.4,'sawtooth',.15,90);
  hubSend({type:'gh-life-lost'});
- showLostCard(true)}
+ if(hub.lives>0)showMissCard();else showLostCard(true)}
+function showMissCard(){
+ state='lost';
+ const n=hub.lives;
+ hubPanel('<h1>You <span>missed</span></h1><p>'+n+(n===1?' life':' lives')+' left. Miss again'+(n===1?' and the run is over.':' and you lose another life.')+' The timer is paused until you tap below.</p><button id="hubGo">Keep playing</button>');
+ $('hubGo').onclick=resumeAfterLife}
 function showLostCard(fresh){
  state='lost';
- hubPanel('<h1>'+(fresh?'You missed':'Out of <span>life</span>')+'</h1><p>'+(fresh?'One miss ends the run.':'Your life is used up.')+' Buy 1 life for GH\u20B54 to carry on from here, or end the game and start again.</p><button id="hubBuy">Continue options</button>');
+ hubPanel('<h1>'+(fresh?'You missed':'Out of <span>lives</span>')+'</h1><p>'+(fresh?'That was your last life.':'Your lives are used up.')+' Buy 1 life for GH\u20B54 to carry on from here, or end the game and start again.</p><button id="hubBuy">Continue options</button>');
  $('hubBuy').onclick=()=>hubSend({type:'gh-open-buy'});
  hubSend({type:'gh-open-buy'})}
 function showWin(){
  state='over';tone(660,.2,'square',.12);
- hubPanel('<h1>You did <span>it</span></h1><p>10 minutes without a miss, verified by our servers. Claim your free MTN '+hub.gb+'GB now.</p><button id="hubClaim">Claim MTN '+hub.gb+'GB</button>');
+ hubPanel('<h1>You did <span>it</span></h1><p>10 minutes survived, verified by our servers. Claim your free MTN '+hub.gb+'GB now.</p><button id="hubClaim">Claim MTN '+hub.gb+'GB</button>');
  $('hubClaim').onclick=()=>hubSend({type:'gh-open-claim'});
  hubSend({type:'gh-open-claim'})}
 function hubFinish(){
@@ -310,7 +315,7 @@ function avatar(cx,cy,skin,hair,name,q){ctx.fillStyle='#f2c744';ctx.beginPath();
   ctx.strokeStyle='#222';ctx.lineWidth=1.6;ctx.beginPath();ctx.arc(cx,cy+5,7,.2,Math.PI-.2);ctx.stroke()}
  label(name,cx,cy+41,11)}
 function hud(now){if(state!=='play'||now<startAt)return;
- if(hub.mode)label('1 LIFE - DO NOT MISS',W/2,98,11,'#fff');
+ if(hub.mode)label(hub.lives+(hub.lives===1?' LIFE':' LIVES')+' LEFT',W/2,98,11,'#fff');
  if(turbo)label('FAST HOOP x2!',W/2,80,14,'#ffd21f');
  if(streak>=2){label('STREAK '+streak,48,100,12);if(mult()>1)label('x'+mult()+' ON FIRE',48,116,12,'#ffb000')}}
 function scoreboard(now){
