@@ -1,0 +1,102 @@
+import type { SupabaseClient } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
+
+// The Game Hub tables and functions are not part of the generated Database types yet.
+const db = supabase as unknown as SupabaseClient;
+
+export const GAME_VIDEO_BUCKET = "gamehub-videos";
+export const MAX_GAME_VIDEO_BYTES = 50 * 1024 * 1024;
+export const ALLOWED_VIDEO_TYPES = ["video/mp4", "video/webm", "video/quicktime"];
+
+export type GameVideo = {
+  game_id: string;
+  video_url: string;
+  storage_path: string | null;
+  updated_at: string;
+};
+
+export type LeaderboardRow = {
+  rank: number;
+  player: string;
+  score: number;
+  games_played: number;
+  is_you: boolean;
+};
+
+export function maskEmail(email: string | null | undefined): string {
+  if (!email || !email.includes("@")) return "player***";
+  const [name, domain] = email.split("@");
+  return `${name.slice(0, 2)}***@${domain.slice(0, 1)}***`;
+}
+
+export async function fetchGameVideos(): Promise<GameVideo[]> {
+  const { data, error } = await db
+    .from("gamehub_game_videos")
+    .select("game_id, video_url, storage_path, updated_at")
+    .order("updated_at", { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as GameVideo[];
+}
+
+export async function fetchLeaderboard(gameId: string | null): Promise<LeaderboardRow[]> {
+  const { data, error } = await db.rpc("gamehub_leaderboard", { p_game_id: gameId, p_limit: 50 });
+  if (error) throw error;
+  return ((data ?? []) as LeaderboardRow[]).map((row) => ({ ...row, rank: Number(row.rank), score: Number(row.score) }));
+}
+
+export async function submitScore(gameId: string, score: number): Promise<number> {
+  const { data, error } = await db.rpc("gamehub_submit_score", { p_game_id: gameId, p_score: Math.floor(score) });
+  if (error) throw error;
+  return Number(data);
+}
+
+export async function uploadGameVideo(gameId: string, file: File): Promise<void> {
+  if (!ALLOWED_VIDEO_TYPES.includes(file.type)) throw new Error("Please choose an MP4, WebM or MOV video.");
+  if (file.size > MAX_GAME_VIDEO_BYTES) throw new Error("Video is larger than 50 MB. Trim or compress it and try again.");
+
+  const { data: existing } = await db.from("gamehub_game_videos").select("storage_path").eq("game_id", gameId).maybeSingle();
+  const extension = file.name.split(".").pop()?.toLowerCase() || "mp4";
+  const path = `${gameId}/${Date.now()}.${extension}`;
+
+  const { error: uploadError } = await supabase.storage.from(GAME_VIDEO_BUCKET).upload(path, file, { contentType: file.type, cacheControl: "31536000" });
+  if (uploadError) throw uploadError;
+
+  const { data: publicUrl } = supabase.storage.from(GAME_VIDEO_BUCKET).getPublicUrl(path);
+  const { data: auth } = await supabase.auth.getUser();
+  const { error } = await db.from("gamehub_game_videos").upsert({
+    game_id: gameId,
+    video_url: publicUrl.publicUrl,
+    storage_path: path,
+    updated_by: auth.user?.id ?? null,
+    updated_at: new Date().toISOString(),
+  });
+  if (error) {
+    await supabase.storage.from(GAME_VIDEO_BUCKET).remove([path]);
+    throw error;
+  }
+  const previousPath = (existing as { storage_path: string | null } | null)?.storage_path;
+  if (previousPath) await supabase.storage.from(GAME_VIDEO_BUCKET).remove([previousPath]);
+}
+
+export async function deleteGameVideo(video: GameVideo): Promise<void> {
+  const { error } = await db.from("gamehub_game_videos").delete().eq("game_id", video.game_id);
+  if (error) throw error;
+  if (video.storage_path) await supabase.storage.from(GAME_VIDEO_BUCKET).remove([video.storage_path]);
+}
+
+export function buildGameShareUrl(gameId: string): string {
+  return `${window.location.origin}/?gamehub=${encodeURIComponent(gameId)}`;
+}
+
+export async function shareText(title: string, text: string, url: string): Promise<"shared" | "copied"> {
+  if (typeof navigator.share === "function") {
+    try {
+      await navigator.share({ title, text, url });
+      return "shared";
+    } catch (error) {
+      if ((error as Error)?.name === "AbortError") return "shared";
+    }
+  }
+  await navigator.clipboard.writeText(`${text} ${url}`);
+  return "copied";
+}

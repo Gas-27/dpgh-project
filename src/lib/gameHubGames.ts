@@ -84,3 +84,64 @@ export const hotGames = byId([
   "tic-tac-toe",
   "candy-crush",
 ]);
+
+const GAME_SITE = "https://www.gamehubgh.com";
+export const GAME_HUB_SITE = GAME_SITE;
+
+const gamePages: Record<string, string> = {
+  "aim-for-it": "aim-for-it",
+  "timer-challenge": "timer-challenge",
+  "snake-game": "snake-game",
+  "knife-throw": "Knife Throw Challenge",
+  "connect-four-online": "connect-four-online",
+  "memory-match-online": "memory-match-online",
+  "piano-tiles-online": "piano-tiles-online",
+  "sliding-tiles-online": "sliding-tiles-online",
+  "rock-paper-scissors-online": "rock-paper-scissors-online",
+  "triple-tile-match-online": "triple-tile-match-online",
+  "tennis-online": "tennis-online",
+  "tic-tac-toe-online": "tic-tac-toe-online",
+  "tennis": "tennis",
+  "tic-tac-toe": "tic-tac-toe",
+  "snake-war": "snake-war",
+  "snake-war-online": "snake-war-online",
+  "endless-runner": "endless-runner",
+  "endless-runner-online": "endless-runner-online",
+  "checkers": "checkers",
+  "checkers-online": "checkers-online",
+  "wordscapes": "wordscapes",
+  "wordscapes-online": "wordscapes-online",
+  "three-mens-morris": "three-mens-morris",
+  "three-mens-morris-online": "three-mens-morris-online",
+  "ludo": "ludo",
+  "ludo-online": "ludo-online",
+  "basketball": "basketball",
+  "basketball-online": "basketball-online",
+  "brain-memory": "Brain-Memory",
+  "candy-crush": "candy-crush",
+  "connect": "Connect",
+  "magic-keys": "magic-keys",
+  "sliding-puzzle": "sliding-puzzle",
+  "word-puzzle": "WORD PUZZEL",
+  "tetris": "Tetris - GameHub",
+  "emoji-math": "emoji-math",
+  "rock-paper-scissors": "rock-paper-scissors",
+  "triple-tile-match": "triple-tile-match",
+  "water-sort-puzzle": "water-sort-puzzle",
+  "asteroid-blast": "asteroid-blast",
+  "helicopter-cave": "helicopter-cave",
+  "laser-dash": "laser-dash",
+  "maze-runner-extreme": "maze-runner-extreme",
+  "paddle-game": "paddle-game",
+  "space-invaders": "space-invaders",
+  "speed-racer": "speed-racer",
+};
+
+export function getGameUrl(gameId: string): string {
+  const page = gamePages[gameId];
+  return page ? `${GAME_SITE}/games/${encodeURIComponent(page)}` : GAME_SITE;
+}
+
+export function findHubGame(gameId: string | null | undefined): HubGame | undefined {
+  return hubGames.find((game) => game.id === gameId);
+}

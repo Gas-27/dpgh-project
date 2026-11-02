@@ -1,35 +1,37 @@
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   ArrowRight,
-  ChevronRight,
-  Coins,
   ExternalLink,
   Flame,
   Gamepad2,
   LayoutGrid,
   Play,
   Puzzle,
+  Share2,
+  ShieldCheck,
   Star,
   Trophy,
   Users,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { hotGames, hubGames, stripGames, tagClasses, type HubGame } from "@/lib/gameHubGames";
+import GameHubLeaderboard from "@/components/GameHubLeaderboard";
+import GameHubPlayer from "@/components/GameHubPlayer";
+import { useGameHubUser } from "@/hooks/useGameHubUser";
+import { useToast } from "@/hooks/use-toast";
+import { buildGameShareUrl, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
+import { findHubGame, hotGames, hubGames, stripGames, tagClasses, type HubGame } from "@/lib/gameHubGames";
 
 export const OPEN_GAMEHUB_EVENT = "open-gamehub";
 const GAMEHUB_URL = "https://gamehubgh.com";
 
-const slides = [
-  { label: "Sliding Tiles", title: "Sliding Puzzle", text: "Get the highest score and get real money", image: "/game-previews/sliding-puzzle.webp" },
-  { label: "Online", title: "Connect 4", text: "Invite a friend and play live, one-on-one", image: "/game-previews/connect-four-online.webp" },
+type Slide = { key: string; label: string; title: string; text: string; image: string; video?: string; game?: HubGame };
+
+const defaultSlides: Slide[] = [
+  { key: "sliding", label: "Skill game", title: "Sliding Puzzle", text: "Play games, win free data, and share the fun with friends.", image: "/game-previews/sliding-puzzle.webp", game: findHubGame("sliding-tiles-online") },
+  { key: "connect", label: "Online", title: "Connect 4", text: "Invite a friend and play live, one-on-one.", image: "/game-previews/connect-four-online.webp", game: findHubGame("connect-four-online") },
 ];
-
-const leaderboardColumns = ["Rank", "Player", "Score"];
-
-function openGameHub() {
-  window.open(GAMEHUB_URL, "_blank", "noopener,noreferrer");
-}
 
 function VisitGameHubBanner() {
   return (
@@ -51,37 +53,52 @@ function VisitGameHubBanner() {
   );
 }
 
-function FeaturedCarousel() {
+function FeaturedCarousel({ videos, onPlay }: { videos: GameVideo[]; onPlay: (game: HubGame) => void }) {
   const [index, setIndex] = useState(0);
+
+  const videoSlides: Slide[] = videos.flatMap((video) => {
+    const game = findHubGame(video.game_id);
+    if (!game) return [];
+    return [{ key: video.game_id, label: game.tag, title: game.name, text: game.blurb, image: game.image, video: video.video_url, game }];
+  });
+  const slides = videoSlides.length > 0 ? videoSlides : defaultSlides;
+  const slide = slides[index % slides.length];
+
   useEffect(() => {
-    const timer = window.setInterval(() => setIndex((current) => (current + 1) % slides.length), 5000);
+    if (slides.length < 2) return;
+    const timer = window.setInterval(() => setIndex((current) => (current + 1) % slides.length), slide.video ? 9000 : 5000);
     return () => window.clearInterval(timer);
-  }, []);
-  const slide = slides[index];
+  }, [slides.length, slide.video]);
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-violet-400/30 bg-violet-950">
-      <img src={slide.image || "/placeholder.svg"} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      {slide.video ? (
+        <video key={slide.key} src={slide.video} poster={slide.image} autoPlay muted loop playsInline preload="metadata" className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <img src={slide.image || "/placeholder.svg"} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      )}
       <div className="absolute inset-0 bg-gradient-to-t from-[#0d0620] via-[#0d0620]/55 to-transparent" />
       <div className="relative flex min-h-[220px] flex-col justify-end p-5">
         <p className="text-xs font-bold uppercase tracking-widest text-cyan-200">{slide.label}</p>
         <h3 className="mt-1 text-2xl font-bold text-white">{slide.title}</h3>
         <p className="mt-1 max-w-[55%] text-sm leading-relaxed text-white/85">{slide.text}</p>
-        <button
-          type="button"
-          onClick={openGameHub}
-          className="absolute bottom-10 right-5 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white"
-        >
-          <Play className="h-4 w-4" aria-hidden="true" /> Play now
-        </button>
+        {slide.game ? (
+          <button
+            type="button"
+            onClick={() => onPlay(slide.game as HubGame)}
+            className="absolute bottom-10 right-5 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white"
+          >
+            <Play className="h-4 w-4" aria-hidden="true" /> Play now
+          </button>
+        ) : null}
         <div className="mt-4 flex justify-center gap-2">
           {slides.map((item, dot) => (
             <button
-              key={item.title}
+              key={item.key}
               type="button"
               aria-label={`Show ${item.title}`}
               onClick={() => setIndex(dot)}
-              className={`h-1.5 rounded-full transition-all ${dot === index ? "w-6 bg-white" : "w-1.5 bg-white/40"}`}
+              className={`h-1.5 rounded-full transition-all ${dot === index % slides.length ? "w-6 bg-white" : "w-1.5 bg-white/40"}`}
             />
           ))}
         </div>
@@ -90,7 +107,23 @@ function FeaturedCarousel() {
   );
 }
 
-function IntroCard() {
+function FairPlayCard() {
+  return (
+    <section className="rounded-3xl border border-emerald-400/30 bg-emerald-950/40 p-5">
+      <h3 className="flex items-center gap-2 text-lg font-bold text-white">
+        <ShieldCheck className="h-5 w-5 text-emerald-300" aria-hidden="true" /> Play games and win free data
+      </h3>
+      <p className="mt-2 text-sm leading-relaxed text-violet-100/85">
+        Play, share and challenge your friends to climb the leaderboard.
+      </p>
+      <p className="mt-2 text-sm leading-relaxed text-violet-100/85">
+        <strong className="font-semibold text-white">Skill games only.</strong> No betting, no gambling - just how good and skillful you are.
+      </p>
+    </section>
+  );
+}
+
+function IntroCard({ onBrowse }: { onBrowse: () => void }) {
   const stats = [
     { icon: Gamepad2, value: `${hubGames.length}+`, label: "Games" },
     { icon: Users, value: "Live", label: "Leaderboards" },
@@ -115,7 +148,7 @@ function IntroCard() {
       </ul>
       <button
         type="button"
-        onClick={openGameHub}
+        onClick={onBrowse}
         className="mt-5 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 to-rose-500 px-5 py-3 text-sm font-semibold text-white"
       >
         Browse All Games <ArrowRight className="h-4 w-4" aria-hidden="true" />
@@ -124,12 +157,12 @@ function IntroCard() {
   );
 }
 
-function GamesStrip() {
+function GamesStrip({ onPlay }: { onPlay: (game: HubGame) => void }) {
   return (
     <section aria-label="Quick play" className="rounded-3xl border border-violet-400/25 bg-violet-950/60 p-4">
       <div className="flex gap-3 overflow-x-auto pb-1">
         {stripGames.map((game) => (
-          <button key={game.id} type="button" onClick={openGameHub} className="flex w-24 shrink-0 flex-col items-center gap-2">
+          <button key={game.id} type="button" onClick={() => onPlay(game)} className="flex w-24 shrink-0 flex-col items-center gap-2">
             <img src={game.image || "/placeholder.svg"} alt="" loading="lazy" className="h-20 w-24 rounded-2xl border border-violet-300/20 object-cover" />
             <span className="w-full truncate text-center text-sm font-semibold text-white">{game.stripName ?? game.name}</span>
           </button>
@@ -139,23 +172,7 @@ function GamesStrip() {
   );
 }
 
-function TasksRow() {
-  return (
-    <button
-      type="button"
-      onClick={openGameHub}
-      className="flex w-full items-center justify-between rounded-3xl border border-violet-400/25 bg-violet-950/60 px-5 py-4 text-left"
-    >
-      <span>
-        <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-fuchsia-300"><Coins className="h-4 w-4" aria-hidden="true" /> Earn coins</span>
-        <span className="mt-1 block text-2xl font-bold text-white">Tasks</span>
-      </span>
-      <ChevronRight className="h-5 w-5 text-violet-200" aria-hidden="true" />
-    </button>
-  );
-}
-
-function GameCard({ game, className = "" }: { game: HubGame; className?: string }) {
+function GameCard({ game, className = "", onPlay, onShare }: { game: HubGame; className?: string; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void }) {
   return (
     <article className={`flex flex-col overflow-hidden rounded-2xl border border-violet-400/20 bg-violet-950/70 ${className}`}>
       <div className="relative h-28 shrink-0 bg-violet-900/50">
@@ -166,7 +183,12 @@ function GameCard({ game, className = "" }: { game: HubGame; className?: string 
         <h4 className="text-base font-bold leading-snug text-white">{game.name}</h4>
         <p className="text-xs leading-relaxed text-violet-200/75">{game.blurb}</p>
         <p className="mt-auto flex items-center gap-1 pt-2 text-xs text-violet-200/80"><Star className="h-3.5 w-3.5 fill-violet-300/60 text-violet-300/60" aria-hidden="true" /> {game.rating.toFixed(1)}</p>
-        <button type="button" onClick={openGameHub} className="rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500">Play Now</button>
+        <div className="flex gap-2">
+          <button type="button" onClick={() => onPlay(game)} className="flex-1 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500">Play Now</button>
+          <button type="button" onClick={() => onShare(game)} aria-label={`Share ${game.name}`} className="flex w-10 items-center justify-center rounded-xl border border-violet-400/30 text-violet-100 hover:bg-violet-800/60">
+            <Share2 className="h-4 w-4" aria-hidden="true" />
+          </button>
+        </div>
       </div>
     </article>
   );
@@ -184,78 +206,38 @@ function SectionHeader({ id, icon: Icon, title, count }: { id: string; icon: typ
   );
 }
 
-function HotAndPopular() {
-  return (
-    <section aria-labelledby="gamehub-hot">
-      <SectionHeader id="gamehub-hot" icon={Flame} title="Hot & Popular" count={hotGames.length} />
-      <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
-        {hotGames.map((game) => <GameCard key={game.id} game={game} className="w-44 shrink-0" />)}
-      </div>
-    </section>
-  );
-}
+type GameActions = { onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void };
 
-function AllGames() {
-  return (
-    <section aria-labelledby="gamehub-all">
-      <SectionHeader id="gamehub-all" icon={LayoutGrid} title="All Games" count={hubGames.length} />
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        {hubGames.map((game) => <GameCard key={game.id} game={game} />)}
-      </div>
-    </section>
-  );
-}
-
-function GamesTab() {
+function GamesTab({ videos, onPlay, onShare }: GameActions & { videos: GameVideo[] }) {
   return (
     <div className="space-y-5">
-      <FeaturedCarousel />
-      <IntroCard />
-      <GamesStrip />
-      <TasksRow />
-      <HotAndPopular />
-      <AllGames />
+      <FeaturedCarousel videos={videos} onPlay={onPlay} />
+      <FairPlayCard />
+      <IntroCard onBrowse={() => document.getElementById("gamehub-all")?.scrollIntoView({ behavior: "smooth", block: "start" })} />
+      <GamesStrip onPlay={onPlay} />
+      <section aria-labelledby="gamehub-hot">
+        <SectionHeader id="gamehub-hot" icon={Flame} title="Hot & Popular" count={hotGames.length} />
+        <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
+          {hotGames.map((game) => <GameCard key={game.id} game={game} className="w-44 shrink-0" onPlay={onPlay} onShare={onShare} />)}
+        </div>
+      </section>
+      <section aria-labelledby="gamehub-all">
+        <SectionHeader id="gamehub-all" icon={LayoutGrid} title="All Games" count={hubGames.length} />
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          {hubGames.map((game) => <GameCard key={game.id} game={game} onPlay={onPlay} onShare={onShare} />)}
+        </div>
+      </section>
     </div>
   );
 }
 
-function LeaderboardTab() {
-  return (
-    <section className="space-y-4">
-      <div className="rounded-3xl border border-violet-400/25 bg-violet-950/60 p-5">
-        <h3 className="flex items-center gap-2 text-xl font-bold text-white"><Trophy className="h-5 w-5 text-amber-300" aria-hidden="true" /> Leaderboard</h3>
-        <p className="mt-1 text-sm text-violet-200/75">Top players across every Game Hub game. Climb the ranks to win rewards.</p>
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-          {hubGames.map((game, position) => (
-            <span key={game.id} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${position === 0 ? "bg-violet-600 text-white" : "border border-violet-400/25 text-violet-200"}`}>{game.name}</span>
-          ))}
-        </div>
-      </div>
-      <div className="overflow-hidden rounded-3xl border border-violet-400/25 bg-violet-950/60">
-        <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="bg-violet-900/60 text-xs uppercase tracking-wider text-violet-200/80">
-              {leaderboardColumns.map((column) => <th key={column} scope="col" className="px-4 py-3 font-semibold">{column}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            <tr>
-              <td colSpan={leaderboardColumns.length} className="px-4 py-10 text-center text-violet-200/75">
-                Live rankings are kept on Game Hub. Open it to see the current top players.
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <button type="button" onClick={openGameHub} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-fuchsia-500 to-rose-500 px-5 py-3 text-sm font-semibold text-white">
-        View live leaderboard <ExternalLink className="h-4 w-4" aria-hidden="true" />
-      </button>
-    </section>
-  );
-}
-
 export default function GameHubDialog() {
+  const { toast } = useToast();
+  const user = useGameHubUser();
   const [open, setOpen] = useState(false);
+  const [activeGame, setActiveGame] = useState<HubGame | null>(null);
+
+  const { data: videos = [] } = useQuery({ queryKey: ["gamehub-videos"], queryFn: fetchGameVideos, enabled: open, staleTime: 60_000 });
 
   useEffect(() => {
     const handleOpen = () => setOpen(true);
@@ -263,15 +245,41 @@ export default function GameHubDialog() {
     return () => window.removeEventListener(OPEN_GAMEHUB_EVENT, handleOpen);
   }, []);
 
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const shared = url.searchParams.get("gamehub");
+    if (!shared) return;
+    setOpen(true);
+    setActiveGame(findHubGame(shared) ?? null);
+    url.searchParams.delete("gamehub");
+    window.history.replaceState({}, "", url.toString());
+  }, []);
+
+  const handleShare = async (game: HubGame) => {
+    try {
+      const result = await shareText(`Play ${game.name} on Gamehub`, `Come play ${game.name} with me on Gamehub - skill only, no betting!`, buildGameShareUrl(game.id));
+      if (result === "copied") toast({ title: "Link copied", description: "Paste it anywhere to invite a friend." });
+    } catch {
+      toast({ title: "Could not share", variant: "destructive" });
+    }
+  };
+
+  const handleOpenChange = (next: boolean) => {
+    setOpen(next);
+    if (!next) setActiveGame(null);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent className="flex h-[100dvh] max-h-[100dvh] w-full max-w-xl flex-col gap-0 overflow-hidden rounded-none border-violet-400/20 bg-[#0d0620] p-0 text-white sm:h-[90vh] sm:rounded-3xl">
         <div className="border-b border-violet-400/15 px-4 pb-3 pt-5">
           <DialogTitle className="flex items-center gap-2 pr-8 text-2xl font-bold">
             <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-violet-600"><Gamepad2 className="h-5 w-5" aria-hidden="true" /></span>
             <span className="bg-gradient-to-r from-violet-300 to-amber-300 bg-clip-text text-transparent">Gamehub</span>
           </DialogTitle>
-          <DialogDescription className="sr-only">Browse games and the leaderboard, or visit Game Hub directly.</DialogDescription>
+          <DialogDescription className="text-xs text-violet-200/70">
+            {user ? `Playing as ${maskEmail(user.email)}` : "Sign in to save your scores to the leaderboard."}
+          </DialogDescription>
           <div className="mt-3"><VisitGameHubBanner /></div>
         </div>
         <Tabs defaultValue="games" className="flex min-h-0 flex-1 flex-col">
@@ -280,10 +288,11 @@ export default function GameHubDialog() {
             <TabsTrigger value="leaderboard" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white"><Puzzle className="mr-2 h-4 w-4" aria-hidden="true" /> Leaderboard</TabsTrigger>
           </TabsList>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-4">
-            <TabsContent value="games" className="mt-0"><GamesTab /></TabsContent>
-            <TabsContent value="leaderboard" className="mt-0"><LeaderboardTab /></TabsContent>
+            <TabsContent value="games" className="mt-0"><GamesTab videos={videos} onPlay={setActiveGame} onShare={handleShare} /></TabsContent>
+            <TabsContent value="leaderboard" className="mt-0"><GameHubLeaderboard /></TabsContent>
           </div>
         </Tabs>
+        {activeGame ? <GameHubPlayer game={activeGame} userEmail={user?.email ?? null} signedIn={Boolean(user)} onClose={() => setActiveGame(null)} /> : null}
       </DialogContent>
     </Dialog>
   );
