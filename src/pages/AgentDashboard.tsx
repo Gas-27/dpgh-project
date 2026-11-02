@@ -49,6 +49,9 @@ import ChatBot from "@/components/ChatBot";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
+import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
+import ApiExplainer from "@/components/ApiExplainer";
+import { isRevokedApiKey } from "@/lib/apiKeyAccount";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
 import SubagentsList from "@/components/SubagentsList";
 import SubagentPricesManager from "@/components/SubagentPricesManager";
@@ -275,7 +278,7 @@ A live preview shows exactly how your store will look. Click Save to apply chang
 
 • Subagents are sellers who have their own store but operate under you.
 • When a subagent makes a sale, you earn a commission from their profit.
-��������������������� You can view all your subagents, their store names, and contact info.
+����������������������� You can view all your subagents, their store names, and contact info.
 • Enable/disable subagent registration from Settings.
 
 Subagent Profit Split:
@@ -496,7 +499,8 @@ const localNumber = number.replace(/\D/g, "");
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
  const [loadingApiKey, setLoadingApiKey] = useState(true);
  const [smsApiUserIds, setSmsApiUserIds] = useState<string[]>([]);
- const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
+  const [showDeleteApiKey, setShowDeleteApiKey] = useState(false);
   const [agentPrices, setAgentPrices] = useState<Record<string, number>>({});
 
   // Refund state for subagent orders
@@ -849,9 +853,9 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         console.error("[v0] Error fetching API key:", error);
       }
       
-      if (data) {
+      if (data && !isRevokedApiKey(data.api_key)) {
         console.log("[v0] API user data found, setting wallet state");
-        setApiKey(data.api_key || null);
+        setApiKey(data.api_key);
         setWallet(data.wallet || 0);
       } else {
         console.log("[v0] No API user data found for store");
@@ -4658,8 +4662,18 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       <RotateCcw className="h-4 w-4" />
                       Regenerate Key
                     </Button>
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowDeleteApiKey(true)}
+                      className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      Delete API Key
+                    </Button>
+                    <ApiExplainer variant="wallet" />
                   </div>
                 ) : (
+                  <div className="space-y-3">
+                  <ApiExplainer variant="create" />
                   <Button 
                     variant="hero" 
                     onClick={handleGenerateApiKey}
@@ -4678,6 +4692,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                       </>
                     )}
                   </Button>
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -4805,7 +4820,14 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </Card>
             )}
 
-            {/* Regenerate Confirmation Dialog */}
+            <DeleteApiKeyDialog
+        open={showDeleteApiKey}
+        onOpenChange={setShowDeleteApiKey}
+        walletBalance={Number(wallet) || 0}
+        onDeleted={() => { setApiKey(null); setWallet(0); }}
+      />
+
+      {/* Regenerate Confirmation Dialog */}
             <Dialog open={showRegenerateConfirm} onOpenChange={setShowRegenerateConfirm}>
               <DialogContent>
                 <DialogHeader>

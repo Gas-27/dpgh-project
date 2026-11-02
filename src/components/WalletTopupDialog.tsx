@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import ApiExplainer from "@/components/ApiExplainer";
 import { initializeWalletTopup, redirectToPaystack } from "@/lib/walletTopup";
 
 interface WalletTopupDialogProps {
@@ -129,6 +130,8 @@ export default function WalletTopupDialog({
         </DialogHeader>
 
         <div className="space-y-6">
+          {walletType === "api" && <ApiExplainer variant="wallet" />}
+
           {/* Current Balance Display */}
           <div className="bg-muted p-4 rounded-lg border border-border">
             <p className="text-sm text-muted-foreground">Current Balance</p>

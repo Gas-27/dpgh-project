@@ -10,6 +10,9 @@ import { useAuth } from "@/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
+import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
+import ApiExplainer from "@/components/ApiExplainer";
+import { isRevokedApiKey } from "@/lib/apiKeyAccount";
 import PaymentVerifier from "@/components/PaymentVerifier";
   import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
@@ -152,6 +155,7 @@ const UserDashboard = () => {
   const [customTopupAmount, setCustomTopupAmount] = useState("");
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
+  const [showDeleteApiKey, setShowDeleteApiKey] = useState(false);
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [buyDialogOpen, setBuyDialogOpen] = useState(false);
   const [buyPkg, setBuyPkg] = useState<DataPackage | null>(null);
@@ -348,7 +352,7 @@ const UserDashboard = () => {
         let apiUserId: string | null = null;
         if (apiUserData) {
           apiUserId = apiUserData.id;
-          if (apiUserData.api_key) {
+          if (!isRevokedApiKey(apiUserData.api_key)) {
             setApiKey(apiUserData.api_key);
             setApiWallet(apiUserData.wallet || 0);
           }
@@ -1999,6 +2003,16 @@ case "api-key":
               <Button onClick={generateApiKey} disabled={generatingApiKey} className="w-full">
                 {generatingApiKey ? "Generating..." : "Regenerate Key"}
               </Button>
+              <Button variant="outline" onClick={() => setShowDeleteApiKey(true)} className="w-full border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive">
+                Delete API Key
+              </Button>
+              <ApiExplainer variant="wallet" />
+              <DeleteApiKeyDialog
+                open={showDeleteApiKey}
+                onOpenChange={setShowDeleteApiKey}
+                walletBalance={Number(apiWallet) || 0}
+                onDeleted={() => { setApiKey(null); setApiWallet(0); setShowApiKey(false); }}
+              />
             </>
           ) : (
             <>
@@ -2008,6 +2022,7 @@ case "api-key":
                   You can generate your API key directly here in your User Dashboard and start using our API immediately.
                 </p>
               </div>
+              <ApiExplainer variant="create" />
               <Button onClick={generateApiKey} disabled={generatingApiKey} className="w-full">
                 {generatingApiKey ? "Generating..." : "Generate API Key"}
               </Button>
