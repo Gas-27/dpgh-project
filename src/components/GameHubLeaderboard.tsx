@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Trophy } from "lucide-react";
 import ShareScoreButtons from "@/components/ShareScoreButtons";
+import { buildGameHubShareUrl } from "@/lib/gameHubRoute";
 import { buildGameShareUrl, fetchLeaderboard, type LeaderboardPeriod } from "@/lib/gameHubApi";
 import { hubGames } from "@/lib/gameHubGames";
 
@@ -30,7 +31,7 @@ export default function GameHubLeaderboard() {
   const shareMessage = myRow
     ? `I'm ranked #${myRow.rank} on ${selectedName} (${periodLabel}) with ${myRow.score.toLocaleString()} points on JustBuy. Think you can beat me?`
     : `Join me on the JustBuy leaderboard for ${selectedName} - play for free data!`;
-  const shareUrl = gameId ? buildGameShareUrl(gameId) : `${window.location.origin}/?gamehub=open`;
+  const shareUrl = gameId ? buildGameShareUrl(gameId) : buildGameHubShareUrl();
 
   const pillClass = (active: boolean) =>
     `shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${active ? "bg-violet-600 text-white" : "border border-violet-400/25 text-violet-200"}`;

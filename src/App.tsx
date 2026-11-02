@@ -297,9 +297,17 @@ return (
                 <Routes>
                   <Route path="/" element={<CustomDomainResolver />} />
                   <Route path="/become-agent" element={<BecomeAgent />} />
+                  <Route path="/gamehub" element={<CustomDomainResolver />} />
+                  <Route path="/gamehub/:gameId" element={<CustomDomainResolver />} />
                   <Route path="/__custom/agent/:storeName" element={<AgentStorefront />} />
+                  <Route path="/__custom/agent/:storeName/gamehub" element={<AgentStorefront />} />
+                  <Route path="/__custom/agent/:storeName/gamehub/:gameId" element={<AgentStorefront />} />
                   <Route path="/__custom/subagent/:storeName" element={<SubagentStorefront />} />
+                  <Route path="/__custom/subagent/:storeName/gamehub" element={<SubagentStorefront />} />
+                  <Route path="/__custom/subagent/:storeName/gamehub/:gameId" element={<SubagentStorefront />} />
                   <Route path="/__custom/subsubagent/:subagentStoreName/:subSubagentStoreName" element={<SubSubagentStorefront />} />
+                  <Route path="/__custom/subsubagent/:subagentStoreName/:subSubagentStoreName/gamehub" element={<SubSubagentStorefront />} />
+                  <Route path="/__custom/subsubagent/:subagentStoreName/:subSubagentStoreName/gamehub/:gameId" element={<SubSubagentStorefront />} />
                   <Route path="/marketplace/product/:productId/:slug" element={<ProductDetail />} />
                   <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
                   <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
@@ -345,6 +353,12 @@ return (
                   <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
                   <Route path="/service-access/:serviceId" element={<PublicServiceAccess />} />
                   {/* Catch-all routes for storefronts */}
+                  <Route path="/gamehub" element={<SubagentLogin />} />
+                  <Route path="/gamehub/:gameId" element={<SubagentLogin />} />
+                  <Route path="/:subagentStoreName/store/:subSubagentStoreName/gamehub" element={<SubSubagentStorefront />} />
+                  <Route path="/:subagentStoreName/store/:subSubagentStoreName/gamehub/:gameId" element={<SubSubagentStorefront />} />
+                  <Route path="/:storeName/gamehub" element={<SubagentStorefront />} />
+                  <Route path="/:storeName/gamehub/:gameId" element={<SubagentStorefront />} />
                   <Route path="/:subagentStoreName/store/:subSubagentStoreName" element={<SubSubagentStorefront />} />
                   <Route path="/:storeName" element={<SubagentStorefront />} />
                   <Route path="*" element={<NotFound />} />
@@ -364,6 +378,8 @@ return (
                 // 🌐 On the main datastores.shop domain, use normal routes
                 <Routes>
                   <Route path="/" element={<Index />} />
+                  <Route path="/gamehub" element={<Index />} />
+                  <Route path="/gamehub/:gameId" element={<Index />} />
                   <Route path="/login" element={<Login />} />
                   <Route path="/signup" element={<Signup />} />
                   <Route path="/become-agent" element={<Signup />} />

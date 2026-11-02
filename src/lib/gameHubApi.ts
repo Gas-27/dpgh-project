@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
+import { buildGameHubShareUrl } from "@/lib/gameHubRoute";
 
 // The Game Hub tables and functions are not part of the generated Database types yet.
 const db = supabase as unknown as SupabaseClient;
@@ -205,7 +206,7 @@ export async function deleteGameVideo(video: GameVideo): Promise<void> {
 }
 
 export function buildGameShareUrl(gameId: string): string {
-  return `${window.location.origin}/?gamehub=${encodeURIComponent(gameId)}`;
+  return buildGameHubShareUrl(gameId);
 }
 
 export async function shareText(title: string, text: string, url: string): Promise<"shared" | "copied"> {

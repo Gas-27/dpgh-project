@@ -6,6 +6,7 @@ import {
   Flame,
   Gamepad2,
   LayoutGrid,
+  MessageCircle,
   Play,
   Puzzle,
   Share2,
@@ -15,12 +16,15 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import GameHubChat from "@/components/GameHubChat";
 import GameHubLeaderboard from "@/components/GameHubLeaderboard";
 import GameHubPlayer from "@/components/GameHubPlayer";
 import GameHubRewardPlayer from "@/components/GameHubRewardPlayer";
 import { useGameHubUser } from "@/hooks/useGameHubUser";
 import { useToast } from "@/hooks/use-toast";
 import { buildGameShareUrl, fetchGameRewardSettings, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
+import { leaveGameHubUrl, markGameHubLanding, parseGameHubPath, syncGameHubUrl } from "@/lib/gameHubRoute";
+import { useConversations, useGameHubRealtime } from "@/lib/gameHubSocial";
 import { findHubGame, getGameBlurb, getGameHubDirectUrl, hotGames, hubGames, stripGames, tagClasses, type GameRuleSummary, type HubGame } from "@/lib/gameHubGames";
 
 type RuleMap = Record<string, GameRuleSummary>;
@@ -274,21 +278,58 @@ export default function GameHubDialog() {
   const { data: settings = [] } = useQuery({ queryKey: ["gamehub-rules"], queryFn: fetchGameRewardSettings, enabled: open, staleTime: 15_000, refetchOnWindowFocus: true });
   const rules: RuleMap = Object.fromEntries(settings.map((row) => [row.game_id, row]));
 
+  useGameHubRealtime(user?.id, open);
+  const { data: conversations = [] } = useConversations(user?.id, open);
+  const unreadCount = conversations.reduce((total, conversation) => total + conversation.unread, 0);
+
   useEffect(() => {
-    const handleOpen = () => setOpen(true);
+    const handleOpen = (event: Event) => {
+      const gameId = (event as CustomEvent<{ gameId?: string } | undefined>).detail?.gameId;
+      if (gameId) setActiveGame(findHubGame(gameId) ?? null);
+      setOpen(true);
+    };
     window.addEventListener(OPEN_GAMEHUB_EVENT, handleOpen);
     return () => window.removeEventListener(OPEN_GAMEHUB_EVENT, handleOpen);
   }, []);
 
+  // Direct visits to /gamehub or /gamehub/<game> (and legacy ?gamehub= links) open the popup.
   useEffect(() => {
+    const parsed = parseGameHubPath(window.location.pathname);
+    if (parsed) {
+      markGameHubLanding();
+      setOpen(true);
+      setActiveGame(parsed.gameId ? findHubGame(parsed.gameId) ?? null : null);
+      return;
+    }
     const url = new URL(window.location.href);
     const shared = url.searchParams.get("gamehub");
     if (!shared) return;
     setOpen(true);
     setActiveGame(findHubGame(shared) ?? null);
     url.searchParams.delete("gamehub");
-    window.history.replaceState({}, "", url.toString());
+    window.history.replaceState(window.history.state, "", url.toString());
   }, []);
+
+  // Browser back/forward moves between the page, the hub and a game.
+  useEffect(() => {
+    const handlePopState = () => {
+      const parsed = parseGameHubPath(window.location.pathname);
+      if (!parsed) {
+        setOpen(false);
+        setActiveGame(null);
+        setPendingGame(null);
+        return;
+      }
+      setOpen(true);
+      setActiveGame(parsed.gameId ? findHubGame(parsed.gameId) ?? null : null);
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
+
+  useEffect(() => {
+    if (open) syncGameHubUrl(activeGame?.id ?? null);
+  }, [open, activeGame]);
 
   const handleShare = async (game: HubGame) => {
     try {
@@ -304,6 +345,7 @@ export default function GameHubDialog() {
     if (!next) {
       setActiveGame(null);
       setPendingGame(null);
+      leaveGameHubUrl();
     }
   };
 
@@ -321,12 +363,17 @@ export default function GameHubDialog() {
           <div className="mt-3"><VisitGameHubBanner /></div>
         </div>
         <Tabs defaultValue="games" className="flex min-h-0 flex-1 flex-col">
-          <TabsList className="mx-4 mt-3 grid grid-cols-2 bg-violet-950/80 text-violet-200">
+          <TabsList className="mx-4 mt-3 grid grid-cols-3 bg-violet-950/80 text-violet-200">
             <TabsTrigger value="games" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white"><Gamepad2 className="mr-2 h-4 w-4" aria-hidden="true" /> Games</TabsTrigger>
+            <TabsTrigger value="messages" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white">
+              <MessageCircle className="mr-2 h-4 w-4" aria-hidden="true" /> Chat
+              {unreadCount > 0 ? <span className="ml-1.5 rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">{unreadCount}</span> : null}
+            </TabsTrigger>
             <TabsTrigger value="leaderboard" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white"><Puzzle className="mr-2 h-4 w-4" aria-hidden="true" /> Leaderboard</TabsTrigger>
           </TabsList>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-4">
             <TabsContent value="games" className="mt-0"><GamesTab videos={videos} rules={rules} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
+            <TabsContent value="messages" className="mt-0"><GameHubChat user={user} onPlayGame={requestPlay} /></TabsContent>
             <TabsContent value="leaderboard" className="mt-0"><GameHubLeaderboard /></TabsContent>
           </div>
         </Tabs>
