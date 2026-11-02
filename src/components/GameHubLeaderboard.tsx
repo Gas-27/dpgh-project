@@ -19,6 +19,7 @@ const justBuyGames = hubGames.filter((game) => game.native);
 export default function GameHubLeaderboard() {
   const [gameId, setGameId] = useState<string | null>(null);
   const [period, setPeriod] = useState<LeaderboardPeriod>("today");
+  const [tab, setTab] = useState<"ranks" | "rewards">("ranks");
   const { data: rows = [], isLoading, isError } = useQuery({
     queryKey: ["gamehub-leaderboard", gameId, period],
     queryFn: () => fetchLeaderboard(gameId, period),
@@ -41,6 +42,9 @@ export default function GameHubLeaderboard() {
   const pillClass = (active: boolean) =>
     `shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${active ? "bg-violet-600 text-white" : "border border-violet-400/25 text-violet-200"}`;
 
+  const tabClass = (active: boolean) =>
+    `flex flex-1 items-center justify-center gap-2 rounded-full px-3 py-2 text-sm font-semibold ${active ? "bg-violet-600 text-white" : "text-violet-200"}`;
+
   return (
     <section className="space-y-4">
       <div className="rounded-3xl border border-violet-400/25 bg-violet-950/60 p-5">
@@ -58,10 +62,19 @@ export default function GameHubLeaderboard() {
           ))}
         </div>
       </div>
-      <div className="overflow-hidden rounded-3xl border border-violet-400/25 bg-violet-950/60">
+      <div className="flex gap-2 rounded-full border border-violet-400/25 bg-violet-950/60 p-1" role="tablist" aria-label="Leaderboard sections">
+        <button type="button" role="tab" aria-selected={tab === "ranks"} onClick={() => setTab("ranks")} className={tabClass(tab === "ranks")}>
+          <Trophy className="h-4 w-4" aria-hidden="true" /> Rankings{rows.length > 0 ? ` (${rows.length.toLocaleString()})` : ""}
+        </button>
+        <button type="button" role="tab" aria-selected={tab === "rewards"} onClick={() => setTab("rewards")} className={tabClass(tab === "rewards")}>
+          <Gift className="h-4 w-4" aria-hidden="true" /> Wallet rewards
+        </button>
+      </div>
+      {tab === "ranks" ? (
+      <div className="max-h-[55vh] overflow-y-auto overscroll-contain rounded-3xl border border-violet-400/25 bg-violet-950/60" tabIndex={0} aria-label="Ranked players">
         <table className="w-full text-left text-sm">
-          <thead>
-            <tr className="bg-violet-900/60 text-xs uppercase tracking-wider text-violet-200/80">
+          <thead className="sticky top-0 z-10">
+            <tr className="bg-violet-900 text-xs uppercase tracking-wider text-violet-200/80">
               <th scope="col" className="px-4 py-3 font-semibold">Rank</th>
               <th scope="col" className="px-4 py-3 font-semibold">Player</th>
               <th scope="col" className="px-4 py-3 text-right font-semibold">Score</th>
@@ -86,6 +99,7 @@ export default function GameHubLeaderboard() {
           </tbody>
         </table>
       </div>
+      ) : (
       <div className="rounded-3xl border border-amber-300/25 bg-violet-950/60 p-5">
         <h3 className="flex items-center gap-2 text-lg font-bold text-white"><Gift className="h-5 w-5 text-amber-300" aria-hidden="true" /> Wallet rewards</h3>
         <p className="mt-1 text-sm leading-relaxed text-violet-200/75">Top players get topped up straight into their JustBuy wallet by the admin.</p>
@@ -105,6 +119,7 @@ export default function GameHubLeaderboard() {
           </ul>
         )}
       </div>
+      )}
       <div className="rounded-3xl border border-violet-400/25 bg-violet-950/60 p-4">
         <p className="mb-3 text-sm font-semibold text-white">{myRow ? "Share my rank" : "Invite friends"}</p>
         <ShareScoreButtons title="JustBuy leaderboard" text={shareMessage} url={shareUrl} />

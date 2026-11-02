@@ -42,9 +42,19 @@ export async function fetchGameVideos(): Promise<GameVideo[]> {
 export type LeaderboardPeriod = "today" | "yesterday" | "week" | "month" | "all";
 
 export async function fetchLeaderboard(gameId: string | null, period: LeaderboardPeriod = "all"): Promise<LeaderboardRow[]> {
-  const { data, error } = await db.rpc("gamehub_leaderboard_period", { p_game_id: gameId, p_period: period, p_limit: 50 });
-  if (error) throw error;
-  return ((data ?? []) as LeaderboardRow[]).map((row) => ({ ...row, rank: Number(row.rank), score: Number(row.score) }));
+  const pageSize = 1000;
+  const maxPages = 50;
+  const rows: LeaderboardRow[] = [];
+  for (let page = 0; page < maxPages; page += 1) {
+    const { data, error } = await db
+      .rpc("gamehub_leaderboard_period", { p_game_id: gameId, p_period: period, p_limit: null })
+      .range(page * pageSize, page * pageSize + pageSize - 1);
+    if (error) throw error;
+    const batch = (data ?? []) as LeaderboardRow[];
+    rows.push(...batch.map((row) => ({ ...row, rank: Number(row.rank), score: Number(row.score) })));
+    if (batch.length < pageSize) break;
+  }
+  return rows;
 }
 
 export type AdminWalletOption = { type: "customer" | "agent" | "subagent" | "subsubagent"; label: string; balance: number };
