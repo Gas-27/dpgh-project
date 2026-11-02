@@ -9,9 +9,10 @@ type MarketplaceViewProduct = {
 
 type ViewRange = readonly [min: number, max: number];
 
-const NORMAL_RANGE: ViewRange = [254, 276];
-const BOOSTED_RANGE: ViewRange = [314, 367];
-const GOLDEN_RANGE: ViewRange = [370, 403];
+const NORMAL_RANGE: ViewRange = [32, 89];
+const BOOSTED_RANGE: ViewRange = [110, 140];
+const GOLDEN_RANGE: ViewRange = [150, 210];
+const STARTING_RANGE: ViewRange = [9, 31];
 
 // Beyond this many real views, the remainder is added at the range average to keep rendering cheap.
 const MAX_SAMPLED_VIEWS = 2000;
@@ -52,8 +53,9 @@ export function getMarketplaceDisplayViews(product: MarketplaceViewProduct, rawV
   }
   if (views > sampled) total += (views - sampled) * Math.round((min + max) / 2);
 
-  const productOffset = (hashString(`offset:${product.id}`) % 97) + 1;
-  return total + productOffset;
+  const [startMin, startMax] = STARTING_RANGE;
+  const startingNumber = startMin + (hashString(`offset:${product.id}`) % (startMax - startMin + 1));
+  return total + startingNumber;
 }
 
 /** Guarantees no two products in the same list show the same view total. */

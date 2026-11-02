@@ -20,8 +20,10 @@ import GameHubPlayer from "@/components/GameHubPlayer";
 import GameHubRewardPlayer from "@/components/GameHubRewardPlayer";
 import { useGameHubUser } from "@/hooks/useGameHubUser";
 import { useToast } from "@/hooks/use-toast";
-import { buildGameShareUrl, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
-import { findHubGame, hotGames, hubGames, stripGames, tagClasses, type HubGame } from "@/lib/gameHubGames";
+import { buildGameShareUrl, fetchGameRewardSettings, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
+import { findHubGame, getGameBlurb, hotGames, hubGames, stripGames, tagClasses, type GameRuleSummary, type HubGame } from "@/lib/gameHubGames";
+
+type RuleMap = Record<string, GameRuleSummary>;
 
 export const OPEN_GAMEHUB_EVENT = "open-gamehub";
 const GAMEHUB_URL = "https://gamehubgh.com";
@@ -53,13 +55,13 @@ function VisitGameHubBanner() {
   );
 }
 
-function FeaturedCarousel({ videos, onPlay }: { videos: GameVideo[]; onPlay: (game: HubGame) => void }) {
+function FeaturedCarousel({ videos, rules, onPlay }: { videos: GameVideo[]; rules: RuleMap; onPlay: (game: HubGame) => void }) {
   const [index, setIndex] = useState(0);
 
   const videoSlides: Slide[] = videos.flatMap((video) => {
     const game = findHubGame(video.game_id);
     if (!game) return [];
-    return [{ key: video.game_id, label: game.tag, title: game.name, text: game.blurb, image: game.image, video: video.video_url, game }];
+    return [{ key: video.game_id, label: game.tag, title: game.name, text: getGameBlurb(game, rules[game.id]), image: game.image, video: video.video_url, game }];
   });
   const slides = videoSlides.length > 0 ? videoSlides : defaultSlides;
   const slide = slides[index % slides.length];
@@ -156,7 +158,7 @@ function GamesStrip({ onPlay }: { onPlay: (game: HubGame) => void }) {
   );
 }
 
-function GameCard({ game, className = "", onPlay, onShare }: { game: HubGame; className?: string; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void }) {
+function GameCard({ game, rules, className = "", onPlay, onShare }: { game: HubGame; rules: RuleMap; className?: string; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void }) {
   return (
     <article className={`flex flex-col overflow-hidden rounded-2xl border border-violet-400/20 bg-violet-950/70 ${className}`}>
       <div className="relative h-28 shrink-0 bg-violet-900/50">
@@ -165,7 +167,7 @@ function GameCard({ game, className = "", onPlay, onShare }: { game: HubGame; cl
       </div>
       <div className="flex flex-1 flex-col gap-2 p-3">
         <h4 className="text-base font-bold leading-snug text-white">{game.name}</h4>
-        <p className="text-xs leading-relaxed text-violet-200/75">{game.blurb}</p>
+        <p className="text-xs leading-relaxed text-violet-200/75">{getGameBlurb(game, rules[game.id])}</p>
         <p className="mt-auto flex items-center gap-1 pt-2 text-xs text-violet-200/80"><Star className="h-3.5 w-3.5 fill-violet-300/60 text-violet-300/60" aria-hidden="true" /> {game.rating.toFixed(1)}</p>
         <div className="flex gap-2">
           <button type="button" onClick={() => onPlay(game)} className="flex-1 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500">{game.native?.cta ?? "Play Now"}</button>
@@ -190,39 +192,39 @@ function SectionHeader({ id, icon: Icon, title, count }: { id: string; icon: typ
   );
 }
 
-type GameActions = { onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void };
+type GameActions = { rules: RuleMap; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void };
 
 const rewardGames = hubGames.filter((game) => game.native);
 const hubOnlyGames = hubGames.filter((game) => !game.native);
 
-function RewardGamesSection({ onPlay, onShare }: GameActions) {
+function RewardGamesSection({ rules, onPlay, onShare }: GameActions) {
   return (
     <section aria-labelledby="gamehub-rewards" className="space-y-3">
       <SectionHeader id="gamehub-rewards" icon={Trophy} title="Play & Win Free Data" count={rewardGames.length} />
       <div className="grid grid-cols-2 gap-3">
-        {rewardGames.map((game) => <GameCard key={game.id} game={game} onPlay={onPlay} onShare={onShare} />)}
+        {rewardGames.map((game) => <GameCard key={game.id} game={game} rules={rules} onPlay={onPlay} onShare={onShare} />)}
       </div>
     </section>
   );
 }
 
-function GamesTab({ videos, onPlay, onShare }: GameActions & { videos: GameVideo[] }) {
+function GamesTab({ videos, rules, onPlay, onShare }: GameActions & { videos: GameVideo[] }) {
   return (
     <div className="space-y-5">
-      <FeaturedCarousel videos={videos} onPlay={onPlay} />
-      <RewardGamesSection onPlay={onPlay} onShare={onShare} />
+      <FeaturedCarousel videos={videos} rules={rules} onPlay={onPlay} />
+      <RewardGamesSection rules={rules} onPlay={onPlay} onShare={onShare} />
       <IntroCard onBrowse={() => document.getElementById("gamehub-all")?.scrollIntoView({ behavior: "smooth", block: "start" })} />
       <GamesStrip onPlay={onPlay} />
       <section aria-labelledby="gamehub-hot">
         <SectionHeader id="gamehub-hot" icon={Flame} title="Hot & Popular" count={hotGames.length} />
         <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
-          {hotGames.map((game) => <GameCard key={game.id} game={game} className="w-44 shrink-0" onPlay={onPlay} onShare={onShare} />)}
+          {hotGames.map((game) => <GameCard key={game.id} game={game} className="w-44 shrink-0" rules={rules} onPlay={onPlay} onShare={onShare} />)}
         </div>
       </section>
       <section aria-labelledby="gamehub-all">
         <SectionHeader id="gamehub-all" icon={LayoutGrid} title="More Games from Gamehub" count={hubOnlyGames.length} />
         <div className="mt-4 grid grid-cols-2 gap-3">
-          {hubOnlyGames.map((game) => <GameCard key={game.id} game={game} onPlay={onPlay} onShare={onShare} />)}
+          {hubOnlyGames.map((game) => <GameCard key={game.id} game={game} rules={rules} onPlay={onPlay} onShare={onShare} />)}
         </div>
       </section>
     </div>
@@ -268,6 +270,9 @@ export default function GameHubDialog() {
   };
 
   const { data: videos = [] } = useQuery({ queryKey: ["gamehub-videos"], queryFn: fetchGameVideos, enabled: open, staleTime: 60_000 });
+
+  const { data: settings = [] } = useQuery({ queryKey: ["gamehub-rules"], queryFn: fetchGameRewardSettings, enabled: open, staleTime: 15_000, refetchOnWindowFocus: true });
+  const rules: RuleMap = Object.fromEntries(settings.map((row) => [row.game_id, row]));
 
   useEffect(() => {
     const handleOpen = () => setOpen(true);
@@ -321,7 +326,7 @@ export default function GameHubDialog() {
             <TabsTrigger value="leaderboard" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white"><Puzzle className="mr-2 h-4 w-4" aria-hidden="true" /> Leaderboard</TabsTrigger>
           </TabsList>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-4">
-            <TabsContent value="games" className="mt-0"><GamesTab videos={videos} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
+            <TabsContent value="games" className="mt-0"><GamesTab videos={videos} rules={rules} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
             <TabsContent value="leaderboard" className="mt-0"><GameHubLeaderboard /></TabsContent>
           </div>
         </Tabs>

@@ -149,6 +149,29 @@ export function getGameUrl(gameId: string): string {
   return page ? `${GAME_SITE}/games/${encodeURIComponent(page)}` : GAME_SITE;
 }
 
+export type GameRuleSummary = {
+  reward_gb: number;
+  enabled: boolean;
+  target_level: number | null;
+  required_seconds: number | null;
+};
+
+const formatGb = (gb: number) => (Number.isInteger(gb) ? String(gb) : String(Number(gb.toFixed(2))));
+
+/** Card text that always matches the rules the admin has currently set for a reward game. */
+export function getGameBlurb(game: HubGame, rule?: GameRuleSummary | null): string {
+  if (!game.native || !rule) return game.blurb;
+  if (!rule.enabled) return `${game.name} rewards are paused right now. You can still play for fun.`;
+  const reward = `free MTN ${formatGb(rule.reward_gb)}GB data`;
+  if (rule.required_seconds) {
+    const minutes = rule.required_seconds / 60;
+    const label = Number.isInteger(minutes) ? `${minutes} minute${minutes === 1 ? "" : "s"}` : `${rule.required_seconds} seconds`;
+    return `Play ${label} without missing a shot to win ${reward}.`;
+  }
+  const target = rule.target_level ?? game.native.targetLevel;
+  return game.blurb.replace(/\b(level|stage) \d+/i, `$1 ${target}`).replace(/free MTN data/i, reward);
+}
+
 export function findHubGame(gameId: string | null | undefined): HubGame | undefined {
   return hubGames.find((game) => game.id === gameId);
 }
