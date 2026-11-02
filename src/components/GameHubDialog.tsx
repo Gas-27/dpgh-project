@@ -21,7 +21,7 @@ import GameHubRewardPlayer from "@/components/GameHubRewardPlayer";
 import { useGameHubUser } from "@/hooks/useGameHubUser";
 import { useToast } from "@/hooks/use-toast";
 import { buildGameShareUrl, fetchGameRewardSettings, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
-import { findHubGame, getGameBlurb, hotGames, hubGames, stripGames, tagClasses, type GameRuleSummary, type HubGame } from "@/lib/gameHubGames";
+import { findHubGame, getGameBlurb, getGameHubDirectUrl, hotGames, hubGames, stripGames, tagClasses, type GameRuleSummary, type HubGame } from "@/lib/gameHubGames";
 
 type RuleMap = Record<string, GameRuleSummary>;
 
@@ -241,7 +241,7 @@ function VisitGameHubPrompt({ game, onCancel, onContinue }: { game: HubGame; onC
           Play {game.name} on Gamehub for the real, uninterrupted gameplay. Tap the button below to go there - you can sign up for free on Gamehub to win free data as well.
         </p>
         <a
-          href={`${GAMEHUB_URL}/?game=${encodeURIComponent(game.id)}`}
+          href={getGameHubDirectUrl(game.id)}
           target="_blank"
           rel="noopener noreferrer"
           className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-3 text-sm font-semibold text-white"

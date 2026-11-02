@@ -142,6 +142,22 @@ const gamePages: Record<string, string> = {
   "speed-racer": "speed-racer",
 };
 
+/** Where a player is sent to keep playing a Gamehub-hosted game directly on gamehubgh.com. */
+export function getGameHubDirectUrl(gameId: string): string {
+  return `https://gamehubgh.com/?game=${encodeURIComponent(gameId)}`;
+}
+
+const GAME_OVER_PATTERN = /game[\s_-]?over|gameover|lost|lose|died|dead|fail|crash|defeat/i;
+
+/** Detects a "game over" signal posted by a game hosted on gamehubgh.com. */
+export function isGameOverMessage(data: unknown): boolean {
+  if (typeof data === "string") return GAME_OVER_PATTERN.test(data);
+  if (!data || typeof data !== "object") return false;
+  const record = data as Record<string, unknown>;
+  if (record.gameOver === true || record.isGameOver === true || record.dead === true || record.failed === true) return true;
+  return ["type", "event", "action", "status", "state", "message"].some((key) => typeof record[key] === "string" && GAME_OVER_PATTERN.test(record[key] as string));
+}
+
 export function getGameUrl(gameId: string): string {
   const native = hubGames.find((game) => game.id === gameId)?.native;
   if (native) return native.src;

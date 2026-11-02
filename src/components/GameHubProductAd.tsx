@@ -1,5 +1,6 @@
 import { BadgeCheck, X } from "lucide-react";
-import type { GameHubAd } from "@/lib/gameHubAds";
+import { useQuery } from "@tanstack/react-query";
+import { fetchGameHubAdImage, type GameHubAd } from "@/lib/gameHubAds";
 
 type GameHubProductAdProps = {
   ad: GameHubAd;
@@ -8,6 +9,14 @@ type GameHubProductAdProps = {
 };
 
 export default function GameHubProductAd({ ad, onOpen, onClose }: GameHubProductAdProps) {
+  const { data: lazyImage, isLoading } = useQuery({
+    queryKey: ["game-hub-ad-image", ad.id],
+    queryFn: () => fetchGameHubAdImage(ad.id),
+    enabled: !ad.image,
+    staleTime: 30 * 60 * 1000,
+  });
+  const imageSrc = ad.image || lazyImage || null;
+
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="gh-ad-title" className="absolute inset-0 z-30 flex items-center justify-center bg-black/75 p-4">
       <div className="relative w-full max-w-sm overflow-hidden rounded-2xl border border-violet-400/30 bg-[#150a30] text-white shadow-2xl">
@@ -20,10 +29,10 @@ export default function GameHubProductAd({ ad, onOpen, onClose }: GameHubProduct
           <X className="h-5 w-5" aria-hidden="true" />
         </button>
         <button type="button" onClick={() => onOpen(ad)} className="block w-full text-left">
-          {ad.image ? (
-            <img src={ad.image} alt={ad.title} className="h-56 w-full object-cover" />
+          {imageSrc ? (
+            <img src={imageSrc} alt={ad.title} className="h-56 w-full object-cover" />
           ) : (
-            <div className="flex h-56 w-full items-center justify-center bg-violet-950 text-sm text-violet-300">No image</div>
+            <div className="flex h-56 w-full items-center justify-center bg-violet-950 text-sm text-violet-300">{isLoading ? "Loading image" : ""}</div>
           )}
           <div className="space-y-2 p-4">
             <div className="flex items-center gap-2">

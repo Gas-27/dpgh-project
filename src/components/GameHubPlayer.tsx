@@ -3,7 +3,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Share2, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { buildGameShareUrl, maskEmail, shareText, submitScore } from "@/lib/gameHubApi";
-import { getGameUrl, type HubGame } from "@/lib/gameHubGames";
+import { getGameHubDirectUrl, getGameUrl, isGameOverMessage, type HubGame } from "@/lib/gameHubGames";
 
 type GameHubPlayerProps = {
   game: HubGame;
@@ -46,6 +46,7 @@ export default function GameHubPlayer({ game, userEmail, signedIn, onClose }: Ga
       if (!event.origin.endsWith("gamehubgh.com")) return;
       const data = event.data as { type?: string; score?: number } | null;
       if (data?.type === "gamehub-score" && typeof data.score === "number") void saveScore(data.score);
+      if (isGameOverMessage(event.data)) window.location.assign(getGameHubDirectUrl(game.id));
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
