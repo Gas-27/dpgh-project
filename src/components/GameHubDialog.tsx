@@ -6,38 +6,23 @@ import {
   ExternalLink,
   Flame,
   Gamepad2,
-  Grid3x3,
-  Layers,
-  Mountain,
+  LayoutGrid,
   Play,
   Puzzle,
-  Rocket,
   Star,
   Trophy,
   Users,
-  Zap,
-  type LucideIcon,
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { hotGames, hubGames, stripGames, tagClasses, type HubGame } from "@/lib/gameHubGames";
 
 export const OPEN_GAMEHUB_EVENT = "open-gamehub";
 const GAMEHUB_URL = "https://gamehubgh.com";
 
-type Game = { name: string; tag: string; blurb: string; rating: number; icon: LucideIcon; gradient: string; tagClass: string };
-
-const games: Game[] = [
-  { name: "Connect 4", tag: "Online", blurb: "Invite a friend and play Connect Four live!", rating: 5.0, icon: Users, gradient: "from-sky-500/40 via-blue-700/40 to-indigo-900/60", tagClass: "bg-amber-500 text-amber-950" },
-  { name: "Tetris", tag: "Puzzle", blurb: "Stack falling blocks and clear lines!", rating: 4.3, icon: Layers, gradient: "from-fuchsia-500/40 via-purple-700/40 to-violet-900/60", tagClass: "bg-sky-500 text-sky-950" },
-  { name: "Helicopter Cave", tag: "Action", blurb: "Navigate your helicopter through caves!", rating: 3.1, icon: Mountain, gradient: "from-orange-500/30 via-stone-700/50 to-stone-900/70", tagClass: "bg-rose-500 text-rose-950" },
-  { name: "Asteroids", tag: "Action", blurb: "Blast rocks, dodge debris and survive the field.", rating: 4.6, icon: Rocket, gradient: "from-indigo-500/40 via-violet-800/40 to-slate-900/70", tagClass: "bg-rose-500 text-rose-950" },
-  { name: "Laser Dash", tag: "Action", blurb: "Weave through lasers at lightning speed.", rating: 4.4, icon: Zap, gradient: "from-cyan-400/40 via-blue-700/40 to-purple-900/60", tagClass: "bg-rose-500 text-rose-950" },
-  { name: "Sliding Puzzle", tag: "Puzzle", blurb: "Slide the tiles into place for the highest score.", rating: 4.7, icon: Grid3x3, gradient: "from-emerald-400/30 via-teal-700/40 to-slate-900/70", tagClass: "bg-sky-500 text-sky-950" },
-];
-
 const slides = [
-  { label: "Sliding Tiles", title: "Sliding Puzzle", text: "Get the highest score and get real money", icon: Grid3x3, gradient: "from-indigo-600 via-violet-700 to-fuchsia-700" },
-  { label: "Online", title: "Connect 4", text: "Invite a friend and play live, one-on-one", icon: Users, gradient: "from-sky-600 via-blue-700 to-indigo-800" },
+  { label: "Sliding Tiles", title: "Sliding Puzzle", text: "Get the highest score and get real money", image: "/game-previews/sliding-puzzle.webp" },
+  { label: "Online", title: "Connect 4", text: "Invite a friend and play live, one-on-one", image: "/game-previews/connect-four-online.webp" },
 ];
 
 const leaderboardColumns = ["Rank", "Player", "Score"];
@@ -73,33 +58,33 @@ function FeaturedCarousel() {
     return () => window.clearInterval(timer);
   }, []);
   const slide = slides[index];
-  const SlideIcon = slide.icon;
 
   return (
-    <div className={`relative overflow-hidden rounded-3xl border border-violet-400/30 bg-gradient-to-br ${slide.gradient} p-5`}>
-      <SlideIcon className="absolute -right-4 -top-4 h-36 w-36 text-white/15" aria-hidden="true" />
-      <div className="relative flex min-h-[160px] flex-col justify-end">
+    <div className="relative overflow-hidden rounded-3xl border border-violet-400/30 bg-violet-950">
+      <img src={slide.image || "/placeholder.svg"} alt="" className="absolute inset-0 h-full w-full object-cover" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#0d0620] via-[#0d0620]/55 to-transparent" />
+      <div className="relative flex min-h-[220px] flex-col justify-end p-5">
         <p className="text-xs font-bold uppercase tracking-widest text-cyan-200">{slide.label}</p>
         <h3 className="mt-1 text-2xl font-bold text-white">{slide.title}</h3>
-        <p className="mt-1 max-w-[60%] text-sm leading-relaxed text-white/80">{slide.text}</p>
+        <p className="mt-1 max-w-[55%] text-sm leading-relaxed text-white/85">{slide.text}</p>
         <button
           type="button"
           onClick={openGameHub}
-          className="absolute bottom-0 right-0 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white"
+          className="absolute bottom-10 right-5 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white"
         >
           <Play className="h-4 w-4" aria-hidden="true" /> Play now
         </button>
-      </div>
-      <div className="relative mt-4 flex justify-center gap-2">
-        {slides.map((item, dot) => (
-          <button
-            key={item.title}
-            type="button"
-            aria-label={`Show ${item.title}`}
-            onClick={() => setIndex(dot)}
-            className={`h-1.5 rounded-full transition-all ${dot === index ? "w-6 bg-white" : "w-1.5 bg-white/40"}`}
-          />
-        ))}
+        <div className="mt-4 flex justify-center gap-2">
+          {slides.map((item, dot) => (
+            <button
+              key={item.title}
+              type="button"
+              aria-label={`Show ${item.title}`}
+              onClick={() => setIndex(dot)}
+              className={`h-1.5 rounded-full transition-all ${dot === index ? "w-6 bg-white" : "w-1.5 bg-white/40"}`}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -107,7 +92,7 @@ function FeaturedCarousel() {
 
 function IntroCard() {
   const stats = [
-    { icon: Gamepad2, value: "30+", label: "Games" },
+    { icon: Gamepad2, value: `${hubGames.length}+`, label: "Games" },
     { icon: Users, value: "Live", label: "Leaderboards" },
     { icon: Trophy, value: "1v1", label: "Multiplayer" },
   ];
@@ -143,12 +128,10 @@ function GamesStrip() {
   return (
     <section aria-label="Quick play" className="rounded-3xl border border-violet-400/25 bg-violet-950/60 p-4">
       <div className="flex gap-3 overflow-x-auto pb-1">
-        {games.map(({ name, icon: Icon, gradient }) => (
-          <button key={name} type="button" onClick={openGameHub} className="flex w-24 shrink-0 flex-col items-center gap-2">
-            <span className={`flex h-20 w-24 items-center justify-center rounded-2xl border border-violet-300/20 bg-gradient-to-br ${gradient}`}>
-              <Icon className="h-8 w-8 text-white" aria-hidden="true" />
-            </span>
-            <span className="w-full truncate text-center text-sm font-semibold text-white">{name}</span>
+        {stripGames.map((game) => (
+          <button key={game.id} type="button" onClick={openGameHub} className="flex w-24 shrink-0 flex-col items-center gap-2">
+            <img src={game.image || "/placeholder.svg"} alt="" loading="lazy" className="h-20 w-24 rounded-2xl border border-violet-300/20 object-cover" />
+            <span className="w-full truncate text-center text-sm font-semibold text-white">{game.stripName ?? game.name}</span>
           </button>
         ))}
       </div>
@@ -172,31 +155,52 @@ function TasksRow() {
   );
 }
 
+function GameCard({ game, className = "" }: { game: HubGame; className?: string }) {
+  return (
+    <article className={`flex flex-col overflow-hidden rounded-2xl border border-violet-400/20 bg-violet-950/70 ${className}`}>
+      <div className="relative h-28 shrink-0 bg-violet-900/50">
+        <img src={game.image || "/placeholder.svg"} alt={`${game.name} preview`} loading="lazy" className="h-full w-full object-cover" />
+        <span className={`absolute left-2 top-2 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${tagClasses[game.tag]}`}>{game.tag}</span>
+      </div>
+      <div className="flex flex-1 flex-col gap-2 p-3">
+        <h4 className="text-base font-bold leading-snug text-white">{game.name}</h4>
+        <p className="text-xs leading-relaxed text-violet-200/75">{game.blurb}</p>
+        <p className="mt-auto flex items-center gap-1 pt-2 text-xs text-violet-200/80"><Star className="h-3.5 w-3.5 fill-violet-300/60 text-violet-300/60" aria-hidden="true" /> {game.rating.toFixed(1)}</p>
+        <button type="button" onClick={openGameHub} className="rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500">Play Now</button>
+      </div>
+    </article>
+  );
+}
+
+function SectionHeader({ id, icon: Icon, title, count }: { id: string; icon: typeof Flame; title: string; count: number }) {
+  return (
+    <div className="flex items-center justify-between gap-3 border-b border-violet-400/20 pb-3">
+      <h3 id={id} className="flex items-center gap-3 text-xl font-bold text-white">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-900/70"><Icon className="h-5 w-5 text-sky-300" aria-hidden="true" /></span>
+        {title}
+      </h3>
+      <span className="rounded-full border border-violet-400/25 bg-violet-950/70 px-3 py-1 text-xs text-violet-200">{count} games</span>
+    </div>
+  );
+}
+
 function HotAndPopular() {
   return (
     <section aria-labelledby="gamehub-hot">
-      <div className="flex items-center justify-between gap-3 border-b border-violet-400/20 pb-3">
-        <h3 id="gamehub-hot" className="flex items-center gap-3 text-xl font-bold text-white">
-          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-violet-900/70"><Flame className="h-5 w-5 text-sky-300" aria-hidden="true" /></span>
-          Hot &amp; Popular
-        </h3>
-        <span className="rounded-full border border-violet-400/25 bg-violet-950/70 px-3 py-1 text-xs text-violet-200">{games.length} games</span>
-      </div>
+      <SectionHeader id="gamehub-hot" icon={Flame} title="Hot & Popular" count={hotGames.length} />
       <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
-        {games.map(({ name, tag, blurb, rating, icon: Icon, gradient, tagClass }) => (
-          <article key={name} className="flex w-44 shrink-0 flex-col overflow-hidden rounded-2xl border border-violet-400/20 bg-violet-950/70">
-            <div className={`relative flex h-28 items-center justify-center bg-gradient-to-br ${gradient}`}>
-              <span className={`absolute left-2 top-2 rounded-md px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${tagClass}`}>{tag}</span>
-              <Icon className="h-10 w-10 text-white/90" aria-hidden="true" />
-            </div>
-            <div className="flex flex-1 flex-col gap-2 p-3">
-              <h4 className="text-base font-bold text-white">{name}</h4>
-              <p className="text-xs leading-relaxed text-violet-200/75">{blurb}</p>
-              <p className="mt-auto flex items-center gap-1 text-xs text-violet-200/80"><Star className="h-3.5 w-3.5 fill-amber-300 text-amber-300" aria-hidden="true" /> {rating.toFixed(1)}</p>
-              <button type="button" onClick={openGameHub} className="rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500">Play Now</button>
-            </div>
-          </article>
-        ))}
+        {hotGames.map((game) => <GameCard key={game.id} game={game} className="w-44 shrink-0" />)}
+      </div>
+    </section>
+  );
+}
+
+function AllGames() {
+  return (
+    <section aria-labelledby="gamehub-all">
+      <SectionHeader id="gamehub-all" icon={LayoutGrid} title="All Games" count={hubGames.length} />
+      <div className="mt-4 grid grid-cols-2 gap-3">
+        {hubGames.map((game) => <GameCard key={game.id} game={game} />)}
       </div>
     </section>
   );
@@ -204,12 +208,13 @@ function HotAndPopular() {
 
 function GamesTab() {
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       <FeaturedCarousel />
       <IntroCard />
       <GamesStrip />
       <TasksRow />
       <HotAndPopular />
+      <AllGames />
     </div>
   );
 }
@@ -221,8 +226,8 @@ function LeaderboardTab() {
         <h3 className="flex items-center gap-2 text-xl font-bold text-white"><Trophy className="h-5 w-5 text-amber-300" aria-hidden="true" /> Leaderboard</h3>
         <p className="mt-1 text-sm text-violet-200/75">Top players across every Game Hub game. Climb the ranks to win rewards.</p>
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-          {games.map(({ name }, position) => (
-            <span key={name} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${position === 0 ? "bg-violet-600 text-white" : "border border-violet-400/25 text-violet-200"}`}>{name}</span>
+          {hubGames.map((game, position) => (
+            <span key={game.id} className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${position === 0 ? "bg-violet-600 text-white" : "border border-violet-400/25 text-violet-200"}`}>{game.name}</span>
           ))}
         </div>
       </div>
