@@ -17,6 +17,7 @@ export default function GameHubPlayer({ game, userEmail, signedIn, onClose }: Ga
   const queryClient = useQueryClient();
   const [scoreInput, setScoreInput] = useState("");
   const [saving, setSaving] = useState(false);
+  const [gameOver, setGameOver] = useState(false);
   const gameUrl = getGameUrl(game.id);
 
   const saveScore = async (value: number) => {
@@ -46,7 +47,7 @@ export default function GameHubPlayer({ game, userEmail, signedIn, onClose }: Ga
       if (!event.origin.endsWith("gamehubgh.com")) return;
       const data = event.data as { type?: string; score?: number } | null;
       if (data?.type === "gamehub-score" && typeof data.score === "number") void saveScore(data.score);
-      if (isGameOverMessage(event.data)) window.location.assign(getGameHubDirectUrl(game.id));
+      if (isGameOverMessage(event.data)) setGameOver(true);
     };
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
@@ -77,6 +78,23 @@ export default function GameHubPlayer({ game, userEmail, signedIn, onClose }: Ga
         </a>
       </header>
       <iframe title={game.name} src={gameUrl} allow="fullscreen; autoplay; clipboard-write" className="min-h-0 w-full flex-1 border-0 bg-black" />
+      {gameOver ? (
+        <div role="dialog" aria-modal="true" aria-labelledby="gh-continue-title" className="absolute inset-0 z-30 flex items-center justify-center bg-black/75 p-4">
+          <div className="w-full max-w-sm space-y-4 rounded-2xl border border-violet-400/30 bg-[#150a30] p-6 text-center text-white shadow-2xl">
+            <h3 id="gh-continue-title" className="text-xl font-bold">Game over</h3>
+            <p className="text-sm text-violet-200">Keep playing {game.name} without interruption. Continue on GameHub for a smoother experience.</p>
+            <a
+              href={getGameHubDirectUrl(game.id)}
+              className="block rounded-xl bg-gradient-to-r from-fuchsia-500 to-violet-500 px-4 py-3 text-sm font-bold text-white"
+            >
+              Continue on GameHub
+            </a>
+            <button type="button" onClick={() => setGameOver(false)} className="text-xs text-violet-300 underline">
+              Not now
+            </button>
+          </div>
+        </div>
+      ) : null}
       <form
         className="flex items-center gap-2 border-t border-violet-400/15 bg-violet-950/80 px-3 py-3"
         onSubmit={(event) => {

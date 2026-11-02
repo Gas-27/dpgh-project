@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { BadgeCheck, X } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { fetchGameHubAdImage, type GameHubAd } from "@/lib/gameHubAds";
@@ -9,13 +10,14 @@ type GameHubProductAdProps = {
 };
 
 export default function GameHubProductAd({ ad, onOpen, onClose }: GameHubProductAdProps) {
+  const [inlineFailed, setInlineFailed] = useState(false);
   const { data: lazyImage, isLoading } = useQuery({
     queryKey: ["game-hub-ad-image", ad.id],
     queryFn: () => fetchGameHubAdImage(ad.id),
-    enabled: !ad.image,
+    enabled: !ad.image || inlineFailed,
     staleTime: 30 * 60 * 1000,
   });
-  const imageSrc = ad.image || lazyImage || null;
+  const imageSrc = (inlineFailed ? lazyImage : ad.image || lazyImage) || null;
 
   return (
     <div role="dialog" aria-modal="true" aria-labelledby="gh-ad-title" className="absolute inset-0 z-30 flex items-center justify-center bg-black/75 p-4">
@@ -30,7 +32,7 @@ export default function GameHubProductAd({ ad, onOpen, onClose }: GameHubProduct
         </button>
         <button type="button" onClick={() => onOpen(ad)} className="block w-full text-left">
           {imageSrc ? (
-            <img src={imageSrc} alt={ad.title} className="h-56 w-full object-cover" />
+            <img src={imageSrc} alt={ad.title} onError={() => setInlineFailed(true)} className="h-56 w-full object-cover" />
           ) : (
             <div className="flex h-56 w-full items-center justify-center bg-violet-950 text-sm text-violet-300">{isLoading ? "Loading image" : ""}</div>
           )}
