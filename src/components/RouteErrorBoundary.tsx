@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { canAutoRecover, isChunkLoadError, recoverFromStaleBundle } from "@/lib/chunkRecovery";
 
 interface Props {
   children: ReactNode;
@@ -20,17 +21,26 @@ export default class RouteErrorBoundary extends Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: ErrorInfo) {
-    console.error("[v0] Route render error:", error, info.componentStack);
+    console.error("Route render error:", error, info.componentStack);
+    if (isChunkLoadError(error)) void recoverFromStaleBundle();
   }
 
   handleReload = () => {
     this.setState({ error: null });
-    window.location.reload();
+    void recoverFromStaleBundle({ force: true });
   };
 
   render() {
     const { error } = this.state;
     if (!error) return this.props.children;
+
+    if (isChunkLoadError(error) && canAutoRecover()) {
+      return (
+        <div className="min-h-screen bg-background flex items-center justify-center p-6">
+          <p className="text-sm text-muted-foreground" role="status">Updating to the latest version...</p>
+        </div>
+      );
+    }
 
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">

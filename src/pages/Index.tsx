@@ -6,6 +6,7 @@ import HeroSection from "@/components/HeroSection";
 import TrustTicker from "@/components/TrustTicker";
 import ServicesSection from "@/components/ServicesSection";
 import AgentSection from "@/components/AgentSection";
+import HomeGamesSection from "@/components/HomeGamesSection";
 import Footer from "@/components/Footer";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
   import ChatBot from "@/components/ChatBot";
@@ -43,6 +44,7 @@ const Index = () => {
         <HeroSection />
         <TrustTicker />
         <ServicesSection />
+        <HomeGamesSection />
         <section className="container max-w-5xl mx-auto px-4 py-8">
           <PremiumSubscriptionBanner />
         </section>

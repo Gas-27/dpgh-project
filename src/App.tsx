@@ -19,6 +19,7 @@ import RouteErrorBoundary from "@/components/RouteErrorBoundary";
 import { ThemeProvider, ThemeToggle } from "@/components/ThemeProvider";
 import SocialBoost from "./pages/SocialBoost";
 import PaymentVerifier from "@/components/PaymentVerifier";
+import { isChunkLoadError, recoverFromStaleBundle } from "@/lib/chunkRecovery";
 
 // Wraps React.lazy so that a stale-deploy chunk failure (old bundle requesting
 // chunk filenames that no longer exist -> server returns index.html with a
@@ -30,13 +31,9 @@ const lazyWithReload = (importer: () => Promise<{ default: React.ComponentType<a
     try {
       return await importer();
     } catch (error) {
-      const key = "chunk_reload_at";
-      const last = Number(sessionStorage.getItem(key) || 0);
-      // Only reload once per 10s window to avoid infinite reload loops
-      if (Date.now() - last > 10000) {
-        sessionStorage.setItem(key, String(Date.now()));
-        window.location.reload();
-        // Return a never-resolving placeholder while the reload happens
+      // Only reload once per window to avoid infinite reload loops
+      if (isChunkLoadError(error) && (await recoverFromStaleBundle())) {
+        // Never-resolving placeholder while the reload happens
         return await new Promise<{ default: React.ComponentType<any> }>(() => {});
       }
       throw error;
@@ -84,7 +81,8 @@ const DataApiGhana = lazyWithReload(() => import("./pages/seo/DataApiGhana"));
 const StreamingDataBundles = lazyWithReload(() => import("./pages/seo/StreamingDataBundles"));
 const StudentDataBundles = lazyWithReload(() => import("./pages/seo/StudentDataBundles"));
 const AirtimeTopUpGhana = lazyWithReload(() => import("./pages/seo/AirtimeTopUpGhana"));
-const PremiumSubscriptionPage = lazyWithReload(() => import("./pages/seo/PremiumSubscription"));
+ const PremiumSubscriptionPage = lazyWithReload(() => import("./pages/seo/PremiumSubscription"));
+const GamesGhanaPage = lazyWithReload(() => import("./pages/seo/GamesGhana"));
 const DataAgentBusiness = lazyWithReload(() => import("./pages/seo/DataAgentBusiness"));
 const UssdDataServices = lazyWithReload(() => import("./pages/seo/UssdDataServices"));
 const BeceResultsChecker = lazyWithReload(() => import("./pages/seo/BeceResultsChecker"));
@@ -464,6 +462,7 @@ return (
                   <Route path="/student-data-bundles-ghana" element={<StudentDataBundles />} />
                   <Route path="/airtime-top-up-ghana" element={<AirtimeTopUpGhana />} />
                   <Route path="/premium-subscription" element={<PremiumSubscriptionPage />} />
+ <Route path="/games" element={<GamesGhanaPage />} />
                   <Route path="/data-agent-business-ghana" element={<DataAgentBusiness />} />
                   <Route path="/ussd-data-services-ghana" element={<UssdDataServices />} />
                   <Route path="/bece-results-checker" element={<BeceResultsChecker />} />

@@ -1,17 +1,19 @@
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { isChunkLoadError, recoverFromStaleBundle } from "@/lib/chunkRecovery";
 
 // After a new deployment, an old cached bundle can request chunk files that no
-// longer exist, causing preload failures. Reload once (throttled) to fetch the
-// fresh bundle so users don't see a blank page or have to refresh manually.
-window.addEventListener("vite:preloadError", () => {
-  const key = "chunk_reload_at";
-  const last = Number(sessionStorage.getItem(key) || 0);
-  if (Date.now() - last > 10000) {
-    sessionStorage.setItem(key, String(Date.now()));
-    window.location.reload();
-  }
+// longer exist. Safari reports this as "Importing a module script failed.".
+// Clear the stale service worker/caches and reload once (throttled) so users
+// get the fresh bundle instead of an error screen.
+window.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault();
+  void recoverFromStaleBundle();
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  if (isChunkLoadError(event.reason)) void recoverFromStaleBundle();
 });
 
 createRoot(document.getElementById("root")!).render(<App />);

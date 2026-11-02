@@ -1,4 +1,4 @@
-const CACHE_NAME = 'dataapp-v2';
+const CACHE_NAME = 'dataapp-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -47,11 +47,16 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Clone the response before caching
-        const responseClone = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseClone);
-        });
+        // Only cache successful, non-HTML responses for scripts/styles so a SPA
+        // fallback page is never stored as a missing JS chunk.
+        const type = response.headers.get('content-type') || '';
+        const isAsset = event.request.destination === 'script' || event.request.destination === 'style';
+        if (response.ok && (!isAsset || !type.includes('text/html'))) {
+          const responseClone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseClone);
+          });
+        }
         return response;
       })
       .catch(() => {
