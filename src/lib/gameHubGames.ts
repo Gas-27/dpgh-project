@@ -8,6 +8,7 @@ export type HubGame = {
   rating: number;
   image: string;
   stripName?: string;
+  native?: { src: string; targetLevel: number };
 };
 
 export const tagClasses: Record<GameTag, string> = {
@@ -20,6 +21,8 @@ export const tagClasses: Record<GameTag, string> = {
 const img = (slug: string) => `/game-previews/${slug}.webp`;
 
 export const hubGames: HubGame[] = [
+  { id: "cup-shuffle", name: "Cup Shuffle", tag: "Puzzle", blurb: "Reach level 12 to win a free MTN 5GB! 2 lives, extra life GH\u20B54.", rating: 4.9, image: "/game-previews/cup-shuffle.png", native: { src: "/games/cup-shuffle.html", targetLevel: 12 } },
+  { id: "snap-fit", name: "Snap Fit", tag: "Action", blurb: "Reach level 20 to win a free MTN 5GB! 2 lives, extra life GH\u20B54.", rating: 4.9, image: "/game-previews/snap-fit.png", native: { src: "/games/snap-fit.html", targetLevel: 20 } },
   { id: "aim-for-it", name: "Aim For It", tag: "Action", blurb: "Master the art of archery and hit bullseyes!", rating: 3.9, image: img("aim-for-it") },
   { id: "timer-challenge", name: "Timer Challenge", tag: "Action", blurb: "Stop the timer at exactly the right moment!", rating: 4.0, image: img("timer-challenge") },
   { id: "snake-game", name: "Snake Game", tag: "Strategy", blurb: "Grow your snake by eating food!", rating: 3.8, image: img("snake-game") },
@@ -138,6 +141,8 @@ const gamePages: Record<string, string> = {
 };
 
 export function getGameUrl(gameId: string): string {
+  const native = hubGames.find((game) => game.id === gameId)?.native;
+  if (native) return native.src;
   const page = gamePages[gameId];
   return page ? `${GAME_SITE}/games/${encodeURIComponent(page)}` : GAME_SITE;
 }

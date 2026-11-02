@@ -336,6 +336,19 @@ let P=null,res=null,marks=[],a0=0,stagePts=0;
 const parts=[],pops=[],rings=[],amb=[];
 try{const b=JSON.parse(localStorage.getItem('snapfit.best')||'null');if(b&&b.pts>=0)best=b}catch(e){}
 
+/* ================= Game Hub bridge: levels, lives and rewards are decided by the server, not this page ================= */
+const HUB=new URLSearchParams(location.search).get('hub')==='1'&&window.parent!==window;
+const hub={ready:false,level:1,lives:2,status:'active',pending:null};
+function hubSend(m){try{window.parent.postMessage(Object.assign({source:'gamehub'},m),location.origin)}catch(e){}}
+if(HUB)window.addEventListener('message',e=>{
+  if(e.source!==window.parent||e.origin!==location.origin)return;
+  const d=e.data;if(!d||d.source!=='gamehub-parent')return;
+  if(d.type==='gh-state'){hub.ready=true;hub.level=d.level;hub.lives=d.lives;hub.status=d.status;tries=d.lives;hubOnState()}
+  else if(d.type==='gh-level-result'&&hub.pending){const p=hub.pending;hub.pending=null;p(d)}
+  else if(d.type==='gh-continue'){tries=Math.max(1,d.lives||1);$('card').hidden=true;setHUD();retry()}
+});
+
+
 function resize(){const f=field.getBoundingClientRect();const s=Math.min(f.width/W,f.height/H);if(!(s>0))return;
   const cw=Math.floor(W*s),ch=Math.floor(H*s),dpr=Math.min(window.devicePixelRatio||1,2.5);
   cv.style.width=cw+'px';cv.style.height=ch+'px';cv.width=Math.round(cw*dpr);cv.height=Math.round(ch*dpr);S=cv.width/W}
@@ -419,7 +432,7 @@ function resolve(err,q2){
     if(perfect)burst(180,280,26,['#ffd24a','#fff3b0','#ffffff'],{sp:260,k:'star',s:4});
     if(pts>best.pts||level+1>best.level){best={pts:Math.max(pts,best.pts),level:Math.max(level+1,best.level)};try{localStorage.setItem('snapfit.best',JSON.stringify(best))}catch(e){}}
   }else{
-    streak=0;tries--;bad();shake=7;msg={text:err<lv.tol*1.6?'So close!':'Missed',sub:off,color:'#fff',t:0};
+    streak=0;tries--;if(HUB)hubSend({type:'gh-life-lost',level:level+1});bad();shake=7;msg={text:err<lv.tol*1.6?'So close!':'Missed',sub:off,color:'#fff',t:0};
     if(tries<=0)marks[level%5]='x';
   }
   setHUD();
@@ -431,7 +444,7 @@ function update(dt){
   if(st==='intro'&&(resT+=dt)>.45){st='play';resT=0}
   if(shake>0)shake=Math.max(0,shake-dt*30);if(fade>0)fade=Math.max(0,fade-dt*2.6);if(flash>0)flash=Math.max(0,flash-dt*1.6);
   if(P)updateP(dt);
-  if(st==='result'){resT+=dt;if(resT>1.35){if(res.ok){if((level+1)%5===0)showStage();else nextLevel()}else if(tries<=0)showOver();else retry()}}
+  if(st==='result'){resT+=dt;if(resT>1.35){if(res.ok){if(HUB)hubAdvance();else if((level+1)%5===0)showStage();else nextLevel()}else if(tries<=0)showOver();else retry()}}
   if(msg)msg.t+=dt;
   for(let i=parts.length-1;i>=0;i--){const p=parts[i];p.t+=dt;p.vy+=p.g*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.r+=p.vr*dt;if(p.t>p.life)parts.splice(i,1)}
   for(let i=pops.length-1;i>=0;i--){pops[i].t+=dt;if(pops[i].t>1.1)pops.splice(i,1)}
@@ -662,8 +675,27 @@ function render(){
 /* ================= flow ================= */
 function introBanner(){const lines=[];if(level%5===0)lines.push([stageName()+(level<NSEG?' · stage '+(level/5+1)+' of 4':'')]);
   lines.push([lv.note]);if(lv.tw)lines.push([lv.tw,'tw']);lines.push(['Now at: '+SCENES[lv.scene].name,'loc']);banner('LEVEL '+(level+1),lv.n,lines)}
-function enterLevel(){lv=getLevel(level);tries=2;newAttempt();setAmb();st='intro';resT=0;fade=.9;setHUD();introBanner()}
-function startGame(){ac();level=0;pts=0;perfects=0;streak=0;stagePts=0;marks=[];$('card').hidden=true;enterLevel();fade=1}
+function enterLevel(){lv=getLevel(level);if(!HUB)tries=2;newAttempt();setAmb();st='intro';resT=0;fade=.9;setHUD();introBanner()}
+function startGame(){if(HUB&&!hub.ready)return;ac();level=HUB?hub.level-1:0;pts=0;perfects=0;streak=0;stagePts=0;marks=[];$('card').hidden=true;enterLevel();fade=1}
+function hubAdvance(){
+  st='sync';
+  new Promise(r=>{hub.pending=r;hubSend({type:'gh-level-complete',level:level+1})}).then(d=>{
+    if(!d.ok){banner('NOT VERIFIED',lv.n,[[d.message||'That level could not be verified. Play it again.','tw']]);newAttempt();st='intro';resT=0;fade=.5;return}
+    hub.level=d.level;hub.lives=d.lives;hub.status=d.status;
+    if(d.status==='cleared'){showVictory();return}
+    if((level+1)%5===0)showStage();else nextLevel();
+  });
+}
+function hubOnState(){
+  if(st!=='menu'&&st!=='over')return;
+  if(hub.status==='cleared')showVictory();else if(hub.lives<=0)showOver();else showMenu();
+}
+function showVictory(){
+  st='over';fanfare();const c=$('card');c.hidden=false;
+  c.innerHTML='<div class="k">All 20 levels cleared</div><h2>You did it!</h2><div class="tip">Your run was verified. Claim your free MTN 5GB now.</div><div class="btns"><button class="btn go solo" id="claimBtn" type="button">Claim MTN 5GB</button></div>';
+  $('claimBtn').onclick=()=>hubSend({type:'gh-open-claim'});
+  hubSend({type:'gh-open-claim'});
+}
 function nextLevel(){level++;if(level%5===0){marks=[];stagePts=0}enterLevel();
   if(level===NSEG)banner('ALL 20 CLEARED','Endless mode',[['Speed climbs every level. How far can you go?','tw']])}
 function retry(){newAttempt();st='intro';resT=0;fade=.5;banner('TRY AGAIN',lv.n,[[tries+(tries===1?' try':' tries')+' left.']])}
@@ -678,6 +710,12 @@ function showStage(){
   $('nextBtn').onclick=()=>{$('card').hidden=true;nextLevel()}}
 function showOver(){
   st='over';const c=$('card');c.hidden=false;
+  if(HUB){
+    c.innerHTML='<div class="k">Out of lives</div><h2>Level '+(level+1)+' is waiting</h2><div class="tip">Buy 1 life for GH\u20B54 to continue exactly here, or end the game and start again from level 1.</div><div class="btns"><button class="btn go solo" id="buyBtn" type="button">Continue options</button></div>';
+    $('buyBtn').onclick=()=>hubSend({type:'gh-open-buy'});
+    hubSend({type:'gh-open-buy'});
+    return;
+  }
   c.innerHTML='<div class="k">Out of tries</div><h2>You reached level '+(level+1)+'</h2><div><div class="big">'+pts+'</div><div class="sub">POINTS</div></div>'+
    '<div class="stats"><div>'+(level+1)+'<small>level</small></div><div>'+perfects+'<small>perfect</small></div><div>'+best.pts+'<small>best</small></div></div>'+
    '<div class="btns"><button class="btn" id="shareBtn" type="button">Share</button><button class="btn go" id="againBtn" type="button">Play again</button></div>'+
@@ -686,6 +724,12 @@ function showOver(){
   $('shareBtn').onclick=()=>{const t='I reached level '+(level+1)+' with '+pts+' pts in Snap Fit!';const b=$('shareBtn');
     try{navigator.clipboard.writeText(t).then(()=>{b.textContent='Copied'},()=>{b.textContent=t})}catch(e){b.textContent='Copy failed'}}}
 function showMenu(){st='menu';lv=LEVELS[0];setAmb();const c=$('card');c.hidden=false;
+  if(HUB){
+    const resume=hub.level>1;
+    c.innerHTML='<div class="k">Win free data</div><h2>Snap Fit</h2><ul><li>Clear all 20 levels to claim a free MTN 5GB bundle.</li><li>You have 2 lives. A miss costs a life.</li><li>Out of lives? Buy 1 life for GH\u20B54 from your wallet to continue.</li><li>Progress is verified on our servers. Bots and tampering void the reward.</li></ul><div class="btns"><button class="btn go solo" id="startBtn" type="button"'+(hub.ready?'':' disabled')+'>'+(hub.ready?(resume?'Continue level '+hub.level:'Start'):'Loading...')+'</button></div>';
+    $('startBtn').onclick=startGame;
+    return;
+  }
   c.innerHTML='<div class="k">New game</div><h2>Snap Fit</h2><ul><li>20 levels, 20 different places: picnic, circus, space, a haunted hill, a neon city and more.</li><li>Melons, pizza, emojis, aliens, basketballs, needles and pens. Each one looks different.</li><li>Tap at the right moment so the pieces fit.</li><li>2 tries per level. Clear 5 levels for a stage. Perfect hits earn stars.</li></ul><div class="btns"><button class="btn go solo" id="startBtn" type="button">Start</button></div>';
   $('startBtn').onclick=startGame}
 
@@ -693,12 +737,13 @@ function showMenu(){st='menu';lv=LEVELS[0];setAmb();const c=$('card');c.hidden=f
 cv.addEventListener('pointerdown',e=>{e.preventDefault();act()});
 $('actBtn').addEventListener('click',act);
 window.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter'){if(document.activeElement&&document.activeElement.tagName==='BUTTON'&&document.activeElement.id!=='actBtn')return;e.preventDefault();
-  if(st==='menu'||st==='over')startGame();else if(st==='stage'){$('card').hidden=true;nextLevel()}else act()}});
+  if(st==='menu'||(st==='over'&&!HUB))startGame();else if(st==='stage'){$('card').hidden=true;nextLevel()}else act()}});
 new ResizeObserver(()=>{resize();render()}).observe(field);
 let last=performance.now();
 function loop(now){const dt=Math.min(.05,(now-last)/1000);last=now;update(dt);render();requestAnimationFrame(loop)}
 resize();setHUD();showMenu();requestAnimationFrame(loop);
-window.__sf={get st(){return st},get level(){return level},get res(){return res},act,
+if(HUB){hubSend({type:'gh-ready'});$('tries').setAttribute('aria-label','Lives left')}
+else window.__sf={get st(){return st},get level(){return level},get res(){return res},act,
   jump(i){level=i;$('card').hidden=true;enterLevel();st='play';fade=0},
   aim(){const t=lv.t;return t==='melon'?angDiff(melonA()+lv.spin*dir*.3,Math.PI/2)*180/Math.PI:t==='emoji'?Math.abs(rightDy()-leftDy()):t==='ball'?Math.abs(ballX()-poleX()):t==='needle'?Math.abs(tipY()-eyeY()):Math.abs(refX()-penX())}};
 })();

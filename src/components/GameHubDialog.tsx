@@ -18,6 +18,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GameHubLeaderboard from "@/components/GameHubLeaderboard";
 import GameHubPlayer from "@/components/GameHubPlayer";
+import GameHubRewardPlayer from "@/components/GameHubRewardPlayer";
 import { useGameHubUser } from "@/hooks/useGameHubUser";
 import { useToast } from "@/hooks/use-toast";
 import { buildGameShareUrl, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
@@ -292,7 +293,11 @@ export default function GameHubDialog() {
             <TabsContent value="leaderboard" className="mt-0"><GameHubLeaderboard /></TabsContent>
           </div>
         </Tabs>
-        {activeGame ? <GameHubPlayer game={activeGame} userEmail={user?.email ?? null} signedIn={Boolean(user)} onClose={() => setActiveGame(null)} /> : null}
+        {activeGame?.native ? (
+          <GameHubRewardPlayer game={activeGame} signedIn={Boolean(user)} onClose={() => setActiveGame(null)} />
+        ) : activeGame ? (
+          <GameHubPlayer game={activeGame} userEmail={user?.email ?? null} signedIn={Boolean(user)} onClose={() => setActiveGame(null)} />
+        ) : null}
       </DialogContent>
     </Dialog>
   );

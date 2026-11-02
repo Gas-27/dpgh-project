@@ -79,7 +79,7 @@ h2{font-size:38px;color:var(--ink)}
   <div class="card">
     <div class="eyebrow">Keep your eye on the ball</div>
     <h1>Cup Shuffle</h1>
-    <p>Watch the ball go under a cup. The cups shuffle. You get 1.3 seconds to tap the cup hiding the ball. Lose all 3 tries and you go back to Level 1. Every level adds a new trick.</p>
+    <p id="menuP">Watch the ball go under a cup. The cups shuffle. You get 1.3 seconds to tap the cup hiding the ball. Lose all 3 tries and you go back to Level 1. Every level adds a new trick.</p>
     <div class="levels" id="levelGrid"></div>
     <button class="btn" id="playBtn">Play</button>
     <div class="small" id="bestTxt"></div>
@@ -107,7 +107,7 @@ h2{font-size:38px;color:var(--ink)}
 <div class="screen" id="overCard" hidden>
   <div class="card">
     <div class="eyebrow" id="ocEyebrow">Level 1</div>
-    <h2>Out of tries</h2>
+    <h2 id="ocTitle">Out of tries</h2>
     <p id="ocDesc">The ball got away three times. Back to Level 1.</p>
     <button class="btn" id="retryBtn">Start from Level 1</button>
     <button class="btn alt" id="menuBtn2">Levels</button>
@@ -142,7 +142,10 @@ function levelDef(n){
 
 // ---------- storage ----------
 const store={get(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
-let unlocked=store.get('cs.unlocked',1), muted=store.get('cs.muted',false);
+const HUB=new URLSearchParams(location.search).get('hub')==='1'&&window.parent!==window;
+const NL=HUB?2:3;
+const hub={ready:false,level:1,lives:2,status:'active',pending:null,verified:false,victory:false};
+let unlocked=HUB?1:store.get('cs.unlocked',1), muted=store.get('cs.muted',false);
 
 // ---------- canvas ----------
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
@@ -152,7 +155,7 @@ const PICK_MS=1300;
 const reduced=matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 function resize(){
-  DPR=********
+  DPR=Math.min(window.devicePixelRatio||1,2);W=innerWidth;H=innerHeight;
   cv.width=W*DPR;cv.height=H*DPR;cv.style.width=W+'px';cv.style.height=H+'px';
   layout();buildBg();
 }
@@ -426,7 +429,7 @@ let level=1,L=levelDef(1),lives=3,won=0;
 function hud(){
   document.querySelector('#lvl b').textContent='LV '+level;
   document.getElementById('lvlname').textContent=L.name;
-  document.getElementById('lives').innerHTML=[0,1,2].map(i=>heart.replace('<svg','<svg class="'+(i<lives?'':'gone')+'"')).join('');
+  document.getElementById('lives').innerHTML=Array.from({length:NL},(_,i)=>i).map(i=>heart.replace('<svg','<svg class="'+(i<lives?'':'gone')+'"')).join('');
   document.getElementById('boxes').innerHTML=Array.from({length:L.rounds},(_,i)=>`<div class="box ${i<won?'on':''} ${i===won?'now':''}">${tick}</div>`).join('');
 }
 const $=id=>document.getElementById(id);
@@ -478,25 +481,46 @@ async function runLevel(){
   while(true){
     const ok=await playRound(id);if(ok===null||id!==runId)return;
     if(ok){won++;hud();if(won>=L.rounds){await sleep(350);return levelDone();}}
-    else{lives--;hud();if(lives<=0){await sleep(350);return gameOver();}}
+    else{lives--;hud();if(HUB)hubSend({type:'gh-life-lost',level});if(lives<=0){await sleep(350);return gameOver();}}
     await sleep(250);
   }
 }
 function startLevel(n){
   runId++;waiter=null;hint=null;timer=null;darkT=0;shakeAmp=0;turn=0;
-  level=n;L=levelDef(n);lives=3;won=0;setupCups(L.cups);hud();
+  level=n;L=levelDef(n);if(!HUB)lives=3;won=0;setupCups(L.cups);hud();
   $('lcEyebrow').textContent='Level '+n+(n>LEVELS.length?'':' of '+LEVELS.length);
   $('lcName').textContent=L.name;$('lcDesc').textContent=L.desc;
-  const chips=[`${L.cups} cups`,`${L.rounds} rounds`,'3 tries','1.3s to pick'];
+  const chips=[`${L.cups} cups`,`${L.rounds} rounds`,HUB?'2 lives':'3 tries','1.3s to pick'];
   $('lcChips').innerHTML=`<span class="chip new">New: ${L.tags.length>1&&n<=LEVELS.length?L.chip:(L.tags.length?L.tags.map(t=>CHIPNAME[t]).join(' + '):L.chip)}</span>`+chips.map(c=>`<span class="chip">${c}</span>`).join('');
   show('levelCard');
 }
+function hubSend(m){try{window.parent.postMessage(Object.assign({source:'gamehub'},m),location.origin)}catch(e){}}
+function hubVerify(){
+  new Promise(r=>{hub.pending=r;hubSend({type:'gh-level-complete',level})}).then(d=>{
+    if(!d.ok){startLevel(level);$('lcDesc').textContent=d.message||'That level could not be verified. Play it again.';return}
+    hub.level=d.level;hub.lives=d.lives;hub.status=d.status;lives=d.lives;
+    if(d.status==='cleared'){showVictory();return}
+    hub.verified=true;levelDone();
+  });
+}
+function showVictory(){
+  hub.victory=true;sfx.level();confetti(W/2,H*0.35);
+  $('dcEyebrow').textContent='All '+LEVELS.length+' levels cleared';
+  $('stars').innerHTML=[0,1,2].map(()=>starSvg(true)).join('');
+  $('dcTitle').textContent='You did it!';
+  $('dcDesc').textContent='Your run was verified. Claim your free MTN 5GB now.';
+  $('nextBtn').textContent='Claim MTN 5GB';$('menuBtn1').hidden=true;
+  show('doneCard');hubSend({type:'gh-open-claim'});
+}
 function levelDone(){
+  if(HUB&&!hub.verified){hubVerify();return}
+  hub.verified=false;
   sfx.level();confetti(W/2,H*0.35);
-  unlocked=Math.max(unlocked,level+1);store.set('cs.unlocked',unlocked);
+  if(HUB)unlocked=hub.level;else{unlocked=Math.max(unlocked,level+1);store.set('cs.unlocked',unlocked);}
+  const eff=HUB?lives+1:lives;
   $('dcEyebrow').textContent='Level '+level+' cleared';
-  $('stars').innerHTML=[0,1,2].map(i=>starSvg(i<lives)).join('');
-  $('dcTitle').textContent=lives===3?'Perfect eyes!':lives===2?'Sharp eyes!':'Just made it!';
+  $('stars').innerHTML=[0,1,2].map(i=>starSvg(i<eff)).join('');
+  $('dcTitle').textContent=eff===3?'Perfect eyes!':eff===2?'Sharp eyes!':'Just made it!';
   const nx=levelDef(level+1);
   $('dcDesc').textContent=level+1<=LEVELS.length?`Next up: ${nx.name}. ${nx.desc}`:'Endless mode next. Random tricks, faster every level.';
   show('doneCard');
@@ -510,6 +534,12 @@ function restartLevel(){
 }
 function gameOver(){
   $('ocEyebrow').textContent='Level '+level+' · '+L.name;show('overCard');
+  if(HUB){
+    $('ocTitle').textContent='Out of lives';
+    $('ocDesc').textContent='Buy 1 life for GH\u20B54 to continue this level, or end the game and start again from Level 1.';
+    $('retryBtn').textContent='Continue options';$('menuBtn2').hidden=true;
+    hubSend({type:'gh-open-buy'});return;
+  }
   let n=3;const tickDown=()=>{
     if($('overCard').hidden)return;
     if(n<=0)return restartLevel();
@@ -518,16 +548,24 @@ function gameOver(){
   };tickDown();
 }
 function buildMenu(){
+  if(HUB){
+    $('levelGrid').hidden=true;
+    $('menuP').textContent='Watch the ball go under a cup, then tap the cup hiding it. Clear all 12 levels to claim a free MTN 5GB bundle. You have 2 lives and can buy 1 more for GH\u20B54 when you run out. Progress is verified on our servers, so bots and tampering void the reward.';
+    $('playBtn').disabled=!hub.ready;
+    $('playBtn').textContent=!hub.ready?'Loading...':unlocked>1?'Continue \u00B7 Level '+unlocked:'Play';
+    $('bestTxt').textContent=hub.ready?`Level ${unlocked} of ${LEVELS.length} \u00B7 ${lives} ${lives===1?'life':'lives'} left`:'';
+    show('menu');return;
+  }
   const g=$('levelGrid');g.innerHTML='';
   for(let i=1;i<=LEVELS.length;i++){const b=document.createElement('button');b.className='lv'+(i===Math.min(unlocked,LEVELS.length)?' cur':'');b.textContent=i;b.disabled=i>unlocked;b.setAttribute('aria-label','Level '+i+': '+LEVELS[i-1].name);b.onclick=()=>{audio();startLevel(i)};g.appendChild(b);}
   $('playBtn').textContent=unlocked>1?'Continue · Level '+unlocked:'Play';
   $('bestTxt').textContent=unlocked>LEVELS.length?'All 12 levels cleared. Endless mode unlocked.':`${Math.min(unlocked,LEVELS.length)-1} of ${LEVELS.length} levels cleared`;
   show('menu');
 }
-$('playBtn').onclick=()=>{audio();startLevel(unlocked)};
+$('playBtn').onclick=()=>{if(HUB&&!hub.ready)return;audio();startLevel(unlocked)};
 $('goBtn').onclick=()=>{audio();show(null);runLevel()};
-$('nextBtn').onclick=()=>{startLevel(level+1)};
-$('retryBtn').onclick=()=>{audio();restartLevel()};
+$('nextBtn').onclick=()=>{if(hub.victory){hubSend({type:'gh-open-claim'});return}startLevel(level+1)};
+$('retryBtn').onclick=()=>{if(HUB){hubSend({type:'gh-open-buy'});return}audio();restartLevel()};
 $('menuBtn1').onclick=()=>{runId++;buildMenu()};
 $('menuBtn2').onclick=()=>{clearTimeout(restartTimer);runId++;unlocked=1;store.set('cs.unlocked',1);buildMenu()};
 const mb=$('mute');mb.textContent=muted?'🔇':'🔊';
@@ -536,6 +574,21 @@ mb.onclick=()=>{muted=!muted;store.set('cs.muted',muted);mb.textContent=muted?'�
 addEventListener('resize',resize);
 setupCups(3);cups[1].ball=true;cups[1].lift=1;
 resize();hud();buildMenu();requestAnimationFrame(frame);
+if(HUB){
+  window.addEventListener('message',e=>{
+    if(e.source!==window.parent||e.origin!==location.origin)return;
+    const d=e.data;if(!d||d.source!=='gamehub-parent')return;
+    if(d.type==='gh-state'){
+      hub.ready=true;hub.level=d.level;hub.lives=d.lives;hub.status=d.status;unlocked=d.level;lives=d.lives;
+      if(d.status==='cleared'){level=LEVELS.length;L=levelDef(level);hud();showVictory()}
+      else if(d.lives<=0){level=d.level;L=levelDef(level);won=0;setupCups(L.cups);hud();gameOver()}
+      else{hud();buildMenu()}
+    }
+    else if(d.type==='gh-level-result'&&hub.pending){const r=hub.pending;hub.pending=null;r(d)}
+    else if(d.type==='gh-continue'){lives=Math.max(1,d.lives||1);hud();show(null);runLevel()}
+  });
+  hubSend({type:'gh-ready'});
+}
 })();
 </script>
 </body>

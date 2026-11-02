@@ -50,6 +50,64 @@ export async function submitScore(gameId: string, score: number): Promise<number
   return Number(data);
 }
 
+export type GameRun = {
+  run_id: string;
+  game_id: string;
+  level: number;
+  lives: number;
+  status: "active" | "cleared" | "over" | "abandoned" | "flagged";
+  target: number;
+  lives_bought: number;
+  claimed: boolean;
+  reward_claimed: boolean;
+  life_price: number;
+};
+
+export type LevelResult = { ok: boolean; reason?: string; run: GameRun };
+
+export async function startGameRun(gameId: string, walletHint: string | null, forceNew = false): Promise<GameRun> {
+  const { data, error } = await db.rpc("gamehub_start_run", { p_game_id: gameId, p_wallet_hint: walletHint, p_force_new: forceNew });
+  if (error) throw error;
+  return data as GameRun;
+}
+
+export async function completeGameLevel(runId: string, level: number): Promise<LevelResult> {
+  const { data, error } = await db.rpc("gamehub_complete_level", { p_run_id: runId, p_level: level });
+  if (error) throw error;
+  return data as LevelResult;
+}
+
+export async function loseGameLife(runId: string): Promise<GameRun> {
+  const { data, error } = await db.rpc("gamehub_lose_life", { p_run_id: runId });
+  if (error) throw error;
+  return data as GameRun;
+}
+
+export async function buyGameLife(runId: string): Promise<{ run: GameRun; balance: number }> {
+  const { data, error } = await db.rpc("gamehub_buy_life", { p_run_id: runId });
+  if (error) throw error;
+  const result = data as { run: GameRun; balance: number };
+  return { run: result.run, balance: Number(result.balance) };
+}
+
+export async function endGameRun(runId: string): Promise<GameRun> {
+  const { data, error } = await db.rpc("gamehub_end_run", { p_run_id: runId });
+  if (error) throw error;
+  return data as GameRun;
+}
+
+export async function claimGameReward(runId: string, phone: string): Promise<{ order_id: string; phone: string }> {
+  const { data, error } = await db.rpc("gamehub_claim_reward", { p_run_id: runId, p_phone: phone });
+  if (error) throw error;
+  return data as { order_id: string; phone: string };
+}
+
+export async function fetchGameWalletBalance(walletHint: string | null): Promise<number | null> {
+  const { data, error } = await db.rpc("gamehub_wallet_balance", { p_hint: walletHint });
+  if (error) throw error;
+  return data === null || data === undefined ? null : Number(data);
+}
+
 export async function uploadGameVideo(gameId: string, file: File): Promise<void> {
   if (!ALLOWED_VIDEO_TYPES.includes(file.type)) throw new Error("Please choose an MP4, WebM or MOV video.");
   if (file.size > MAX_GAME_VIDEO_BYTES) throw new Error("Video is larger than 50 MB. Trim or compress it and try again.");
