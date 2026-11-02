@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
+import { useProvideGameHubStore } from "@/lib/gameHubStoreContext";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
 import { findStoreByName, fetchAllStores } from "@/utils/storeUtils";
@@ -557,6 +558,9 @@ export function SubagentStorefront() {
   const theme = store?.theme_config || defaultTheme;
   const primaryColor = theme.primary || defaultTheme.primary;
   const primaryForeground = theme.primary_foreground || defaultTheme.primary_foreground;
+  useProvideGameHubStore(
+    store?.id ? { kind: "subagent", storeId: store.id, storeName: store.store_name, primaryColor, primaryForeground } : null,
+  );
   const bgColor = theme.background || defaultTheme.background;
   const cardBg = theme.card_background || defaultTheme.card_background;
   const gridColumns = Math.min(2, Math.max(1, Number(theme.gridColumns) || 1));

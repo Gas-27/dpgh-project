@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { useProvideGameHubStore } from "@/lib/gameHubStoreContext";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { DOMAINS } from "@/config/domains";
 import { getStoreNameFromSubdomain, findStoreByName, fetchAllStores } from "@/utils/storeUtils";
@@ -689,6 +690,17 @@ const AgentStorefront = () => {
   const savedLayout = theme.layout || ["header", "delivery", "categories", "tracking", "products"];
   const primaryColor = theme.primary || defaultTheme.primary;
   const primaryForeground = theme.primary_foreground || defaultTheme.primary_foreground;
+  useProvideGameHubStore(
+    store?.id
+      ? {
+          kind: (store as any).is_subagent_store ? "subagent" : "agent",
+          storeId: store.id,
+          storeName: store.store_name,
+          primaryColor,
+          primaryForeground,
+        }
+      : null,
+  );
   const backgroundColor = theme.background || defaultTheme.background;
   const cardBackground = theme.card_background || defaultTheme.card_background;
   const gbTextColor = theme.gb_text_color || defaultTheme.gb_text_color;

@@ -17,6 +17,8 @@ import {
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import GameHubChat from "@/components/GameHubChat";
+import GameHubAnnouncements from "@/components/GameHubAnnouncements";
+import GameHubJoinCard from "@/components/GameHubJoinCard";
 import GameHubLeaderboard from "@/components/GameHubLeaderboard";
 import GameHubPlayer from "@/components/GameHubPlayer";
 import GameHubRewardPlayer from "@/components/GameHubRewardPlayer";
@@ -372,11 +374,12 @@ export default function GameHubDialog() {
             <TabsTrigger value="leaderboard" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white"><Puzzle className="mr-2 h-4 w-4" aria-hidden="true" /> Leaderboard</TabsTrigger>
           </TabsList>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-4">
-            <TabsContent value="games" className="mt-0"><GamesTab videos={videos} rules={rules} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
+            <TabsContent value="games" className="mt-0"><GameHubJoinCard signedIn={Boolean(user)} /><GamesTab videos={videos} rules={rules} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
             <TabsContent value="messages" className="mt-0"><GameHubChat user={user} onPlayGame={requestPlay} /></TabsContent>
             <TabsContent value="leaderboard" className="mt-0"><GameHubLeaderboard /></TabsContent>
           </div>
         </Tabs>
+        <GameHubAnnouncements open={open && !activeGame} />
         {activeGame?.native ? (
           <GameHubRewardPlayer game={activeGame} signedIn={Boolean(user)} rule={settings.find((row) => row.game_id === activeGame.id)} onClose={() => setActiveGame(null)} />
         ) : activeGame ? (

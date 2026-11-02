@@ -97,6 +97,36 @@ export async function fetchPublicRewards(): Promise<PublicReward[]> {
   return ((data ?? []) as PublicReward[]).map((row) => ({ ...row, amount: Number(row.amount) }));
 }
 
+export type GameHubAnnouncement = { id: string; title: string; body: string; created_at: string };
+export type AdminAnnouncement = GameHubAnnouncement & { active: boolean };
+
+export async function fetchActiveAnnouncements(): Promise<GameHubAnnouncement[]> {
+  const { data, error } = await db.rpc("gamehub_active_announcements", { p_limit: 5 });
+  if (error) throw error;
+  return (data ?? []) as GameHubAnnouncement[];
+}
+
+export async function adminFetchAnnouncements(): Promise<AdminAnnouncement[]> {
+  const { data, error } = await db.rpc("gamehub_admin_announcements");
+  if (error) throw error;
+  return (data ?? []) as AdminAnnouncement[];
+}
+
+export async function adminPostAnnouncement(title: string, body: string): Promise<void> {
+  const { error } = await db.rpc("gamehub_admin_post_announcement", { p_title: title, p_body: body });
+  if (error) throw error;
+}
+
+export async function adminSetAnnouncementActive(id: string, active: boolean): Promise<void> {
+  const { error } = await db.rpc("gamehub_admin_set_announcement", { p_id: id, p_active: active });
+  if (error) throw error;
+}
+
+export async function adminDeleteAnnouncement(id: string): Promise<void> {
+  const { error } = await db.rpc("gamehub_admin_delete_announcement", { p_id: id });
+  if (error) throw error;
+}
+
 export async function submitScore(gameId: string, score: number): Promise<number> {
   const { data, error } = await db.rpc("gamehub_submit_score", { p_game_id: gameId, p_score: Math.floor(score) });
   if (error) throw error;
