@@ -30,6 +30,12 @@ export default function GameHubLeaderboard() {
     queryFn: fetchPublicRewards,
     staleTime: 30_000,
   });
+  const { data: overallRows } = useQuery({
+    queryKey: ["gamehub-leaderboard", null, period],
+    queryFn: () => fetchLeaderboard(null, period),
+    staleTime: 15_000,
+  });
+  const overallMine = overallRows?.find((row) => row.is_you);
   const selectedName = justBuyGames.find((game) => game.id === gameId)?.name ?? "JustBuy games";
   const periodLabel = periods.find((item) => item.id === period)?.label.toLowerCase() ?? "";
   const myRow = rows.find((row) => row.is_you);
@@ -145,6 +151,18 @@ export default function GameHubLeaderboard() {
           <Gift className="h-4 w-4" aria-hidden="true" /> Wallet rewards
         </button>
       </div>
+      {tab === "ranks" && overallRows ? (
+        <div className="rounded-2xl border border-amber-300/30 bg-amber-400/10 px-4 py-3 text-sm text-white" aria-live="polite">
+          {overallMine ? (
+            <p>
+              Your overall position ({periodLabel}): <span className="font-bold text-amber-300">#{overallMine.rank.toLocaleString()}</span> of {overallRows.length.toLocaleString()} players with <span className="font-bold text-cyan-300">{overallMine.score.toLocaleString()} pts</span>.
+              {myRow && gameId ? <> On {selectedName} you are <span className="font-bold text-amber-300">#{myRow.rank.toLocaleString()}</span>.</> : null}
+            </p>
+          ) : (
+            <p className="text-violet-100">You are not on the board for {periodLabel} yet ({overallRows.length.toLocaleString()} players ranked). Sign in and finish a level to get a position.</p>
+          )}
+        </div>
+      ) : null}
       {tab === "ranks" ? (
       <div ref={listRef} className="max-h-[55vh] overflow-y-auto overscroll-contain rounded-3xl border border-violet-400/25 bg-violet-950/60" tabIndex={0} aria-label="Ranked players">
         <table className="w-full text-left text-sm">
@@ -177,7 +195,7 @@ export default function GameHubLeaderboard() {
       ) : (
       <div className="rounded-3xl border border-amber-300/25 bg-violet-950/60 p-5">
         <h3 className="flex items-center gap-2 text-lg font-bold text-white"><Gift className="h-5 w-5 text-amber-300" aria-hidden="true" /> Wallet rewards</h3>
-        <p className="mt-1 text-sm leading-relaxed text-violet-200/75">Top players get topped up straight into their JustBuy wallet by the admin.</p>
+        <p className="mt-1 text-sm leading-relaxed text-violet-200/75">Top players get topped up straight into their wallet on the site by the admin.</p>
         {rewards.length === 0 ? (
           <p className="mt-4 text-sm text-violet-200/75">No wallet rewards yet. Climb the leaderboard to be the first!</p>
         ) : (
