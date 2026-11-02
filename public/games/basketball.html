@@ -47,7 +47,7 @@ button.alt{background:#fff4e6;box-shadow:0 4px 0 #b79a82}
 <h1>Basket<span>ball</span></h1>
 <p>Swipe up to shoot. Most points wins.</p>
 <input id="name" maxlength="12" placeholder="Your name">
-<button id="reward" class="hide">Get free data</button>
+<button id="reward" class="hide">Win free data</button>
 <button id="create" class="hide">Create online match</button>
 <div class="row hide"><input id="join" maxlength="4" placeholder="CODE"><button id="joinBtn" class="alt">Join</button></div>
 <div class="dur"><span>TIME</span><button data-s="30">30s</button><button data-s="60">60s</button><button data-s="90">90s</button><button data-s="120">120s</button><input class="cdur" type="number" inputmode="numeric" min="10" max="600" placeholder="Custom time in seconds (10-600)"></div>
@@ -183,7 +183,7 @@ function resumeAfterLife(){
  show('hubp',0);flying=[];resetBall();streak=0;hub.running=false;setPlay(hub.play);startAt=performance.now()+3000;state='play';show('turbo',1)}
 function hubOnState(){
  const b=$('reward');b.classList.remove('hide');
- b.textContent=hub.status==='cleared'?'Claim free data':hub.play>5?'Continue - '+fmt(Math.max(0,Math.round(hub.req-hub.play)))+' left':'Get free data';
+ b.textContent=hub.status==='cleared'?'Claim free data':hub.play>5?'Continue - '+fmt(Math.max(0,Math.round(hub.req-hub.play)))+' left':'Win free data';
  if(state!=='menu')return;
  if(hub.status==='cleared')showWin();else if(hub.lives<=0&&hub.status==='active')showLostCard(false)}
 if(HUB)window.addEventListener('message',e=>{
@@ -207,7 +207,7 @@ function tone(f,d,type,vol,slide){try{if(!actx)return;const o=actx.createOscilla
 
 // ---------- online ----------
 (async()=>{try{roomApi=await claude.use('room')}catch(e){roomApi=null}
- if(!roomApi){$('note').textContent=HUB?'Practice solo is free. Get free data is the timed challenge.':'Online play is not available here - solo practice only.';$('create').disabled=true;$('joinBtn').disabled=true}})();
+ if(!roomApi){$('note').textContent=HUB?'Practice solo is free. Win free data is the timed challenge.':'Online play is not available here - solo practice only.';$('create').disabled=true;$('joinBtn').disabled=true}})();
 function peersChanged(){if(!room)return;const o=room.peers().filter(p=>!p.isMe);hasOpp=!!o.length;
  if(o[0]){oppName=esc(o[0].presence.name||'Opponent');oppScore=+o[0].presence.score||0}
  if(state==='lobby')$('lobbyStatus').textContent=o.length?oppName+' joined!':'No opponent yet - you can start anyway to test'}

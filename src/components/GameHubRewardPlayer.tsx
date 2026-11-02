@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ArrowLeft, Gift, Heart, Wallet } from "lucide-react";
+import { ArrowLeft, Gift, Heart, Share2, Wallet, X } from "lucide-react";
+import ShareScoreButtons from "@/components/ShareScoreButtons";
 import { useToast } from "@/hooks/use-toast";
 import {
+  buildGameShareUrl,
   buyGameLife,
   claimGameReward,
   completeGameLevel,
@@ -48,6 +50,8 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
   const [loadError, setLoadError] = useState<string | null>(null);
   const [buyOpen, setBuyOpen] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
+  const [rulesOpen, setRulesOpen] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [phone, setPhone] = useState("");
@@ -275,6 +279,23 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
 
   const insufficient = balance !== null && balance < LIFE_PRICE;
 
+  const requiredMinutes = run?.required_seconds ? Math.round(run.required_seconds / 60) : timedMinutes;
+  const isTimed = requiredMinutes > 0;
+  const rulesList = [
+    isTimed
+      ? `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"} without missing a single shot.`
+      : `Reach level ${target} to complete the challenge.`,
+    "You start with 1 life. When you miss or lose it, the run pauses.",
+    `Buy 1 extra life for GH\u20B5${LIFE_PRICE} from your wallet to continue exactly where you stopped, or end the game and start again.`,
+    `Finish the challenge to win free MTN ${rewardGb}GB, sent to the MTN number you enter.`,
+    "Everything is checked by our servers, so cheating or speeding up the game disables your reward.",
+    "Each account can claim the reward once per game. You must be signed in to play for data.",
+  ];
+  const progressText = isTimed
+    ? `${Math.floor((run?.play_seconds ?? 0) / 60)}:${String(Math.floor((run?.play_seconds ?? 0) % 60)).padStart(2, "0")} survived`
+    : `level ${run?.level ?? 1}`;
+  const shareMessage = `I reached ${progressText} on ${game.name} on JustBuy and I'm playing to win free MTN ${rewardGb}GB. Can you beat me?`;
+
   return (
     <div className="absolute inset-0 z-20 flex flex-col bg-[#0d0620]">
       <header className="flex items-center gap-2 border-b border-violet-400/15 px-3 py-3">
@@ -287,6 +308,14 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
             {timedMinutes > 0 ? `Play ${timedMinutes} minutes without a miss to win free MTN ${rewardGb}GB` : `Reach level ${target} to win a free MTN ${rewardGb}GB`}
           </p>
         </div>
+        <button type="button" onClick={() => setRulesOpen(true)} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-teal-400 px-3 py-2 text-xs font-bold text-emerald-950">
+          <Gift className="h-4 w-4" aria-hidden="true" /> Win free data
+        </button>
+        {signedIn ? (
+          <button type="button" onClick={() => setShareOpen(true)} aria-label="Share my score" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-900/70 text-white">
+            <Share2 className="h-4 w-4" aria-hidden="true" />
+          </button>
+        ) : null}
         {run ? (
           <div className="flex items-center gap-1.5 rounded-xl bg-violet-900/70 px-3 py-2 text-sm font-semibold text-white" aria-label={`${run.lives} lives left`}>
             <Heart className="h-4 w-4 fill-rose-500 text-rose-500" aria-hidden="true" />
@@ -320,6 +349,42 @@ export default function GameHubRewardPlayer({ game, signedIn, onClose }: RewardP
             className="h-full w-full border-0 bg-black"
           />
         )}
+
+        {rulesOpen ? (
+          <div role="dialog" aria-modal="true" aria-labelledby="rules-title" className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-4">
+            <div className="max-h-full w-full max-w-sm overflow-y-auto rounded-2xl border border-emerald-400/30 bg-[#0b1f1a] p-5 text-white shadow-2xl">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 id="rules-title" className="flex items-center gap-2 text-lg font-bold"><Gift className="h-5 w-5 text-emerald-300" aria-hidden="true" /> Win free data</h3>
+                <button type="button" onClick={() => setRulesOpen(false)} aria-label="Close rules" className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-900/70">
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+              <ol className="list-decimal space-y-2 pl-5 text-sm leading-relaxed text-emerald-100">
+                {rulesList.map((rule) => (
+                  <li key={rule}>{rule}</li>
+                ))}
+              </ol>
+              <button type="button" onClick={() => setRulesOpen(false)} className="mt-4 w-full rounded-xl bg-emerald-500 px-4 py-3 text-sm font-bold text-emerald-950">
+                Got it
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {shareOpen ? (
+          <div role="dialog" aria-modal="true" aria-labelledby="share-title" className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-4">
+            <div className="max-h-full w-full max-w-sm overflow-y-auto rounded-2xl border border-violet-400/30 bg-[#150a30] p-5 text-white shadow-2xl">
+              <div className="mb-3 flex items-center justify-between gap-2">
+                <h3 id="share-title" className="text-lg font-bold">Share my score</h3>
+                <button type="button" onClick={() => setShareOpen(false)} aria-label="Close share" className="flex h-8 w-8 items-center justify-center rounded-lg bg-violet-900/70">
+                  <X className="h-4 w-4" aria-hidden="true" />
+                </button>
+              </div>
+              <p className="mb-4 text-sm text-violet-200">{shareMessage}</p>
+              <ShareScoreButtons title={`${game.name} on JustBuy`} text={shareMessage} url={buildGameShareUrl(game.id)} />
+            </div>
+          </div>
+        ) : null}
 
         {buyOpen && run ? (
           <div role="dialog" aria-modal="true" aria-labelledby="buy-life-title" className="absolute inset-0 z-30 flex items-center justify-center bg-black/70 p-4">

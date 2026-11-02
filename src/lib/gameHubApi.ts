@@ -38,8 +38,10 @@ export async function fetchGameVideos(): Promise<GameVideo[]> {
   return (data ?? []) as GameVideo[];
 }
 
-export async function fetchLeaderboard(gameId: string | null): Promise<LeaderboardRow[]> {
-  const { data, error } = await db.rpc("gamehub_leaderboard", { p_game_id: gameId, p_limit: 50 });
+export type LeaderboardPeriod = "today" | "yesterday" | "week" | "month" | "all";
+
+export async function fetchLeaderboard(gameId: string | null, period: LeaderboardPeriod = "all"): Promise<LeaderboardRow[]> {
+  const { data, error } = await db.rpc("gamehub_leaderboard_period", { p_game_id: gameId, p_period: period, p_limit: 50 });
   if (error) throw error;
   return ((data ?? []) as LeaderboardRow[]).map((row) => ({ ...row, rank: Number(row.rank), score: Number(row.score) }));
 }
