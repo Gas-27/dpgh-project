@@ -1,9 +1,9 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy } from "lucide-react";
+import { Gift, Trophy } from "lucide-react";
 import ShareScoreButtons from "@/components/ShareScoreButtons";
 import { buildGameHubShareUrl } from "@/lib/gameHubRoute";
-import { buildGameShareUrl, fetchLeaderboard, type LeaderboardPeriod } from "@/lib/gameHubApi";
+import { buildGameShareUrl, fetchLeaderboard, fetchPublicRewards, type LeaderboardPeriod } from "@/lib/gameHubApi";
 import { hubGames } from "@/lib/gameHubGames";
 
 const periods: { id: LeaderboardPeriod; label: string }[] = [
@@ -23,6 +23,11 @@ export default function GameHubLeaderboard() {
     queryKey: ["gamehub-leaderboard", gameId, period],
     queryFn: () => fetchLeaderboard(gameId, period),
     staleTime: 15_000,
+  });
+  const { data: rewards = [] } = useQuery({
+    queryKey: ["gamehub-public-rewards"],
+    queryFn: fetchPublicRewards,
+    staleTime: 30_000,
   });
   const selectedName = justBuyGames.find((game) => game.id === gameId)?.name ?? "JustBuy games";
   const periodLabel = periods.find((item) => item.id === period)?.label.toLowerCase() ?? "";
@@ -80,6 +85,25 @@ export default function GameHubLeaderboard() {
             )}
           </tbody>
         </table>
+      </div>
+      <div className="rounded-3xl border border-amber-300/25 bg-violet-950/60 p-5">
+        <h3 className="flex items-center gap-2 text-lg font-bold text-white"><Gift className="h-5 w-5 text-amber-300" aria-hidden="true" /> Wallet rewards</h3>
+        <p className="mt-1 text-sm leading-relaxed text-violet-200/75">Top players get topped up straight into their JustBuy wallet by the admin.</p>
+        {rewards.length === 0 ? (
+          <p className="mt-4 text-sm text-violet-200/75">No wallet rewards yet. Climb the leaderboard to be the first!</p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {rewards.map((reward) => (
+              <li key={reward.id} className="rounded-2xl border border-violet-400/15 bg-violet-900/40 px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-sm text-white"><span className="font-semibold">{reward.player}</span> received <span className="font-bold text-emerald-300">GH&#8373;{reward.amount.toFixed(2)}</span></p>
+                  <time className="shrink-0 text-xs text-violet-200/70" dateTime={reward.created_at}>{new Date(reward.created_at).toLocaleDateString(undefined, { day: "numeric", month: "short" })}</time>
+                </div>
+                {reward.note ? <p className="mt-1 text-xs leading-relaxed text-violet-200/80">&ldquo;{reward.note}&rdquo;</p> : null}
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
       <div className="rounded-3xl border border-violet-400/25 bg-violet-950/60 p-4">
         <p className="mb-3 text-sm font-semibold text-white">{myRow ? "Share my rank" : "Invite friends"}</p>

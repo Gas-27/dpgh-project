@@ -49,6 +49,7 @@ function RewardDialog({ row, onClose }: { row: AdminLeaderboardRow | null; onClo
     onSuccess: (result) => {
       toast({ title: "Wallet rewarded", description: `${row?.email} received ${money(parsedAmount)}. New balance ${money(Number(result.balance_after))}.` });
       void queryClient.invalidateQueries({ queryKey: ["gamehub-admin-leaderboard"] });
+      void queryClient.invalidateQueries({ queryKey: ["gamehub-public-rewards"] });
       setAmount("");
       setNote("");
       setWalletType("");
@@ -85,7 +86,7 @@ function RewardDialog({ row, onClose }: { row: AdminLeaderboardRow | null; onClo
               <Input id="reward-amount" type="number" inputMode="decimal" min={0.5} max={5000} step={0.5} value={amount} onChange={(event) => setAmount(event.target.value)} />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="reward-note">Note (optional)</Label>
+              <Label htmlFor="reward-note">Note (optional, shown publicly on the leaderboard)</Label>
               <Input id="reward-note" maxLength={200} placeholder="Weekly leaderboard winner" value={note} onChange={(event) => setNote(event.target.value)} />
             </div>
           </div>

@@ -89,6 +89,14 @@ export async function adminRewardWallet(input: {
   return data as { balance_after: number };
 }
 
+export type PublicReward = { id: string; player: string; amount: number; note: string | null; created_at: string };
+
+export async function fetchPublicRewards(): Promise<PublicReward[]> {
+  const { data, error } = await db.rpc("gamehub_public_rewards", { p_limit: 20 });
+  if (error) throw error;
+  return ((data ?? []) as PublicReward[]).map((row) => ({ ...row, amount: Number(row.amount) }));
+}
+
 export async function submitScore(gameId: string, score: number): Promise<number> {
   const { data, error } = await db.rpc("gamehub_submit_score", { p_game_id: gameId, p_score: Math.floor(score) });
   if (error) throw error;
