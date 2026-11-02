@@ -209,9 +209,28 @@ function SectionHeader({ id, icon: Icon, title, count }: { id: string; icon: typ
 
 type GameActions = { onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void };
 
+const rewardGames = hubGames.filter((game) => game.native);
+const hubOnlyGames = hubGames.filter((game) => !game.native);
+
+function RewardGamesSection({ onPlay, onShare }: GameActions) {
+  return (
+    <section aria-labelledby="gamehub-rewards" className="space-y-3">
+      <SectionHeader id="gamehub-rewards" icon={Trophy} title="Play & Win Free Data" count={rewardGames.length} />
+      <p className="flex items-start gap-2 rounded-2xl border border-amber-300/30 bg-amber-950/30 px-3 py-2 text-xs leading-relaxed text-amber-100/90">
+        <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-amber-300" aria-hidden="true" />
+        Fair play: every level, life and reward is verified on our servers. Bots, scripts or edited game code void the reward and can get the account suspended.
+      </p>
+      <div className="grid grid-cols-2 gap-3">
+        {rewardGames.map((game) => <GameCard key={game.id} game={game} onPlay={onPlay} onShare={onShare} />)}
+      </div>
+    </section>
+  );
+}
+
 function GamesTab({ videos, onPlay, onShare }: GameActions & { videos: GameVideo[] }) {
   return (
     <div className="space-y-5">
+      <RewardGamesSection onPlay={onPlay} onShare={onShare} />
       <FeaturedCarousel videos={videos} onPlay={onPlay} />
       <FairPlayCard />
       <IntroCard onBrowse={() => document.getElementById("gamehub-all")?.scrollIntoView({ behavior: "smooth", block: "start" })} />
@@ -223,11 +242,37 @@ function GamesTab({ videos, onPlay, onShare }: GameActions & { videos: GameVideo
         </div>
       </section>
       <section aria-labelledby="gamehub-all">
-        <SectionHeader id="gamehub-all" icon={LayoutGrid} title="All Games" count={hubGames.length} />
+        <SectionHeader id="gamehub-all" icon={LayoutGrid} title="More Games from Gamehub" count={hubOnlyGames.length} />
         <div className="mt-4 grid grid-cols-2 gap-3">
-          {hubGames.map((game) => <GameCard key={game.id} game={game} onPlay={onPlay} onShare={onShare} />)}
+          {hubOnlyGames.map((game) => <GameCard key={game.id} game={game} onPlay={onPlay} onShare={onShare} />)}
         </div>
       </section>
+    </div>
+  );
+}
+
+function VisitGameHubPrompt({ game, onCancel, onContinue }: { game: HubGame; onCancel: () => void; onContinue: () => void }) {
+  return (
+    <div role="dialog" aria-modal="true" aria-labelledby="visit-gamehub-title" className="absolute inset-0 z-50 flex items-end justify-center bg-black/70 p-4 sm:items-center">
+      <div className="w-full max-w-sm rounded-3xl border border-violet-400/30 bg-[#150a30] p-5 text-white shadow-2xl">
+        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-fuchsia-500 to-violet-600"><Gamepad2 className="h-6 w-6" aria-hidden="true" /></span>
+        <h3 id="visit-gamehub-title" className="mt-3 text-lg font-bold leading-snug text-balance">Continue gameplay in Gamehub directly</h3>
+        <p className="mt-2 text-sm leading-relaxed text-violet-200/85">
+          Play {game.name} on Gamehub for the real, uninterrupted gameplay. Tap the button below to go there - you can sign up for free on Gamehub to win free data as well.
+        </p>
+        <a
+          href={`${GAMEHUB_URL}/?game=${encodeURIComponent(game.id)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-3 text-sm font-semibold text-white"
+        >
+          Go to Gamehub <ExternalLink className="h-4 w-4" aria-hidden="true" />
+        </a>
+        <button type="button" onClick={onContinue} className="mt-2 w-full rounded-xl border border-violet-400/30 px-4 py-3 text-sm font-semibold text-violet-100 hover:bg-violet-800/50">
+          Cancel and play here on JustBuy
+        </button>
+        <button type="button" onClick={onCancel} className="mt-1 w-full px-4 py-2 text-xs text-violet-300/70 hover:text-violet-100">Close</button>
+      </div>
     </div>
   );
 }
@@ -237,6 +282,12 @@ export default function GameHubDialog() {
   const user = useGameHubUser();
   const [open, setOpen] = useState(false);
   const [activeGame, setActiveGame] = useState<HubGame | null>(null);
+  const [pendingGame, setPendingGame] = useState<HubGame | null>(null);
+
+  const requestPlay = (game: HubGame) => {
+    if (game.native) setActiveGame(game);
+    else setPendingGame(game);
+  };
 
   const { data: videos = [] } = useQuery({ queryKey: ["gamehub-videos"], queryFn: fetchGameVideos, enabled: open, staleTime: 60_000 });
 
@@ -267,7 +318,10 @@ export default function GameHubDialog() {
 
   const handleOpenChange = (next: boolean) => {
     setOpen(next);
-    if (!next) setActiveGame(null);
+    if (!next) {
+      setActiveGame(null);
+      setPendingGame(null);
+    }
   };
 
   return (
@@ -289,7 +343,7 @@ export default function GameHubDialog() {
             <TabsTrigger value="leaderboard" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white"><Puzzle className="mr-2 h-4 w-4" aria-hidden="true" /> Leaderboard</TabsTrigger>
           </TabsList>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-4">
-            <TabsContent value="games" className="mt-0"><GamesTab videos={videos} onPlay={setActiveGame} onShare={handleShare} /></TabsContent>
+            <TabsContent value="games" className="mt-0"><GamesTab videos={videos} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
             <TabsContent value="leaderboard" className="mt-0"><GameHubLeaderboard /></TabsContent>
           </div>
         </Tabs>
@@ -297,6 +351,16 @@ export default function GameHubDialog() {
           <GameHubRewardPlayer game={activeGame} signedIn={Boolean(user)} onClose={() => setActiveGame(null)} />
         ) : activeGame ? (
           <GameHubPlayer game={activeGame} userEmail={user?.email ?? null} signedIn={Boolean(user)} onClose={() => setActiveGame(null)} />
+        ) : null}
+        {pendingGame ? (
+          <VisitGameHubPrompt
+            game={pendingGame}
+            onCancel={() => setPendingGame(null)}
+            onContinue={() => {
+              setActiveGame(pendingGame);
+              setPendingGame(null);
+            }}
+          />
         ) : null}
       </DialogContent>
     </Dialog>
