@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { startVisiblePolling } from "@/lib/visiblePolling";
 import { adminAdjustWallet, type AdminWalletOwnerType } from "@/lib/wallet";
 
 const WALLET_TABLE_OWNER: Record<string, AdminWalletOwnerType> = {
@@ -1321,8 +1322,7 @@ const AdminDashboard = () => {
     refreshCountsOnly();
     
     // Refresh counts every 60 seconds (lightweight - counts only, no record data)
-    const interval = setInterval(refreshCountsOnly, 60000);
-    return () => clearInterval(interval);
+    return startVisiblePolling(refreshCountsOnly, 60000);
   }, []);
   
   // Realtime subscriptions disabled - causes excessive refreshes and tab jumping
@@ -1371,8 +1371,7 @@ const AdminDashboard = () => {
         console.error("[v0] Auto-retry error:", error);
       }
     };
-    const interval = setInterval(() => { if (document.visibilityState === "visible") void autoRetryPendingOrders(); }, 60000); // 60 seconds
-    return () => clearInterval(interval);
+    return startVisiblePolling(autoRetryPendingOrders, 60000);
   }, []);
 
   // Calculate unapproved withdrawals count
@@ -1386,7 +1385,7 @@ const AdminDashboard = () => {
   // Background auto-refresh every 1 second (silent, no page flicker)
   // ONLY refreshes display data - does NOT touch form edits or editedPrices
   useEffect(() => {
-    const intervalId = setInterval(() => {
+    {
       // Silently refresh ONLY display data in background
       const refreshBackgroundData = async () => {
         try {
@@ -1420,10 +1419,8 @@ const AdminDashboard = () => {
         }
       };
 
-      refreshBackgroundData();
-    }, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(intervalId);
+      return startVisiblePolling(refreshBackgroundData, 60000);
+    }
   }, []);
 
   // Debounced server-side search for topups

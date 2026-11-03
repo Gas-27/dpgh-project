@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react"
 import { useParams, useNavigate } from "react-router-dom";
 import { useProvideGameHubStore } from "@/lib/gameHubStoreContext";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
+import { cachedQuery } from "@/lib/cachedQuery";
+import { startVisiblePolling } from "@/lib/visiblePolling";
 import { DOMAINS } from "@/config/domains";
 import { getStoreNameFromSubdomain, findStoreByName, fetchAllStores } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
@@ -173,7 +175,7 @@ interface Notification {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
+// ──────────────────���──────────────────────────────────────────────────────────
 const formatNetworkName = (network: string) => {
   if (network === "mtn") return "MTN";
   if (network === "mtn_express") return "MTN Express";
@@ -263,8 +265,7 @@ const OrderTrackingCard = ({
     };
 
     fetchComplaintStatus();
-    const interval = setInterval(fetchComplaintStatus, 5000); // Check every 5 seconds
-    return () => clearInterval(interval);
+    return startVisiblePolling(fetchComplaintStatus, 60_000);
   }, [order.id]);
 
   // ── Status-based step logic (no time dependency) ──
@@ -857,8 +858,11 @@ const AgentStorefront = () => {
   useEffect(() => {
     if (!store?.id) return;
     refreshPrices();
-    const interval = setInterval(refreshPrices, 15_000);
-    return () => clearInterval(interval);
+    // Price changes arrive through the agent_package_prices realtime subscription below,
+    // so no interval polling is needed; refresh once when the tab becomes visible again.
+    const onVisible = () => { if (!document.hidden) refreshPrices(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
   }, [store?.id, refreshPrices]);
 
   useEffect(() => {

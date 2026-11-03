@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { startVisiblePolling } from "@/lib/visiblePolling";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
@@ -269,8 +270,7 @@ export default function SocialBoostPurchasePanel({ walletBalance, ownerType = "u
 
   useEffect(() => {
     void loadHistory();
-    const timer = window.setInterval(() => void loadHistory(), 30000);
-    return () => window.clearInterval(timer);
+    return startVisiblePolling(loadHistory, 60_000);
   }, []);
 
   useEffect(() => {

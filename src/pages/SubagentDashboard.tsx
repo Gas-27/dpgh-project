@@ -2,6 +2,8 @@ import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
  import { debitOwnWallet, refundFailedOrder, transferToChild, creditUpline, newOrderId } from "@/lib/wallet";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
+import { cachedQuery } from "@/lib/cachedQuery";
+import { startVisiblePolling } from "@/lib/visiblePolling";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
 import { verifyHubtelMsisdn } from "@/services/hubtelService";
 import { useAuth } from "@/hooks/useAuth";
@@ -514,14 +516,13 @@ const SubagentDashboard = () => {
   // to every subagent dashboard simultaneously — this was a large source of message volume.
   useEffect(() => {
     const pollPackages = async () => {
-      const { data } = await supabase
+      const { data } = await cachedQuery("data_packages:subagent_dashboard", () => supabase
         .from("data_packages")
         .select("*")
-        .order("size_gb", { ascending: true });
+        .order("size_gb", { ascending: true }));
       if (data) setPackages(data);
     };
-    const timer = setInterval(pollPackages, 5 * 60 * 1000);
-    return () => clearInterval(timer);
+    return startVisiblePolling(pollPackages, 5 * 60 * 1000);
   }, []);
 
   // subagent_package_prices changes (agent updates prices for this subagent) → re-fetch prices

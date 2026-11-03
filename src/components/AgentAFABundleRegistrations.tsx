@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { startVisiblePolling } from '@/lib/visiblePolling';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -45,8 +46,7 @@ export default function AgentAFABundleRegistrations({
   useEffect(() => {
     loadRegistrations();
     loadAgentPrice();
-    const interval = setInterval(loadRegistrations, 30000); // Refresh every 30 seconds
-    return () => clearInterval(interval);
+    return startVisiblePolling(loadRegistrations, 60_000);
   }, [agentStoreId]);
 
   const loadAgentPrice = async () => {

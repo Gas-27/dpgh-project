@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react"
 import { useParams } from "react-router-dom";
 import { useProvideGameHubStore } from "@/lib/gameHubStoreContext";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
+import { cachedQuery } from "@/lib/cachedQuery";
+import { startVisiblePolling } from "@/lib/visiblePolling";
 import { DOMAINS } from "@/config/domains";
 import { findStoreByName, fetchAllStores } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
@@ -218,8 +220,7 @@ const SubSubagentOrderTrackingCard = ({
     };
 
     fetchComplaintStatus();
-    const interval = setInterval(fetchComplaintStatus, 5000);
-    return () => clearInterval(interval);
+    return startVisiblePolling(fetchComplaintStatus, 60_000);
   }, [order.id]);
 
   // ── Status-based step logic (no time dependency) ─�����

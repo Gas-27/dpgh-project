@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { cachedQuery, invalidateCache } from "@/lib/cachedQuery";
 
 export type TabControl = {
   enabled: boolean;
@@ -19,7 +20,7 @@ export function isTabUnavailable(control?: TabControl, now = new Date()) {
 }
 
 export async function fetchTabControls() {
-  const { data } = await supabase.from("app_settings").select("tab_controls").eq("id", 1).maybeSingle();
+  const { data } = await cachedQuery("app_settings:tab_controls", () => supabase.from("app_settings").select("tab_controls").eq("id", 1).maybeSingle());
   return (data?.tab_controls as TabControls | null) ?? defaultTabControls;
 }
 
@@ -35,7 +36,9 @@ export async function openGameHubIfAvailable() {
 }
 
 export async function saveTabControls(tab_controls: TabControls) {
-  return supabase.from("app_settings").upsert({ id: 1, tab_controls, updated_at: new Date().toISOString() });
+  const result = await supabase.from("app_settings").upsert({ id: 1, tab_controls, updated_at: new Date().toISOString() });
+  invalidateCache("app_settings");
+  return result;
 }
 
 export const tabControlOptions = [

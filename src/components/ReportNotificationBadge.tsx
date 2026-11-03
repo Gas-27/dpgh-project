@@ -15,9 +15,10 @@ export default function ReportNotificationBadge() {
       if (active) { setCount(unread || 0); if (unreadReports?.[0]) setReply(unreadReports[0]); }
     };
     load();
-    const timer = window.setInterval(load, 15000);
+    const onVisibilityChange = () => { if (!document.hidden) void load(); };
+    document.addEventListener("visibilitychange", onVisibilityChange);
     const channel = supabase.channel(`report-notifications-${user.id}`).on("postgres_changes", { event: "UPDATE", schema: "public", table: "reports", filter: `reporter_id=eq.${user.id}` }, load).subscribe();
-    return () => { active = false; window.clearInterval(timer); supabase.removeChannel(channel); };
+    return () => { active = false; document.removeEventListener("visibilitychange", onVisibilityChange); supabase.removeChannel(channel); };
   }, [user?.id]);
   if (!count || !reply) return null;
   const dismiss = async () => { await (supabase as any).rpc("mark_report_read", { p_report_id: reply.id }); setReply(null); setCount((value) => Math.max(0, value - 1)); };

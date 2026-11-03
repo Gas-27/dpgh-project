@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Link, useNavigate } from "react-router-dom";
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { startVisiblePolling } from "@/lib/visiblePolling";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 
@@ -127,8 +128,7 @@ const PendingApproval = () => {
       }
     };
 
-    const interval = setInterval(checkApproval, 5000);
-    return () => clearInterval(interval);
+    return startVisiblePolling(checkApproval, 60_000);
   }, [user, store, navigate]);
   
   // Handle Paystack payment

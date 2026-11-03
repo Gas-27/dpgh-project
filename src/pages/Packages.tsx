@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState, useRef, useCallback, lazy, Suspense } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { cachedQuery } from "@/lib/cachedQuery";
+import { startVisiblePolling } from "@/lib/visiblePolling";
 import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -224,8 +226,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     };
 
     fetchComplaintStatus();
-    const interval = setInterval(fetchComplaintStatus, 5000); // Check every 5 seconds
-    return () => clearInterval(interval);
+    return startVisiblePolling(fetchComplaintStatus, 60_000);
   }, [order.id]);
 
   // ── Status-based step logic (no time dependency) ──
@@ -1328,7 +1329,7 @@ const Packages = () => {
   }, [toast]);
 
   useEffect(() => {
-    supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments,chance_2gb,chance_1gb,chance_extra_spin,auto_disable_enabled,auto_disable_order_limit,current_spin_orders,display_spin_orders,eligibility_mode,eligibility_period,minimum_order_count,minimum_order_amount,placement_targets").single()
+    cachedQuery("spin_config:storefront", () => supabase.from("spin_config").select("enabled,default_network,payment_required,payment_amount,segments,chance_2gb,chance_1gb,chance_extra_spin,auto_disable_enabled,auto_disable_order_limit,current_spin_orders,display_spin_orders,eligibility_mode,eligibility_period,minimum_order_count,minimum_order_amount,placement_targets").single())
       .then(({ data, error }) => {
         setSpinConfig(error || !data
           ? { enabled: false, default_network: "mtn", payment_required: true, payment_amount: 2, segments: [], chance_2gb: 4, chance_1gb: 9, chance_extra_spin: 12, auto_disable_enabled: false, auto_disable_order_limit: 100, current_spin_orders: 0, display_spin_orders: 0 }
@@ -1336,7 +1337,7 @@ const Packages = () => {
         );
       });
     // Load customer-facing pricing display settings
-    supabase.from("app_settings").select("show_api_price,show_agent_price").eq("id", 1).single()
+    cachedQuery("app_settings:storefront", () => supabase.from("app_settings").select("show_api_price,show_agent_price").eq("id", 1).single())
       .then(({ data }) => {
         if (data) {
 
@@ -1365,7 +1366,7 @@ const Packages = () => {
   });
 
   // Fetch packages with caching - include size_gb_text for mtn_mashup packages
-  supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count").order("size_gb", { ascending: true })
+  cachedQuery("data_packages:storefront", () => supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count").order("size_gb", { ascending: true }))
       .then(({ data, error }) => {
         if (error) console.error("[v0] Failed to fetch data packages:", error);
         setPackages(data ?? []);
@@ -1377,10 +1378,10 @@ const Packages = () => {
   const { data: cachedPackages, isLoading: packagesLoading } = useCachedData<DataPackage[]>(
     "packages-list",
     async () => {
-      const { data, error } = await supabase
+      const { data, error } = await cachedQuery("data_packages:storefront", () => supabase
         .from("data_packages")
         .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count")
-        .order("size_gb", { ascending: true });
+        .order("size_gb", { ascending: true }));
       if (error) throw error;
       return data ?? [];
     },
@@ -1400,20 +1401,16 @@ const Packages = () => {
   // message volume. Packages and site config change rarely, so polling is fine.
   useEffect(() => {
     const refreshPackages = async () => {
-      const { data } = await supabase
+      const { data } = await cachedQuery("data_packages:storefront", () => supabase
         .from("data_packages")
         .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count")
-        .order("size_gb", { ascending: true });
+        .order("size_gb", { ascending: true }));
       if (data) setPackages(data);
     };
 
     // TODO: the `site_config` table does not exist in the database, so the periodic
     // refresh was removed. The spin_config query above remains the source of site settings.
-    const packagesTimer = setInterval(refreshPackages, 5 * 60 * 1000);
-
-    return () => {
-      clearInterval(packagesTimer);
-    };
+    return startVisiblePolling(refreshPackages, 5 * 60 * 1000);
   }, []);
 
   // Poll for order status updates every 30 seconds.
@@ -1435,8 +1432,7 @@ const Packages = () => {
         );
       }
     };
-    const timer = setInterval(pollOrders, 30_000);
-    return () => clearInterval(timer);
+    return startVisiblePolling(pollOrders, 60_000);
   }, [orders.length]);
 
   // Fetch Special MTN Mashup pricing
