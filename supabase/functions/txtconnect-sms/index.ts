@@ -168,10 +168,15 @@ Deno.serve(async (request) => {
     const pages = Math.max(1, Math.ceil(messageUnits / 160));
     const chargePerRecipient = contactPrice;
     const totalCharge = (contactPrice * recipients.length) + (pagePrice * pages);
-    const { data: charged, error: chargeError } = await supabase.rpc("charge_sms_wallet", { p_user_id: user.id, p_amount: totalCharge, p_owner_type: ownerType });
-    if (chargeError || !charged) return json({ error: "Insufficient wallet balance for this SMS campaign" }, 402);
+    // charge/refund RPCs are service_role only, so they must not run through the user-scoped client.
+    const walletServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SECRET_KEY");
+    if (!walletServiceKey) return json({ error: "SMS service is not configured" }, 503);
+    const walletAdmin = createClient(Deno.env.get("SUPABASE_URL")!, walletServiceKey);
+    const { data: charged, error: chargeError } = await walletAdmin.rpc("charge_sms_wallet", { p_user_id: user.id, p_amount: totalCharge, p_owner_type: ownerType });
+    if (chargeError) { console.error("[v0] SMS wallet charge failed", chargeError); return json({ error: "Could not charge your wallet. Please try again." }, 500); }
+    if (!charged) return json({ error: "Insufficient wallet balance for this SMS campaign" }, 402);
     const { data: record, error: insertError } = await supabase.from("sms_messages").insert({ user_id: user.id, owner_type: ownerType, owner_id: body.owner_id || user.id, recipients, sender_id: senderId, message, total_charge: totalCharge, unit_price: contactPrice }).select("id").single();
-    if (insertError) { await supabase.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: totalCharge, p_owner_type: ownerType }); return json({ error: "Could not create the SMS record" }, 500); }
+    if (insertError) { await walletAdmin.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: totalCharge, p_owner_type: ownerType }); return json({ error: "Could not create the SMS record" }, 500); }
     const unicode = hasUnicode(message);
     const results = await mapWithConcurrency(recipients, 20, async (to: string) => {
       try {
@@ -193,7 +198,7 @@ Deno.serve(async (request) => {
     if (failed.length) {
       const sentCount = results.length - failed.length;
       const refundAmount = sentCount === 0 ? totalCharge : chargePerRecipient * failed.length;
-      await supabase.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: refundAmount, p_owner_type: ownerType });
+      await walletAdmin.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: refundAmount, p_owner_type: ownerType });
     }
     const providerMessageIds = results.map((result) => result.message_id).filter(Boolean);
     await supabase.from("sms_messages").update({ status: failed.length ? (failed.length === results.length ? "failed" : "partial") : "sent", provider_response: results, provider_message_ids: providerMessageIds, last_delivery_check_at: null, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null }).eq("id", record.id);
