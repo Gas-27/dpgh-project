@@ -210,6 +210,7 @@ const UserDashboard = () => {
 
   // Agent features dropdown state
   const [agentFeaturesOpen, setAgentFeaturesOpen] = useState(false);
+  const [agentCtaOpen, setAgentCtaOpen] = useState(false);
 
   // Orders search state
   const [orderSearch, setOrderSearch] = useState("");
@@ -1096,15 +1097,35 @@ case "api-key":
   <MarketplaceBanner onPost={() => setActiveMenu("post-product")} onBrowse={() => setActiveMenu("marketplace")} />
 
       {/* Become an Agent CTA Card */}
-      <div className="rounded-3xl border border-purple-500/40 bg-gradient-to-br from-[#1b2238] to-[#241a33] p-6 sm:p-8">
-        <h2 className="font-display text-2xl font-bold leading-tight text-foreground sm:text-3xl">
-          Sign up as an Agent to get your own USSD
-        </h2>
-        <p className="mt-2 text-lg leading-snug text-muted-foreground">
-          Launch your agency, let customers buy offline, &amp; profit!
-        </p>
+      <div className="rounded-3xl border border-purple-500/40 bg-gradient-to-br from-[#1b2238] to-[#241a33] p-4 sm:p-6">
+        <button
+          type="button"
+          onClick={() => setAgentCtaOpen((open) => !open)}
+          aria-expanded={agentCtaOpen}
+          aria-controls="agent-cta-details"
+          className="flex w-full items-start gap-3 text-left"
+        >
+          <Users className="mt-1 h-6 w-6 shrink-0 text-purple-400" aria-hidden="true" />
+          <span className="flex-1">
+            <span className="block font-display text-lg font-bold leading-tight text-foreground sm:text-2xl">
+              Sign up as an Agent to get your own USSD
+            </span>
+            {agentCtaOpen && (
+              <span className="mt-2 block text-base leading-snug text-muted-foreground">
+                Launch your agency, let customers buy offline, &amp; profit!
+              </span>
+            )}
+          </span>
+          {agentCtaOpen
+            ? <ChevronUp className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />
+            : <ChevronDown className="mt-1 h-5 w-5 shrink-0 text-muted-foreground" aria-hidden="true" />}
+        </button>
 
-        <div className="mt-6 space-y-5 text-base leading-snug text-foreground">
+        <div
+          id="agent-cta-details"
+          hidden={!agentCtaOpen}
+          className="mt-5 space-y-5 text-base leading-snug text-foreground"
+        >
           <section>
             <h3 className="flex items-center gap-2 text-lg font-bold">
               <span aria-hidden="true">{"\u{1F30D}"}</span> NETWORK &amp; USSD
@@ -1147,7 +1168,7 @@ case "api-key":
         <button
           type="button"
           onClick={() => setActiveMenu("become-agent")}
-          className="mt-6 w-full rounded-full bg-purple-700 px-6 py-5 text-xl font-semibold text-white transition-colors hover:bg-purple-600"
+          className="mt-4 w-full rounded-full bg-purple-600 px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-purple-500"
         >
           Become an Agent
         </button>
