@@ -153,7 +153,7 @@ const UserDashboard = () => {
   const [normalWallet, setNormalWallet] = useState(0);
   const [customerWalletOwnerId, setCustomerWalletOwnerId] = useState<string | null>(null);
   const [customTopupAmount, setCustomTopupAmount] = useState("");
-const [agentCtaOpen, setAgentCtaOpen] = useState(false);
+const [agentCtaOpen, setAgentCtaOpen] = useState(true);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [showDeleteApiKey, setShowDeleteApiKey] = useState(false);
@@ -1096,24 +1096,24 @@ case "api-key":
   <MarketplaceBanner onPost={() => setActiveMenu("post-product")} onBrowse={() => setActiveMenu("marketplace")} />
 
       {/* Become an Agent CTA Card */}
-      <div className="rounded-2xl border border-purple-500/40 bg-purple-950/30 p-4">
+      <div className="rounded-2xl border border-purple-500/40 bg-gradient-to-br from-[#241b3d] to-[#241a33] p-4">
         <button
           type="button"
           onClick={() => setAgentCtaOpen((o) => !o)}
           aria-expanded={agentCtaOpen}
-          className="flex w-full items-center gap-3 text-left"
+          className="flex w-full items-center gap-4 px-2 py-3 text-left"
         >
-          <Users className="h-6 w-6 shrink-0 text-purple-400" />
-          <span className="flex-1 text-base font-semibold leading-snug text-foreground">
+          <Users className="h-7 w-7 shrink-0 text-purple-400" />
+          <span className="flex-1 text-xl font-semibold leading-snug text-foreground">
             Sign up as an Agent to get your own USSD
           </span>
-          <ChevronUp className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${agentCtaOpen ? "" : "rotate-180"}`} />
+          <ChevronUp className={`h-6 w-6 shrink-0 text-muted-foreground transition-transform ${agentCtaOpen ? "" : "rotate-180"}`} />
         </button>
         {agentCtaOpen && (
           <button
             type="button"
             onClick={() => setActiveMenu("become-agent")}
-            className="mt-4 w-full rounded-full bg-purple-600 px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-purple-700"
+            className="mt-3 w-full rounded-full bg-purple-600 px-6 py-5 text-xl font-semibold text-white transition-colors hover:bg-purple-700"
           >
             Become an Agent
           </button>
