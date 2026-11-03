@@ -153,6 +153,7 @@ const UserDashboard = () => {
   const [normalWallet, setNormalWallet] = useState(0);
   const [customerWalletOwnerId, setCustomerWalletOwnerId] = useState<string | null>(null);
   const [customTopupAmount, setCustomTopupAmount] = useState("");
+const [agentCtaOpen, setAgentCtaOpen] = useState(false);
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [showDeleteApiKey, setShowDeleteApiKey] = useState(false);
@@ -957,6 +958,7 @@ const UserDashboard = () => {
     const miniTabs = [
       { id: "gamehub", label: "GameHub", className: "border-purple-500/50 bg-purple-500/10 text-purple-700" },
       { id: "buy-data", label: "Buy Data", className: "border-cyan-500/50 bg-cyan-500/10 text-cyan-700" },
+      { id: "topup", label: "Top Up", className: "border-green-500/50 bg-green-500/10 text-green-700" },
       { id: "instant-data", label: "Instant Data", className: "border-amber-500/50 bg-amber-500/10 text-amber-700" },
       { id: "services", label: "Services", className: "border-orange-500/50 bg-orange-500/10 text-orange-700" },
   { id: "social-boost", label: "Social Boost", className: "border-cyan-500/50 bg-cyan-500/10 text-cyan-700" },
@@ -1095,17 +1097,27 @@ case "api-key":
 
       {/* Become an Agent CTA Card */}
       <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
-        <CardContent className="p-6 flex items-center justify-between">
-          <div>
-<p className="font-semibold text-foreground">Sign up as an Agent to get your own USSD</p>
-  <p className="text-sm text-muted-foreground mt-1">Create your own agent store, let customers buy offline from your store, add subagents and sub-subagents, set your own selling price, and make profit.</p>
-          </div>
+        <CardContent className="p-4">
           <button
-            onClick={() => setActiveMenu("become-agent")}
-            className="px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium whitespace-nowrap transition-all"
+            type="button"
+            onClick={() => setAgentCtaOpen((o) => !o)}
+            aria-expanded={agentCtaOpen}
+            className="flex w-full items-center justify-between gap-3 text-left"
           >
-            Become an Agent
+            <span className="flex items-center gap-2 font-semibold text-foreground">
+              <Users className="h-5 w-5 text-purple-400 shrink-0" />
+              Sign up as an Agent to get your own USSD
+            </span>
+            <ChevronDown className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${agentCtaOpen ? "rotate-180" : ""}`} />
           </button>
+          {agentCtaOpen && (
+            <button
+              onClick={() => setActiveMenu("become-agent")}
+              className="mt-4 w-full px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-all"
+            >
+              Become an Agent
+            </button>
+          )}
         </CardContent>
       </Card>
 
@@ -2796,6 +2808,34 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
     );
   };
 
+  const handleUpgradeToAgent = async () => {
+    try {
+      const { data: existingAgent, error } = await supabase
+        .from("agent_stores")
+        .select("id, approved")
+        .eq("user_id", effectiveUserId)
+        .maybeSingle();
+
+      if (error) {
+        console.log("[v0] Error checking agent account:", error);
+        fetchRegistrationFee();
+        setShowUpgradeConfirmation(true);
+        return;
+      }
+
+      if (existingAgent && !existingAgent.approved) {
+        navigate("/pending-approval");
+      } else {
+        fetchRegistrationFee();
+        setShowUpgradeConfirmation(true);
+      }
+    } catch (err) {
+      console.log("[v0] Exception checking agent account:", err);
+      fetchRegistrationFee();
+      setShowUpgradeConfirmation(true);
+    }
+  };
+
   const renderBecomeAgent = () => (
     <div className="space-y-6">
       <Card className="border-primary/50 bg-gradient-to-r from-primary/10 to-primary/5">
@@ -2805,6 +2845,13 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   Sign up as an Agent
           </CardTitle>
           <p className="text-sm text-muted-foreground mt-2">Create your own agent store, get your own store dedicated USSD, let customers buy offline from your store, add subagents and sub-subagents, set your own selling price, and make profit.</p>
+          <Button
+            className="mt-4 w-full h-12 text-lg font-semibold"
+            onClick={handleUpgradeToAgent}
+            disabled={registrationFeeLoading}
+          >
+            {registrationFeeLoading ? "Loading..." : "Upgrade to Agent Now"}
+          </Button>
         </CardHeader>
       </Card>
 
@@ -2922,36 +2969,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
         <CardContent className="pt-6">
           <Button
             className="w-full h-12 text-lg font-semibold"
-            onClick={async () => {
-              try {
-                // Check if user already has a pending agent account
-                const { data: existingAgent, error } = await supabase
-                  .from("agent_stores")
-                  .select("id, approved")
-                  .eq("user_id", effectiveUserId)
-                  .maybeSingle();
-                
-                if (error) {
-                  console.log("[v0] Error checking agent account:", error);
-                  fetchRegistrationFee();
-                  setShowUpgradeConfirmation(true);
-                  return;
-                }
-                
-                if (existingAgent && !existingAgent.approved) {
-                  // User has pending agent account, redirect to pending approval page
-                  navigate("/pending-approval");
-                } else {
-                  // User doesn't have pending account, show upgrade confirmation
-                  fetchRegistrationFee();
-                  setShowUpgradeConfirmation(true);
-                }
-              } catch (err) {
-                console.log("[v0] Exception checking agent account:", err);
-                fetchRegistrationFee();
-                setShowUpgradeConfirmation(true);
-              }
-            }}
+            onClick={handleUpgradeToAgent}
             disabled={registrationFeeLoading}
           >
             {registrationFeeLoading ? "Loading..." : "Upgrade to Agent Now"}
@@ -3070,7 +3088,7 @@ return (
 
       <div className={`pb-12 ${isImpersonating ? "pt-32" : "pt-24"}`}>
         <div className="container mb-8">
-          <h1 className="font-display text-4xl font-bold text-foreground mb-2">My Dashboard</h1>
+          <h1 className="font-display text-4xl font-bold text-foreground mb-2">THIS IS YOUR USER DASHBOARD</h1>
           <p className="text-muted-foreground">Manage your account and purchases</p>
         </div>
 
