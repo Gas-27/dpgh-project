@@ -168,7 +168,7 @@ export default function SmsAdmin() {
   const copy = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
-      toast({ title: "Copied", description: `${text} copied. Send it to TxtConnect for approval.` });
+      toast({ title: "Copied", description: `${text} copied. Send it to your SMS provider for approval.` });
     } catch {
       toast({ title: "Copy failed", description: "Copy manually instead.", variant: "destructive" });
     }
@@ -252,7 +252,7 @@ export default function SmsAdmin() {
           <CardTitle className="flex items-center gap-2">
             <Clock className="h-5 w-5 text-amber-500" /> Pending Approval ({pending.length})
           </CardTitle>
-          <CardDescription>Copy sender IDs to TxtConnect, then approve, reject, or delete one or more submissions.</CardDescription>
+          <CardDescription>Copy sender IDs to your SMS provider, then approve, reject, or delete one or more submissions.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={pendingSearch} onChange={(e) => setPendingSearch(e.target.value)} placeholder="Search pending sender IDs or email" className="pl-9" /></div>

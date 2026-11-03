@@ -447,7 +447,12 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     try { parsedContext = contextDetails ? JSON.parse(contextDetails) : null; } catch { /* keep raw context */ }
     const providerDetails = data?.provider_response?.map?.((item: any) => item?.body?.msg || item?.body?.message || item?.body?.error).filter(Boolean).join("; ");
     const authFailure = data?.error === "Authentication required" || parsedContext?.error === "Authentication required";
-    toast({ title: authFailure ? "Sign-in session expired" : "SMS was not sent", description: authFailure ? "Please sign out and sign in again before sending SMS." : data?.error || parsedContext?.error || providerDetails || contextDetails || error?.message || "Please try again.", variant: "destructive" });
+    const rawDescription = String(data?.error || parsedContext?.error || providerDetails || contextDetails || error?.message || "Please try again.");
+    // Provider names, URLs and network internals must never be shown to customers.
+    const description = /txtconnect|https?:\/\/|\bapi\.|dns|name resolution|error sending request|fetch failed|failed to send a request|connect|timed? ?out|network|socket|econn|enotfound|edge function/i.test(rawDescription)
+      ? "SMS service is temporarily busy. Please try again in a moment."
+      : rawDescription;
+    toast({ title: authFailure ? "Sign-in session expired" : "SMS was not sent", description: authFailure ? "Please sign out and sign in again before sending SMS." : description, variant: "destructive" });
       return;
     }
     const { error: historyError } = await supabase.from("sms_messages").insert({

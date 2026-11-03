@@ -29,6 +29,43 @@ const providerReason = (value: unknown): string | null => {
   return null;
 };
 
+const SERVICE_BUSY = "SMS service is temporarily busy. You have not been charged. Please try again in a moment.";
+// Never let provider names, URLs or network internals reach the browser.
+const safeMessage = (value: unknown): string => {
+  const text = typeof value === "string" ? value : value instanceof Error ? value.message : "";
+  if (!text) return SERVICE_BUSY;
+  if (/txtconnect|https?:\/\/|\bapi\.|dns|name resolution|error sending request|fetch failed|connect|timed? ?out|network|socket|tls|ssl|econn|enotfound/i.test(text)) return SERVICE_BUSY;
+  return text.replace(/txt\s*connect/gi, "SMS service");
+};
+const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+// Transient failures (DNS hiccups, resets) are retried before a recipient is marked failed.
+const fetchWithRetry = async (url: string, init: RequestInit, attempts = 4): Promise<Response> => {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    try {
+      const response = await fetch(url, init);
+      if (response.status < 500 || attempt === attempts - 1) return response;
+    } catch (error) {
+      lastError = error;
+      if (attempt === attempts - 1) throw error;
+    }
+    await wait(400 * 2 ** attempt + Math.floor(Math.random() * 200));
+  }
+  throw lastError instanceof Error ? lastError : new Error("Provider request failed");
+};
+// Large campaigns used to open one connection per recipient at once, which exhausts DNS/sockets.
+const mapWithConcurrency = async <T, R>(items: T[], limit: number, worker: (item: T) => Promise<R>): Promise<R[]> => {
+  const output: R[] = new Array(items.length);
+  let cursor = 0;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (cursor < items.length) {
+      const index = cursor++;
+      output[index] = await worker(items[index]);
+    }
+  }));
+  return output;
+};
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -93,14 +130,14 @@ Deno.serve(async (request) => {
     const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_ANON_KEY")!, { global: { headers: { Authorization: auth } } });
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return json({ error: "Authentication required" }, 401);
-    if (!providerAuth) return json({ error: "TxtConnect is not configured" }, 503);
+    if (!providerAuth) return json({ error: "SMS service is not configured" }, 503);
     if (action === "balance") {
-      const response = await fetch("https://api.txtconnect.net/dev/api/sms/checkbalance", { headers: providerHeaders });
+      const response = await fetchWithRetry("https://api.txtconnect.net/dev/api/sms/checkbalance", { headers: providerHeaders });
       return json(await response.json(), response.status);
     }
     if (action === "status") {
       if (!body.message_id) return json({ error: "message_id is required" }, 400);
-      const response = await fetch(`https://api.txtconnect.net/dev/api/sms/getstatus/${encodeURIComponent(String(body.message_id))}`, { headers: providerHeaders });
+      const response = await fetchWithRetry(`https://api.txtconnect.net/dev/api/sms/getstatus/${encodeURIComponent(String(body.message_id))}`, { headers: providerHeaders });
       const raw = await response.text();
       let payload: unknown = {};
       try { payload = JSON.parse(raw); } catch { payload = { raw }; }
@@ -136,23 +173,22 @@ Deno.serve(async (request) => {
     const { data: record, error: insertError } = await supabase.from("sms_messages").insert({ user_id: user.id, owner_type: ownerType, owner_id: body.owner_id || user.id, recipients, sender_id: senderId, message, total_charge: totalCharge, unit_price: contactPrice }).select("id").single();
     if (insertError) { await supabase.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: totalCharge, p_owner_type: ownerType }); return json({ error: "Could not create the SMS record" }, 500); }
     const unicode = hasUnicode(message);
-    const results = await Promise.all(recipients.map(async (to: string) => {
+    const results = await mapWithConcurrency(recipients, 20, async (to: string) => {
       try {
-        const response = await fetch("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: providerHeaders, body: JSON.stringify({ to, from: senderId, unicode, sms: message }) });
+        const response = await fetchWithRetry("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: providerHeaders, body: JSON.stringify({ to, from: senderId, unicode, sms: message }) });
         const raw = await response.text();
         let body: Record<string, unknown> = {};
         try { body = JSON.parse(raw) as Record<string, unknown>; } catch { body = { raw }; }
         const data = (body.data || {}) as Record<string, unknown>;
         const messageId = body.messageId || body.message_id || data.messageId || data.message_id || null;
-        const reason = providerReason(body) || providerReason(data) || `HTTP ${response.status}`;
-        console.log(`[v0] TxtConnect response: to=${to}, http=${response.status}, messageId=${String(messageId)}, statusCode=${String(data.status_code ?? "")}, reason=${String(reason)}, raw=${raw}`);
+        const reason = safeMessage(providerReason(body) || providerReason(data) || `HTTP ${response.status}`);
+        console.log(`[v0] SMS provider response: to=${to}, http=${response.status}, messageId=${String(messageId)}, statusCode=${String(data.status_code ?? "")}, raw=${raw}`);
         return { to, status: response.status, body, message_id: messageId, reason };
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Provider request failed";
-        console.error(`[v0] TxtConnect request failed for ${to}`, error);
-        return { to, status: 599, body: { error: message }, message_id: null, reason: message };
+        console.error(`[v0] SMS provider request failed for ${to}`, error);
+        return { to, status: 599, body: { error: SERVICE_BUSY }, message_id: null, reason: SERVICE_BUSY };
       }
-    }));
+    });
     const failed = results.filter((result) => result.status < 200 || result.status >= 300 || ((result.body.data as Record<string, unknown> | undefined)?.status_code && (result.body.data as Record<string, unknown>).status_code !== "000"));
     if (failed.length) {
       const sentCount = results.length - failed.length;
@@ -166,5 +202,5 @@ Deno.serve(async (request) => {
       return json({ error: `${failed.length} message(s) failed: ${reasons.join("; ")}`, provider_reasons: reasons, sent: results.length - failed.length, refunded: chargePerRecipient * failed.length, total: results.length, pages }, 502);
     }
     return json({ success: true, sent: results.length, charge: totalCharge, pages, id: record.id });
-  } catch (error) { console.error("[v0] TxtConnect SMS error", error); return json({ error: error instanceof Error ? error.message : "SMS service request failed" }, 500); }
+  } catch (error) { console.error("[v0] SMS service error", error); return json({ error: safeMessage(error) }, 500); }
 });
