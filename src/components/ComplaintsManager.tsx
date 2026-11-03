@@ -68,6 +68,20 @@ const networkName = (network?: string) => {
   }
 };
 
+const buildShareReport = (c: Complaint, screenshotUrl?: string) => {
+  const orderDate = c.orders?.created_at ? new Date(c.orders.created_at).toLocaleString("en-GB") : "—";
+  const reportedAt = c.created_at ? new Date(c.created_at).toLocaleDateString("en-GB") : "—";
+  return [
+    `Network: ${c.orders ? networkName(c.orders.network) : "—"}`,
+    `Data Package: ${c.orders?.size_gb != null ? `${c.orders.size_gb}GB` : "—"}`,
+    `Order Date: ${orderDate}`,
+    `Reported at: ${reportedAt}`,
+    `Customer Number: ${c.customer_number}`,
+    "Message: customer report that it shows Delivered But has Not Received the data",
+    ...(screenshotUrl ? [`Screenshot: ${screenshotUrl}`] : []),
+  ].join("\n");
+};
+
 export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = false }: { isAgent?: boolean; agentStoreId?: string; readOnly?: boolean } = {}) => {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -509,19 +523,7 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
   };
 
   const handleShare = async () => {
-    const orderDate = complaint.orders?.created_at
-      ? new Date(complaint.orders.created_at).toLocaleString()
-      : "—";
-    const network = complaint.orders ? networkName(complaint.orders.network) : "—";
-    // Keep the shared report intentionally limited to the four approved fields.
-    const lines = [
-      `Network: ${network}`,
-      `Data Package: ${complaint.orders?.size_gb != null ? `${complaint.orders.size_gb}GB` : "—"}`,
-      `Order Date: ${orderDate}`,
-      `Customer Number: ${complaint.customer_number}`,
-      "Message Delivered But Not Received",
-      ...(includeScreenshotLink && complaint.screenshot_url ? [`Screenshot: ${complaint.screenshot_url}`] : []),
-    ].join("\n");
+    const lines = buildShareReport(complaint, includeScreenshotLink ? complaint.screenshot_url : undefined);
     if (navigator.share) {
       try { await navigator.share({ title: "Complaint", text: lines }); } catch (_) {}
     } else {
@@ -887,20 +889,9 @@ function ComplaintsTable({
               className="flex items-center gap-1 text-xs px-3 py-1.5 rounded border border-border bg-background hover:bg-muted"
               onClick={async () => {
                 const selected = complaints.filter(c => selectedComplaints.has(c.id));
-                const networkName = (n: string) =>
-                  n === "mtn" ? "MTN" : n === "mtn_express" ? "MTN Express" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : (n || "").toUpperCase();
-                const text = selected.map(c => {
-                  const orderDate = c.orders?.created_at ? new Date(c.orders.created_at).toLocaleString() : "—";
-                  const network = c.orders ? networkName(c.orders.network) : "—";
-                  return [
-                    `Network: ${network}`,
-                    `Data Package: ${c.orders?.size_gb != null ? `${c.orders.size_gb}GB` : "—"}`,
-                    `Order Date: ${orderDate}`,
-                    `Customer Number: ${c.customer_number}`,
-                    "Message Delivered But Not Received",
-                    ...(includeScreenshotsInBulkShare && c.screenshot_url ? [`Screenshot: ${c.screenshot_url}`] : []),
-                  ].join("\n");
-                }).join("\n\n");
+                const text = selected
+                  .map(c => buildShareReport(c, includeScreenshotsInBulkShare ? c.screenshot_url : undefined))
+                  .join("\n\n");
                 if (navigator.share) {
                   try { await navigator.share({ title: `${selected.length} Complaint(s)`, text }); } catch (_) {}
                 } else {
