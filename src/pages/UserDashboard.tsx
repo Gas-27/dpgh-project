@@ -1165,13 +1165,15 @@ case "api-key":
           </section>
         </div>
 
-        <button
-          type="button"
-          onClick={() => setActiveMenu("become-agent")}
-          className="mt-4 w-full rounded-full bg-purple-600 px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-purple-500"
-        >
-          Become an Agent
-        </button>
+        {agentCtaOpen && (
+          <button
+            type="button"
+            onClick={() => setActiveMenu("become-agent")}
+            className="mt-4 w-full rounded-full bg-purple-600 px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-purple-500"
+          >
+            Become an Agent
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="packages" /></div>

@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { buildWhatsAppProductLink } from "@/lib/whatsappProductMessage";
 import { cn } from "@/lib/utils";
+import { GHANA_REGIONS } from "@/lib/ghanaRegions";
 import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Phone, BadgeCheck } from "lucide-react";
 
 type PublicProduct = {
@@ -34,6 +35,7 @@ type PublicProduct = {
   has_inline_image?: boolean;
   marketplace_view_count?: number;
   view_weight?: number;
+  region?: string | null;
 };
 
 const PAGE_SIZE = 18;
@@ -98,6 +100,7 @@ export default function PublicProductsSection({
   const [effectiveSearch, setEffectiveSearch] = useState("");
   const [page, setPage] = useState(0);
   const [sortOrder, setSortOrder] = useState<SortOrder>("newest");
+  const [regionFilter, setRegionFilter] = useState("");
 
   useEffect(() => {
     const timer = window.setTimeout(() => setEffectiveSearch(searchQuery.trim()), 250);
@@ -110,10 +113,13 @@ export default function PublicProductsSection({
     setLoading(true);
 
     const loadProducts = async () => {
-      const fields = "id,title,description,price,image_urls,created_at,store_id,store_kind,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,admin_boost,marketplace_view_count";
-      const queryProducts = (query: any) => effectiveSearch
-        ? query.or(`title.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%,description.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%`)
-        : query;
+      const fields = "id,title,description,price,image_urls,created_at,store_id,store_kind,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,admin_boost,marketplace_view_count,region";
+      const queryProducts = (query: any) => {
+        const regionQuery = regionFilter ? query.eq("region", regionFilter) : query;
+        return effectiveSearch
+          ? regionQuery.or(`title.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%,description.ilike.%${effectiveSearch.replace(/[%_]/g, "\\$&")}%`)
+          : regionQuery;
+      };
       const recordMarketplaceViews = async (items: PublicProduct[]) => {
         const counted = await Promise.all(items.map(async (item) => {
           const { data } = await (supabase as any).rpc("marketplace_product_view", { p_product_id: item.id, p_source: item.store_kind === "admin" ? "admin" : "store" });
@@ -163,6 +169,7 @@ export default function PublicProductsSection({
         p_page: page,
         p_page_size: PAGE_SIZE,
         p_sort: sortOrder,
+        p_region: regionFilter,
       });
       if (pageError) throw pageError;
       const normalizeRpcProduct = (product: any): PublicProduct => ({
@@ -190,7 +197,7 @@ export default function PublicProductsSection({
 
     loadProducts().catch(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [catalog, effectiveSearch, page, sortOrder, siteWide, storeId, storeKind]);
+  }, [catalog, effectiveSearch, page, sortOrder, regionFilter, siteWide, storeId, storeKind]);
 
   const visibleProducts = catalog === "store" ? storeProducts : globalProducts;
   const displayViews = getUniqueMarketplaceViews(visibleProducts);
@@ -238,6 +245,21 @@ export default function PublicProductsSection({
               className="mx-auto mt-4 block w-full max-w-xl rounded-xl border border-primary/30 bg-background px-4 py-3 text-sm outline-none focus:border-primary"
             />
             <div className="mx-auto mt-3 flex w-full max-w-xl items-center justify-end gap-2">
+              <label htmlFor="product-region-filter" className="text-sm text-muted-foreground">Region</label>
+              <select
+                id="product-region-filter"
+                value={regionFilter}
+                onChange={(event) => {
+                  setRegionFilter(event.target.value);
+                  setPage(0);
+                }}
+                className="rounded-lg border border-primary/30 bg-background px-3 py-2 text-sm outline-none focus:border-primary"
+              >
+                <option value="">All regions</option>
+                {GHANA_REGIONS.map((region) => <option key={region} value={region}>{region}</option>)}
+              </select>
+            </div>
+            <div className="mx-auto mt-3 flex w-full max-w-xl items-center justify-end gap-2">
               <label htmlFor="product-sort" className="text-sm text-muted-foreground">Sort by</label>
               <select
                 id="product-sort"
@@ -282,6 +304,7 @@ export default function PublicProductsSection({
                       <div className="flex items-center justify-between gap-2"><h3 className="font-semibold">{product.title}</h3>{product.admin_boost ? <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-gradient-to-r from-amber-300 to-amber-500 px-2 py-1 text-xs font-bold text-amber-950"><BadgeCheck className="h-3.5 w-3.5" /> Golden Boost</span> : ((product.boost_global && (!product.boost_global_expires_at || new Date(product.boost_global_expires_at) > new Date())) || (product.boost_sitewide && (!product.boost_sitewide_expires_at || new Date(product.boost_sitewide_expires_at) > new Date()))) && <span className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2 py-1 text-xs font-semibold text-primary"><BadgeCheck className="h-3.5 w-3.5" /> Boosted</span>}</div>
                       <p className="line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
                       <p className="font-bold text-primary">GHS {Number(product.price).toFixed(2)}</p><p className="text-xs font-medium text-muted-foreground">{(displayViews.get(product.id) ?? 0).toLocaleString()} views</p>
+                      {product.region && <p className="text-xs font-medium text-muted-foreground">Region: {product.region}</p>}
                       {product.seller_phone && <p className="text-xs text-muted-foreground">Seller: {product.seller_phone}</p>}
                     </div>
                   </button>

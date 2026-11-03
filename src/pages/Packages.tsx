@@ -24,7 +24,6 @@ import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationSuccess from "@/components/AFARegistrationSuccess";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
-import AgentSignupPrompt from "@/components/AgentSignupPrompt";
 import DraggableFAB from "@/components/DraggableFAB";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
@@ -2008,9 +2007,7 @@ const searchOrders = async (input?: string) => {
 
       <AFARegistrationSuccess />
       
-      {/* Agent Signup Prompt - Shows on every packages page load */}
-      <AgentSignupPrompt />
-      
+
       <ChatBot page="packages" />
     </div>
   );
