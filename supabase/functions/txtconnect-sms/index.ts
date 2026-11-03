@@ -66,6 +66,19 @@ const mapWithConcurrency = async <T, R>(items: T[], limit: number, worker: (item
   return output;
 };
 
+const BATCH_SIZE = 25;
+const BATCH_CONCURRENCY = 5;
+const RATE_LIMITED = /too many request|rate.?limit/i;
+const retryAfterSeconds = (text: string) => {
+  const match = text.match(/(\d+)\s*second/i);
+  return match ? Math.min(Math.max(Number(match[1]), 5), 90) : 30;
+};
+type SendResult = { to: string; status: number; body: Record<string, unknown>; message_id: unknown; reason: string };
+const delivered = (result: SendResult) => {
+  const data = result.body?.data as Record<string, unknown> | undefined;
+  return result.status >= 200 && result.status < 300 && !(data?.status_code && data.status_code !== "000");
+};
+
 Deno.serve(async (request) => {
   if (request.method === "OPTIONS") return new Response("ok", { headers: cors });
   try {
@@ -143,69 +156,100 @@ Deno.serve(async (request) => {
       try { payload = JSON.parse(raw); } catch { payload = { raw }; }
       return json(payload, response.status);
     }
-    const ownerType = ["agent", "subagent", "subsubagent"].includes(String(body.owner_type)) ? String(body.owner_type) : "customer";
-    const localRecipients = Array.from(new Set((Array.isArray(body.recipients) ? body.recipients : []).map((value: string) => normalizeLocalGh(value)).filter((value: string | null): value is string => Boolean(value && /^0[2-5]\d{8}$/.test(value)))));
-    const recipients = localRecipients;
-    const senderId = String(body.sender_id || "").trim();
-    const message = String(body.message || "").trim();
-    const { data: blockedSender } = await supabase.rpc("is_sms_sender_blocked", { p_sender_id: senderId });
-    if (blockedSender) return json({ error: "This sender ID is locked and cannot be used to send SMS." }, 403);
-    console.log(`[v0] SMS send requested: ${localRecipients.length} recipient(s), sender=${senderId}, chars=${smsUnits(message)}`);
-    // A sender ID is usable if the user owns an approved copy OR it is a global approved sender.
-    const { data: senderRecords } = await supabase
-      .from("sms_sender_ids")
-      .select("status,user_id,is_global")
-      .eq("sender_id", senderId.toUpperCase())
-      .eq("status", "approved");
-    const senderApproved = (senderRecords || []).some((r: { user_id: string | null; is_global: boolean }) => r.is_global || r.user_id === user.id || r.user_id === null);
-    const messageUnits = smsUnits(message);
-    if (!recipients.length || !senderId || !message || senderId.length > 11 || messageUnits > 1600) return json({ error: "Valid recipients, sender ID, and message are required" }, 400);
-    if (!senderApproved) return json({ error: "This sender ID is not approved yet" }, 403);
-    const { data: appSettings } = await supabase.from("app_settings").select("sms_dashboard_recipient_price,sms_dashboard_page_price,sms_storefront_recipient_price,sms_storefront_page_price").eq("id", 1).maybeSingle();
-    const storefront = body.sales_channel === "storefront" || ownerType !== "customer";
-    const contactPrice = Number(storefront ? appSettings?.sms_storefront_recipient_price : appSettings?.sms_dashboard_recipient_price) || 0;
-    const pagePrice = Number(storefront ? appSettings?.sms_storefront_page_price : appSettings?.sms_dashboard_page_price) || 0;
-    const pages = Math.max(1, Math.ceil(messageUnits / 160));
-    const chargePerRecipient = contactPrice;
-    const totalCharge = (contactPrice * recipients.length) + (pagePrice * pages);
-    // charge/refund RPCs are service_role only, so they must not run through the user-scoped client.
     const walletServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || Deno.env.get("SUPABASE_SECRET_KEY");
     if (!walletServiceKey) return json({ error: "SMS service is not configured" }, 503);
+    // charge/refund RPCs and campaign progress writes are service_role only.
     const walletAdmin = createClient(Deno.env.get("SUPABASE_URL")!, walletServiceKey);
-    const { data: charged, error: chargeError } = await walletAdmin.rpc("charge_sms_wallet", { p_user_id: user.id, p_amount: totalCharge, p_owner_type: ownerType });
-    if (chargeError) { console.error("[v0] SMS wallet charge failed", chargeError); return json({ error: "Could not charge your wallet. Please try again." }, 500); }
-    if (!charged) return json({ error: "Insufficient wallet balance for this SMS campaign" }, 402);
-    const { data: record, error: insertError } = await supabase.from("sms_messages").insert({ user_id: user.id, owner_type: ownerType, owner_id: body.owner_id || user.id, recipients, sender_id: senderId, message, total_charge: totalCharge, unit_price: contactPrice }).select("id").single();
-    if (insertError) { await walletAdmin.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: totalCharge, p_owner_type: ownerType }); return json({ error: "Could not create the SMS record" }, 500); }
-    const unicode = hasUnicode(message);
-    const results = await mapWithConcurrency(recipients, 20, async (to: string) => {
-      try {
-        const response = await fetchWithRetry("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: providerHeaders, body: JSON.stringify({ to, from: senderId, unicode, sms: message }) });
-        const raw = await response.text();
-        let body: Record<string, unknown> = {};
-        try { body = JSON.parse(raw) as Record<string, unknown>; } catch { body = { raw }; }
-        const data = (body.data || {}) as Record<string, unknown>;
-        const messageId = body.messageId || body.message_id || data.messageId || data.message_id || null;
-        const reason = safeMessage(providerReason(body) || providerReason(data) || `HTTP ${response.status}`);
-        console.log(`[v0] SMS provider response: to=${to}, http=${response.status}, messageId=${String(messageId)}, statusCode=${String(data.status_code ?? "")}, raw=${raw}`);
-        return { to, status: response.status, body, message_id: messageId, reason };
-      } catch (error) {
-        console.error(`[v0] SMS provider request failed for ${to}`, error);
-        return { to, status: 599, body: { error: SERVICE_BUSY }, message_id: null, reason: SERVICE_BUSY };
+
+    if (action === "start") {
+      const ownerType = ["agent", "subagent", "subsubagent"].includes(String(body.owner_type)) ? String(body.owner_type) : "customer";
+      const recipients = Array.from(new Set((Array.isArray(body.recipients) ? body.recipients : []).map((value: string) => normalizeLocalGh(value)).filter((value: string | null): value is string => Boolean(value && /^0[2-5]\d{8}$/.test(value)))));
+      const senderId = String(body.sender_id || "").trim();
+      const message = String(body.message || "").trim();
+      const { data: blockedSender } = await supabase.rpc("is_sms_sender_blocked", { p_sender_id: senderId });
+      if (blockedSender) return json({ error: "This sender ID is locked and cannot be used to send SMS." }, 403);
+      const { data: senderRecords } = await supabase.from("sms_sender_ids").select("status,user_id,is_global").eq("sender_id", senderId.toUpperCase()).eq("status", "approved");
+      const senderApproved = (senderRecords || []).some((r: { user_id: string | null; is_global: boolean }) => r.is_global || r.user_id === user.id || r.user_id === null);
+      const messageUnits = smsUnits(message);
+      if (!recipients.length || !senderId || !message || senderId.length > 11 || messageUnits > 1600) return json({ error: "Valid recipients, sender ID, and message are required" }, 400);
+      if (!senderApproved) return json({ error: "This sender ID is not approved yet" }, 403);
+      const { data: appSettings } = await supabase.from("app_settings").select("sms_dashboard_recipient_price,sms_dashboard_page_price,sms_storefront_recipient_price,sms_storefront_page_price").eq("id", 1).maybeSingle();
+      const storefront = body.sales_channel === "storefront" || ownerType !== "customer";
+      const contactPrice = Number(storefront ? appSettings?.sms_storefront_recipient_price : appSettings?.sms_dashboard_recipient_price) || 0;
+      const pagePrice = Number(storefront ? appSettings?.sms_storefront_page_price : appSettings?.sms_dashboard_page_price) || 0;
+      const pages = Math.max(1, Math.ceil(messageUnits / 160));
+      const totalCharge = (contactPrice * recipients.length) + (pagePrice * pages);
+      // The full campaign cost is taken up front; anything that cannot be delivered is refunded in "finish".
+      const { data: charged, error: chargeError } = await walletAdmin.rpc("charge_sms_wallet", { p_user_id: user.id, p_amount: totalCharge, p_owner_type: ownerType });
+      if (chargeError) { console.error("[v0] SMS wallet charge failed", chargeError); return json({ error: "Could not charge your wallet. Please try again." }, 500); }
+      if (!charged) return json({ error: "Insufficient wallet balance for this SMS campaign" }, 402);
+      const { data: record, error: insertError } = await walletAdmin.from("sms_messages").insert({ user_id: user.id, owner_type: ownerType, owner_id: body.owner_id || user.id, recipients, sender_id: senderId, message, total_charge: totalCharge, unit_price: contactPrice, status: "sending", provider_response: [], sent_count: 0, failed_count: 0, unicode: hasUnicode(message) ? "unicode" : "regular" }).select("id").single();
+      if (insertError || !record) { await walletAdmin.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: totalCharge, p_owner_type: ownerType }); return json({ error: "Could not create the SMS record" }, 500); }
+      return json({ id: record.id, total: recipients.length, pages, charge: totalCharge, batch_size: BATCH_SIZE, recipients });
+    }
+
+    if (action === "batch" || action === "finish") {
+      const { data: record } = await walletAdmin.from("sms_messages").select("id,user_id,owner_type,recipients,sender_id,message,total_charge,unit_price,status,provider_response,sent_count,failed_count").eq("id", String(body.id || "")).eq("user_id", user.id).maybeSingle();
+      if (!record) return json({ error: "SMS campaign not found" }, 404);
+      const previous: SendResult[] = Array.isArray(record.provider_response) ? record.provider_response as SendResult[] : [];
+      const campaignRecipients: string[] = record.recipients || [];
+
+      if (action === "batch") {
+        if (record.status !== "sending") return json({ error: "This SMS campaign is already finished" }, 409);
+        const handledAlready = new Set(previous.map((item) => item.to));
+        const requested = Array.from(new Set((Array.isArray(body.recipients) ? body.recipients : []).map((value: string) => normalizeLocalGh(value)).filter((value: string | null): value is string => Boolean(value))));
+        const allowed = new Set(campaignRecipients);
+        const batch = requested.filter((to) => allowed.has(to) && !handledAlready.has(to)).slice(0, BATCH_SIZE);
+        const unicode = hasUnicode(record.message);
+        let rateLimitedFor: number | null = null;
+        const recorded: SendResult[] = [];
+        let cursor = 0;
+        await Promise.all(Array.from({ length: Math.min(BATCH_CONCURRENCY, batch.length) }, async () => {
+          while (cursor < batch.length && rateLimitedFor === null) {
+            const to = batch[cursor++];
+            try {
+              const response = await fetchWithRetry("https://api.txtconnect.net/dev/api/sms/send", { method: "POST", headers: providerHeaders, body: JSON.stringify({ to, from: record.sender_id, unicode, sms: record.message }) });
+              const raw = await response.text();
+              let parsed: Record<string, unknown> = {};
+              try { parsed = JSON.parse(raw) as Record<string, unknown>; } catch { parsed = { raw }; }
+              const data = (parsed.data || {}) as Record<string, unknown>;
+              const reasonRaw = providerReason(parsed) || providerReason(data) || `HTTP ${response.status}`;
+              if (response.status === 429 || RATE_LIMITED.test(reasonRaw) || RATE_LIMITED.test(raw)) {
+                // Not recorded: this recipient is handed back to the client so it can be retried after the cool-down.
+                rateLimitedFor = retryAfterSeconds(`${reasonRaw} ${raw}`);
+                continue;
+              }
+              const messageId = parsed.messageId || parsed.message_id || data.messageId || data.message_id || null;
+              recorded.push({ to, status: response.status, body: parsed, message_id: messageId, reason: safeMessage(reasonRaw) });
+            } catch (error) {
+              console.error("[v0] SMS provider request failed", error);
+              recorded.push({ to, status: 599, body: { error: SERVICE_BUSY }, message_id: null, reason: SERVICE_BUSY });
+            }
+          }
+        }));
+        const merged = [...previous, ...recorded];
+        const sentCount = merged.filter(delivered).length;
+        await walletAdmin.from("sms_messages").update({ provider_response: merged, sent_count: sentCount, failed_count: merged.length - sentCount }).eq("id", record.id);
+        const handled = recorded.map((item) => item.to);
+        const sentNow = recorded.filter(delivered).length;
+        return json({ handled, sent: sentNow, failed: recorded.length - sentNow, sent_total: sentCount, processed_total: merged.length, total: campaignRecipients.length, remaining: campaignRecipients.length - merged.length, retry_after: rateLimitedFor });
       }
-    });
-    const failed = results.filter((result) => result.status < 200 || result.status >= 300 || ((result.body.data as Record<string, unknown> | undefined)?.status_code && (result.body.data as Record<string, unknown>).status_code !== "000"));
-    if (failed.length) {
-      const sentCount = results.length - failed.length;
-      const refundAmount = sentCount === 0 ? totalCharge : chargePerRecipient * failed.length;
-      await walletAdmin.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: refundAmount, p_owner_type: ownerType });
+
+      // finish: close the campaign once and refund whatever could not be delivered.
+      if (record.status !== "sending") return json({ success: true, already_finished: true, sent: record.sent_count, failed: record.failed_count, total: campaignRecipients.length });
+      const { data: closing } = await walletAdmin.from("sms_messages").update({ status: "finalizing" }).eq("id", record.id).eq("status", "sending").select("id");
+      if (!closing?.length) return json({ success: true, already_finished: true, sent: record.sent_count, failed: record.failed_count, total: campaignRecipients.length });
+      const sent = previous.filter(delivered).length;
+      const failed = campaignRecipients.length - sent;
+      const unitPrice = Number(record.unit_price) || 0;
+      const refundAmount = sent === 0 ? Number(record.total_charge) : unitPrice * failed;
+      if (refundAmount > 0) await walletAdmin.rpc("refund_sms_wallet", { p_user_id: user.id, p_amount: refundAmount, p_owner_type: record.owner_type });
+      const ids = previous.map((item) => item.message_id).filter(Boolean);
+      const finalStatus = failed === 0 ? "sent" : sent === 0 ? "failed" : "partial";
+      await walletAdmin.from("sms_messages").update({ status: finalStatus, provider_message_ids: ids, sent_count: sent, failed_count: failed, last_delivery_check_at: null, completed_at: new Date().toISOString(), error_message: failed ? `${failed} message(s) could not be delivered` : null }).eq("id", record.id);
+      return json({ success: failed === 0, status: finalStatus, sent, failed, refunded: refundAmount, total: campaignRecipients.length });
     }
-    const providerMessageIds = results.map((result) => result.message_id).filter(Boolean);
-    await supabase.from("sms_messages").update({ status: failed.length ? (failed.length === results.length ? "failed" : "partial") : "sent", provider_response: results, provider_message_ids: providerMessageIds, last_delivery_check_at: null, completed_at: new Date().toISOString(), error_message: failed.length ? `${failed.length} message(s) failed` : null }).eq("id", record.id);
-    if (failed.length) {
-      const reasons = Array.from(new Set(failed.map((result) => result.reason || `HTTP ${result.status}`).filter(Boolean)));
-      return json({ error: `${failed.length} message(s) failed: ${reasons.join("; ")}`, provider_reasons: reasons, sent: results.length - failed.length, refunded: chargePerRecipient * failed.length, total: results.length, pages }, 502);
-    }
-    return json({ success: true, sent: results.length, charge: totalCharge, pages, id: record.id });
+
+    return json({ error: "Unknown action" }, 400);
   } catch (error) { console.error("[v0] SMS service error", error); return json({ error: safeMessage(error) }, 500); }
 });

@@ -33,6 +33,23 @@ type Sender = {
   phone_number?: string | null;
 };
 
+type SmsCallResult = { data: Record<string, any> | null; message: string; status: number | null; authFailure: boolean };
+const callSmsService = async (body: Record<string, unknown>, accessToken: string): Promise<SmsCallResult> => {
+  const { data, error } = await supabase.functions.invoke("txtconnect-sms", { body, headers: { Authorization: `Bearer ${accessToken}` } });
+  if (!error && !data?.error) return { data, message: "", status: 200, authFailure: false };
+  let context = "";
+  try { context = error?.context ? await error.context.clone().text() : ""; } catch { /* response body may not be readable */ }
+  let parsed: any = null;
+  try { parsed = context ? JSON.parse(context) : null; } catch { /* keep raw context */ }
+  const raw = String(data?.error || parsed?.error || context || error?.message || "Please try again.");
+  const authFailure = raw === "Authentication required";
+  // Provider names, URLs and network internals must never be shown to customers.
+  const message = /txtconnect|https?:\/\/|\bapi\.|dns|name resolution|error sending request|fetch failed|failed to send a request|connect|timed? ?out|network|socket|econn|enotfound|edge function/i.test(raw)
+    ? "SMS service is temporarily busy. Please try again in a moment."
+    : raw;
+  return { data: null, message, status: Number(error?.context?.status) || null, authFailure };
+};
+
 const PAGE_SIZE = 160;
 
 /**
@@ -144,6 +161,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const [submitting, setSubmitting] = useState(false);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [progress, setProgress] = useState<{ total: number; processed: number; sent: number; waitSeconds: number } | null>(null);
   const [contactPrice, setContactPrice] = useState(0.07);
   const [pagePrice, setPagePrice] = useState(1.5);
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -395,6 +413,13 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     } finally { setGenerating(false); }
   };
 
+  useEffect(() => {
+    if (!progress) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [progress !== null]);
+
   const send = async () => {
     if (!senderId || !message.trim() || !numbers.length) {
       toast({ title: "Complete the SMS form", description: "Choose an approved sender, add recipients, and write a message.", variant: "destructive" });
@@ -435,46 +460,69 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       toast({ title: "Sign-in session expired", description: "Please sign in again before sending SMS.", variant: "destructive" });
       return;
     }
-    const { data, error } = await supabase.functions.invoke("txtconnect-sms", {
-      body: { action: "send", owner_type: ownerType, owner_id: ownerId, recipients: numbers, sender_id: senderId, message: outgoingMessage },
-      headers: { Authorization: `Bearer ${sessionData.session.access_token}` },
-    });
-    setLoading(false);
-  if (error || data?.error) {
-    let contextDetails = "";
-    try { contextDetails = error?.context ? await error.context.clone().text() : ""; } catch { /* provider response may not be readable */ }
-    let parsedContext: any = null;
-    try { parsedContext = contextDetails ? JSON.parse(contextDetails) : null; } catch { /* keep raw context */ }
-    const providerDetails = data?.provider_response?.map?.((item: any) => item?.body?.msg || item?.body?.message || item?.body?.error).filter(Boolean).join("; ");
-    const authFailure = data?.error === "Authentication required" || parsedContext?.error === "Authentication required";
-    const rawDescription = String(data?.error || parsedContext?.error || providerDetails || contextDetails || error?.message || "Please try again.");
-    // Provider names, URLs and network internals must never be shown to customers.
-    const description = /txtconnect|https?:\/\/|\bapi\.|dns|name resolution|error sending request|fetch failed|failed to send a request|connect|timed? ?out|network|socket|econn|enotfound|edge function/i.test(rawDescription)
-      ? "SMS service is temporarily busy. Please try again in a moment."
-      : rawDescription;
-    toast({ title: authFailure ? "Sign-in session expired" : "SMS was not sent", description: authFailure ? "Please sign out and sign in again before sending SMS." : description, variant: "destructive" });
+    const pause = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const call = async (payload: Record<string, unknown>) => {
+      const { data: current } = await supabase.auth.getSession();
+      const token = current.session?.access_token || sessionData.session.access_token;
+      return callSmsService(payload, token);
+    };
+    const started = await call({ action: "start", owner_type: ownerType, owner_id: ownerId, recipients: numbers, sender_id: senderId, message: outgoingMessage });
+    if (!started.data) {
+      setLoading(false);
+      toast({ title: started.authFailure ? "Sign-in session expired" : "SMS was not sent", description: started.authFailure ? "Please sign out and sign in again before sending SMS." : started.message, variant: "destructive" });
       return;
     }
-    const { error: historyError } = await supabase.from("sms_messages").insert({
-      user_id: sessionData.session.user.id,
-      owner_type: ownerType,
-      owner_id: ownerId || null,
-      recipients: numbers,
-      sender_id: senderId,
-      message: outgoingMessage,
-      total_charge: totalCost,
-      unit_price: contactPrice,
-      status: "sent",
-      sent_count: Number(data?.sent || numbers.length),
-      failed_count: Number(data?.failed || 0),
-      provider_response: data || null,
-      completed_at: new Date().toISOString(),
-    });
-    if (historyError) {
-      console.error("[v0] SMS history insert failed:", historyError);
-      toast({ title: "SMS sent, history not saved", description: "The messages were sent, but the dashboard could not save this record.", variant: "destructive" });
+    const campaignId = String(started.data.id);
+    const batchSize = Math.max(1, Number(started.data.batch_size) || 25);
+    let queue: string[] = Array.isArray(started.data.recipients) ? started.data.recipients : numbers;
+    const total = queue.length;
+    let sentTotal = 0;
+    let processedTotal = 0;
+    let stalled = 0;
+    setProgress({ total, processed: 0, sent: 0, waitSeconds: 0 });
+    while (queue.length) {
+      const batch = await call({ action: "batch", id: campaignId, recipients: queue.slice(0, batchSize) });
+      if (!batch.data) {
+        if (batch.status === 409 || ++stalled >= 4) break;
+        await pause(3000);
+        continue;
+      }
+      const handled = new Set<string>(batch.data.handled || []);
+      queue = queue.filter((number) => !handled.has(number));
+      sentTotal = Number(batch.data.sent_total ?? sentTotal);
+      processedTotal = Number(batch.data.processed_total ?? processedTotal);
+      setProgress({ total, processed: processedTotal, sent: sentTotal, waitSeconds: 0 });
+      const waitFor = Number(batch.data.retry_after) || 0;
+      if (waitFor > 0) {
+        stalled = handled.size === 0 ? stalled + 1 : 0;
+        if (stalled >= 6) break;
+        for (let remainingSeconds = waitFor; remainingSeconds > 0; remainingSeconds--) {
+          setProgress({ total, processed: processedTotal, sent: sentTotal, waitSeconds: remainingSeconds });
+          await pause(1000);
+        }
+        setProgress({ total, processed: processedTotal, sent: sentTotal, waitSeconds: 0 });
+      } else {
+        stalled = 0;
+      }
+    }
+    let finished = await call({ action: "finish", id: campaignId });
+    if (!finished.data) { await pause(2000); finished = await call({ action: "finish", id: campaignId }); }
+    setLoading(false);
+    setProgress(null);
+    if (!finished.data) {
+      toast({ title: "Sending could not be completed", description: "Some messages were not delivered. Any undelivered amount will be refunded to your wallet.", variant: "destructive" });
+      return;
+    }
+    const delivered = Number(finished.data.sent || 0);
+    const undelivered = Number(finished.data.failed || 0);
+    if (delivered === 0) {
+      toast({ title: "SMS was not sent", description: `No messages were delivered. GHS ${Number(finished.data.refunded || 0).toFixed(2)} was refunded to your wallet.`, variant: "destructive" });
+      return;
+    }
+    if (undelivered > 0) {
+      toast({ title: "SMS partly sent", description: `${delivered} of ${total} delivered. GHS ${Number(finished.data.refunded || 0).toFixed(2)} for the ${undelivered} undelivered was refunded to your wallet.` });
     } else {
-      toast({ title: "SMS sent", description: `${data.sent || numbers.length} recipient(s) processed - ${data.pages || pages} page(s) each.` });
+      toast({ title: "SMS sent", description: `${delivered} recipient(s) processed - ${pages} page(s) each.` });
     }
     setRecipients("");
     setMessage("");
@@ -718,9 +766,28 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
             </div>
           </div>
 
+          {progress && (
+            <div className="space-y-2 rounded-lg border border-primary/30 bg-primary/5 p-3" role="status" aria-live="polite">
+              <div className="flex items-center justify-between text-sm font-semibold text-foreground">
+                <span>Sending in batches</span>
+                <span>{progress.processed} of {progress.total}</span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress.total ? Math.round((progress.processed / progress.total) * 100) : 0}%` }} />
+              </div>
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <span>{progress.sent} delivered</span>
+                <span>{Math.max(progress.total - progress.processed, 0)} left to send</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {progress.waitSeconds > 0 ? `Pausing ${progress.waitSeconds}s to keep delivery steady, then continuing automatically.` : "Please keep this page open until sending finishes."}
+              </p>
+            </div>
+          )}
+
           <Button type="button" className="w-full" size="lg" onClick={(event) => { event.preventDefault(); void send(); }} disabled={loading}>
             {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-            Send Now ({numbers.length} recipient{numbers.length === 1 ? "" : "s"})
+            {loading && progress ? `Sending ${progress.processed} of ${progress.total}...` : `Send Now (${numbers.length} recipient${numbers.length === 1 ? "" : "s"})`}
           </Button>
         </CardContent>
       </Card>
