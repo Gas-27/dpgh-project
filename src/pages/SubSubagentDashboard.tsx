@@ -2294,7 +2294,7 @@ return (
                                 <TableCell className="text-sm whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell>
                                 <TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell>
                                 <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                                <TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell>
+                                <TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "��")}</TableCell>
                                 <TableCell className="font-semibold">GHC{Number(sellPrice).toFixed(2)}</TableCell>
                                 <TableCell className="text-muted-foreground">GHC{Number(baseCost).toFixed(2)}</TableCell>
                                 <TableCell className={profit > 0 ? "font-semibold text-green-400" : "text-muted-foreground"}>
@@ -2302,7 +2302,7 @@ return (
                                 </TableCell>
                                 <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
                                 <TableCell>
-                                  <OrderStatusBadge status={normalizeOrderStatus(order)} />
+                                  <OrderStatusBadge status={normalizeOrderStatus(order)} network={order.network} />
                                 </TableCell>
                                 <TableCell>
                                   {(order.status === "refunded" || order.fulfillment_status === "refunded")

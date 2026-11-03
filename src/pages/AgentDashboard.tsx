@@ -4352,7 +4352,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                   <div>
                     <p className="text-sm font-semibold mb-2">Request Body:</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>• <span className="font-mono">fullName</span> (required) - Full name</li>
+                      <li>�� <span className="font-mono">fullName</span> (required) - Full name</li>
                       <li>• <span className="font-mono">phoneNumber</span> (required) - Phone number</li>
                       <li>• <span className="font-mono">idNumber</span> (required) - ID number</li>
                       <li>• <span className="font-mono">dateOfBirth</span> (required) - Date of birth (YYYY-MM-DD)</li>
@@ -4563,7 +4563,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                             <TableCell className="text-xs text-muted-foreground">API Wallet</TableCell>
                             <TableCell className="text-xs font-semibold">GHC {Number(order.selling_price || order.amount || 0).toFixed(2)}</TableCell>
                             <TableCell className="text-xs">
-                              <OrderStatusBadge status={fs} />
+                              <OrderStatusBadge status={fs} network={order.network} />
                               {fs === 'refunded' && order.refunded_amount != null && (
                                 <span className="block text-xs text-amber-400 mt-0.5">GHC {Number(order.refunded_amount).toFixed(2)} refunded</span>
                               )}
@@ -5208,7 +5208,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                                 <TableCell className="uppercase text-sm">{o.network || "—"}</TableCell>
                                 <TableCell className="font-bold">{o.size_gb != null ? o.size_gb + "GB" : "—"}</TableCell>
                                 <TableCell>GHC {Number(o.selling_price || o.amount || 0).toFixed(2)}</TableCell>
-                                <TableCell><OrderStatusBadge status={o.order_status || o.fulfillment_status || o.status} /></TableCell>
+                                <TableCell><OrderStatusBadge status={o.order_status || o.fulfillment_status || o.status} network={o.network} /></TableCell>
                               </TableRow>
                             ))}
                           </TableBody>

@@ -1438,7 +1438,7 @@ case "api-key":
                       </TableCell>
                       <TableCell>
                         {/* Refunded takes priority over any other status field */}
-<OrderStatusBadge status={normalizeOrderStatus(order)} />
+<OrderStatusBadge status={normalizeOrderStatus(order)} network={order.network} />
                       </TableCell>
                       <TableCell>
                         {normalizeOrderStatus(order) === "refunded" && ["mtn", "mtn_express"].includes((order.network || "").toLowerCase()) ? (

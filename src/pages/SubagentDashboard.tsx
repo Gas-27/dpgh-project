@@ -2766,7 +2766,7 @@ const fallbackBaseCost = Number(order.agent_base_price ?? order.base_cost ?? (or
                                   )}
                                 </TableCell>
                                 <TableCell>
-                                  <OrderStatusBadge status={normalizeOrderStatus(order)} />
+                                  <OrderStatusBadge status={normalizeOrderStatus(order)} network={order.network} />
                                 </TableCell>
                                 <TableCell>
                                   {(order.status === "refunded" || order.fulfillment_status === "refunded")

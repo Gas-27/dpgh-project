@@ -106,11 +106,21 @@ function normalizeStatus(raw: string | undefined | null): string {
 
 interface OrderStatusBadgeProps {
   status: string | undefined | null;
+  network?: string | undefined | null;
 }
 
-export function OrderStatusBadge({ status }: OrderStatusBadgeProps) {
+export function OrderStatusBadge({ status, network }: OrderStatusBadgeProps) {
   const key = normalizeStatus(status);
-  const config = STATUS_CONFIG[key] ?? DEFAULT_CONFIG;
+  const normalizedNetwork = network?.toLowerCase().replace(/[\s_-]+/g, "") ?? "";
+  const isTelecelOrAirtelTigoWaiting = key === "waiting" &&
+    (normalizedNetwork === "telecel" || normalizedNetwork === "airteltigo");
+  const config = isTelecelOrAirtelTigoWaiting
+    ? {
+        label: "Waiting",
+        className: "bg-yellow-600/20 text-yellow-400 border border-yellow-600/30",
+        description: `Your order is in the queue.\nYour ${normalizedNetwork === "telecel" ? "Telecel" : "AirtelTigo"} order has been received and is currently queued for processing. It will be picked up and sent to the network shortly. No action is needed on your part — please check back in a few minutes.`,
+      }
+    : STATUS_CONFIG[key] ?? DEFAULT_CONFIG;
   const [open, setOpen] = useState(false);
 
   return (
