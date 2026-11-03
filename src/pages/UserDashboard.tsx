@@ -1399,10 +1399,20 @@ case "api-key":
                       <TableCell className="text-sm font-mono">{order.customer_number}</TableCell>
                       <TableCell className="text-sm uppercase font-semibold">{order.network}</TableCell>
                       <TableCell className="text-sm font-display font-bold text-cyan-400">{order.size_gb || 0}GB</TableCell>
-                      <TableCell className="text-sm font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                      <TableCell className="text-sm font-semibold">
+                        {order.payment_method === "free_data_claim" ? (
+                          <div className="space-y-0.5 text-xs font-normal whitespace-nowrap">
+                            <p>Selling: <span className="font-semibold">GHC 0.00</span></p>
+                            <p>Cost: <span className="font-semibold">GHC 0.00</span></p>
+                            <p>Profit: <span className="font-semibold">GHC 0.00</span></p>
+                          </div>
+                        ) : (
+                          <>GHC {Number(order.amount || 0).toFixed(2)}</>
+                        )}
+                      </TableCell>
                       <TableCell>
                         <Badge variant="outline" className="text-xs">
-                          {((order as any).source === "api" || order.payment_method === "api_wallet") ? "API Wallet" : order.payment_method === "wallet" ? "Wallet" : "Paystack"}
+                          {order.payment_method === "free_data_claim" ? "Game Hub Win" : ((order as any).source === "api" || order.payment_method === "api_wallet") ? "API Wallet" : order.payment_method === "wallet" ? "Wallet" : "Paystack"}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -1599,10 +1609,20 @@ case "api-key":
                         <TableCell className="text-sm font-mono">{order.customer_number}</TableCell>
                         <TableCell className="text-sm uppercase font-semibold">{order.network}</TableCell>
                         <TableCell className="text-sm font-display font-bold text-cyan-400">{order.size_gb || 0}GB</TableCell>
-                        <TableCell className="text-sm font-semibold">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
+                        <TableCell className="text-sm font-semibold">
+                          {order.payment_method === "free_data_claim" ? (
+                            <div className="space-y-0.5 text-xs font-normal whitespace-nowrap">
+                              <p>Selling: <span className="font-semibold">GHC 0.00</span></p>
+                              <p>Cost: <span className="font-semibold">GHC 0.00</span></p>
+                              <p>Profit: <span className="font-semibold">GHC 0.00</span></p>
+                            </div>
+                          ) : (
+                            <>GHC {Number(order.amount || 0).toFixed(2)}</>
+                          )}
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-xs">
-                            {((order as any).source === "api" || order.payment_method === "api_wallet") ? "API Wallet" : order.payment_method === "wallet" ? "Wallet" : "Paystack"}
+                            {order.payment_method === "free_data_claim" ? "Game Hub Win" : ((order as any).source === "api" || order.payment_method === "api_wallet") ? "API Wallet" : order.payment_method === "wallet" ? "Wallet" : "Paystack"}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-xs">
