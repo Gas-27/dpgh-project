@@ -1096,30 +1096,29 @@ case "api-key":
   <MarketplaceBanner onPost={() => setActiveMenu("post-product")} onBrowse={() => setActiveMenu("marketplace")} />
 
       {/* Become an Agent CTA Card */}
-      <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-pink-500/10">
-        <CardContent className="p-4">
+      <div className="rounded-2xl border border-purple-500/40 bg-purple-950/30 p-4">
+        <button
+          type="button"
+          onClick={() => setAgentCtaOpen((o) => !o)}
+          aria-expanded={agentCtaOpen}
+          className="flex w-full items-center gap-3 text-left"
+        >
+          <Users className="h-6 w-6 shrink-0 text-purple-400" />
+          <span className="flex-1 text-base font-semibold leading-snug text-foreground">
+            Sign up as an Agent to get your own USSD
+          </span>
+          <ChevronUp className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${agentCtaOpen ? "" : "rotate-180"}`} />
+        </button>
+        {agentCtaOpen && (
           <button
             type="button"
-            onClick={() => setAgentCtaOpen((o) => !o)}
-            aria-expanded={agentCtaOpen}
-            className="flex w-full items-center justify-between gap-3 text-left"
+            onClick={() => setActiveMenu("become-agent")}
+            className="mt-4 w-full rounded-full bg-purple-600 px-6 py-3 text-base font-semibold text-white transition-colors hover:bg-purple-700"
           >
-            <span className="flex items-center gap-2 font-semibold text-foreground">
-              <Users className="h-5 w-5 text-purple-400 shrink-0" />
-              Sign up as an Agent to get your own USSD
-            </span>
-            <ChevronDown className={`h-5 w-5 shrink-0 text-muted-foreground transition-transform ${agentCtaOpen ? "rotate-180" : ""}`} />
+            Become an Agent
           </button>
-          {agentCtaOpen && (
-            <button
-              onClick={() => setActiveMenu("become-agent")}
-              className="mt-4 w-full px-6 py-2 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-medium transition-all"
-            >
-              Become an Agent
-            </button>
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </div>
 
       <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="packages" /></div>
 
