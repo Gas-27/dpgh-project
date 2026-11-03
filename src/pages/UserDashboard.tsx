@@ -153,7 +153,7 @@ const UserDashboard = () => {
   const [normalWallet, setNormalWallet] = useState(0);
   const [customerWalletOwnerId, setCustomerWalletOwnerId] = useState<string | null>(null);
   const [customTopupAmount, setCustomTopupAmount] = useState("");
-const [agentCtaOpen, setAgentCtaOpen] = useState(true);
+
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [showDeleteApiKey, setShowDeleteApiKey] = useState(false);
@@ -1096,28 +1096,61 @@ case "api-key":
   <MarketplaceBanner onPost={() => setActiveMenu("post-product")} onBrowse={() => setActiveMenu("marketplace")} />
 
       {/* Become an Agent CTA Card */}
-      <div className="rounded-2xl border border-purple-500/40 bg-gradient-to-br from-[#241b3d] to-[#241a33] p-4">
+      <div className="rounded-3xl border border-purple-500/40 bg-gradient-to-br from-[#1b2238] to-[#241a33] p-6 sm:p-8">
+        <h2 className="font-display text-2xl font-bold leading-tight text-foreground sm:text-3xl">
+          Sign up as an Agent to get your own USSD
+        </h2>
+        <p className="mt-2 text-lg leading-snug text-muted-foreground">
+          Launch your agency, let customers buy offline, &amp; profit!
+        </p>
+
+        <div className="mt-6 space-y-5 text-base leading-snug text-foreground">
+          <section>
+            <h3 className="flex items-center gap-2 text-lg font-bold">
+              <span aria-hidden="true">{"\u{1F30D}"}</span> NETWORK &amp; USSD
+            </h3>
+            <ul className="mt-1 space-y-1">
+              <li>{"\u2022"} Set your prices &amp; get your website link (customers can buy from your site).</li>
+              <li>{"\u2022"} Earn by adding Agents (sub-agents) &amp; Sub-sub agents under you.</li>
+              <li>{"\u2022"} Everyone gets USSD codes for customer offline purchases (no internet needed!).</li>
+              <li>{"\u2022"} Dashboard perks: Free flyer generator, bulk SMS, &amp; free marketing materials.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="flex items-center gap-2 text-lg font-bold">
+              <span aria-hidden="true">{"\u{1F4B0}"}</span> PRODUCTS &amp; EARNINGS
+            </h3>
+            <ul className="mt-1 space-y-1">
+              <li>{"\u2022"} Sell cheap data, airtime, &amp; subscriptions (Netflix, Spotify, etc.).</li>
+              <li>{"\u2022"} Offer social media boosts &amp; Afa registration.</li>
+              <li>{"\u2022"} Pay utility bills (power, water, DSTV, StarTimes, GOtv) to earn commissions.</li>
+              <li>{"\u2022"} Earn on all network transactions &amp; profit from others&apos; sales.</li>
+            </ul>
+          </section>
+
+          <section>
+            <h3 className="flex items-center gap-2 text-lg font-bold">
+              <span aria-hidden="true">{"\u{1F4CA}"}</span> ESTIMATED EARNINGS
+            </h3>
+            <ul className="mt-1 space-y-1">
+              <li>{"\u2022"} Agents earn GH{"\u20B5"} 250 avg/day:</li>
+              <li className="pl-8">- (GH{"\u20B5"} 250 {"\u00D7"} 7 days) = GH{"\u20B5"} 1,750 / week</li>
+              <li className="pl-8">- (GH{"\u20B5"} 250 {"\u00D7"} 30 days) = GH{"\u20B5"} 7,500 / month</li>
+              <li className="flex items-center gap-2">
+                <span aria-hidden="true">{"\u{1F525}"}</span> Top agents make 12k a month. Join now!
+              </li>
+            </ul>
+          </section>
+        </div>
+
         <button
           type="button"
-          onClick={() => setAgentCtaOpen((o) => !o)}
-          aria-expanded={agentCtaOpen}
-          className="flex w-full items-center gap-4 px-2 py-3 text-left"
+          onClick={() => setActiveMenu("become-agent")}
+          className="mt-6 w-full rounded-full bg-purple-700 px-6 py-5 text-xl font-semibold text-white transition-colors hover:bg-purple-600"
         >
-          <Users className="h-7 w-7 shrink-0 text-purple-400" />
-          <span className="flex-1 text-xl font-semibold leading-snug text-foreground">
-            Sign up as an Agent to get your own USSD
-          </span>
-          <ChevronUp className={`h-6 w-6 shrink-0 text-muted-foreground transition-transform ${agentCtaOpen ? "" : "rotate-180"}`} />
+          Become an Agent
         </button>
-        {agentCtaOpen && (
-          <button
-            type="button"
-            onClick={() => setActiveMenu("become-agent")}
-            className="mt-3 w-full rounded-full bg-purple-600 px-6 py-5 text-xl font-semibold text-white transition-colors hover:bg-purple-700"
-          >
-            Become an Agent
-          </button>
-        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="packages" /></div>

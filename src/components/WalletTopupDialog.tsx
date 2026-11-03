@@ -119,8 +119,8 @@ export default function WalletTopupDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
-        <DialogHeader>
+      <DialogContent className="flex max-h-[90vh] flex-col gap-4 overflow-hidden sm:max-w-[500px]">
+        <DialogHeader className="shrink-0">
           <DialogTitle>
             Top Up {walletType === "api" ? "API" : "Normal"} Wallet
           </DialogTitle>
@@ -129,7 +129,7 @@ export default function WalletTopupDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
+        <div className="-mr-2 min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain pr-2">
           {walletType === "api" && <ApiExplainer variant="wallet" />}
 
           {/* Current Balance Display */}
