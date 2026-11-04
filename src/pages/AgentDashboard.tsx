@@ -64,6 +64,7 @@ import WeeklyOrderTargetMeter from "@/components/WeeklyOrderTargetMeter";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import AgentAFABundleRegistrations from "@/components/AgentAFABundleRegistrations";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
+import WalletAFARegistration from "@/components/WalletAFARegistration";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
 import SmsComposer from "@/components/SmsComposer";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
@@ -2582,7 +2583,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
-  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "flyer", label: "Flyer Generator" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
+  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa", label: "AFA Registration" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "flyer", label: "Flyer Generator" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
   
 
   {/* ============================= DOMAINS ============================= */}
@@ -4352,7 +4353,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                   <div>
                     <p className="text-sm font-semibold mb-2">Request Body:</p>
                     <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>�� <span className="font-mono">fullName</span> (required) - Full name</li>
+                      <li>��� <span className="font-mono">fullName</span> (required) - Full name</li>
                       <li>• <span className="font-mono">phoneNumber</span> (required) - Phone number</li>
                       <li>• <span className="font-mono">idNumber</span> (required) - ID number</li>
                       <li>• <span className="font-mono">dateOfBirth</span> (required) - Date of birth (YYYY-MM-DD)</li>
@@ -5340,10 +5341,22 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
             )}
 
             <Tabs value={afaTabActive} onValueChange={setAfaTabActive} className="w-full">
-              <TabsList className="grid w-full grid-cols-2">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="register">Register</TabsTrigger>
                 <TabsTrigger value="pricing">Pricing</TabsTrigger>
                 <TabsTrigger value="registrations">Bundle Registrations</TabsTrigger>
               </TabsList>
+
+              <TabsContent value="register" className="space-y-6 mt-4">
+                {store && (
+                  <WalletAFARegistration
+                    kind="agent"
+                    storeId={store.id}
+                    walletBalance={Number(store.wallet_balance ?? 0)}
+                    onSuccess={refetchStoreData}
+                  />
+                )}
+              </TabsContent>
 
               <TabsContent value="pricing" className="space-y-6 mt-4">
                 <AgentAFAPriceManager onPriceSaved={refetchStoreData} />

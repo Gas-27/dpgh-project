@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { startVisiblePolling } from '@/lib/visiblePolling';
 import { Button } from '@/components/ui/button';
@@ -37,6 +37,7 @@ export default function SubagentAFABundleRegistrations({
 }: SubagentAFABundleRegistrationsProps) {
   const [registrations, setRegistrations] = useState<AFARegistration[]>([]);
   const [loading, setLoading] = useState(true);
+  const hasLoadedOnce = useRef(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRegistration, setSelectedRegistration] = useState<AFARegistration | null>(null);
   const [showDetails, setShowDetails] = useState(false);
@@ -75,24 +76,32 @@ export default function SubagentAFABundleRegistrations({
 
   const loadRegistrations = async () => {
     try {
-      setLoading(true);
-      const { data, error } = await supabase
-        .from('afa_registrations')
-        .select('*')
-        .eq('subagent_store_id', subagentStoreId)
-        .order('created_at', { ascending: false })
-        .limit(1000);
+      const query = () =>
+        supabase
+          .from('afa_registrations')
+          .select('*')
+          .eq('subagent_store_id', subagentStoreId)
+          .order('created_at', { ascending: false })
+          .limit(1000);
 
+      let { data, error } = await query();
+      if (error) {
+        await new Promise((r) => setTimeout(r, 800));
+        ({ data, error } = await query());
+      }
       if (error) throw error;
       setRegistrations(data || []);
     } catch (err: any) {
       console.error('[v0] Failed to load AFA registrations:', err);
-      toast({
-        title: 'Error',
-        description: 'Failed to load AFA bundle registrations',
-        variant: 'destructive',
-      });
+      if (!hasLoadedOnce.current) {
+        toast({
+          title: 'Error',
+          description: 'Failed to load AFA bundle registrations',
+          variant: 'destructive',
+        });
+      }
     } finally {
+      hasLoadedOnce.current = true;
       setLoading(false);
     }
   };

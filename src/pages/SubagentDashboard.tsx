@@ -51,6 +51,7 @@ import SubSubagentsList from "@/components/SubSubagentsList";
 import SubagentAFAPriceManager from "@/components/SubagentAFAPriceManager";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import SubagentAFABundleRegistrations from "@/components/SubagentAFABundleRegistrations";
+import WalletAFARegistration from "@/components/WalletAFARegistration";
 import { DOMAINS } from "@/config/domains";
 import { openGameHubIfAvailable } from "@/lib/tabControls";
 import ChatBot from "@/components/ChatBot";
@@ -2486,7 +2487,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="hidden" />
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "sub-subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "sub-subagent-pricing", label: "Subagent Pricing" }, { id: "flyer", label: "Flyer Generator" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa-registrations", label: "AFA Registration" }, { id: "sub-subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "sub-subagent-pricing", label: "Subagent Pricing" }, { id: "flyer", label: "Flyer Generator" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
           <TabsContent value="domains" className="mt-0"><DomainDashboardPanel walletBalance={Number(subagentStore?.wallet_balance ?? 0)} walletLabel="Wallet" agentStoreId={subagentStore?.id ?? null} storeKind="subagent" /></TabsContent>
           <TabsContent value="products" className="mt-0"><AgentProductStorePanel storeId={subagentStore?.id} storeKind="subagent" walletBalance={Number(subagentStore?.wallet_balance ?? 0)} onWalletBalanceChange={(wallet_balance) => setSubagentStore((current) => current ? { ...current, wallet_balance } : current)} /></TabsContent>
           <TabsContent value="instant-data" className="-mx-8 sm:mx-0 mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subagent" ownerId={subagentStore?.id} canSetPrices initialTab="instant" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
@@ -4634,6 +4635,13 @@ handleMobileNumberChange(digits);
                 All AFA registrations made through your storefront and your subagents.
               </p>
             </div>
+            {subagentStore && (
+              <WalletAFARegistration
+                kind="subagent"
+                storeId={subagentStore.id}
+                walletBalance={Number(subagentStore.wallet_balance ?? 0)}
+              />
+            )}
             {subagentStore && (
               <SubagentAFABundleRegistrations
                 subagentStoreId={subagentStore.id}

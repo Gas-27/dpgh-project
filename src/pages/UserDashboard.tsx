@@ -18,6 +18,7 @@ import PaymentVerifier from "@/components/PaymentVerifier";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
+import AFAHistory from "@/components/AFAHistory";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -2778,6 +2779,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
           setActiveMenu("buy-data");
         }}
       />
+      <AFAHistory title="AFA History" />
     </div>
   );
 

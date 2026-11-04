@@ -46,6 +46,7 @@ import DynamicFlyer from "@/components/DynamicFlyer";
 import SubSubagentAFAPriceManager from "@/components/SubSubagentAFAPriceManager";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import SubSubagentAFABundleRegistrations from "@/components/SubSubagentAFABundleRegistrations";
+import WalletAFARegistration from "@/components/WalletAFARegistration";
 import { DOMAINS } from "@/config/domains";
 import { openGameHubIfAvailable } from "@/lib/tabControls";
 import ChatBot from "@/components/ChatBot";
@@ -3479,6 +3480,13 @@ handleMobileNumberChange(digits);
                 All AFA registrations made through your storefront.
               </p>
             </div>
+            {subagentStore && (
+              <WalletAFARegistration
+                kind="subsubagent"
+                storeId={subagentStore.id}
+                walletBalance={Number(subagentStore.wallet_balance ?? 0)}
+              />
+            )}
             {subagentStore && (
               <SubSubagentAFABundleRegistrations
                 subsubagentStoreId={subagentStore.id}
