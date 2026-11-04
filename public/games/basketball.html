@@ -281,7 +281,7 @@ function phys(b,h){b.prevY=b.y;b.vy-=GRAV*h;b.x+=b.vx*h;b.y+=b.vy*h;b.z+=b.vz*h;
   if(d<m&&d>0){const nx=dx/d,ny=dy/d,nz=dz/d,dot=b.vx*nx+b.vy*ny+b.vz*nz;
    if(dot<0){b.vx-=1.55*dot*nx;b.vy-=1.55*dot*ny;b.vz-=1.55*dot*nz;b.vx*=.92;b.vz*=.92;b.rim=true;bounceSnd(b,170,'square')}
    b.x=px+nx*m;b.y=HH+ny*m;b.z=pz+nz*m}}
- if(!b.done&&b.vy<0&&b.prevY>HH&&b.y<=HH&&Math.hypot(b.x-hx,b.z-ZH)<RIMR-5){b.done=true;addPts(b.rim?2:3,!b.rim)}
+ if(!b.done&&b.vy<0&&b.prevY>HH&&b.y<=HH&&Math.hypot(b.x-hx,b.z-ZH)<RIMR-5){b.done=true;addPts(b.rim?2:3,!b.rim);if(hub.mode)hubSend({type:'gh-shot'})}
  // floor: bounce, then roll slowly to a stop; back wall and side walls
  if(b.y<FL){const hv=-b.vy;b.y=FL;
   if(hv>70){b.vy=hv*.58;b.vx*=.86;b.vz*=.86;if(b.life-(b.fs||-1)>.12){b.fs=b.life;tone(120,.09,'sine',.04+.14*Math.min(1,hv/500),70)}}

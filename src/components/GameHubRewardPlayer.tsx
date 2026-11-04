@@ -13,6 +13,7 @@ import {
   endGameRun,
   fetchGameWalletBalance,
   loseGameLife,
+  recordShot,
   startGameRun,
   submitGuestScore,
   timedBegin,
@@ -302,6 +303,17 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
               }
             });
           }, 5000);
+        });
+        return;
+      }
+
+      if (data.type === "gh-shot") {
+        enqueue(async () => {
+          try {
+            await recordShot(current.run_id);
+          } catch (error) {
+            console.warn("recordShot failed", error);
+          }
         });
         return;
       }

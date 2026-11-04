@@ -229,6 +229,12 @@ export async function timedTick(runId: string): Promise<GameRun> {
   return data as GameRun;
 }
 
+export async function recordShot(runId: string): Promise<GameRun> {
+  const { data, error } = await db.rpc("gamehub_record_shot", { p_run_id: runId });
+  if (error) throw error;
+  return data as GameRun;
+}
+
 export type LevelResult = { ok: boolean; reason?: string; run: GameRun };
 
 export async function startGameRun(gameId: string, walletHint: string | null, forceNew = false): Promise<GameRun> {
