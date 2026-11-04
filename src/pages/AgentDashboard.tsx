@@ -49,6 +49,7 @@ import ChatBot from "@/components/ChatBot";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
+import PreUpgradeHistory from "@/components/PreUpgradeHistory";
 import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
 import ApiExplainer from "@/components/ApiExplainer";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
@@ -2874,6 +2875,8 @@ return (
               </CardContent>
             </Card>
 
+            <PreUpgradeHistory view="orders" />
+
             {/* API USER ORDERS SECTION */}
 
           </TabsContent>
@@ -3701,6 +3704,8 @@ return (
                 )}
               </CardContent>
             </Card>
+
+            <PreUpgradeHistory view="topups" />
           </TabsContent>
 
           {/* ============================= WITHDRAW ============================= */}
