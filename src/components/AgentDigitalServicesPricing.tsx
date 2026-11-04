@@ -15,12 +15,12 @@ export default function AgentDigitalServicesPricing({ agentStoreId }: { agentSto
   const [services, setServices] = useState<Service[]>([]);
   const [prices, setPrices] = useState<Record<string, Price>>({});
   const [saving, setSaving] = useState<string | null>(null);
-  const [share, setShare] = useState<"public_shared" | "private_shared">("public_shared");
+  const [share, setShare] = useState<"public_shared" | "private_shared">("private_shared");
 
   useEffect(() => {
     const load = async () => {
       const [{ data: serviceRows, error: serviceError }, { data: priceRows }] = await Promise.all([
-        supabase.from("digital_services").select("id,name,category,price,is_free,active,agent_min_price,agent_max_price,service_type").order("active", { ascending: false }).order("category").order("name"),
+        supabase.from("digital_services").select("id,name,category,price,is_free,active,agent_min_price,agent_max_price,service_type").eq("archived", false).order("active", { ascending: false }).order("category").order("name"),
         supabase.from("agent_service_pricing").select("service_id,base_price,sell_price,max_price").eq("agent_store_id", agentStoreId),
       ]);
       if (serviceError) { toast({ title: "Services unavailable", description: serviceError.message, variant: "destructive" }); return; }
