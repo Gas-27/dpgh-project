@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Gift, Heart, Share2, Wallet, X } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GameHubProductAd from "@/components/GameHubProductAd";
 import ShareScoreButtons from "@/components/ShareScoreButtons";
 import { useToast } from "@/hooks/use-toast";
@@ -14,12 +14,14 @@ import {
   fetchGameWalletBalance,
   loseGameLife,
   startGameRun,
+  submitGuestScore,
   timedBegin,
   timedTick,
   type GameRewardSetting,
   type GameRun,
 } from "@/lib/gameHubApi";
 import type { HubGame } from "@/lib/gameHubGames";
+import { newGuestSessionId } from "@/lib/gameHubGuest";
 
 type RewardPlayerProps = {
   game: HubGame;
@@ -88,7 +90,38 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
     }
   }, []);
 
-  useEffect(() => stopTicking, [stopTicking]);
+  const queryClient = useQueryClient();
+  const guestSessionRef = useRef(newGuestSessionId());
+  const guestTimerRef = useRef<{ id: number; startedAt: number } | null>(null);
+
+  const submitGuest = useCallback(
+    (score: number) => {
+      if (score <= 0) return;
+      submitGuestScore(game.id, guestSessionRef.current, score)
+        .then(() => queryClient.invalidateQueries({ queryKey: ["gamehub-leaderboard"] }))
+        .catch(() => undefined);
+    },
+    [game.id, queryClient],
+  );
+
+  const stopGuestTimer = useCallback(
+    (flush: boolean) => {
+      const timer = guestTimerRef.current;
+      if (!timer) return;
+      window.clearInterval(timer.id);
+      guestTimerRef.current = null;
+      if (flush) submitGuest(Math.floor((Date.now() - timer.startedAt) / 1000));
+    },
+    [submitGuest],
+  );
+
+  useEffect(
+    () => () => {
+      stopTicking();
+      stopGuestTimer(true);
+    },
+    [stopTicking, stopGuestTimer],
+  );
 
   const post = useCallback((message: Record<string, unknown>) => {
     iframeRef.current?.contentWindow?.postMessage({ source: "gamehub-parent", ...message }, window.location.origin);
@@ -157,7 +190,9 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
       setLoadError(null);
       frameReadyRef.current = false;
       if (guest) {
-        // Guests play locally: no wallet, no paid lives and nothing is saved to an account.
+        // Guests play without a wallet or paid lives; their score is stored under an anonymous guest ID only.
+        stopGuestTimer(false);
+        guestSessionRef.current = newGuestSessionId();
         const requiredSeconds = rule?.required_seconds ?? (timedMinutes > 0 ? timedMinutes * 60 : null);
         applyRun({
           run_id: "guest",
@@ -187,7 +222,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
         setLoadError((error as Error).message);
       }
     },
-    [applyRun, game.id, game.native?.targetLevel, guest, pushState, rule?.enabled, rule?.required_seconds, rule?.reward_gb, rule?.target_level, timedMinutes],
+    [applyRun, game.id, game.native?.targetLevel, guest, pushState, stopGuestTimer, rule?.enabled, rule?.required_seconds, rule?.reward_gb, rule?.target_level, timedMinutes],
   );
 
   useEffect(() => {
@@ -216,13 +251,22 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
       if (!current) return;
 
       if (guest) {
-        if (data.type === "gh-life-lost") {
+        const guestTimed = current.required_seconds !== null;
+        if (data.type === "gh-timed-start") {
+          if (!guestTimed || current.status !== "active" || guestTimerRef.current) return;
+          const startedAt = Date.now();
+          const id = window.setInterval(() => submitGuest(Math.floor((Date.now() - startedAt) / 1000)), 5000);
+          guestTimerRef.current = { id, startedAt };
+        } else if (data.type === "gh-life-lost") {
+          stopGuestTimer(true);
           const remaining = Math.max(0, current.lives - 1);
           applyRun({ ...current, lives: remaining });
           if (remaining <= 0) openContinueOptions();
         } else if (data.type === "gh-level-complete") {
+          stopGuestTimer(true);
           const claimedLevel = Number(data.level);
           const cleared = claimedLevel >= current.target;
+          if (!guestTimed && Number.isFinite(claimedLevel)) submitGuest(Math.min(claimedLevel, current.target) * 100);
           const next: GameRun = cleared
             ? { ...current, status: "cleared", level: current.target }
             : { ...current, level: Math.max(current.level, claimedLevel + 1) };
@@ -306,7 +350,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [applyRun, guest, openContinueOptions, post, pushState, stopTicking, toast]);
+  }, [applyRun, guest, openContinueOptions, post, pushState, stopGuestTimer, stopTicking, submitGuest, toast]);
 
   const handleBuyLife = async () => {
     const current = runRef.current;
@@ -333,7 +377,8 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
     if (!current || busy) return;
     setBusy(true);
     try {
-      if (!guest) await endGameRun(current.run_id);
+      if (guest) stopGuestTimer(true);
+      else await endGameRun(current.run_id);
       adShownRef.current = false;
       setBuyOpen(false);
       setClaimOpen(false);

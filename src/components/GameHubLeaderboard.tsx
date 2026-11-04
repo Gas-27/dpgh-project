@@ -88,7 +88,7 @@ export default function GameHubLeaderboard() {
     <section className="space-y-4">
       <div className="rounded-3xl border border-violet-400/25 bg-violet-950/60 p-5">
         <h3 className="flex items-center gap-2 text-xl font-bold text-white"><Trophy className="h-5 w-5 text-amber-300" aria-hidden="true" /> Leaderboard</h3>
-        <p className="mt-1 text-sm leading-relaxed text-violet-200/75">Only games played on JustBuy count. Players appear by a short, hidden version of their email.</p>
+        <p className="mt-1 text-sm leading-relaxed text-violet-200/75">Only games played on JustBuy count. Players appear by a short, hidden version of their email, and guests appear with a generated guest ID.</p>
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Time period">
           {periods.map((item) => (
             <button key={item.id} type="button" aria-pressed={period === item.id} onClick={() => setPeriod(item.id)} className={pillClass(period === item.id)}>{item.label}</button>
@@ -138,7 +138,7 @@ export default function GameHubLeaderboard() {
               })}
             </ul>
             {!positionsLoading && positionQueries.every((query) => !query.data?.some((row) => row.is_you)) ? (
-              <p className="mt-2 text-xs leading-relaxed text-violet-200/75">You have no score in this period yet. Make sure you are signed in, then play a game to get on the board.</p>
+              <p className="mt-2 text-xs leading-relaxed text-violet-200/75">You have no score in this period yet. Play a game to get on the board.</p>
             ) : null}
           </div>
         ) : null}
@@ -159,7 +159,7 @@ export default function GameHubLeaderboard() {
               {myRow && gameId ? <> On {selectedName} you are <span className="font-bold text-amber-300">#{myRow.rank.toLocaleString()}</span>.</> : null}
             </p>
           ) : (
-            <p className="text-violet-100">You are not on the board for {periodLabel} yet ({overallRows.length.toLocaleString()} players ranked). Sign in and finish a level to get a position.</p>
+            <p className="text-violet-100">You are not on the board for {periodLabel} yet ({overallRows.length.toLocaleString()} players ranked). Play a game to get a position.</p>
           )}
         </div>
       ) : null}
@@ -184,7 +184,11 @@ export default function GameHubLeaderboard() {
               rows.map((row) => (
                 <tr key={`${row.rank}-${row.player}`} data-me={row.is_you ? "true" : undefined} className={row.is_you ? "bg-violet-600/30" : "border-t border-violet-400/10"}>
                   <td className="px-4 py-3 font-bold text-amber-300">#{row.rank}</td>
-                  <td className="px-4 py-3 text-white">{row.player}{row.is_you ? <span className="ml-2 rounded-md bg-violet-500 px-1.5 py-0.5 text-[10px] font-bold uppercase">You</span> : null}</td>
+                  <td className="px-4 py-3 text-white">
+                    {row.player}
+                    {row.is_guest ? <span className="ml-2 rounded-md bg-violet-800 px-1.5 py-0.5 text-[10px] font-bold uppercase text-violet-200">Guest</span> : null}
+                    {row.is_you ? <span className="ml-2 rounded-md bg-violet-500 px-1.5 py-0.5 text-[10px] font-bold uppercase">You</span> : null}
+                  </td>
                   <td className="px-4 py-3 text-right font-semibold text-cyan-300">{row.score.toLocaleString()}</td>
                 </tr>
               ))

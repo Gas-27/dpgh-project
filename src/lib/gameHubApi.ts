@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGameHubShareUrl } from "@/lib/gameHubRoute";
+import { getGuestId } from "@/lib/gameHubGuest";
 
 // The Game Hub tables and functions are not part of the generated Database types yet.
 const db = supabase as unknown as SupabaseClient;
@@ -22,6 +23,7 @@ export type LeaderboardRow = {
   score: number;
   games_played: number;
   is_you: boolean;
+  is_guest?: boolean;
 };
 
 export function maskEmail(email: string | null | undefined): string {
@@ -47,7 +49,7 @@ export async function fetchLeaderboard(gameId: string | null, period: Leaderboar
   const rows: LeaderboardRow[] = [];
   for (let page = 0; page < maxPages; page += 1) {
     const { data, error } = await db
-      .rpc("gamehub_leaderboard_period", { p_game_id: gameId, p_period: period, p_limit: null })
+      .rpc("gamehub_leaderboard_period", { p_game_id: gameId, p_period: period, p_limit: null, p_guest_id: getGuestId() })
       .range(page * pageSize, page * pageSize + pageSize - 1);
     if (error) throw error;
     const batch = (data ?? []) as LeaderboardRow[];
@@ -139,6 +141,17 @@ export async function adminDeleteAnnouncement(id: string): Promise<void> {
 
 export async function submitScore(gameId: string, score: number): Promise<number> {
   const { data, error } = await db.rpc("gamehub_submit_score", { p_game_id: gameId, p_score: Math.floor(score) });
+  if (error) throw error;
+  return Number(data);
+}
+
+export async function submitGuestScore(gameId: string, sessionId: string, score: number): Promise<number> {
+  const { data, error } = await db.rpc("gamehub_guest_submit", {
+    p_guest_id: getGuestId(),
+    p_session_id: sessionId,
+    p_game_id: gameId,
+    p_score: Math.max(0, Math.floor(score)),
+  });
   if (error) throw error;
   return Number(data);
 }

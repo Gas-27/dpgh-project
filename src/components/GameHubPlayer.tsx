@@ -1,8 +1,9 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Share2, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { buildGameShareUrl, maskEmail, shareText, submitScore } from "@/lib/gameHubApi";
+import { buildGameShareUrl, maskEmail, shareText, submitGuestScore, submitScore } from "@/lib/gameHubApi";
+import { newGuestSessionId } from "@/lib/gameHubGuest";
 import { getGameHubDirectUrl, getGameUrl, isGameOverMessage, type HubGame } from "@/lib/gameHubGames";
 
 type GameHubPlayerProps = {
@@ -18,20 +19,17 @@ export default function GameHubPlayer({ game, userEmail, signedIn, onClose }: Ga
   const [scoreInput, setScoreInput] = useState("");
   const [saving, setSaving] = useState(false);
   const [gameOver, setGameOver] = useState(false);
+  const guestSessionRef = useRef(newGuestSessionId());
   const gameUrl = getGameUrl(game.id);
 
   const saveScore = async (value: number) => {
-    if (!signedIn) {
-      toast({ title: "Sign in to save your score", description: "Your score is saved to your account and shown on the leaderboard.", variant: "destructive" });
-      return;
-    }
     if (!Number.isFinite(value) || value < 0) {
       toast({ title: "Enter a valid score", variant: "destructive" });
       return;
     }
     setSaving(true);
     try {
-      const best = await submitScore(game.id, value);
+      const best = signedIn ? await submitScore(game.id, value) : await submitGuestScore(game.id, guestSessionRef.current, value);
       await queryClient.invalidateQueries({ queryKey: ["gamehub-leaderboard"] });
       toast({ title: "Score saved", description: `Your best on ${game.name} is ${best.toLocaleString()}.` });
       setScoreInput("");
@@ -109,8 +107,7 @@ export default function GameHubPlayer({ game, userEmail, signedIn, onClose }: Ga
           inputMode="numeric"
           value={scoreInput}
           onChange={(event) => setScoreInput(event.target.value.replace(/[^0-9]/g, ""))}
-          placeholder={signedIn ? `Your score (as ${maskEmail(userEmail)})` : "Sign in to save your score"}
-          disabled={!signedIn}
+          placeholder={signedIn ? `Your score (as ${maskEmail(userEmail)})` : "Your score (saved as a guest)"}
           className="min-w-0 flex-1 rounded-xl border border-violet-400/25 bg-violet-950 px-3 py-2 text-sm text-white placeholder:text-violet-300/60"
         />
         <button type="submit" disabled={saving || !scoreInput} className="rounded-xl bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
