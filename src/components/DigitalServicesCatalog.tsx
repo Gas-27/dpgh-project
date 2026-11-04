@@ -14,7 +14,7 @@ export default function DigitalServicesCatalog({ onBuy, agentStoreId, storefront
   const { toast } = useToast();
   const navigate = useNavigate();
   const [services, setServices] = useState<Service[]>([]);
-  const [serviceType, setServiceType] = useState<"public_shared" | "private_shared">("public_shared");
+  const [serviceType, setServiceType] = useState<"public_shared" | "private_shared">("private_shared");
   const [open, setOpen] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [loading, setLoading] = useState(true);
