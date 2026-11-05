@@ -5,7 +5,7 @@ import { fetchTabControls, isTabUnavailable, type TabControls } from "@/lib/tabC
 
 const sections = [
   { id: "data", label: "Cheap Data", description: "Buy affordable data packages", icon: Wifi },
-  { id: "gamehub", label: "GameHub", description: "Play, enjoy and win rewards", icon: Gamepad2 },
+  { id: "gamehub", label: "GameHub", description: "Play free games and win up to 5GB, 10GB, 15GB, 25GB and more for free", icon: Gamepad2 },
   { id: "subscription", label: "Subscription", description: "Netflix, ChatGPT, Canva & more", icon: Package },
   { id: "instant", label: "Airtime & Data", description: "Buy airtime and regular data bundles directly", icon: Zap },
   { id: "bulk", label: "Bulk Orders", description: "Order in bulk & save more", icon: Layers3 },
@@ -73,6 +73,14 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
               className={`storefront-reference-hotspot ${id === "social-boost" ? "is-wide" : ""} ${active === id ? "is-active" : ""}`}
             >
               <span className="sr-only">{label}: {description}</span>
+              {id === "gamehub" && (
+                <span
+                  aria-hidden="true"
+                  className="storefront-gamehub-copy"
+                >
+                  Play free games and win up to 5GB, 10GB, 15GB, 25GB and more for free
+                </span>
+              )}
             </button>
           );
         })}

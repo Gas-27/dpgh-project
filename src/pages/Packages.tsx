@@ -18,6 +18,8 @@ import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import DigitalServicesCatalog, { Service } from "@/components/DigitalServicesCatalog";
 import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
 // Lazy-loaded to break circular dependency (ReferenceError: Cannot access 'J' before initialization)
+import { useReportedOrders } from "@/hooks/useReportedOrders";
+import AlreadyReportedButton from "@/components/AlreadyReportedButton";
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
 import ChatBot from "@/components/ChatBot";
@@ -199,6 +201,8 @@ const sounds = {
 
 // ──��────────────────────────��────────────────── Order Tracking Card (UPDATED: delivered at 300 minutes) ──
 const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toast: any; onReportClick: (order: Order) => void }) => {
+  const { isReported } = useReportedOrders([order]);
+  const isReportedOrder = isReported(order.id);
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
   const [complaintId, setComplaintId] = useState<string | null>(null);
   const [pendingNotes, setPendingNotes] = useState(0);
@@ -354,7 +358,8 @@ Please investigate and assist. Thank you.`;
         </div>
       )}
       {/* Report button only shows when order status is "delivered" (not refunded) */}
-      {orderStatus === "delivered" && !complaintStatus && (
+      {orderStatus === "delivered" && !complaintStatus && isReportedOrder && <AlreadyReportedButton full />}
+      {orderStatus === "delivered" && !complaintStatus && !isReportedOrder && (
         <Button 
           variant="outline" 
           size="sm" 

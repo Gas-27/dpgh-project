@@ -178,6 +178,24 @@
     cursor: pointer;
     transition: filter 160ms ease, transform 160ms ease;
   }
+  .storefront-reference-grid { container-type: inline-size; }
+  .storefront-gamehub-copy {
+    position: absolute;
+    left: 30%;
+    right: 2.5%;
+    top: 40%;
+    bottom: 6%;
+    display: flex;
+    align-items: center;
+    padding-left: 1cqw;
+    text-align: left;
+    font-size: 2.15cqw;
+    line-height: 1.3;
+    font-weight: 500;
+    color: #fff;
+    border-radius: 8px;
+    background: linear-gradient(90deg, #5b21b6, #6d28d9);
+  }
   .storefront-reference-hotspot.is-wide { width: 95.8%; height: 10.5%; }
   .storefront-reference-hotspot:hover { filter: brightness(1.12); }
   .storefront-reference-hotspot:focus-visible { outline: 3px solid hsl(190 90% 65%); outline-offset: 0; }

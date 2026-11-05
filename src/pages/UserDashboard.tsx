@@ -25,7 +25,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Sparkles, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck, ChevronDown, ChevronUp, Video } from "lucide-react";
+import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Sparkles, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck, ChevronDown, ChevronUp, Video, Gamepad2, RadioTower, Receipt, CalendarDays, MessageSquare, IdCard, Code } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { cancelWaitingOrder } from "@/services/waitingOrderCancellation";
 import { toast } from "sonner";
@@ -42,6 +42,8 @@ import { UserComplaintsView } from "@/components/UserComplaintsView";
 import ReportCenter from "@/components/ReportCenter";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
+import AlreadyReportedButton from "@/components/AlreadyReportedButton";
+import { useReportedOrders } from "@/hooks/useReportedOrders";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
@@ -201,6 +203,7 @@ const UserDashboard = () => {
 
   // API Orders state
   const [apiOrders, setApiOrders] = useState<any[]>([]);
+  const { isReported } = useReportedOrders([...orders, ...apiOrders]);
   const [loadingApiOrders, setLoadingApiOrders] = useState(false);
   const [apiOrdersSearch, setApiOrdersSearch] = useState("");
   const [apiOrdersStatusFilter, setApiOrdersStatusFilter] = useState("");
@@ -959,32 +962,36 @@ const UserDashboard = () => {
   // Render content based on active menu
   const renderContent = () => {
     const miniTabs = [
-      { id: "gamehub", label: "GameHub", className: "border-purple-500/50 bg-purple-500/10 text-purple-700" },
-      { id: "buy-data", label: "Buy Data", className: "border-cyan-500/50 bg-cyan-500/10 text-cyan-700" },
-      { id: "topup", label: "Top Up", className: "border-green-500/50 bg-green-500/10 text-green-700" },
-      { id: "instant-data", label: "Instant Data", className: "border-amber-500/50 bg-amber-500/10 text-amber-700" },
-      { id: "services", label: "Services", className: "border-orange-500/50 bg-orange-500/10 text-orange-700" },
-  { id: "social-boost", label: "Social Boost", className: "border-cyan-500/50 bg-cyan-500/10 text-cyan-700" },
-      { id: "subscription", label: "Subscription", className: "border-fuchsia-500/50 bg-fuchsia-500/10 text-fuchsia-700" },
-      { id: "sms", label: "Send SMS", className: "border-emerald-500/50 bg-emerald-500/10 text-emerald-700" },
-      { id: "afa-registration", label: "AFA Registration", className: "border-violet-500/50 bg-violet-500/10 text-violet-700" },
-      { id: "api-info", label: "API Info", className: "border-indigo-500/50 bg-indigo-500/10 text-indigo-700" },
+      { id: "gamehub", label: "GameHub", icon: Gamepad2, className: "border-fuchsia-500 bg-gradient-to-r from-purple-900/70 to-fuchsia-700/60 text-fuchsia-300 shadow-[0_0_16px_rgba(217,70,239,0.45)]" },
+      { id: "buy-data", label: "Buy Data", icon: RadioTower, className: "border-orange-500 bg-gradient-to-r from-red-950/80 to-orange-700/60 text-orange-400 shadow-[0_0_16px_rgba(249,115,22,0.45)]" },
+      { id: "topup", label: "Top Up", icon: Wallet, className: "border-yellow-600 bg-gradient-to-r from-stone-900/80 to-yellow-800/50 text-yellow-400 shadow-[0_0_16px_rgba(202,138,4,0.4)]" },
+      { id: "instant-data", label: "Instant Data", icon: Zap, className: "border-blue-500 bg-gradient-to-r from-blue-900/80 to-blue-600/60 text-indigo-200 shadow-[0_0_16px_rgba(59,130,246,0.5)]" },
+      { id: "services", label: "Utilities", icon: Receipt, className: "border-green-500 bg-gradient-to-r from-green-950/90 to-green-800/60 text-lime-400 shadow-[0_0_16px_rgba(34,197,94,0.45)]" },
+      { id: "social-boost", label: "Social Boost", icon: Rocket, className: "border-indigo-500 bg-gradient-to-r from-indigo-950/90 to-indigo-700/60 text-indigo-300 shadow-[0_0_16px_rgba(99,102,241,0.5)]" },
+      { id: "subscription", label: "Subscription", icon: CalendarDays, className: "border-orange-300 bg-gradient-to-r from-rose-400/70 to-orange-300/70 text-orange-100 shadow-[0_0_16px_rgba(253,186,116,0.4)]" },
+      { id: "sms", label: "Bulk SMS", icon: MessageSquare, className: "border-amber-600 bg-gradient-to-r from-amber-950/80 to-amber-700/60 text-amber-400 shadow-[0_0_16px_rgba(217,119,6,0.4)]" },
+      { id: "afa-registration", label: "AFA Registration", icon: IdCard, className: "border-purple-600 bg-gradient-to-r from-purple-950/80 to-violet-800/50 text-purple-300 shadow-[0_0_14px_rgba(147,51,234,0.35)]" },
+      { id: "api-info", label: "API Info", icon: Code, className: "border-sky-400 bg-gradient-to-r from-sky-500/80 to-cyan-300/80 text-blue-950 shadow-[0_0_18px_rgba(56,189,248,0.55)]" },
     ];
 
   return (
   <div className="space-y-5">
   <FreeDataPromoButton />
-  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7">
-          {miniTabs.map((tab) => (
-            <button
-              key={tab.id}
-              type="button"
-              onClick={() => tab.id === "gamehub" ? void openGameHubIfAvailable() : setActiveMenu(activeMenu === tab.id ? "overview" : tab.id)}
-              className={`rounded-full border px-3 py-2 text-sm font-semibold transition hover:brightness-95 ${tab.className}`}
-            >
-              {activeMenu === tab.id ? "Overview" : tab.label}
-            </button>
-          ))}
+  <div className="grid grid-cols-2 gap-3 rounded-3xl bg-slate-950 p-3 sm:gap-4 sm:p-5">
+          {miniTabs.map((tab) => {
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => tab.id === "gamehub" ? void openGameHubIfAvailable() : setActiveMenu(activeMenu === tab.id ? "overview" : tab.id)}
+                className={`flex min-h-14 items-center gap-2 rounded-full border-2 px-3 py-2 text-left text-sm font-bold transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-white sm:min-h-16 sm:gap-3 sm:px-5 sm:text-lg ${tab.className} ${activeMenu === tab.id ? "ring-2 ring-white/80" : ""}`}
+              >
+                <Icon className="h-5 w-5 shrink-0 sm:h-7 sm:w-7" aria-hidden="true" />
+                <span className="flex-1 text-center leading-tight">{activeMenu === tab.id ? "Overview" : tab.label}</span>
+              </button>
+            );
+          })}
         </div>
         {activeMenu === "api-info" ? (
           <Tabs defaultValue="api-key" className="w-full">
@@ -1455,7 +1462,7 @@ case "api-key":
                       </TableCell>
                       <TableCell>
 {normalizeOrderStatus(order) === "delivered" ? (
-  <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>
+  (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>)
   ) : <span className="text-xs text-muted-foreground">—</span>}
                       </TableCell>
                     </TableRow>
@@ -1672,7 +1679,7 @@ case "api-key":
                         </TableCell>
                         <TableCell>
 {((order as any).source === "api" || order.payment_method === "api_wallet") && normalizeOrderStatus(order) === "delivered" ? (
-                            <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>
+                            (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>)
                           ) : <span className="text-xs text-muted-foreground">—</span>}
                         </TableCell>
                       </TableRow>
@@ -2752,7 +2759,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   <OrderStatusBadge status={fs} />
   </td>
   <td className="px-3 py-2 text-xs">
-  {fs === "delivered" ? <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button> : <span className="text-muted-foreground">—</span>}
+  {fs === "delivered" ? (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>) : <span className="text-muted-foreground">—</span>}
   </td>
   </tr>
                         );

@@ -20,6 +20,8 @@ import {
   FileSpreadsheet, RotateCcw, LinkIcon, Share2, ChevronDown, Layers,
   } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useReportedOrders } from "@/hooks/useReportedOrders";
+import AlreadyReportedButton from "@/components/AlreadyReportedButton";
 const ReportComplaintDialog = lazy(() => import("@/components/ReportComplaintDialog"));
 import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 const ClaimFreeDataDialog = lazy(() => import("@/components/ClaimFreeDataDialog"));
@@ -195,6 +197,8 @@ const SubagentOrderTrackingCard = ({
   store: SubagentStore;
   onReportClick: (order: Order) => void;
 }): JSX.Element => {
+  const { isReported } = useReportedOrders([order]);
+  const isReportedOrder = isReported(order.id);
   const [complaintStatus, setComplaintStatus] = useState<string | null>(null);
   const [complaintId, setComplaintId] = useState<string | null>(null);
   const [pendingNotes, setPendingNotes] = useState(0);
@@ -350,7 +354,8 @@ statusMessage = "Your number is new on our portal.";
         )}
 
         {/* Report button - only if delivered (not refunded) and no complaint yet */}
-        {showReportButton && !isRefunded && !complaintStatus && (
+        {showReportButton && !isRefunded && !complaintStatus && isReportedOrder && <AlreadyReportedButton full />}
+        {showReportButton && !isRefunded && !complaintStatus && !isReportedOrder && (
           <Button
             variant="outline"
             size="sm"

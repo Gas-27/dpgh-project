@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { announceOrderReported } from "@/hooks/useReportedOrders";
 
 interface ReportComplaintDialogProps {
   open: boolean;
@@ -156,6 +157,14 @@ export default function ReportComplaintDialog({
       setSending(true);
       setStep("sending");
 
+      const { data: alreadyReported } = await (supabase as any).rpc("get_reported_order_ids", { p_order_ids: [order.id] });
+      if (Array.isArray(alreadyReported) && alreadyReported.length > 0) {
+        announceOrderReported(order.id);
+        toast({ title: "Already reported", description: "This order has already been reported. Our team is working on it." });
+        handleClose();
+        return;
+      }
+
       // API order complaints only need the owing-status answers; no screenshot is requested.
       if (!isApiOrderComplaint && !screenshotFile) {
         throw new Error("A data balance screenshot is required to submit a complaint.");
@@ -293,10 +302,18 @@ Please investigate and assist. Thank You.`;
       }
 
       setStep("sent");
+      announceOrderReported(order.id);
       toast({ title: "Complaint Submitted", description: "Your complaint has been submitted successfully." });
 
       setTimeout(() => setStep("response"), 9000);
     } catch (error) {
+      const message = String((error as { message?: string })?.message || "");
+      if (message.includes("ORDER_ALREADY_REPORTED")) {
+        announceOrderReported(order.id);
+        toast({ title: "Already reported", description: "This order has already been reported. Our team is working on it." });
+        handleClose();
+        return;
+      }
       console.error("Error submitting complaint:", error);
       setStep("screenshot");
       toast({ title: "Error", description: "Failed to submit complaint. Please try again.", variant: "destructive" });

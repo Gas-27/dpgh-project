@@ -54,6 +54,8 @@ import { openGameHubIfAvailable } from "@/lib/tabControls";
 import ChatBot from "@/components/ChatBot";
 import ReportCenter from "@/components/ReportCenter";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
+import AlreadyReportedButton from "@/components/AlreadyReportedButton";
+import { useReportedOrders } from "@/hooks/useReportedOrders";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
 import SmsHistory from "@/components/SmsHistory";
@@ -181,6 +183,7 @@ const SubSubagentDashboard = () => {
   const [subagentStore, setSubagentStore] = useState<SubagentStore | null>(null);
   const [parentSubagentStoreName, setParentSubagentStoreName] = useState<string>("");
   const [orders, setOrders] = useState<Order[]>([]);
+  const { isReported } = useReportedOrders(orders);
   const [reportOrder, setReportOrder] = useState<any | null>(null);
   const [allRefundedOrders, setAllRefundedOrders] = useState<Order[]>([]);
   const [refundedOrdersTotal, setRefundedOrdersTotal] = useState(0);
@@ -2517,7 +2520,7 @@ onClick={handleBuyContinue}
                               </TableCell>
                               <TableCell>
                                 {(order.fulfillment_status === "delivered" || order.status === "delivered") ? (
-                                  <Button size="sm" variant="outline" onClick={() => setReportOrder(order)}>Report not received</Button>
+                                  (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setReportOrder(order)}>Report not received</Button>)
                                 ) : <span className="text-xs text-muted-foreground">—</span>}
                               </TableCell>
                             </TableRow>
