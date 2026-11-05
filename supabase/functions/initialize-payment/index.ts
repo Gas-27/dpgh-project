@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
           user_id: sessionUserId,
           customer_id: sessionUserId,
         };
-    if (!isStorefrontPurchase && metadata?.type !== "social_boost" && !sessionUserId) {
+    if (!isStorefrontPurchase && metadata?.type !== "social_boost" && metadata?.type !== "guest_product" && !sessionUserId) {
       return new Response(JSON.stringify({ error: "Please sign in again before starting this payment." }), { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
     console.log("[PAYMENT] Payment type:", metadata?.type, "storefront:", isStorefrontPurchase);
@@ -109,6 +109,36 @@ Deno.serve(async (req) => {
       const result = await paystackRes.json();
       if (!result.status) return jsonError(result.message || "Payment initialization failed");
       return new Response(JSON.stringify({ authorization_url: result.data.authorization_url, reference: result.data.reference, amount: purchaseAmount + feeAmount }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    // ==========================
+    // GUEST STORE PRODUCT LISTING FEE
+    // ==========================
+    if (metadata?.type === "guest_product") {
+      const jsonError = (error: string, status = 400) => new Response(JSON.stringify({ error }), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      const productId = String(metadata.product_id || "").trim();
+      if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(productId)) return jsonError("Product not found", 404);
+      const adminClient = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
+      const { data: product } = await adminClient.from("store_products").select("id,is_guest,guest_plan,guest_payment_reference,whatsapp_payment_number").eq("id", productId).maybeSingle();
+      if (!product || !product.is_guest) return jsonError("Product not found", 404);
+      if (product.guest_payment_reference) return jsonError("This product has already been paid for");
+      const listingFee = product.guest_plan === "monthly" ? 5 : product.guest_plan === "weekly" ? 2 : 0;
+      if (!listingFee) return jsonError("Choose a listing plan");
+      const payerEmail = typeof email === "string" && /^\S+@\S+\.\S+$/.test(email) ? email : `${String(product.whatsapp_payment_number || "guest").replace(/\D/g, "")}@guest.dataplug.app`;
+      const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${PAYSTACK_SECRET_KEY}`, "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: payerEmail,
+          amount: Math.round(listingFee * 100),
+          currency: "GHS",
+          callback_url,
+          metadata: { type: "guest_product", product_id: productId, plan: product.guest_plan, amount: listingFee },
+        }),
+      });
+      const result = await paystackRes.json();
+      if (!result.status) return jsonError(result.message || "Payment initialization failed");
+      return new Response(JSON.stringify({ authorization_url: result.data.authorization_url, reference: result.data.reference, amount: listingFee }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
     // ==========================

@@ -120,6 +120,17 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "Social Boost metadata missing" }), { status: 200, headers: corsHeaders });
   }
 
+  if (paymentType === "guest_product") {
+    const { data: activation, error: activationError } = await supabaseClient.rpc("activate_guest_store_product", {
+      p_product_id: String(metadata?.product_id || ""),
+      p_reference: String(reference),
+      p_amount: Number(amount) / 100,
+    });
+    if (activationError) console.error("[GUEST PRODUCT] Activation failed:", reference, activationError.message);
+    else console.log("[GUEST PRODUCT] Activation result:", reference, activation);
+    return new Response(JSON.stringify({ message: activationError ? "Guest product activation failed" : "Guest product processed" }), { status: 200, headers: corsHeaders });
+  }
+
   // =====================================
   // PAYSTACK STOREFRONT -> KORBA PAYMENT
   // =====================================

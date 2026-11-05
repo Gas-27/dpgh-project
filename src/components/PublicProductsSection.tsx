@@ -15,6 +15,7 @@ import {
 import { buildWhatsAppProductLink } from "@/lib/whatsappProductMessage";
 import { cn } from "@/lib/utils";
 import { GHANA_REGIONS } from "@/lib/ghanaRegions";
+import GuestProductListing from "@/components/GuestProductListing";
 import { ChevronLeft, ChevronRight, ExternalLink, Loader2, Phone, BadgeCheck } from "lucide-react";
 
 type PublicProduct = {
@@ -32,6 +33,7 @@ type PublicProduct = {
   boost_sitewide_expires_at?: string | null;
   admin_boost?: boolean;
   seller_phone?: string | null;
+  whatsapp_payment_number?: string | null;
   has_inline_image?: boolean;
   marketplace_view_count?: number;
   view_weight?: number;
@@ -76,6 +78,7 @@ export default function PublicProductsSection({
   storeKind,
   siteWide = false,
   allProductsOnly = false,
+  allowGuestListing = false,
   onCancel,
   className,
 }: {
@@ -85,6 +88,7 @@ export default function PublicProductsSection({
   storeKind?: string;
   siteWide?: boolean;
   allProductsOnly?: boolean;
+  allowGuestListing?: boolean;
   onCancel?: () => void;
 }) {
   const navigate = useNavigate();
@@ -113,7 +117,8 @@ export default function PublicProductsSection({
     setLoading(true);
 
     const loadProducts = async () => {
-      const fields = "id,title,description,price,image_urls,created_at,store_id,store_kind,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,admin_boost,marketplace_view_count,region";
+      await (supabase as any).rpc("expire_guest_store_products");
+      const fields = "id,title,description,price,image_urls,created_at,store_id,store_kind,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,admin_boost,marketplace_view_count,region,whatsapp_payment_number";
       const queryProducts = (query: any) => {
         const regionQuery = regionFilter ? query.eq("region", regionFilter) : query;
         return effectiveSearch
@@ -141,7 +146,7 @@ export default function PublicProductsSection({
           return (data || []).map((row: any) => [row.id, row.whatsapp_number || row.support_number || ""] as [string, string]);
         }));
         const contacts = new Map(entries.flat());
-        return items.map((item) => ({ ...item, seller_phone: contacts.get(item.store_id || "") || null }));
+        return items.map((item) => ({ ...item, seller_phone: item.whatsapp_payment_number?.trim() || contacts.get(item.store_id || "") || null }));
       };
 
       if (catalog === "store") {
@@ -179,13 +184,14 @@ export default function PublicProductsSection({
       });
       const rpcProducts = (Array.isArray(pageRows) ? pageRows : []).map(normalizeRpcProduct);
       const [storeViewRows, adminViewRows] = await Promise.all([
-        (supabase as any).from("store_products").select("id,marketplace_view_count").in("id", rpcProducts.filter((item) => item.store_kind !== "admin").map((item) => item.id)),
+        (supabase as any).from("store_products").select("id,marketplace_view_count,whatsapp_payment_number").in("id", rpcProducts.filter((item) => item.store_kind !== "admin").map((item) => item.id)),
         (supabase as any).from("public_store_products").select("id,marketplace_view_count").in("id", rpcProducts.filter((item) => item.store_kind === "admin").map((item) => item.id)),
       ]);
       const storeRows = (storeViewRows.data || []) as any[];
       const adminRows = (adminViewRows.data || []) as any[];
       const viewCounts = new Map<string, number>([...storeRows, ...adminRows].map((row: any) => [row.id, Number(row.marketplace_view_count || 0)]));
-      const productsWithStoredCounts = rpcProducts.map((item) => ({ ...item, marketplace_view_count: viewCounts.get(item.id) ?? Number(item.marketplace_view_count || 0) }));
+      const productNumbers = new Map<string, string | null>(storeRows.map((row: any) => [row.id, row.whatsapp_payment_number || null]));
+      const productsWithStoredCounts = rpcProducts.map((item) => ({ ...item, whatsapp_payment_number: productNumbers.get(item.id) ?? item.whatsapp_payment_number ?? null, marketplace_view_count: viewCounts.get(item.id) ?? Number(item.marketplace_view_count || 0) }));
       const products = await addSellerContacts(await recordMarketplaceViews(productsWithStoredCounts));
       const total = Number((pageRows?.[0] as any)?.total_count ?? 0);
       if (!cancelled) {
@@ -221,6 +227,7 @@ export default function PublicProductsSection({
         <CardContent className="p-3 sm:p-6">
           <div className="mb-6 text-center">
             <div className="flex items-center justify-between gap-3"><h2 className="font-display text-2xl font-bold">Products</h2>{onCancel && <Button type="button" variant="outline" size="sm" onClick={onCancel}>Cancel</Button>}</div>
+            {allowGuestListing && storeId && (storeKind === "agent" || storeKind === "subagent" || storeKind === "subsubagent") && <GuestProductListing storeId={storeId} storeKind={storeKind} />}
             {!allProductsOnly && <Tabs
               value={catalog}
               onValueChange={(value) => {

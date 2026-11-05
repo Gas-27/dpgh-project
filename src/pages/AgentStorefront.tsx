@@ -1229,7 +1229,7 @@ const searchOrders = useCallback(async (input?: string) => {
       <div id="storefront-section-content" className="scroll-mt-6" />
   <ActiveTabMaintenance active={activeCategory === "vouchers" ? "instant" : activeCategory} label={activeCategory === "data" ? "Cheap Data" : activeCategory === "vouchers" ? "Airtime & Data" : activeCategory} onReturn={() => setActiveCategory("data")} />
   {activeCategory === "products" ? (
-    <PublicProductsSection storeId={store?.id} storeKind="agent" supportPhone={store?.support_number || store?.whatsapp_number} />
+    <PublicProductsSection allowGuestListing storeId={store?.id} storeKind="agent" supportPhone={store?.support_number || store?.whatsapp_number} />
   ) : activeCategory === "social-boost" ? (
   <div className="w-full pb-20"><SocialBoostPurchasePanel walletBalance={0} ownerType="agent" storeId={store?.id} checkoutMode="paystack" showHistory={false} purchaseSource="Storefront" /></div>
   ) : activeCategory === "services" ? (

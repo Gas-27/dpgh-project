@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { PROHIBITED_TERMS_LABEL, findProhibitedTerm, prohibitedTermFromError } from "@/lib/marketplaceRules";
 import { GHANA_REGIONS } from "@/lib/ghanaRegions";
@@ -14,7 +15,7 @@ import { uploadProductImage } from "@/lib/productImageUpload";
 import { Loader2, Plus, Trash2, Store, Wallet } from "lucide-react";
 
 type StoreKind = "customer" | "agent" | "subagent" | "subsubagent";
-type Product = { id: string; title: string; description: string; price: number; image_urls: string[]; status: string; available: boolean; payment_mode?: "direct" | "whatsapp"; whatsapp_payment_number?: string | null; boost_global?: boolean; boost_global_expires_at?: string | null; boost_sitewide?: boolean; boost_sitewide_expires_at?: string | null };
+type Product = { id: string; title: string; description: string; price: number; region?: string | null; image_urls: string[]; status: string; available: boolean; payment_mode?: "direct" | "whatsapp"; whatsapp_payment_number?: string | null; boost_global?: boolean; boost_global_expires_at?: string | null; boost_sitewide?: boolean; boost_sitewide_expires_at?: string | null };
 type PlanType = "weekly" | "monthly";
 
 const WEEKLY_PRICE = 5;
@@ -47,6 +48,9 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
   const [images, setImages] = useState<string[]>([]);
   const [uploadingCount, setUploadingCount] = useState(0);
   const galleryInputRef = useRef<HTMLInputElement>(null);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [autoRenew, setAutoRenew] = useState(true);
+  const autoRenewTried = useRef(false);
 
   const blockedTerm = findProhibitedTerm(title, description);
   const activePaid = expiresAt ? new Date(expiresAt) > new Date() : false;
@@ -61,11 +65,28 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
     if (!storeId) return;
     setLoading(true);
     const [{ data: rows }, { data: entitlement }] = await Promise.all([
-      supabase.from("store_products").select("id,title,description,price,image_urls,status,available,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at").eq("store_id", storeId).order("created_at", { ascending: false }),
-      supabase.from("store_product_entitlements").select("free_post_used,paid_post_limit,paid_post_expires_at,plan_type").eq("store_id", storeId).maybeSingle(),
+      supabase.from("store_products").select("id,title,description,price,region,payment_mode,whatsapp_payment_number,image_urls,status,available,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at").eq("store_id", storeId).order("created_at", { ascending: false }),
+      supabase.from("store_product_entitlements").select("free_post_used,paid_post_limit,paid_post_expires_at,plan_type,auto_renew").eq("store_id", storeId).maybeSingle(),
     ]);
     const entitlementExpiresAt = entitlement?.paid_post_expires_at || null;
     const entitlementActive = entitlementExpiresAt ? new Date(entitlementExpiresAt) > new Date() : false;
+    const entitlementAutoRenew = entitlement?.auto_renew !== false;
+    setAutoRenew(entitlementAutoRenew);
+    const renewPlanType = (entitlement?.plan_type as PlanType) || null;
+    if (entitlementExpiresAt && !entitlementActive && entitlementAutoRenew && renewPlanType && !autoRenewTried.current) {
+      autoRenewTried.current = true;
+      const renewPrice = renewPlanType === "monthly" ? MONTHLY_PRICE : WEEKLY_PRICE;
+      if (walletBalance >= renewPrice) {
+        const { data: renewed, error: renewError } = await supabase.rpc("purchase_store_product_plan", { p_store_kind: storeKind, p_store_id: storeId, p_plan: renewPlanType });
+        if (!renewError) {
+          const balanceAfter = Number((renewed as { balance_after?: number } | null)?.balance_after);
+          if (Number.isFinite(balanceAfter)) onWalletBalanceChange?.(balanceAfter);
+          toast({ title: "Product plan auto-renewed", description: `Your ${renewPlanType} plan was renewed from your wallet.` });
+          await load();
+          return;
+        }
+      }
+    }
     if (entitlementExpiresAt && !entitlementActive) {
       await supabase.from("store_products").update({ status: "inactive", available: false, updated_at: new Date().toISOString() }).eq("store_id", storeId).eq("status", "active");
     }
@@ -96,6 +117,30 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
     });
   }
 
+  function resetForm() {
+    setEditingId(null); setTitle(""); setDescription(""); setPrice(""); setRegion(""); setImages([]); setPaymentMode("whatsapp"); setPaymentNumber(supportPhone || "");
+  }
+
+  function startEdit(product: Product) {
+    setEditingId(product.id);
+    setTitle(product.title);
+    setDescription(product.description || "");
+    setPrice(String(product.price));
+    setRegion(product.region || "");
+    setImages(Array.isArray(product.image_urls) ? product.image_urls : []);
+    setPaymentMode("whatsapp");
+    setPaymentNumber(product.whatsapp_payment_number || supportPhone || "");
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+
+  async function toggleAutoRenew(next: boolean) {
+    if (!storeId) return;
+    setAutoRenew(next);
+    const { error } = await supabase.from("store_product_entitlements").update({ auto_renew: next, updated_at: new Date().toISOString() }).eq("store_id", storeId);
+    if (error) { setAutoRenew(!next); toast({ title: "Could not change auto renew", description: error.message, variant: "destructive" }); return; }
+    toast({ title: next ? "Auto renew is on" : "Auto renew is off", description: next ? "Your plan will renew from your wallet when it expires." : "Your plan will not renew automatically." });
+  }
+
   async function addProduct() {
     if (blockedTerm) {
       toast({ title: "You cannot post about this service", description: `The word "${blockedTerm}" was detected. Posting services the site already offers can lead to permanent account deletion.`, variant: "destructive" });
@@ -103,6 +148,18 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
     }
     if (!region) {
       toast({ title: "Select a region", description: "Choose the region in Ghana where this product is located.", variant: "destructive" });
+      return;
+    }
+    if (editingId && storeId) {
+      if (!title.trim() || !price) return;
+      setSaving(true);
+      const editedImages = images.map(image => image.trim()).filter(image => Boolean(image) && !image.startsWith("data:")).slice(0, MAX_IMAGES);
+      const { error: updateError } = await supabase.from("store_products").update({ title: title.trim(), description: description.trim(), price: Number(price), region, image_urls: editedImages, payment_mode: paymentMode, whatsapp_payment_number: paymentMode === "whatsapp" ? paymentNumber.trim() : null, updated_at: new Date().toISOString() }).eq("id", editingId).eq("store_id", storeId);
+      const editTerm = prohibitedTermFromError(updateError?.message);
+      if (editTerm) toast({ title: "You cannot post about this service", description: `The word "${editTerm}" was detected. Posting services the site already offers can lead to permanent account deletion.`, variant: "destructive" });
+      else if (updateError) toast({ title: "Could not save changes", description: updateError.message, variant: "destructive" });
+      else { toast({ title: "Product updated", description: "Your changes are now live." }); resetForm(); await load(); }
+      setSaving(false);
       return;
     }
     if (!storeId || !title.trim() || !price || (needsExtraCharge && walletBalance < EXTRA_POST_PRICE)) {
@@ -182,9 +239,9 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
   if (!storeId) return <Card><CardContent className="p-6 text-sm text-muted-foreground">Your store is still loading.</CardContent></Card>;
   return <div className="space-y-6">
     <Card className="border-primary/30"><CardHeader><CardTitle className="flex items-center gap-2"><Store className="h-5 w-5 text-primary" /> Marketplace products</CardTitle><p className="text-sm text-muted-foreground">Post products for sale across the JustBuy marketplace. Your product reaches the whole site: all agents, all customers, all subagents, all sub-subagents and visitors across the site, so you get a global reach. Buyers can place an order and contact you through your support number{supportPhone ? ` (${supportPhone})` : ""}.</p><div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-sm text-muted-foreground"><p className="font-semibold text-foreground">How the product session works</p><p className="mt-1">Your first product post is free. The weekly plan gives you five active product posts for seven days, while the monthly plan gives you thirty posts for thirty days. After the included posts are used, each additional post costs GHS 1. Buyers open a dedicated product page to view the images, description, price, and WhatsApp purchase button.</p><p className="mt-2"><strong>Boost to Global Products</strong> (GHS 25) promotes this product in the shared Global Products area, helping buyers outside your own storefront discover it for thirty days. <strong>Boost sitewide</strong> (GHS 27) promotes it across product listings on the Package page and storefronts, giving it broader visibility for thirty days. Boosts improve placement and reach; they do not change the product price, stock, or availability.</p><p className="mt-2 rounded-md border border-amber-400/40 bg-amber-50/60 p-2 text-foreground"><strong>Massive reach in Game Hub:</strong> boosted and golden-boosted products are also shown as ads inside Game Hub, where thousands of people play free games to win free data. When a player fails a game, your product pops up and one tap takes them straight to your product page.</p><p className="mt-2">Some boosted products are also selected and posted on our WhatsApp channel for extra reach.</p></div><div role="note" className="rounded-lg border border-destructive/40 bg-destructive/5 p-3 text-sm text-muted-foreground"><p className="font-semibold text-destructive">Read before you post</p><p className="mt-1">Do not post anything about data, airtime, or any other service this site already offers ({PROHIBITED_TERMS_LABEL}). Posts that offer these services are detected automatically and will be deleted, and your account will be permanently deleted along with all the money left in it. Buyers can also report posts, and every report is reviewed by the admin.</p></div></CardHeader><CardContent className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2"><Badge variant="secondary"><Wallet className="mr-1 h-3 w-3" />Wallet: GHS {Number(walletBalance).toFixed(2)}</Badge><Badge variant="secondary">{freePostUsed ? "Free post used" : "1 free post available"}</Badge><Badge variant={activePaid ? "default" : "outline"}>{activePaid ? `${remaining} included posts left (${planType === "monthly" ? "monthly plan" : "weekly plan"})` : needsExtraCharge ? "Extra posts: GHS 1 each" : "No active plan"}</Badge>{activePaid && <span className="text-xs text-muted-foreground">Expires {new Date(expiresAt!).toLocaleDateString()}</span>}<Button size="sm" variant="outline" onClick={() => renewPlan("weekly")} disabled={saving || activePaid}><Wallet className="mr-1 h-4 w-4" />Weekly · GHS {WEEKLY_PRICE} · {INCLUDED_WEEKLY_POSTS} posts</Button><Button size="sm" variant="outline" onClick={() => renewPlan("monthly")} disabled={saving || activePaid}><Wallet className="mr-1 h-4 w-4" />Monthly · GHS {MONTHLY_PRICE} · {INCLUDED_MONTHLY_POSTS} posts</Button></div>
+      <div className="flex flex-wrap items-center gap-2"><Badge variant="secondary"><Wallet className="mr-1 h-3 w-3" />Wallet: GHS {Number(walletBalance).toFixed(2)}</Badge><Badge variant="secondary">{freePostUsed ? "Free post used" : "1 free post available"}</Badge><Badge variant={activePaid ? "default" : "outline"}>{activePaid ? `${remaining} included posts left (${planType === "monthly" ? "monthly plan" : "weekly plan"})` : needsExtraCharge ? "Extra posts: GHS 1 each" : "No active plan"}</Badge>{activePaid && <span className="text-xs text-muted-foreground">Expires {new Date(expiresAt!).toLocaleDateString()}</span>}{planType && <label className="flex items-center gap-2 rounded-md border px-2 py-1 text-xs"><Switch checked={autoRenew} onCheckedChange={toggleAutoRenew} aria-label="Auto renew product plan" />Auto renew {autoRenew ? "on" : "off"}</label>}<Button size="sm" variant="outline" onClick={() => renewPlan("weekly")} disabled={saving || activePaid}><Wallet className="mr-1 h-4 w-4" />Weekly · GHS {WEEKLY_PRICE} · {INCLUDED_WEEKLY_POSTS} posts</Button><Button size="sm" variant="outline" onClick={() => renewPlan("monthly")} disabled={saving || activePaid}><Wallet className="mr-1 h-4 w-4" />Monthly · GHS {MONTHLY_PRICE} · {INCLUDED_MONTHLY_POSTS} posts</Button></div>
       {blockedTerm && <div role="alert" className="rounded-lg border border-destructive bg-destructive/10 p-3 text-sm text-destructive"><p className="font-semibold">You cannot post about services this site already offers.</p><p className="mt-1">We detected the word &quot;{blockedTerm}&quot; in your post. Remove it to continue. If you persist in posting what is not allowed, your account will be permanently deleted.</p></div>}
-      <div className="grid gap-4 md:grid-cols-2"><div className="space-y-3"><div><Label>Product name</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Handmade sandals" /></div><div><Label>Description</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the product, delivery, and important details." /></div><div><Label>Price (GHS)</Label><Input type="number" min="0" value={price} onChange={e => setPrice(e.target.value)} /></div><div><Label htmlFor="product-region">Region</Label><select id="product-region" value={region} onChange={e => setRegion(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">Select a region</option>{GHANA_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}</select></div><div className="space-y-2"><Label>Payment method</Label><p className="text-xs text-muted-foreground">Direct Paystack checkout is currently unavailable for store products. Buyers can contact you on WhatsApp to arrange payment.</p><select value={paymentMode} onChange={e => setPaymentMode(e.target.value as "direct" | "whatsapp")} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="direct" disabled>Accept payment directly on the site through our Paystack (Currently unavailable)</option><option value="whatsapp">Ask buyer to contact me on WhatsApp</option></select>{paymentMode === "whatsapp" && <Input value={paymentNumber} onChange={e => setPaymentNumber(e.target.value)} placeholder="WhatsApp payment number" />}</div></div><div className="space-y-3"><Label>Product images (up to 4)</Label><input ref={galleryInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleGalleryFiles} /><button type="button" onClick={() => galleryInputRef.current?.click()} className="flex min-h-32 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-4 text-center transition hover:border-primary hover:bg-primary/10"><Plus className="mb-2 h-6 w-6 text-primary" /><span className="font-medium">Choose images from gallery</span><span className="text-xs text-muted-foreground">PNG, JPG, or WebP · maximum 5 MB each</span></button>{(images.length > 0 || uploadingCount > 0) && <div className="grid grid-cols-2 gap-3">{images.map((image, index) => <div className="group relative overflow-hidden rounded-xl border" key={`${image.slice(-24)}-${index}`}><img src={image} alt={`Product preview ${index + 1}`} className="aspect-square w-full object-cover" /><Button type="button" size="icon" variant="destructive" className="absolute right-2 top-2 h-8 w-8 opacity-0 transition group-hover:opacity-100" onClick={() => setImages(current => current.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button></div>)}{Array.from({ length: uploadingCount }).map((_, index) => <div key={`uploading-${index}`} className="flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-xl border bg-muted/40 text-xs text-muted-foreground" role="status"><Loader2 className="h-5 w-5 animate-spin" />Uploading…</div>)}</div>}<p className="text-xs text-muted-foreground">{images.length}/{MAX_IMAGES} images selected</p></div></div><Button onClick={addProduct} disabled={uploadingCount > 0 || saving || !title.trim() || !price || (needsExtraCharge && walletBalance < EXTRA_POST_PRICE)}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{remaining < 1 ? "Renew to post more" : "Post product"}</Button>
+      <div className="grid gap-4 md:grid-cols-2"><div className="space-y-3"><div><Label>Product name</Label><Input value={title} onChange={e => setTitle(e.target.value)} placeholder="e.g. Handmade sandals" /></div><div><Label>Description</Label><Textarea value={description} onChange={e => setDescription(e.target.value)} placeholder="Describe the product, delivery, and important details." /></div><div><Label>Price (GHS)</Label><Input type="number" min="0" value={price} onChange={e => setPrice(e.target.value)} /></div><div><Label htmlFor="product-region">Region</Label><select id="product-region" value={region} onChange={e => setRegion(e.target.value)} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="">Select a region</option>{GHANA_REGIONS.map(r => <option key={r} value={r}>{r}</option>)}</select></div><div className="space-y-2"><Label>Payment method</Label><p className="text-xs text-muted-foreground">Direct Paystack checkout is currently unavailable for store products. Buyers can contact you on WhatsApp to arrange payment.</p><select value={paymentMode} onChange={e => setPaymentMode(e.target.value as "direct" | "whatsapp")} className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"><option value="direct" disabled>Accept payment directly on the site through our Paystack (Currently unavailable)</option><option value="whatsapp">Ask buyer to contact me on WhatsApp</option></select>{paymentMode === "whatsapp" && <Input value={paymentNumber} onChange={e => setPaymentNumber(e.target.value)} placeholder="WhatsApp payment number" />}</div></div><div className="space-y-3"><Label>Product images (up to 4)</Label><input ref={galleryInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleGalleryFiles} /><button type="button" onClick={() => galleryInputRef.current?.click()} className="flex min-h-32 w-full flex-col items-center justify-center rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 p-4 text-center transition hover:border-primary hover:bg-primary/10"><Plus className="mb-2 h-6 w-6 text-primary" /><span className="font-medium">Choose images from gallery</span><span className="text-xs text-muted-foreground">PNG, JPG, or WebP · maximum 5 MB each</span></button>{(images.length > 0 || uploadingCount > 0) && <div className="grid grid-cols-2 gap-3">{images.map((image, index) => <div className="group relative overflow-hidden rounded-xl border" key={`${image.slice(-24)}-${index}`}><img src={image} alt={`Product preview ${index + 1}`} className="aspect-square w-full object-cover" /><Button type="button" size="icon" variant="destructive" className="absolute right-2 top-2 h-8 w-8 opacity-0 transition group-hover:opacity-100" onClick={() => setImages(current => current.filter((_, i) => i !== index))}><Trash2 className="h-4 w-4" /></Button></div>)}{Array.from({ length: uploadingCount }).map((_, index) => <div key={`uploading-${index}`} className="flex aspect-square w-full flex-col items-center justify-center gap-2 rounded-xl border bg-muted/40 text-xs text-muted-foreground" role="status"><Loader2 className="h-5 w-5 animate-spin" />Uploading…</div>)}</div>}<p className="text-xs text-muted-foreground">{images.length}/{MAX_IMAGES} images selected</p></div></div><div className="flex flex-wrap gap-2"><Button onClick={addProduct} disabled={uploadingCount > 0 || saving || !title.trim() || !price || (!editingId && needsExtraCharge && walletBalance < EXTRA_POST_PRICE)}>{saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}{editingId ? "Save changes" : remaining < 1 ? "Renew to post more" : "Post product"}</Button>{editingId && <Button type="button" variant="outline" onClick={resetForm} disabled={saving}>Cancel editing</Button>}</div>
     </CardContent></Card>
     <Card><CardHeader><CardTitle>Your product posts</CardTitle></CardHeader><CardContent>{loading ? <Loader2 className="h-5 w-5 animate-spin" /> : products.length === 0 ? <p className="text-sm text-muted-foreground">No products posted yet.</p> : <div className="grid gap-3 md:grid-cols-2">{products.map(product => {
       const globalActive = product.boost_global && product.boost_global_expires_at && new Date(product.boost_global_expires_at) > new Date();
@@ -195,6 +252,7 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
           {sitewideActive && <Badge variant="secondary">Boosted sitewide until {new Date(product.boost_sitewide_expires_at!).toLocaleDateString()}</Badge>}
         </div>
         <div className="mt-2 flex flex-wrap gap-2">
+          <Button size="sm" variant="outline" onClick={() => startEdit(product)}>Edit</Button>
           <Button size="sm" variant="ghost" onClick={() => toggleProduct(product)}>{product.status === "active" && product.available ? "Disable" : "Enable"}</Button>
           <Button size="sm" variant="outline" disabled={boosting === `${product.id}-global` || Boolean(globalActive)} onClick={() => boostProduct(product, "global")}>{globalActive ? "Boosted globally" : `Boost to Global Products · GHS ${BOOST_GLOBAL_PRICE}`}</Button>
           <Button size="sm" variant="outline" disabled={boosting === `${product.id}-sitewide` || Boolean(sitewideActive)} onClick={() => boostProduct(product, "sitewide")}>{sitewideActive ? "Boosted sitewide" : `Boost sitewide · GHS ${BOOST_SITEWIDE_PRICE}`}</Button>

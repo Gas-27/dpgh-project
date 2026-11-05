@@ -51,8 +51,17 @@ async function compressImage(file: File): Promise<{ blob: Blob; ext: "webp" | "j
 
 /** Resizes the image in the browser, uploads it to Supabase Storage and returns its public https URL. */
 export async function uploadProductImage(storeId: string, file: File): Promise<string> {
+  return uploadToFolder(`stores/${storeId}`, file);
+}
+
+/** Guest listings upload without an account, so they are limited to the `guests/` folder of the bucket. */
+export async function uploadGuestProductImage(file: File): Promise<string> {
+  return uploadToFolder("guests", file);
+}
+
+async function uploadToFolder(folder: string, file: File): Promise<string> {
   const { blob, ext } = await compressImage(file);
-  const path = `stores/${storeId}/${crypto.randomUUID()}.${ext}`;
+  const path = `${folder}/${crypto.randomUUID()}.${ext}`;
   const { error } = await supabase.storage.from(BUCKET).upload(path, blob, { contentType: blob.type, cacheControl: "31536000", upsert: false });
   if (error) throw error;
   return supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;

@@ -39,11 +39,11 @@ export default function ProductDetail() {
         const ownerResult = await supabase.from("agent_stores").select("id,store_name,support_number,whatsapp_number").eq("store_name", storeName).maybeSingle();
         owner = ownerResult.data;
         if (owner && productId) {
-          const itemResult = await supabase.from("store_products").select("id,title,description,price,image_urls,store_id,store_kind,admin_boost,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,region").eq("id", productId).eq("store_id", owner.id).eq("status", "active").eq("available", true).maybeSingle();
+          const itemResult = await supabase.from("store_products").select("id,title,description,price,image_urls,store_id,store_kind,admin_boost,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,region,whatsapp_payment_number").eq("id", productId).eq("store_id", owner.id).eq("status", "active").eq("available", true).maybeSingle();
           item = itemResult.data;
         }
       } else if (productId) {
-        const storeResult = await supabase.from("store_products").select("id,title,description,price,image_urls,store_id,store_kind,status,available,admin_boost,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,region").eq("id", productId).eq("status", "active").eq("available", true).maybeSingle();
+        const storeResult = await supabase.from("store_products").select("id,title,description,price,image_urls,store_id,store_kind,status,available,admin_boost,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,region,whatsapp_payment_number").eq("id", productId).eq("status", "active").eq("available", true).maybeSingle();
         item = storeResult.data;
         if (item?.store_id) {
           const table = item.store_kind === "subagent" ? "subagent_stores" : item.store_kind === "subsubagent" ? "sub_subagent_stores" : "agent_stores";
@@ -100,7 +100,7 @@ export default function ProductDetail() {
   if (!product) return <main className="mx-auto max-w-3xl p-6"><p className="text-muted-foreground">Product not found or no longer available.</p></main>;
 
   const productUrl = new URL(`/marketplace/product/${product.id}/${slugify(product.title)}`, window.location.origin).toString();
-  const buyLink = buildWhatsAppProductLink(store?.whatsapp_number || store?.support_number, {
+  const buyLink = buildWhatsAppProductLink((product as any).whatsapp_payment_number?.trim() || store?.whatsapp_number || store?.support_number, {
     title: product.title,
     description: product.description,
     price: product.price,
