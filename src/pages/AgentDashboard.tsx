@@ -466,7 +466,8 @@ const localNumber = number.replace(/\D/g, "");
   const [showTopupDialog, setShowTopupDialog] = useState(false);
   const [topupAmount, setTopupAmount] = useState("");
   const [topupLoading, setTopupLoading] = useState(false);
-  const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string; source: string }[]>([]);
+  const [topupHistory, setTopupHistory] = useState<{ id: string; amount: number; paystack_reference: string | null; created_at: string; source: string; fromUserAccount?: boolean; status?: string | null }[]>([]);
+  const [upgradeTransfer, setUpgradeTransfer] = useState<{ amount: number; created_at: string } | null>(null);
   const [themeColors, setThemeColors] = useState(DEFAULT_THEME);
   const [selectedDesignBlock, setSelectedDesignBlock] = useState("header");
   const [savingTheme, setSavingTheme] = useState(false);
@@ -1047,7 +1048,42 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       .eq("agent_store_id", sd.id)
       .order("created_at", { ascending: false })
       .limit(50);
-    setTopupHistory((topups || []).map(t => ({ ...t, source: t.paystack_reference ? "Paystack" : "Admin" })));
+    const agentTopupRows = (topups || []).map(t => ({ ...t, source: t.paystack_reference ? "Paystack" : "Admin" }));
+
+    // Old user-account top-ups (before the agent upgrade), merged into the same list
+    let userTopupRows: any[] = [];
+    try {
+      const { data: userCustomer } = await (supabase as any).from("customers").select("id").eq("user_id", effectiveUserId).maybeSingle();
+      if (userCustomer?.id) {
+        const { data: userTopups } = await (supabase as any)
+          .from("user_wallet_topups")
+          .select("id, created_at, amount, status, paystack_reference")
+          .eq("customer_id", userCustomer.id)
+          .order("created_at", { ascending: false })
+          .limit(200);
+        userTopupRows = (userTopups || []).map((t: any) => ({
+          id: `user-${t.id}`,
+          amount: Number(t.amount),
+          paystack_reference: t.paystack_reference ?? null,
+          created_at: t.created_at,
+          source: "Paystack",
+          status: t.status ?? null,
+          fromUserAccount: true,
+        })) as any;
+      }
+    } catch (err) {
+      console.error("Failed to load user-account top-ups", err);
+    }
+    setTopupHistory(
+      [...agentTopupRows, ...userTopupRows].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()),
+    );
+
+    const { data: transferRow } = await (supabase as any)
+      .from("agent_upgrade_transfers")
+      .select("user_wallet_moved, created_at")
+      .eq("user_id", effectiveUserId)
+      .maybeSingle();
+    setUpgradeTransfer(Number(transferRow?.user_wallet_moved ?? 0) > 0 ? { amount: Number(transferRow.user_wallet_moved), created_at: transferRow.created_at } : null);
     
     // Fetch subagent orders count
     const subagentIds = subags.map((s: any) => s.id);
@@ -3678,7 +3714,12 @@ return (
                   <TrendingUp className="h-5 w-5 text-primary" /> Top Up History
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {upgradeTransfer && (
+                  <p className="text-sm text-muted-foreground">
+                    GHS {upgradeTransfer.amount.toFixed(2)} from your user wallet was added to your agent wallet on {new Date(upgradeTransfer.created_at).toLocaleDateString()}.
+                  </p>
+                )}
                 {topupHistory.length === 0 ? (
                   <p className="text-muted-foreground text-sm text-center py-4">No top-up history yet</p>
                 ) : (
@@ -3697,7 +3738,13 @@ return (
                           <TableRow key={t.id}>
                             <TableCell className="text-sm">{new Date(t.created_at).toLocaleDateString()} {new Date(t.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</TableCell>
                             <TableCell className="font-semibold text-green-400">GHC {Number(t.amount).toFixed(2)}</TableCell>
-                            <TableCell><Badge variant={t.source === "Paystack" ? "default" : "secondary"}>{t.source}</Badge></TableCell>
+                            <TableCell>
+                              <div className="flex flex-wrap items-center gap-1">
+                                <Badge variant={t.source === "Paystack" ? "default" : "secondary"}>{t.source}</Badge>
+                                {t.fromUserAccount && <Badge variant="outline" className="text-xs">From user account</Badge>}
+                                {t.fromUserAccount && t.status && <span className="text-xs capitalize text-muted-foreground">{t.status}</span>}
+                              </div>
+                            </TableCell>
                             <TableCell className="font-mono text-xs">{t.paystack_reference || "Admin credit"}</TableCell>
                           </TableRow>
                         ))}
@@ -3707,8 +3754,6 @@ return (
                 )}
               </CardContent>
             </Card>
-
-            <PreUpgradeHistory view="topups" />
           </TabsContent>
 
           {/* ============================= WITHDRAW ============================= */}
