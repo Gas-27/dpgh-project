@@ -446,15 +446,18 @@ poseHand(bowHL,RIG.bow.L,true);setPull(0);
 function setLoaded(b){if(W.id==='bow')arrowN.visible=b;else if(vm.userData.proj&&W.id!=='rifle')vm.userData.proj.visible=b}
 function muzzlePos(o){if(W.id==='bow')arrowN.getWorldPosition(o);else if(vm.userData.proj)vm.userData.proj.getWorldPosition(o);else o.copy(cam.position)}
 function swapW(){if(state!=='ready')return;const ks=Object.keys(WEAPONS).filter(k=>save.own.includes(k)),k=ks[(ks.indexOf(W.id)+1)%ks.length];if(k===W.id)return;W=WEAPONS[k];save.eq.w=k;buildVM();setLoaded(true);persist();SFX.click();hud();showMsg(W.n)}
-function renderMarket(){$('mcoins').textContent='\u25cf '+save.coins+' coins';const box=$('mlist');box.innerHTML='';document.querySelectorAll('#mtabs button').forEach(b=>b.classList.toggle('sel',b.dataset.t===mtab));
+function renderMarket(){$('mcoins').textContent=HUB?(hubBal==null?'Sign in to buy with your wallet':'Wallet: '+cedi(hubBal)):'\u25cf '+save.coins+' coins';const box=$('mlist');box.innerHTML='';
+ if(HUB&&hubMkErr){const ep=document.createElement('p');ep.style.color='#ff8a7a';ep.textContent=hubMkErr;box.appendChild(ep)}document.querySelectorAll('#mtabs button').forEach(b=>b.classList.toggle('sel',b.dataset.t===mtab));
  const defs=mtab==='w'?WEAPONS:mtab==='s'?SKINS:SLEEVES,own=mtab==='w'?save.own:mtab==='s'?save.skins:save.sleeves,ek=mtab==='w'?'w':mtab==='s'?'skin':'sleeve';
- for(const k in defs){const d=defs[k],name=d.n||d[0],price=d.n?d.price:d[1],desc=d.desc||(mtab==='s'?'Cosmetic skin for the bow':'Cosmetic gloves and sleeves'),has2=own.includes(k),eq=save.eq[ek]===k,row=document.createElement('div'),b=document.createElement('button');
+ for(const k in defs){const d=defs[k],name=d.n||d[0],price=HUB?(HUBP[mtab+':'+k]||0):(d.n?d.price:d[1]),desc=d.desc||(mtab==='s'?'Cosmetic skin for the bow':'Cosmetic gloves and sleeves'),has2=own.includes(k),eq=save.eq[ek]===k,row=document.createElement('div'),b=document.createElement('button');
   row.className='up';row.innerHTML='<div><b>'+name+'</b><small>'+desc+'</small></div>';
   const use=()=>{save.eq[ek]=k;if(mtab==='w'){W=WEAPONS[k];buildVM();setLoaded(true)}applyGear();persist()};
   if(eq){b.textContent='EQUIPPED';b.disabled=true}else if(has2){b.textContent='EQUIP';b.onclick=()=>{use();SFX.click();renderMarket()}}
+  else if(HUB){b.textContent=cedi(price);b.disabled=hubBal!=null&&hubBal<price;
+   b.onclick=async()=>{b.disabled=true;hubMkErr='';try{const r=await hubCall('buy_item',{itemType:mtab,itemKey:k});hubApplyMarket(r);use();SFX.coin()}catch(err){hubMkErr=err.message||String(err);SFX.fail()}renderMarket()}}
   else{b.textContent=price+' coins';b.disabled=save.coins<price;b.onclick=()=>{save.coins-=price;own.push(k);use();SFX.coin();renderMarket();homeStats()}}
   row.appendChild(b);box.appendChild(row)}}
-$('mkBtn').onclick=()=>{initAudio();SFX.click();$('home').classList.add('hide');$('market').classList.remove('hide');renderMarket()};
+$('mkBtn').onclick=()=>{initAudio();SFX.click();$('home').classList.add('hide');$('market').classList.remove('hide');renderMarket();if(HUB){hubMkErr='';hubSync().then(renderMarket).catch(err=>{hubMkErr=err.message||String(err);renderMarket()})}};
 $('mkBack').onclick=()=>{SFX.click();$('market').classList.add('hide');$('home').classList.remove('hide');homeStats()};
 document.querySelectorAll('#mtabs button').forEach(b=>b.onclick=()=>{mtab=b.dataset.t;SFX.click();renderMarket()});
 function alertAnimals(){for(const a of an){if(a.st==='down')continue;if(a.g.position.length()<40&&(a.st==='walk'||a.st==='graze')&&Math.random()<.4){a.st='alert';a.timer=R(1.2,2.2)}}}
@@ -701,6 +704,17 @@ function hubCall(type,data){return new Promise((res,rej)=>{const id=++hubSeq;hub
 addEventListener('message',e=>{if(!HUB||e.source!==parent)return;const m=e.data;if(!m||m.source!=='justbuy-gamehub')return;
  if(m.run)hubApply(m.run);if(m.id&&hubWait[m.id]){const w=hubWait[m.id];delete hubWait[m.id];m.error?w.rej(new Error(m.error)):w.res(m)}});
 const cedi=n=>'GH₵'+(+n).toFixed(2).replace(/\.00$/,'');
+// Market items are paid for with real wallet money (GH₵). Prices here are display-only; the server decides the charge.
+const HUBP={'w:knife':1.5,'w:spear':2,'w:xbow':3,'w:rifle':5,'w:rocket':8,'s:camo':1.5,'s:chrome':2.5,'s:carbon':3,'s:gold':5,'g:leather':1.5,'g:arctic':2,'g:camo':2};
+let hubBal=null,hubMkErr='';
+function hubApplyMarket(r){hubBal=r.balance==null?null:+r.balance;const o=Array.isArray(r.owned)?r.owned:[];
+ const keys=t=>o.filter(x=>x.startsWith(t+':')).map(x=>x.slice(2));
+ save.own=['bow'].concat(keys('w'));save.skins=['default'].concat(keys('s'));save.sleeves=['default'].concat(keys('g'));
+ if(!save.own.includes(save.eq.w)){save.eq.w='bow';W=WEAPONS.bow;buildVM();setLoaded(true)}
+ if(!save.skins.includes(save.eq.skin))save.eq.skin='default';
+ if(!save.sleeves.includes(save.eq.sleeve))save.eq.sleeve='default';
+ applyGear();persist()}
+async function hubSync(){const r=await hubCall('market');hubApplyMarket(r)}
 function hubApply(r){hubRun=r;STAGES=Math.max(1,+r.target||STAGES);if(state!=='menu')hearts=+r.lives;
  const hp=document.querySelector('#home p');if(hp)hp.innerHTML='Clear <b style="color:#ffd24a">'+STAGES+' stages</b> to win <b style="color:#ffd24a">'+(r.reward_gb||5)+' GB</b> free MTN data.'+(r.level>1&&r.status==='active'?'<br>You are on stage '+r.level+'.':'')}
 function hubPanel(title,info,btns){state='result';for(const e of['arrows','pw','cross','brt','swap','pauseBtn'])$(e).classList.add('hide');
@@ -713,6 +727,7 @@ function hubBusy(t){$('home').classList.add('hide');hubPanel('PLEASE WAIT',t,[])
 async function hubStart(){initAudio();SFX.click();hubBusy('Connecting to JustBuy...');
  let r;try{r=await hubCall('start')}catch(err){hubPanel('CAN’T START',err.message,[['TRY AGAIN',hubStart],['HOME',goHome,1]]);return}
  hubApply(r.run);if(r.run.status==='cleared'){hubWin();return}if(r.run.status!=='active'){hubPanel('GAME ENDED','This game session has ended.',[['HOME',goHome,1]]);return}
+ try{await hubSync()}catch(e){}
  round=r.run.level-1;hearts=r.run.lives;perks=[];runTotal=0;cleared=0;stam=1;shots=0;hits=0;bulls=0;bestStreak=0;
  for(const e of['home','how','ups','result','perks','market','online','lobby'])$(e).classList.add('hide');nextRound(false)}
 async function hubStageEnd(){const ok=score>=req;hubClearErr();

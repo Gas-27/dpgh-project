@@ -269,7 +269,29 @@ export async function buyGameArrow(runId: string): Promise<{ run: GameRun; balan
   return { run: result.run, balance: Number(result.balance), arrows_bought: Number(result.arrows_bought) };
 }
 
-export async function endGameRun(runId: string): Promise<GameRun> {
+  export type ArcheryMarketState = { owned: string[]; balance: number | null };
+
+  function toArcheryMarketState(data: unknown): ArcheryMarketState {
+  const result = data as { owned?: string[]; balance?: number | string | null };
+  return {
+  owned: Array.isArray(result?.owned) ? result.owned : [],
+  balance: result?.balance === null || result?.balance === undefined ? null : Number(result.balance),
+  };
+  }
+
+  export async function fetchArcheryMarket(walletHint: string | null): Promise<ArcheryMarketState> {
+  const { data, error } = await db.rpc("gamehub_archery_market", { p_hint: walletHint });
+  if (error) throw error;
+  return toArcheryMarketState(data);
+  }
+
+  export async function buyArcheryItem(itemType: string, itemKey: string, walletHint: string | null): Promise<ArcheryMarketState> {
+  const { data, error } = await db.rpc("gamehub_buy_archery_item", { p_type: itemType, p_key: itemKey, p_hint: walletHint });
+  if (error) throw error;
+  return toArcheryMarketState(data);
+  }
+
+  export async function endGameRun(runId: string): Promise<GameRun> {
   const { data, error } = await db.rpc("gamehub_end_run", { p_run_id: runId });
   if (error) throw error;
   return data as GameRun;

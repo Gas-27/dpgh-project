@@ -10,8 +10,10 @@ import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import {
   buildGameShareUrl,
+  buyArcheryItem,
   buyGameArrow,
   buyGameLife,
+  fetchArcheryMarket,
   claimGameReward,
   completeGameLevel,
   endGameRun,
@@ -31,7 +33,7 @@ type ArcheryPlayerProps = {
   onClose: () => void;
 };
 
-type ArcheryRequest = { source?: string; type?: string; id?: number; level?: number };
+type ArcheryRequest = { source?: string; type?: string; id?: number; level?: number; itemType?: string; itemKey?: string };
 
 function formatCedis(value: number | null): string {
   return value === null ? "-" : `GH\u20B5${value.toFixed(2)}`;
@@ -188,6 +190,26 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
               const next = await startGameRun(game.id, hintRef.current, false);
               applyRun(next);
               reply(id, { run: next });
+              return;
+            }
+            if (type === "market") {
+              if (!signedIn) {
+                reply(id, { owned: [], balance: null });
+                return;
+              }
+              const state = await fetchArcheryMarket(hintRef.current);
+              setBalance(state.balance);
+              reply(id, { owned: state.owned, balance: state.balance });
+              return;
+            }
+            if (type === "buy_item") {
+              if (!signedIn) {
+                reply(id, { error: "Sign in to buy with your wallet." });
+                return;
+              }
+              const state = await buyArcheryItem(String(data.itemType), String(data.itemKey), hintRef.current);
+              setBalance(state.balance);
+              reply(id, { owned: state.owned, balance: state.balance });
               return;
             }
             if (type === "claim") {
