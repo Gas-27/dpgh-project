@@ -45,14 +45,16 @@ function NetworkPanel({ left, width, background, border, header, textColor, line
   );
 }
 
-export function GreenDataFlyer({ storeName, storeUrl, supportNumber, packages, afaPrice }: GreenDataFlyerProps) {
+const USSD_CODE = "*920*337#";
+
+export function GreenDataFlyer({ storeName, storeUrl, supportNumber, packages, afaPrice, accessCode }: GreenDataFlyerProps) {
   const name = (storeName || "Your Store").toUpperCase();
   const nameSize = Math.max(34, Math.min(84, 640 / (name.length * 0.8)));
-  const message = useMemo(() => `${storeName || "Our store"} - fast and reliable data. Register for AFA today and enjoy the best data deals! Delivery within 5 to 10 mins after payment.\nBuy here: ${storeUrl || "-"}\nContact: ${supportNumber || "-"}`, [storeName, storeUrl, supportNumber]);
+  const message = useMemo(() => `${storeName || "Our store"} - fast and reliable data. Register for AFA today and enjoy the best data deals! Delivery within 5 to 10 mins after payment.\nBuy here: ${storeUrl || "-"}\nContact: ${supportNumber || "-"}${accessCode ? `\nUSSD: ${USSD_CODE}\nAccess Code: ${accessCode}` : ""}`, [storeName, storeUrl, supportNumber, accessCode]);
 
   return (
-    <FlyerFrame width={1124} height={1400} fileName={`${slug(storeName)}-data-flyer`} message={message}>
-      <div style={{ position: "relative", width: 1124, height: 1400, overflow: "hidden", fontFamily: FONT, color: "#fff", background: "radial-gradient(ellipse at 60% 45%, #b6ff4a 0%, #3ed21c 30%, #12961a 60%, #07551a 100%)" }}>
+    <FlyerFrame width={1124} height={1530} fileName={`${slug(storeName)}-data-flyer`} message={message}>
+      <div style={{ position: "relative", width: 1124, height: 1530, overflow: "hidden", fontFamily: FONT, color: "#fff", background: "radial-gradient(ellipse at 60% 45%, #b6ff4a 0%, #3ed21c 30%, #12961a 60%, #07551a 100%)" }}>
         <div style={{ position: "absolute", inset: 0, background: "repeating-conic-gradient(from 0deg at 62% 62%, rgba(255,255,170,0.22) 0deg 3deg, transparent 3deg 11deg)" }} />
 
         <div style={{ position: "absolute", left: 38, top: 10, width: 230, height: 190 }}>
@@ -119,6 +121,17 @@ export function GreenDataFlyer({ storeName, storeUrl, supportNumber, packages, a
         </div>
 
         <img src={man} alt="" style={{ position: "absolute", left: 690, top: 800, height: 520, width: "auto", filter: "drop-shadow(0 8px 18px #00000088)" }} />
+        <div style={darkPill({ left: 14, top: 1388, width: 1096, height: 124, borderRadius: 62, display: "flex", alignItems: "center", justifyContent: "space-around", padding: "0 30px" })}>
+          <div style={{ textAlign: "center", lineHeight: 1.1 }}>
+            <div style={{ fontSize: 24, fontWeight: 800, fontStyle: "italic", color: GOLD }}>USSD CODE</div>
+            <div style={{ fontSize: 54, fontWeight: 900, fontFamily: "monospace" }}>{USSD_CODE}</div>
+          </div>
+          <div style={{ width: 3, height: 84, background: `${GOLD}99` }} />
+          <div style={{ textAlign: "center", lineHeight: 1.1 }}>
+            <div style={{ fontSize: 24, fontWeight: 800, fontStyle: "italic", color: GOLD }}>ACCESS CODE</div>
+            <div style={{ fontSize: 54, fontWeight: 900, fontFamily: "monospace" }}>{accessCode || "-"}</div>
+          </div>
+        </div>
         <div style={{ position: "absolute", right: 14, top: 1250, width: 360, transform: "rotate(-5deg)" }}>
           <div style={{ background: `linear-gradient(180deg,#ffe85c,${GOLD})`, color: DARK, fontSize: 27, fontWeight: 900, fontStyle: "italic", padding: "6px 12px", textAlign: "center", boxShadow: "0 4px 10px #00000088", whiteSpace: "nowrap" }}>FAST AND RELIABLE</div>
           <div style={{ background: "#041f08", color: "#fff", fontSize: 29, fontWeight: 800, fontStyle: "italic", padding: "6px 12px", textAlign: "center", border: `2px solid ${GOLD}`, whiteSpace: "nowrap" }}>Get your data now!</div>

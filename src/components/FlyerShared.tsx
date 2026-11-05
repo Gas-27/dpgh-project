@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 
-export type StoreInfo = { storeName: string; storeUrl: string; supportNumber: string; storeId?: string };
+export type StoreInfo = { storeName: string; storeUrl: string; supportNumber: string; storeId?: string; accessCode?: string };
 
 export const slug = (value: string) => (value || "store").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 

@@ -115,7 +115,7 @@ input{font:700 16px system-ui,sans-serif;padding:12px;border-radius:12px;border:
 <li><b>Hunt stages:</b> animals roam the open field. Aim <b>ahead</b> of where they are walking. A shot behind the shoulder is a CLEAN SHOT worth double. Rabbits are small and fast but pay the most. Missed arrows scare nearby animals.</li>
 <li>Hold <b>BREATH</b> (button or Space) to steady your aim for a moment.</li>
 <li>Hits in a row build a <b>combo</b>. Each stage has a bonus objective that gives you an extra arrow.</li>
-<li>Earn <b>coins</b> and buy permanent upgrades. If you run out of arrows you can buy <b>one more at a time</b> with coins. You have 3 hearts: fail a stage and you lose one. Lose them all and the run is over.</li>
+<li>Earn <b>coins</b> and buy permanent upgrades. If you run out of arrows you can buy <b>one more at a time</b> with coins. You have 2 hearts: fail a stage and you lose one. Lose them all and the run is over.</li>
 </ol>
 <button id="howBack">BACK</button>
 </div>
@@ -318,7 +318,7 @@ const UPG={steady:['Steady Hands','Aim sway -8% per level',[40,70,110,160,230]],
 let STAGES=20;const ORDER=['CLASSIC','MOVING','HUNT','DOUBLE','GUST','HUNT','TINY'],reqFor=s=>Math.round(26+10*s+s*s*.9),arrowsFor=s=>6+(s>=4?1:0)+(s>=7?1:0);
 const modFor=s=>s<=ORDER.length?ORDER[s-1]:['MOVING','DOUBLE','GUST','TINY','HUNT','HUNT'][Math.floor(Math.random()*6)];
 const OBJS={bulls:['Hit 2 bullseyes',2],streak:['Hit 3 in a row',3],perf:['Land 2 perfect draws',2],vital:['Make a clean animal shot',1]};
-let obj='streak',objDone=false,sB=0,sP=0,sV=0,sS=0,req=40,hearts=3,runTotal=0,cleared=0,goalHit=false,an=[],shotNo=0;
+let obj='streak',objDone=false,sB=0,sP=0,sV=0,sS=0,req=40,hearts=2,runTotal=0,cleared=0,goalHit=false,an=[],shotNo=0;
 const objProg=()=>obj==='bulls'?sB:obj==='perf'?sP:obj==='vital'?sV:sS;
 SFX.coin=()=>{tn(1046,1568,.12,'square',.07);tn(1568,2093,.2,'square',.07,.08)};SFX.fail=()=>{tn(300,120,.5,'sawtooth',.14);tn(200,80,.6,'sawtooth',.1,.15)};
 function checkObj(){if(objDone||objProg()<OBJS[obj][1])return;objDone=true;left++;SFX.coin();setTimeout(()=>showMsg('OBJECTIVE COMPLETE!','+1 arrow  \u00b7  +15 coins at the end'),1100);hud()}
@@ -532,7 +532,7 @@ function stepAnimals(dt){if(!an.length)return;for(const a of an){const g=a.g,u=g
  an=an.filter(a=>!a.dead)}
 
 // ---------- flow ----------
-function hud(){$('swap').textContent=W.n;$('swap').style.visibility=save.own.length>1?'visible':'hidden';const solo=!(mp&&mp.started),rr=Math.max(1,round),sl=STAGES-rr+1;$('rd').textContent='STAGE '+rr+(solo?' / '+STAGES:'')+'   '+(solo?'\u2665'.repeat(Math.max(0,hearts)):'');$('sleft').textContent=solo?(sl===1?'Final stage!':sl+' stages left to complete'):'';$('th').textContent=th.n+' \u00b7 '+MODS[mod][0];$('sc').textContent=score;$('goalt').textContent='GOAL '+score+' / '+req;
+function hud(){$('swap').textContent=W.n;$('swap').style.visibility=save.own.length>1?'visible':'hidden';const solo=!(mp&&mp.started),rr=Math.max(1,round),sl=STAGES-rr+1;$('rd').textContent='STAGE '+rr+(solo?' / '+STAGES:'')+'   '+(solo?'\u2665'.repeat(Math.min(2,Math.max(0,hearts))):'');$('sleft').textContent=solo?(sl===1?'Final stage!':sl+' stages left to complete'):'';$('th').textContent=th.n+' \u00b7 '+MODS[mod][0];$('sc').textContent=score;$('goalt').textContent='GOAL '+score+' / '+req;
  $('gi').style.width=Math.min(100,score/((mp&&mp.started)?req:req*1.8)*100)+'%';$('dist').textContent=mod==='HUNT'?'Open field':D+' m';$('arrows').textContent='\u27a4 '.repeat(Math.max(0,left));
  $('pkl').textContent=perks.map(k=>PERKS[k][0]).join(' \u00b7 ');$('obj').textContent=(objDone?'\u2713 ':'\u25cb ')+OBJS[obj][0]+(objDone?'':' ('+Math.min(objProg(),OBJS[obj][1])+'/'+OBJS[obj][1]+')');
  const cm=1+Math.min(2,Math.floor(streak/3)*.5);$('combo').textContent=streak>=2?'COMBO x'+cm+'  \u00b7  '+streak+' in a row':''}
@@ -548,7 +548,7 @@ function nextRound(retry){if(!retry)round++;state='trans';$('result').classList.
  setTimeout(()=>{setupRound();$('fade').style.opacity=0;
   $('card').innerHTML='STAGE '+round+(mp&&mp.started?'':' / '+STAGES)+'<small>'+th.n+' \u00b7 '+MODS[mod][0]+'</small><small style="color:#fff">'+(mp&&mp.started?'Race to '+req+' points':'Score '+req+' points with '+left+' arrows')+'</small><small style="color:#ffb74a">Bonus: '+OBJS[obj][0]+'</small>';$('card').style.opacity=1;state='intro';SFX.fan();
   setTimeout(()=>{$('card').style.opacity=0;state='ready'},2400)},550)}
-function startGame(){if(HUB)return hubStart();initAudio();SFX.click();round=0;hearts=3;perks=[];runTotal=0;cleared=0;stam=1;shots=0;hits=0;bulls=0;bestStreak=0;
+function startGame(){if(HUB)return hubStart();initAudio();SFX.click();round=0;hearts=2;perks=[];runTotal=0;cleared=0;stam=1;shots=0;hits=0;bulls=0;bestStreak=0;
  for(const e of['home','how','ups','result','perks','market','online','lobby'])$(e).classList.add('hide');nextRound(false)}
 function homeStats(){const l=lvl(save.xp),lo=(l-1)*(l-1)*60,hi=l*l*60;$('hs').innerHTML='<span>Lv <b>'+l+'</b></span><span>Best stage <b>'+save.best+'</b></span><span>\u2605 <b>'+save.stars+'</b></span><span>\u25cf <b>'+save.coins+'</b></span>';$('xpb').style.width=Math.round(((save.xp||0)-lo)/(hi-lo)*100)+'%';$('top').innerHTML=(save.top&&save.top.length)?'Top runs: '+save.top.map((t,i)=>(i+1)+'. '+t.s+' pts (stage '+t.st+')').join(' \u00b7 '):''}
 function goHome(){state='menu';round=0;th=THEMES[Math.floor(Math.random()*THEMES.length)];mod='CLASSIC';D=30;tx0=0;score=0;req=40;build();
@@ -824,7 +824,7 @@ function loop(now){const dt=Math.min(.05,(now-last)/1000||0);last=now;if(paused)
     window.addEventListener('message', (event) => {
       const message = event.data || {};
       if (message.type === 'start') {
-        activeRun = message.run || { run_id: 'guest', level: 1, target: 15, lives: 3, status: 'active', reward_gb: 5 };
+        activeRun = message.run || { run_id: 'guest', level: 1, target: 15, lives: 2, status: 'active', reward_gb: 5 };
         $('play')?.click();
         send(message.id, { type: 'ready', run: activeRun });
       } else if (message.type === 'pause') {

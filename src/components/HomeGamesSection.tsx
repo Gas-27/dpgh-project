@@ -1,10 +1,10 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, Gamepad2, Gift, Star } from "lucide-react";
+import { ArrowRight, Gamepad2, Gift, Smartphone, Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { hubGames, tagClasses } from "@/lib/gameHubGames";
 import { openGameHubIfAvailable } from "@/lib/tabControls";
 
-const featuredIds = ["cup-shuffle", "snap-fit", "nail-hit", "cut-score", "basketball", "ludo-online"];
+const featuredIds = ["cup-shuffle", "snap-fit", "nail-hit", "cut-score", "basketball", "archery"];
 const featured = featuredIds
   .map((id) => hubGames.find((game) => game.id === id))
   .filter((game): game is NonNullable<typeof game> => Boolean(game));
@@ -60,6 +60,12 @@ export default function HomeGamesSection() {
                   {game.rating.toFixed(1)}
                   {game.native ? <span className="ml-1 text-primary">Win data</span> : null}
                 </p>
+                {game.id === "archery" ? (
+                  <p className="mt-1 flex items-center gap-1 text-[11px] leading-tight text-muted-foreground">
+                    <Smartphone className="h-3 w-3 shrink-0 rotate-90 text-primary" aria-hidden="true" />
+                    Best played when phone is tilted
+                  </p>
+                ) : null}
               </div>
             </button>
           </li>

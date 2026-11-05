@@ -15,13 +15,27 @@ import openai from "@/assets/brands/openai.svg";
 import crunchyroll from "@/assets/brands/crunchyroll.svg";
 import adobe from "@/assets/brands/adobe-creative-cloud.svg";
 import microsoft from "@/assets/brands/microsoft.svg";
+import deepl from "@/assets/brands/deepl.svg";
+import perplexity from "@/assets/brands/perplexity.svg";
+import ilovepdf from "@/assets/brands/ilovepdf.svg";
+import coursera from "@/assets/brands/coursera.svg";
+import tradingview from "@/assets/brands/tradingview.svg";
+import duolingo from "@/assets/brands/duolingo.svg";
+import appleMusic from "@/assets/brands/apple-music.svg";
 
 const FONT = "Montserrat, 'Arial Black', 'Helvetica Neue', Arial, sans-serif";
 const GOLD = "#ffd21f";
 
-type SubscriptionRow = { id: string; name: string; category: string; price: number; duration: string | null };
+type SubscriptionRow = { id: string; name: string; category: string; price: number; duration: string | null; logo_url?: string | null; service_type?: string | null };
 
 const LOGOS: { test: RegExp; logo: string; invert?: boolean }[] = [
+  { test: /apple.?music/i, logo: appleMusic },
+  { test: /deepl/i, logo: deepl },
+  { test: /perplexity/i, logo: perplexity, invert: true },
+  { test: /ilovepdf/i, logo: ilovepdf },
+  { test: /coursera/i, logo: coursera },
+  { test: /tradingview/i, logo: tradingview, invert: true },
+  { test: /duolingo/i, logo: duolingo },
   { test: /netflix/i, logo: netflix },
   { test: /spotify/i, logo: spotify },
   { test: /youtube/i, logo: youtube },
@@ -64,7 +78,7 @@ export function SubscriptionFlyer({ storeName, storeUrl, supportNumber, storeId 
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: services } = await (supabase as any).from("digital_services").select("id,name,category,price,duration").eq("archived", false).order("category").order("name");
+      const { data: services } = await (supabase as any).from("digital_services").select("id,name,category,price,duration,logo_url,service_type").eq("archived", false).order("category").order("name");
       const priceById = new Map<string, number>();
       if (storeId) {
         const { data: prices } = await (supabase as any).from("agent_service_pricing").select("service_id,sell_price,updated_at").eq("agent_store_id", storeId).order("updated_at", { ascending: false });
@@ -128,9 +142,12 @@ export function SubscriptionFlyer({ storeName, storeUrl, supportNumber, storeId 
           const inRow = Math.min(6, shown.length - row * 6);
           return (
             <div key={service.id} style={{ position: "absolute", left: (1200 - (inRow * 194 - 10)) / 2 + col * 194, top: 318 + row * 148, width: 184, height: 140, boxSizing: "border-box", borderRadius: 22, background: /canva/i.test(service.name) ? "linear-gradient(180deg,#00c4cc,#4d6bf5 60%,#7d2ae8)" : /disney/i.test(service.name) ? "linear-gradient(180deg,#0a1a4a,#050a24)" : "#08040f", border: `3px solid ${CARD_BORDERS[col]}`, boxShadow: `0 0 14px ${CARD_BORDERS[col]}99`, display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 6px 0" }}>
+              <div style={{ position: "absolute", top: -2, right: 8, padding: "1px 8px", borderRadius: "0 0 8px 8px", fontSize: 11, fontWeight: 900, letterSpacing: 0.5, background: service.service_type === "private_shared" ? "#16a34a" : "#2563eb", color: "#fff" }}>{service.service_type === "private_shared" ? "PRIVATE" : "SHARED"}</div>
               <div style={{ height: 52, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {brand
                   ? <img src={brand.logo} alt="" style={{ height: 50, maxWidth: 110, objectFit: "contain", filter: brand.invert ? "invert(1)" : undefined }} />
+                  : service.logo_url
+                  ? <img src={service.logo_url} alt="" crossOrigin="anonymous" style={{ height: 50, maxWidth: 110, objectFit: "contain" }} />
                   : <div style={{ width: 48, height: 48, borderRadius: 24, background: GOLD, color: "#1c1917", fontSize: 28, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>{service.name.charAt(0).toUpperCase()}</div>}
               </div>
               <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.05, height: 44, display: "flex", alignItems: "center", textAlign: "center" }}>{/canva|disney/i.test(service.name) ? "" : service.name}</div>

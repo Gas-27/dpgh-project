@@ -169,7 +169,7 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
                   run_id: "guest",
                   game_id: game.id,
                   level: 1,
-                  lives: 3,
+                  lives: 2,
                   status: "active",
                   target,
                   lives_bought: 0,

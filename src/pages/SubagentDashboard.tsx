@@ -4173,7 +4173,7 @@ handleMobileNumberChange(digits);
           {/* FLYER GENERATOR */}
         <TabsContent value="flyer" className="mt-0 space-y-6">
             {subagentStore && (
-              <FlyerTabs storeName={subagentStore.store_name} storeUrl={storeUrl} supportNumber={subagentStore.support_number || subagentStore.phone_number || subagentStore.whatsapp_number || ""} storeId={subagentStore.id}><DynamicFlyer
+              <FlyerTabs storeName={subagentStore.store_name} storeUrl={storeUrl} supportNumber={subagentStore.support_number || subagentStore.phone_number || subagentStore.whatsapp_number || ""} storeId={subagentStore.id} accessCode={subagentStore.access_code || subagentStore.topup_reference || ""}><DynamicFlyer
                 storeName={subagentStore.store_name}
                 accessCode={subagentStore.access_code || subagentStore.topup_reference || ""}
   storeUrl={storeUrl}
