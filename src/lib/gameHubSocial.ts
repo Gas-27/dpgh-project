@@ -129,6 +129,8 @@ export async function searchPlayers(query: string): Promise<GamePlayer[]> {
 }
 
 export async function fetchConversations(): Promise<Conversation[]> {
+  const { data: sessionData } = await supabase.auth.getSession();
+  if (!sessionData.session) return [];
   const rows = await rpc<
     { peer_id: string; peer_username: string; last_body: string; last_kind: ChatMessageKind; last_at: string; last_from_me: boolean; unread_count: number }[]
   >("gamehub_conversations");

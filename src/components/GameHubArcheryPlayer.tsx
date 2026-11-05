@@ -267,6 +267,10 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
               setBalance(result.balance);
               reply(id, { run: result.run, balance: result.balance });
             } else if (type === "end") {
+              if (!signedIn) {
+                reply(id, { run: current });
+                return;
+              }
               const next = await endGameRun(current.run_id);
               applyRun(next);
               reply(id, { run: next });

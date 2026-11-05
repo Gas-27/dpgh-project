@@ -39,6 +39,8 @@ export default function SpecialMTNMashupPricingManager() {
     tier4_enabled: true,
   });
   const [loading, setLoading] = useState(true);
+  const [hasPackages, setHasPackages] = useState(true);
+  const [tierLabels, setTierLabels] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
@@ -52,31 +54,35 @@ export default function SpecialMTNMashupPricingManager() {
       // Fetch Special MTN packages from data_packages table
       const { data, error } = await supabase
         .from('data_packages')
-        .select('id, user_price, agent_price, is_active, mins')
-        .eq('network', 'mtn')
-        .like('package_name', 'Special MTN Mashup%')
-        .order('mins', { ascending: true });
+        .select('id, network, size_gb, size_gb_text, price, agent_price, bundle_id')
+        .eq('network', 'mashup')
+        .eq('active', true)
+        .order('size_gb');
 
       if (error) throw error;
 
-      if (data && data.length === 4) {
-        setPricing({
-          tier1_user_price: String(data[0].user_price || '6.00'),
-          tier1_agent_price: String(data[0].agent_price || '6.00'),
-          tier1_enabled: data[0].is_active !== false,
-          tier2_user_price: String(data[1].user_price || '13.00'),
-          tier2_agent_price: String(data[1].agent_price || '13.00'),
-          tier2_enabled: data[1].is_active !== false,
-          tier3_user_price: String(data[2].user_price || '25.00'),
-          tier3_agent_price: String(data[2].agent_price || '25.00'),
-          tier3_enabled: data[2].is_active !== false,
-          tier4_user_price: String(data[3].user_price || '35.00'),
-          tier4_agent_price: String(data[3].agent_price || '35.00'),
-          tier4_enabled: data[3].is_active !== false,
-        });
-        // Store package IDs for updating later
-        (window as any).specialMTNPackageIds = data.map(d => d.id);
+      if (!data || data.length === 0) {
+        setHasPackages(false);
+        return;
       }
+
+      const row = (index: number) => data[index];
+      setPricing({
+        tier1_user_price: String(row(0)?.price || '6.00'),
+        tier1_agent_price: String(row(0)?.agent_price || '6.00'),
+        tier1_enabled: !!row(0),
+        tier2_user_price: String(row(1)?.price || '13.00'),
+        tier2_agent_price: String(row(1)?.agent_price || '13.00'),
+        tier2_enabled: !!row(1),
+        tier3_user_price: String(row(2)?.price || '25.00'),
+        tier3_agent_price: String(row(2)?.agent_price || '25.00'),
+        tier3_enabled: !!row(2),
+        tier4_user_price: String(row(3)?.price || '35.00'),
+        tier4_agent_price: String(row(3)?.agent_price || '35.00'),
+        tier4_enabled: !!row(3),
+      });
+      setTierLabels(data.slice(0, 4).map((d) => d.size_gb_text || `${d.size_gb}GB`));
+      (window as any).specialMTNPackageIds = data.map(d => d.id);
     } catch (error) {
       console.error('[v0] Error fetching Special MTN pricing:', error);
       toast({ title: 'Error', description: 'Failed to load pricing', variant: 'destructive' });
@@ -92,16 +98,16 @@ export default function SpecialMTNMashupPricingManager() {
       
       // Update each tier package individually
       const updates = [
-        { id: ids[0], user_price: parseFloat(pricing.tier1_user_price), agent_price: parseFloat(pricing.tier1_agent_price), is_active: pricing.tier1_enabled },
-        { id: ids[1], user_price: parseFloat(pricing.tier2_user_price), agent_price: parseFloat(pricing.tier2_agent_price), is_active: pricing.tier2_enabled },
-        { id: ids[2], user_price: parseFloat(pricing.tier3_user_price), agent_price: parseFloat(pricing.tier3_agent_price), is_active: pricing.tier3_enabled },
-        { id: ids[3], user_price: parseFloat(pricing.tier4_user_price), agent_price: parseFloat(pricing.tier4_agent_price), is_active: pricing.tier4_enabled },
+        { id: ids[0], price: parseFloat(pricing.tier1_user_price), agent_price: parseFloat(pricing.tier1_agent_price), active: pricing.tier1_enabled },
+        { id: ids[1], price: parseFloat(pricing.tier2_user_price), agent_price: parseFloat(pricing.tier2_agent_price), active: pricing.tier2_enabled },
+        { id: ids[2], price: parseFloat(pricing.tier3_user_price), agent_price: parseFloat(pricing.tier3_agent_price), active: pricing.tier3_enabled },
+        { id: ids[3], price: parseFloat(pricing.tier4_user_price), agent_price: parseFloat(pricing.tier4_agent_price), active: pricing.tier4_enabled },
       ];
 
       for (const update of updates) {
         const { error } = await supabase
           .from('data_packages')
-          .update({ user_price: update.user_price, agent_price: update.agent_price, is_active: update.is_active })
+          .update({ price: update.price, agent_price: update.agent_price, active: update.active })
           .eq('id', update.id);
         
         if (error) throw error;
@@ -115,6 +121,8 @@ export default function SpecialMTNMashupPricingManager() {
       setSaving(false);
     }
   };
+
+  if (!loading && !hasPackages) return null;
 
   if (loading) {
     return (
@@ -144,7 +152,7 @@ export default function SpecialMTNMashupPricingManager() {
               <div key={tier.number} className="border p-4 rounded-lg space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-1">
-                    <div className="font-semibold text-amber-600">{tier.label}: {tier.specs}</div>
+                    <div className="font-semibold text-amber-600">{tier.label}: {tierLabels[tier.number - 1] || tier.specs}</div>
                   </div>
                   <Switch
                     checked={isEnabled}

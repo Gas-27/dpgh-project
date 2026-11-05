@@ -26,6 +26,17 @@ export type LeaderboardRow = {
   is_guest?: boolean;
 };
 
+async function hasSession(): Promise<boolean> {
+  const { data } = await supabase.auth.getSession();
+  return !!data.session;
+}
+
+async function requireSignedInRun(runId: string): Promise<void> {
+  if (!runId || runId === "guest" || !(await hasSession())) throw new Error("Sign in to play for rewards.");
+}
+
+const bareGuestId = (value: string) => value.replace(/^guest-/, "");
+
 export function maskEmail(email: string | null | undefined): string {
   if (!email || !email.includes("@")) return "player***";
   const [name, domain] = email.split("@");
@@ -49,7 +60,7 @@ export async function fetchLeaderboard(gameId: string | null, period: Leaderboar
   const rows: LeaderboardRow[] = [];
   for (let page = 0; page < maxPages; page += 1) {
     const { data, error } = await db
-      .rpc("gamehub_leaderboard_period", { p_game_id: gameId, p_period: period, p_limit: null, p_guest_id: getGuestId() })
+      .rpc("gamehub_leaderboard_period", { p_game_id: gameId, p_period: period, p_limit: null, p_guest_id: bareGuestId(getGuestId()) })
       .range(page * pageSize, page * pageSize + pageSize - 1);
     if (error) throw error;
     const batch = (data ?? []) as LeaderboardRow[];
@@ -147,8 +158,8 @@ export async function submitScore(gameId: string, score: number): Promise<number
 
 export async function submitGuestScore(gameId: string, sessionId: string, score: number): Promise<number> {
   const { data, error } = await db.rpc("gamehub_guest_submit", {
-    p_guest_id: getGuestId(),
-    p_session_id: sessionId,
+    p_guest_id: bareGuestId(getGuestId()),
+    p_session_id: bareGuestId(sessionId),
     p_game_id: gameId,
     p_score: Math.max(0, Math.floor(score)),
   });
@@ -218,12 +229,14 @@ export async function adminSetGameRules(input: GameRulesInput): Promise<void> {
 }
 
 export async function timedBegin(runId: string): Promise<GameRun> {
+  await requireSignedInRun(runId);
   const { data, error } = await db.rpc("gamehub_timed_begin", { p_run_id: runId });
   if (error) throw error;
   return data as GameRun;
 }
 
 export async function timedTick(runId: string): Promise<GameRun> {
+  await requireSignedInRun(runId);
   const { data, error } = await db.rpc("gamehub_timed_tick", { p_run_id: runId });
   if (error) throw error;
   return data as GameRun;
@@ -238,24 +251,28 @@ export async function recordShot(runId: string): Promise<GameRun> {
 export type LevelResult = { ok: boolean; reason?: string; run: GameRun };
 
 export async function startGameRun(gameId: string, walletHint: string | null, forceNew = false): Promise<GameRun> {
+  if (!(await hasSession())) throw new Error("Sign in to play for rewards.");
   const { data, error } = await db.rpc("gamehub_start_run", { p_game_id: gameId, p_wallet_hint: walletHint, p_force_new: forceNew });
   if (error) throw error;
   return data as GameRun;
 }
 
 export async function completeGameLevel(runId: string, level: number): Promise<LevelResult> {
+  await requireSignedInRun(runId);
   const { data, error } = await db.rpc("gamehub_complete_level", { p_run_id: runId, p_level: level });
   if (error) throw error;
   return data as LevelResult;
 }
 
 export async function loseGameLife(runId: string): Promise<GameRun> {
+  await requireSignedInRun(runId);
   const { data, error } = await db.rpc("gamehub_lose_life", { p_run_id: runId });
   if (error) throw error;
   return data as GameRun;
 }
 
 export async function buyGameLife(runId: string): Promise<{ run: GameRun; balance: number }> {
+  await requireSignedInRun(runId);
   const { data, error } = await db.rpc("gamehub_buy_life", { p_run_id: runId });
   if (error) throw error;
   const result = data as { run: GameRun; balance: number };
@@ -263,6 +280,7 @@ export async function buyGameLife(runId: string): Promise<{ run: GameRun; balanc
 }
 
 export async function buyGameArrow(runId: string): Promise<{ run: GameRun; balance: number; arrows_bought: number }> {
+  await requireSignedInRun(runId);
   const { data, error } = await db.rpc("gamehub_buy_arrow", { p_run_id: runId });
   if (error) throw error;
   const result = data as { run: GameRun; balance: number; arrows_bought: number };
@@ -280,30 +298,35 @@ export async function buyGameArrow(runId: string): Promise<{ run: GameRun; balan
   }
 
   export async function fetchArcheryMarket(walletHint: string | null): Promise<ArcheryMarketState> {
+  if (!(await hasSession())) return { owned: [], balance: null };
   const { data, error } = await db.rpc("gamehub_archery_market", { p_hint: walletHint });
   if (error) throw error;
   return toArcheryMarketState(data);
   }
 
   export async function buyArcheryItem(itemType: string, itemKey: string, walletHint: string | null): Promise<ArcheryMarketState> {
+  if (!(await hasSession())) throw new Error("Sign in to buy with your wallet.");
   const { data, error } = await db.rpc("gamehub_buy_archery_item", { p_type: itemType, p_key: itemKey, p_hint: walletHint });
   if (error) throw error;
   return toArcheryMarketState(data);
   }
 
   export async function endGameRun(runId: string): Promise<GameRun> {
+  await requireSignedInRun(runId);
   const { data, error } = await db.rpc("gamehub_end_run", { p_run_id: runId });
   if (error) throw error;
   return data as GameRun;
 }
 
 export async function claimGameReward(runId: string, phone: string): Promise<{ order_id: string; phone: string; reward_gb: number }> {
+  await requireSignedInRun(runId);
   const { data, error } = await db.rpc("gamehub_claim_reward", { p_run_id: runId, p_phone: phone });
   if (error) throw error;
   return data as { order_id: string; phone: string; reward_gb: number };
 }
 
 export async function fetchGameWalletBalance(walletHint: string | null): Promise<number | null> {
+  if (!(await hasSession())) return null;
   const { data, error } = await db.rpc("gamehub_wallet_balance", { p_hint: walletHint });
   if (error) throw error;
   return data === null || data === undefined ? null : Number(data);

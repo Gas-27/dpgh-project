@@ -515,7 +515,7 @@ const AdminDashboard = () => {
         agentIds.length > 0 ? (supabase as any).rpc("get_agent_stores_private", { p_ids: agentIds }) : { data: [] },
         subagentIds.length > 0 ? supabase.from("subagent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance").in("id", subagentIds) : { data: [] },
         subSubIds.length > 0 ? supabase.from("sub_subagent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance").in("id", subSubIds) : { data: [] },
-        recipientIds.length > 0 ? supabase.from("transfer_recipients").select("id, recipient_name, account_name, momo_number, momo_network, account_number, bank_name").in("id", recipientIds) : { data: [] },
+        recipientIds.length > 0 ? supabase.from("transfer_recipients").select("id, account_holder_name, mobile_money_number, mobile_money_network, account_number, bank_name").in("id", recipientIds) : { data: [] },
       ]);
 
       const agentMap = Object.fromEntries((agentStoresRes.data || []).map((s: any) => [s.id, s]));
@@ -537,9 +537,9 @@ const AdminDashboard = () => {
 
         // Paystack recipient — used as fallback for MoMo name/number/network
         const recipient = recipientMap[w.recipient_id] || null;
-        const recipientMomoName = recipient?.account_name || recipient?.recipient_name || null;
-        const recipientMomoNumber = recipient?.momo_number || recipient?.account_number || null;
-        const recipientMomoNetwork = recipient?.momo_network || recipient?.bank_name || null;
+        const recipientMomoName = recipient?.account_holder_name || null;
+        const recipientMomoNumber = recipient?.mobile_money_number || recipient?.account_number || null;
+        const recipientMomoNetwork = recipient?.mobile_money_network || recipient?.bank_name || null;
 
         // Determine the withdrawing store for name/momo display
         const isSubagentType = w.requester_type === "subagent" || !!w.subagent_store_id;
@@ -947,27 +947,35 @@ const AdminDashboard = () => {
       // Fetch Special MTN packages from data_packages table
       const { data } = await supabase
         .from("data_packages")
-        .select("id, package_name, user_price, agent_price, is_active, mins")
-        .eq("network", "mtn")
-        .like("package_name", "Special MTN Mashup%")
-        .order("mins", { ascending: true });
-      
-      if (data && data.length === 4) {
+        .select("id, network, size_gb, size_gb_text, price, agent_price, bundle_id")
+        .eq("network", "mashup")
+        .eq("active", true)
+        .order("size_gb");
+
+      if (data && data.length > 0) {
+        const tier = (index: number, fallbackUser: string, fallbackAgent: string) => ({
+          user: String(data[index]?.price || fallbackUser),
+          agent: String(data[index]?.agent_price || fallbackAgent),
+        });
+        const t1 = tier(0, "6.00", "6.00");
+        const t2 = tier(1, "13.00", "13.00");
+        const t3 = tier(2, "25.00", "25.00");
+        const t4 = tier(3, "35.00", "35.00");
         setSpecialMTNPricing({
-          tier1_user_price: String(data[0].user_price || "6.00"),
-          tier1_agent_price: String(data[0].agent_price || "6.00"),
-          tier2_user_price: String(data[1].user_price || "13.00"),
-          tier2_agent_price: String(data[1].agent_price || "13.00"),
-          tier3_user_price: String(data[2].user_price || "25.00"),
-          tier3_agent_price: String(data[2].agent_price || "25.00"),
-          tier4_user_price: String(data[3].user_price || "35.00"),
-          tier4_agent_price: String(data[3].agent_price || "35.00"),
+          tier1_user_price: t1.user,
+          tier1_agent_price: t1.agent,
+          tier2_user_price: t2.user,
+          tier2_agent_price: t2.agent,
+          tier3_user_price: t3.user,
+          tier3_agent_price: t3.agent,
+          tier4_user_price: t4.user,
+          tier4_agent_price: t4.agent,
         });
         setSpecialMTNEnabled({
-          tier1: data[0].is_active !== false,
-          tier2: data[1].is_active !== false,
-          tier3: data[2].is_active !== false,
-          tier4: data[3].is_active !== false,
+          tier1: data.length > 0,
+          tier2: data.length > 1,
+          tier3: data.length > 2,
+          tier4: data.length > 3,
         });
       }
     } catch (error) {

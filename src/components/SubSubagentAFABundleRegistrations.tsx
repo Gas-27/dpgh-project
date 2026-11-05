@@ -83,7 +83,7 @@ export default function SubSubagentAFABundleRegistrations({
         supabase
           .from('afa_registrations')
           .select('*')
-          .eq('sub_subagent_store_id', subsubagentStoreId)
+          .eq('subsubagent_store_id', subsubagentStoreId)
           .order('created_at', { ascending: false })
           .limit(1000);
 

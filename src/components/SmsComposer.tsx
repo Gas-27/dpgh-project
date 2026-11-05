@@ -239,8 +239,13 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     const table = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : normalizedOwnerType === "subsubagent" ? "sub_subagent_stores" : "customers";
     let balance: number | null = null;
     if (ownerId && normalizedOwnerType !== "customer") {
-      const { data: ownerStore } = await supabase.from(table).select("wallet_balance").eq("id", ownerId).maybeSingle();
-      if (ownerStore) balance = Number(ownerStore.wallet_balance ?? 0);
+      if (normalizedOwnerType === "agent") {
+        const { data: agentBalance } = await (supabase as any).rpc("get_my_wallet_balance", { p_owner_type: "agent", p_owner_id: ownerId });
+        if (agentBalance !== null && agentBalance !== undefined) balance = Number(agentBalance);
+      } else {
+        const { data: ownerStore } = await supabase.from(table).select("wallet_balance").eq("id", ownerId).maybeSingle();
+        if (ownerStore) balance = Number(ownerStore.wallet_balance ?? 0);
+      }
     }
     if (balance === null) {
       const { data: bal } = await supabase.rpc("get_sms_wallet", { p_user_id: uid, p_owner_type: normalizedOwnerType });
