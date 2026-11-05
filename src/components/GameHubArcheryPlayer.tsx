@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ArrowLeft, Gift, Heart, LogIn, Share2, Wallet, X } from "lucide-react";
+import { ArrowLeft, Gift, Heart, Share2, Wallet, X } from "lucide-react";
 import ShareScoreButtons from "@/components/ShareScoreButtons";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import { walletHintFromPath } from "@/components/GameHubRewardPlayer";
@@ -64,7 +64,7 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
   // only shows up as the app's own HTML coming back instead of the game page.
   const { data: gameFileState, isLoading: checkingGameFile } = useQuery({
     queryKey: ["archery-game-file", game.native?.src],
-    enabled: signedIn,
+    enabled: true,
     retry: false,
     staleTime: 60_000,
     queryFn: async () => {
@@ -92,7 +92,6 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
   }, []);
 
   useEffect(() => {
-    if (!signedIn) return;
     void supabase.auth.getUser().then(({ data }) => {
       setUserId(data.user?.id);
       setUserEmail(data.user?.email ?? undefined);
@@ -105,8 +104,6 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
   }, []);
 
   useEffect(() => {
-    if (!signedIn) return;
-
     const handleError = (id: number | undefined, error: unknown) => {
       const message = error instanceof Error ? error.message : String((error as { message?: string })?.message ?? "Something went wrong");
       reply(id, { error: message });
@@ -133,12 +130,37 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
         .then(async () => {
           try {
             if (type === "start") {
+              if (!signedIn) {
+                const guestRun: GameRun = {
+                  run_id: "guest",
+                  game_id: game.id,
+                  level: 1,
+                  lives: 3,
+                  status: "active",
+                  target,
+                  lives_bought: 0,
+                  claimed: false,
+                  reward_claimed: false,
+                  life_price: 0,
+                  reward_gb: rewardGb,
+                  reward_enabled: rule?.enabled ?? true,
+                  required_seconds: null,
+                  play_seconds: 0,
+                };
+                applyRun(guestRun);
+                reply(id, { run: guestRun });
+                return;
+              }
               const next = await startGameRun(game.id, hintRef.current, false);
               applyRun(next);
               reply(id, { run: next });
               return;
             }
             if (type === "claim") {
+              if (!signedIn) {
+                reply(id, { error: "Sign in to claim free data." });
+                return;
+              }
               const current = requireRun(id);
               if (!current) return;
               pendingClaimRef.current = id ?? null;
@@ -150,10 +172,21 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
             if (!current) return;
 
             if (type === "stage_clear") {
+              if (!signedIn) {
+                const clearedLevel = Number(data.level);
+                const next = { ...current, level: Math.max(current.level, clearedLevel + 1), status: clearedLevel >= current.target ? "cleared" : "active" } as GameRun;
+                applyRun(next);
+                reply(id, { ok: true, reason: null, run: next });
+                return;
+              }
               const result = await completeGameLevel(current.run_id, Number(data.level));
               applyRun(result.run);
               reply(id, { ok: result.ok, reason: result.reason, run: result.run });
             } else if (type === "buy_arrow") {
+              if (!signedIn) {
+                reply(id, { error: "Sign in to buy extra arrows." });
+                return;
+              }
               const result = await buyGameArrow(current.run_id);
               applyRun(result.run);
               setBalance(result.balance);
@@ -163,6 +196,10 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
               applyRun(next);
               reply(id, { run: next });
             } else if (type === "buy_life") {
+              if (!signedIn) {
+                reply(id, { error: "Sign in to buy an extra heart." });
+                return;
+              }
               const result = await buyGameLife(current.run_id);
               applyRun(result.run);
               setBalance(result.balance);
@@ -181,7 +218,7 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [applyRun, game.id, refreshBalance, reply, signedIn]);
+  }, [applyRun, game.id, refreshBalance, reply]);
 
   const finishClaim = useCallback(
     (next?: GameRun) => {
@@ -240,7 +277,7 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
         <button type="button" onClick={() => setShareOpen(true)} aria-label="Share my score" className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-900/70 text-white">
           <Share2 className="h-4 w-4" aria-hidden="true" />
         </button>
-        {run && signedIn ? (
+        {run ? (
           <div className="flex items-center gap-1.5 rounded-xl bg-violet-900/70 px-3 py-2 text-sm font-semibold text-white" aria-label={`${run.lives} lives left`}>
             <Heart className="h-4 w-4 fill-rose-500 text-rose-500" aria-hidden="true" />
             {run.lives}
@@ -249,16 +286,7 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
       </header>
 
       <div className="relative min-h-0 flex-1">
-        {!signedIn ? (
-          <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white">
-            <LogIn className="h-8 w-8 text-violet-300" aria-hidden="true" />
-            <p className="text-lg font-bold">Sign in to play Archery 3D</p>
-            <p className="max-w-xs text-sm text-violet-200">Free MTN {rewardGb}GB rewards are verified and sent to signed-in accounts. Log in from your dashboard, then come back to play.</p>
-            <button type="button" onClick={onClose} className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold">
-              Back to Game Hub
-            </button>
-          </div>
-        ) : checkingGameFile ? (
+        {checkingGameFile ? (
           <div className="flex h-full items-center justify-center text-sm text-violet-200" role="status">Loading game...</div>
         ) : gameFileState === "missing" ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white">
