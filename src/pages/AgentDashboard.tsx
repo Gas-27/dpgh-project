@@ -52,7 +52,6 @@ import ChatBot from "@/components/ChatBot";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
-import PreUpgradeHistory from "@/components/PreUpgradeHistory";
 import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
 import ApiExplainer from "@/components/ApiExplainer";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
@@ -678,7 +677,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
     // Fetch direct orders (orders from agent's storefront - NOT subagent orders)
     const { data: directOrders, error: directError } = await supabase
       .from("orders")
-      .select("amount, package_id, subagent_store_id, selling_price, base_price, profit")
+      .select("amount, package_id, subagent_store_id, selling_price, base_price, profit, merged_from_user_at")
       .eq("agent_store_id", store.id)
       .is("subagent_store_id", null)
       .in("status", ["paid", "completed"])
@@ -717,6 +716,12 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
     for (const order of directOrders || []) {
       const storedSellPrice = order.selling_price;
       const storedProfit = order.profit;
+
+      if ((order as any).merged_from_user_at) {
+        // Agent's own pre-upgrade purchase: revenue counts, profit is always 0
+        directRevenue += Number(storedSellPrice && storedSellPrice > 0 ? storedSellPrice : order.amount);
+        continue;
+      }
       
       if (storedSellPrice && storedSellPrice > 0 && storedProfit !== null && storedProfit !== undefined) {
         // Use stored values - these are permanent
@@ -2467,6 +2472,10 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
         String(order.fulfillment_status || "").toLowerCase() === "refunded" ||
         String(order.order_status || "").toLowerCase() === "refunded";
 
+      if (order.merged_from_user_at) {
+        if (!isRefunded && ["paid", "completed", "delivered"].includes(status)) revenue += Number(order.selling_price ?? order.amount ?? 0);
+        continue;
+      }
       if (source === "dashboard") {
         if (!isRefunded && method !== "spin_wheel") spent += Number(order.amount ?? 0);
         continue;
@@ -2509,6 +2518,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     let storefrontProfit = 0;
     const completedOrders = dateFilteredOrders.filter(o => (o.status === "completed" || o.status === "paid") && o.payment_method !== "wallet" && o.status !== "refunded");
     for (const order of completedOrders) {
+      if ((order as any).merged_from_user_at) continue;
       const orderRevenue = order.selling_price && order.selling_price > 0 
         ? Number(order.selling_price) 
         : Number(order.amount);
@@ -2824,8 +2834,14 @@ return (
                         let baseCost: number;
                         let profit: number;
                         const isFreeDataClaim = String((order as any).payment_method || "").toLowerCase() === "free_data_claim";
+                        const isMergedFromUser = !!(order as any).merged_from_user_at;
                         
-                        if (isFreeDataClaim) {
+                        if (isMergedFromUser) {
+                          // The agent's own pre-upgrade purchase: counts as revenue, never as profit
+                          sellPrice = Number(order.selling_price ?? order.amount ?? 0);
+                          baseCost = sellPrice;
+                          profit = 0;
+                        } else if (isFreeDataClaim) {
                           sellPrice = 0;
                           baseCost = 0;
                           profit = 0;
@@ -2888,7 +2904,7 @@ return (
                           setSourceDialogOpen(true);
                         };
 
-                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell><TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell><TableCell className="uppercase text-sm">{order.network || "—"}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer">{subSubagentName}</Badge></button> : isSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subagentName}</Badge></button> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={normalizeOrderStatus(order)} /></TableCell><TableCell>{(order.status === "refunded" || order.fulfillment_status === "refunded") ? <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">Refunded</Badge> : <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>}</TableCell><TableCell>{normalizeOrderStatus(order) === "delivered" ? <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button> : <span className="text-muted-foreground">—</span>}</TableCell></TableRow>); })}</TableBody></Table></div>
+                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}{isMergedFromUser && <div className="mt-1"><Badge variant="outline" className="text-xs">From user account</Badge></div>}</TableCell><TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell><TableCell className="uppercase text-sm">{order.network || "—"}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer">{subSubagentName}</Badge></button> : isSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subagentName}</Badge></button> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={normalizeOrderStatus(order)} /></TableCell><TableCell>{(order.status === "refunded" || order.fulfillment_status === "refunded") ? <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">Refunded</Badge> : <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>}</TableCell><TableCell>{normalizeOrderStatus(order) === "delivered" ? <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button> : <span className="text-muted-foreground">—</span>}</TableCell></TableRow>); })}</TableBody></Table></div>
                     {apiReportOrder && (<ReportComplaintDialog open={Boolean(apiReportOrder)} onOpenChange={(open) => { if (!open) setApiReportOrder(null); }} order={{ id: apiReportOrder.id, customer_number: apiReportOrder.customer_number, network: apiReportOrder.network, size_gb: Number(apiReportOrder.size_gb || 0), amount: Number(apiReportOrder.selling_price || apiReportOrder.amount || 0), created_at: apiReportOrder.created_at, fulfillment_status: apiReportOrder.fulfillment_status || "delivered", status: apiReportOrder.status || "delivered" }} complaintType="api_order" agentStoreId={store?.id} />)}
                     {/* Pagination */}
                     {filteredOrders.length > ordersPerPage && (() => {
@@ -2913,8 +2929,6 @@ return (
                 )}
               </CardContent>
             </Card>
-
-            <PreUpgradeHistory view="orders" />
 
             {/* API USER ORDERS SECTION */}
 
