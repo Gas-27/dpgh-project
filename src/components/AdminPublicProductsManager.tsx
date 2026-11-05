@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
-import { Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2 } from "lucide-react";
+import { uploadProductImage } from "@/lib/productImageUpload";
 
 type PublicProduct = { id: string; title: string; description: string; price: number; image_urls: string[]; active: boolean };
 const emptyProduct = { title: "", description: "", price: "", image_urls: "", active: true };
@@ -17,18 +18,25 @@ export default function AdminPublicProductsManager() {
   const [products, setProducts] = useState<PublicProduct[]>([]);
   const [draft, setDraft] = useState(emptyProduct);
   const [saving, setSaving] = useState(false);
+  const [uploadingCount, setUploadingCount] = useState(0);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const load = async () => { const { data, error } = await supabase.from("public_store_products").select("*").order("created_at", { ascending: false }); if (error) toast({ title: "Could not load products", description: error.message, variant: "destructive" }); else setProducts((data ?? []) as PublicProduct[]); };
   useEffect(() => { void load(); }, []);
   const handleGalleryFiles = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? []).slice(0, 8);
-    files.forEach((file) => {
-      if (!file.type.startsWith("image/") || file.size > 5 * 1024 * 1024) return;
-      const reader = new FileReader();
-      reader.onload = () => setDraft((current) => ({ ...current, image_urls: `${current.image_urls}${current.image_urls ? "\n" : ""}${String(reader.result)}` }));
-      reader.readAsDataURL(file);
-    });
+    const files = Array.from(event.target.files ?? []).filter((file) => file.type.startsWith("image/")).slice(0, 8);
     event.target.value = "";
+    files.forEach(async (file) => {
+      setUploadingCount((count) => count + 1);
+      try {
+        const url = await uploadProductImage("admin", file);
+        setDraft((current) => ({ ...current, image_urls: `${current.image_urls}${current.image_urls ? "\n" : ""}${url}` }));
+      } catch (err) {
+        console.error("[v0] Admin product image upload failed:", err);
+        toast({ title: "Image upload failed, please try again", variant: "destructive" });
+      } finally {
+        setUploadingCount((count) => count - 1);
+      }
+    });
   };
   const add = async () => {
     if (!draft.title.trim() || !draft.price) return;
@@ -39,5 +47,5 @@ export default function AdminPublicProductsManager() {
   };
   const toggle = async (product: PublicProduct) => { const { error } = await supabase.from("public_store_products").update({ active: !product.active, updated_at: new Date().toISOString() }).eq("id", product.id); if (error) toast({ title: "Could not update product", description: error.message, variant: "destructive" }); else await load(); };
   const remove = async (id: string) => { const { error } = await supabase.from("public_store_products").delete().eq("id", id); if (error) toast({ title: "Could not remove product", description: error.message, variant: "destructive" }); else await load(); };
-  return <Card><CardHeader><CardTitle>Public storefront products</CardTitle></CardHeader><CardContent className="space-y-5"><div className="grid gap-3 md:grid-cols-2"><Input placeholder="Product name" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /><Input type="number" min="0" step="0.01" placeholder="Price (GHS)" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} /><Textarea className="md:col-span-2" placeholder="Description" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /><div className="md:col-span-2 space-y-2"><div className="flex items-center justify-between"><Label>Product images</Label><span className="text-xs text-muted-foreground">Up to 8 images, 5 MB each</span></div><input ref={galleryInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleGalleryFiles} /><Button type="button" variant="outline" onClick={() => galleryInputRef.current?.click()}>Choose from gallery</Button><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{draft.image_urls.split("\n").filter(Boolean).map((url, index) => <div key={`${url.slice(0, 24)}-${index}`} className="overflow-hidden rounded-xl border bg-muted/30"><img src={url} alt={`Selected product image ${index + 1}`} className="aspect-square w-full object-cover" /><button type="button" className="w-full px-2 py-1 text-xs text-destructive" onClick={() => setDraft((current) => ({ ...current, image_urls: current.image_urls.split("\n").filter((_, itemIndex) => itemIndex !== index).join("\n") }))}>Remove</button></div>)}</div></div></div><Button onClick={add} disabled={saving || !draft.title.trim() || !draft.price}><Plus className="mr-2 h-4 w-4" />Publish product</Button><div className="grid gap-3">{products.map((product) => <div key={product.id} className="flex items-center justify-between gap-3 rounded-lg border p-3"><div><p className="font-semibold">{product.title}</p><p className="text-sm text-muted-foreground">GHS {Number(product.price).toFixed(2)} · {product.active ? "Visible" : "Hidden"}</p></div><div className="flex items-center gap-3"><Switch checked={product.active} onCheckedChange={() => toggle(product)} aria-label={`Toggle ${product.title}`} /><Button variant="ghost" size="icon" onClick={() => remove(product.id)} aria-label={`Delete ${product.title}`}><Trash2 className="h-4 w-4" /></Button></div></div>)}</div></CardContent></Card>;
+  return <Card><CardHeader><CardTitle>Public storefront products</CardTitle></CardHeader><CardContent className="space-y-5"><div className="grid gap-3 md:grid-cols-2"><Input placeholder="Product name" value={draft.title} onChange={(e) => setDraft({ ...draft, title: e.target.value })} /><Input type="number" min="0" step="0.01" placeholder="Price (GHS)" value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} /><Textarea className="md:col-span-2" placeholder="Description" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} /><div className="md:col-span-2 space-y-2"><div className="flex items-center justify-between"><Label>Product images</Label><span className="text-xs text-muted-foreground">Up to 8 images, 5 MB each</span></div><input ref={galleryInputRef} type="file" accept="image/png,image/jpeg,image/webp" multiple className="hidden" onChange={handleGalleryFiles} /><Button type="button" variant="outline" onClick={() => galleryInputRef.current?.click()}>Choose from gallery</Button><div className="grid grid-cols-2 gap-3 sm:grid-cols-4">{draft.image_urls.split("\n").filter(Boolean).map((url, index) => <div key={`${url.slice(0, 24)}-${index}`} className="overflow-hidden rounded-xl border bg-muted/30"><img src={url} alt={`Selected product image ${index + 1}`} className="aspect-square w-full object-cover" /><button type="button" className="w-full px-2 py-1 text-xs text-destructive" onClick={() => setDraft((current) => ({ ...current, image_urls: current.image_urls.split("\n").filter((_, itemIndex) => itemIndex !== index).join("\n") }))}>Remove</button></div>)}{Array.from({ length: uploadingCount }).map((_, index) => <div key={`uploading-${index}`} role="status" className="flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border bg-muted/40 text-xs text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" />Uploading…</div>)}</div></div></div><Button onClick={add} disabled={uploadingCount > 0 || saving || !draft.title.trim() || !draft.price}><Plus className="mr-2 h-4 w-4" />Publish product</Button><div className="grid gap-3">{products.map((product) => <div key={product.id} className="flex items-center justify-between gap-3 rounded-lg border p-3"><div><p className="font-semibold">{product.title}</p><p className="text-sm text-muted-foreground">GHS {Number(product.price).toFixed(2)} · {product.active ? "Visible" : "Hidden"}</p></div><div className="flex items-center gap-3"><Switch checked={product.active} onCheckedChange={() => toggle(product)} aria-label={`Toggle ${product.title}`} /><Button variant="ghost" size="icon" onClick={() => remove(product.id)} aria-label={`Delete ${product.title}`}><Trash2 className="h-4 w-4" /></Button></div></div>)}</div></CardContent></Card>;
 }
