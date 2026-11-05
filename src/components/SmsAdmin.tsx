@@ -199,7 +199,7 @@ export default function SmsAdmin() {
               value={newSender}
               maxLength={11}
               onChange={(e) => setNewSender(e.target.value.toUpperCase())}
-              placeholder="e.g. DATA4ALL (max 11 chars)"
+              placeholder="e.g. MY STORE (max 11 chars)"
             />
             <Button onClick={() => void addGlobal()} disabled={adding} className="shrink-0">
               {adding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}

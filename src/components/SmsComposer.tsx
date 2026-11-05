@@ -814,7 +814,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
                 value={custom}
                 maxLength={11}
                 onChange={(event) => setCustom(event.target.value.toUpperCase())}
-                placeholder="e.g. DATA4ALL"
+                placeholder="e.g. MY STORE"
               />
               <p className="text-xs text-muted-foreground">Letters, numbers, and spaces allowed (max 11 characters)</p>
             </div>

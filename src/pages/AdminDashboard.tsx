@@ -53,6 +53,7 @@ import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminGameHubVideos from "@/components/AdminGameHubVideos";
 import AdminGameRewards from "@/components/AdminGameRewards";
 import AdminGameLeaderboard from "@/components/AdminGameLeaderboard";
+import AdminGameHubWins from "@/components/AdminGameHubWins";
 import AdminGameAnnouncements from "@/components/AdminGameAnnouncements";
 import AdminAFAManager from "@/components/AdminAFAManager";
 import AnnouncementManager from "@/components/AnnouncementManager";
@@ -2834,6 +2835,7 @@ const AdminDashboard = () => {
   <TabsTrigger value="gamehub-videos" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Game Hub Videos</TabsTrigger>
                 <TabsTrigger value="gamehub-rewards" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Game Hub Games</TabsTrigger>
   <TabsTrigger value="gamehub-leaderboard" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Game Hub Leaderboard</TabsTrigger>
+              <TabsTrigger value="gamehub-wins" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Game Hub Wins</TabsTrigger>
   <TabsTrigger value="gamehub-notifications" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Game Hub Notifications</TabsTrigger>
 <TabsTrigger value="social-boost-orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Boost Orders</TabsTrigger>
             <TabsTrigger value="order_approvals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><ClipboardList className="h-3 w-3 md:h-4 md:w-4" /> Approvals</TabsTrigger>
@@ -2888,6 +2890,7 @@ const AdminDashboard = () => {
   <TabsContent value="gamehub-videos" className="space-y-6"><AdminGameHubVideos /></TabsContent>
                 <TabsContent value="gamehub-rewards" className="space-y-6"><AdminGameRewards /></TabsContent>
   <TabsContent value="gamehub-leaderboard" className="space-y-6"><AdminGameLeaderboard /></TabsContent>
+              <TabsContent value="gamehub-wins" className="space-y-6"><AdminGameHubWins /></TabsContent>
   <TabsContent value="gamehub-notifications" className="space-y-6"><AdminGameAnnouncements /></TabsContent>
 <TabsContent value="social-boost-orders" className="space-y-6"><AdminSocialBoostOrders /></TabsContent>
 
