@@ -539,7 +539,7 @@ function hud(){$('swap').textContent=W.n;$('swap').style.visibility=save.own.len
 function showMsg(a,b){const m=$('msg');m.innerHTML=a+(b?'<small>'+b+'</small>':'');m.classList.remove('go');void m.offsetWidth;m.classList.add('go')}
 function clearArrows(){for(const a of arrows)if(a.parent)a.parent.remove(a);arrows=[]}
 function setupRound(){let i;do{i=Math.floor(Math.random()*THEMES.length)}while(i===lastTheme);lastTheme=i;th=THEMES[i];mod=modFor(round);req=reqFor(round);if(mp&&mp.started){const k=Math.min(round-1,14);th=THEMES[mp.cfg.themes[k]%THEMES.length];mod=mp.cfg.mods[k];req=mp.target}
- D=********
+ D=mod==='HUNT'?30:Math.round(Math.min(55,18+(round-1)*1.9));tx0=mod==='HUNT'?0:(round>2?R(-2.5,2.5):0);wind=round<2?0:(Math.random()<.5?-1:1)*R(.3,Math.min(4,.6+round*.2));gust=mod==='GUST'?1.5+round*.08:0;windT=0;
  if(!(mp&&mp.started))score=0;streak=0;sB=0;sP=0;sV=0;sS=0;objDone=false;goalHit=false;shotNo=0;const hunt=mod==='HUNT';
  obj=hunt?['streak','perf','vital'][Math.floor(Math.random()*3)]:['bulls','streak','perf'][Math.floor(Math.random()*3)];
  build();clearArrows();left=arrowsFor(round)+(hunt?1:0)+(has('quiver')?1:0)+save.up.arrow;if(hunt)spawnAnimals(Math.min(5,3+Math.floor(round/4)));
