@@ -73,7 +73,7 @@ export type AdminLeaderboardRow = {
 };
 
 export async function adminFetchLeaderboard(gameId: string | null, period: LeaderboardPeriod): Promise<AdminLeaderboardRow[]> {
-  const { data, error } = await db.rpc("gamehub_admin_leaderboard", { p_game_id: gameId, p_period: period, p_limit: 100 });
+  const { data, error } = await db.rpc("gamehub_admin_leaderboard", { p_game_id: gameId, p_period: period, p_limit: 5000 });
   if (error) throw error;
   return ((data ?? []) as AdminLeaderboardRow[]).map((row) => ({
     ...row,
