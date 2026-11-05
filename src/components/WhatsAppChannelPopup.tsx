@@ -55,46 +55,46 @@ export default function WhatsAppChannelPopup() {
 
   return (
     <Dialog open={open} onOpenChange={(next) => { if (!next) remindLater(); }}>
-      <DialogContent className="max-h-[92vh] max-w-md gap-0 overflow-y-auto rounded-3xl border-0 bg-white p-6 text-[#1a0b3b] [&>button]:hidden">
+      <DialogContent className="max-h-[88vh] w-[calc(100%-2rem)] max-w-[340px] gap-0 overflow-y-auto rounded-3xl border-0 bg-white p-4 text-[#1a0b3b] shadow-2xl [&>button]:hidden">
         <div className="flex items-start justify-between">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#dff5df]">
-            <WhatsAppIcon className="h-8 w-8 text-[#4cbb5a]" />
+          <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#dff5df]">
+            <WhatsAppIcon className="h-6 w-6 text-[#4cbb5a]" />
           </div>
           <button type="button" onClick={remindLater} aria-label="Close" className="rounded-full p-1 text-[#8a8a8f] hover:bg-black/5">
-            <X className="h-7 w-7" />
+            <X className="h-5 w-5" />
           </button>
         </div>
-        <DialogTitle className="mt-4 text-center text-[26px] font-extrabold uppercase leading-tight text-[#1a0b3b]">
+        <DialogTitle className="mt-2 text-center text-[17px] font-extrabold uppercase leading-tight tracking-tight text-[#1a0b3b]">
           {"Don\u2019t miss out! \u{1F680} Join JustBuy on WhatsApp"}
         </DialogTitle>
-        <DialogDescription className="mt-3 text-center text-base leading-snug text-black">
+        <DialogDescription className="mt-2 text-center text-[13px] leading-snug text-black">
           Be the first to know about the latest JustBuy updates, exclusive offers, important announcements and exciting opportunities.
         </DialogDescription>
-        <p className="mt-4 text-center text-base leading-snug text-black">
+        <p className="mt-2.5 text-center text-[13px] leading-snug text-black">
           {"\u{1F381} WEEKLY GIVEAWAYS! Stand a chance to win FREE DATA and CASH by participating in our quizzes and challenges in the channel"}
         </p>
-        <p className="mt-4 text-center text-base leading-snug text-black">Join our WhatsApp Channel today and never miss an update!</p>
-        <div className="mt-4 flex items-center gap-3 rounded-2xl bg-[#ececee] px-4 py-3">
-          <WhatsAppIcon className="h-6 w-6 shrink-0 text-[#4cbb5a]" />
-          <span className="text-lg font-bold text-[#1a0b3b]">JustBuygh channel</span>
+        <p className="mt-2.5 text-center text-[13px] leading-snug text-black">Join our WhatsApp Channel today and never miss an update!</p>
+        <div className="mt-3 flex items-center gap-2.5 rounded-xl bg-[#ececee] px-3 py-2">
+          <WhatsAppIcon className="h-5 w-5 shrink-0 text-[#4cbb5a]" />
+          <span className="text-sm font-bold text-[#1a0b3b]">JustBuygh channel</span>
         </div>
         <a
           href={CHANNEL_URL}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-4 flex h-14 items-center justify-center gap-3 rounded-2xl bg-[#64c96e] text-xl font-bold text-white hover:bg-[#58bb62]"
+          className="mt-3 flex h-10 items-center justify-center gap-2 rounded-xl bg-[#64c96e] text-[15px] font-bold text-white hover:bg-[#58bb62]"
         >
-          <WhatsAppIcon className="h-6 w-6" />Join Channel Now
+          <WhatsAppIcon className="h-5 w-5" />Join Channel Now
         </a>
-        <div className="mt-4 grid grid-cols-2 gap-4">
-          <button type="button" onClick={markJoined} className="flex flex-col items-center gap-1 rounded-2xl bg-[#ececee] py-4 text-base font-semibold text-[#4cbb5a]">
-            <CheckCircle2 className="h-8 w-8" />I&apos;ve Joined
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <button type="button" onClick={markJoined} className="flex flex-col items-center gap-0.5 rounded-xl bg-[#ececee] py-2.5 text-[13px] font-semibold text-[#4cbb5a]">
+            <CheckCircle2 className="h-6 w-6" />I&apos;ve Joined
           </button>
-          <button type="button" onClick={remindLater} className="flex flex-col items-center gap-1 rounded-2xl bg-[#ececee] py-4 text-base font-semibold text-[#f0a020]">
-            <Clock className="h-8 w-8" />Remind Later
+          <button type="button" onClick={remindLater} className="flex flex-col items-center gap-0.5 rounded-xl bg-[#ececee] py-2.5 text-[13px] font-semibold text-[#f0a020]">
+            <Clock className="h-6 w-6" />Remind Later
           </button>
         </div>
-        <p className="mt-4 text-center text-base italic text-[#1a0b3b]">You can change this anytime in settings</p>
+        <p className="mt-3 text-center text-xs italic text-[#1a0b3b]">You can change this anytime in settings</p>
       </DialogContent>
     </Dialog>
   );

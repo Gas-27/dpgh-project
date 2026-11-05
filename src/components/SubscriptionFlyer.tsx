@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
-import { Check, Gift, Globe, Headphones, Search, ShieldCheck, ShoppingCart, Star, Tv, Zap } from "lucide-react";
+import { Check, Crown, Gift, Globe, Headphones, Search, ShieldCheck, ShoppingCart, Star, Tv, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { FlyerFrame, slug, useQrDataUrl, type StoreInfo } from "@/components/FlyerShared";
 import whatsapp from "@/assets/brands/whatsapp.svg";
@@ -80,7 +80,7 @@ export function SubscriptionFlyer({ storeName, storeUrl, supportNumber, storeId 
 
   const shown = rows.slice(0, 12);
   const name = storeName || "Your Store";
-  const nameSize = name.length > 22 ? 48 : name.length > 14 ? 64 : 84;
+  const nameSize = Math.max(36, Math.min(84, 540 / (name.length * 0.8)));
   const message = useMemo(() => `${name} - your all-in-one subscription hub! Get your favourite subscriptions and gift cards at the best prices in Ghana. Subscribe more, pay less.\nBrowse and buy: ${storeUrl || "-"}\nContact: ${supportNumber || "-"}`, [name, storeUrl, supportNumber]);
 
   return (
@@ -90,22 +90,31 @@ export function SubscriptionFlyer({ storeName, storeUrl, supportNumber, storeId 
         <div style={flagBand({ left: -120, top: 60, width: 520, transform: "rotate(-34deg)" })} />
         <div style={flagBand({ left: -100, bottom: 40, width: 440, transform: "rotate(18deg)" })} />
         <div style={flagBand({ right: -140, bottom: 20, width: 500, transform: "rotate(-14deg)" })} />
+        <div style={{ position: "absolute", right: 30, top: 150, width: 230, height: 190, transform: "rotate(-14deg)", opacity: 0.9 }}>
+          {[0, 1, 2].map((i) => <div key={i} style={{ position: "absolute", left: i * 34, top: i * -8, width: 96, height: 176, borderRadius: 16, border: "3px solid #1f2547", background: "linear-gradient(160deg,#2a1d6e,#0a0a22)", boxShadow: "0 6px 14px #00000088", transform: `skewY(${i * 3}deg)` }} />)}
+        </div>
         <Star size={70} color="#000" fill="#000" style={{ position: "absolute", left: 30, top: 70 }} />
         <Star size={60} color="#000" fill="#000" style={{ position: "absolute", left: 44, bottom: 40 }} />
 
-        <div style={{ position: "absolute", left: 170, top: 28, width: 140, height: 140, borderRadius: 30, background: `linear-gradient(145deg,#ffe35a,#f5a800)`, display: "flex", alignItems: "center", justifyContent: "center", transform: "rotate(-6deg)", boxShadow: "0 0 24px #ffd21f88" }}>
-          <ShoppingCart size={84} color="#2a0a5e" strokeWidth={2.5} />
+        <div style={{ position: "absolute", left: 150, top: 14, width: 180, height: 170 }}>
+          <Crown size={64} color={GOLD} fill={GOLD} style={{ position: "absolute", left: 100, top: -4 }} />
+          <div style={{ position: "absolute", left: 38, top: 28, width: 82, height: 62, border: `10px solid ${GOLD}`, borderBottom: "none", borderRadius: "41px 41px 0 0", transform: "rotate(-8deg)" }} />
+          <div style={{ position: "absolute", left: 10, top: 66, width: 150, height: 100, borderRadius: "14px 14px 30px 30px", background: "linear-gradient(145deg,#ffe35a,#f5a800)", transform: "rotate(-8deg)", boxShadow: "0 0 24px #ffd21f88", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <div style={{ width: 58, height: 58, borderRadius: 14, background: "#2a0a5e", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <div style={{ marginLeft: 6, width: 0, height: 0, borderTop: "16px solid transparent", borderBottom: "16px solid transparent", borderLeft: `26px solid ${GOLD}` }} />
+            </div>
+          </div>
         </div>
         <div style={{ position: "absolute", left: 340, top: 30, width: 560, textAlign: "center" }}>
           <div style={{ fontSize: nameSize, fontWeight: 900, fontStyle: "italic", color: GOLD, lineHeight: 1.05, whiteSpace: "nowrap", textShadow: "0 5px 0 #7c2d12, 0 0 20px #00000099" }}>{name}</div>
-          <div style={{ fontSize: 30, fontWeight: 700, fontStyle: "italic", marginTop: 2 }}>...Your All-in-One Subscription Hub!</div>
+          <div style={{ fontSize: 26, fontWeight: 700, fontStyle: "italic", marginTop: 2, whiteSpace: "nowrap" }}>...Your All-in-One Subscription Hub!</div>
         </div>
-        <div style={{ position: "absolute", right: 36, top: 24, width: 260, textAlign: "center", transform: "rotate(-8deg)", fontStyle: "italic", fontWeight: 800, lineHeight: 1.05 }}>
-          <div style={{ fontSize: 44 }}>Subscribe More,</div>
-          <div style={{ fontSize: 50, color: GOLD }}>Pay Less!</div>
+        <div style={{ position: "absolute", right: 30, top: 28, width: 270, textAlign: "center", transform: "rotate(-8deg)", fontStyle: "italic", fontWeight: 800, lineHeight: 1.05 }}>
+          <div style={{ fontSize: 32, whiteSpace: "nowrap" }}>Subscribe More,</div>
+          <div style={{ fontSize: 40, color: GOLD, whiteSpace: "nowrap" }}>Pay Less!</div>
         </div>
 
-        <Tab style={{ left: 178, top: 188, width: 784, height: 70, borderRadius: 35, background: `linear-gradient(180deg,#ffe35a,${GOLD})`, color: "#1c1917", fontSize: 30, fontStyle: "normal", textAlign: "center", lineHeight: 1.1, transform: "rotate(-2deg)", boxShadow: "0 6px 14px #00000066" }}>
+        <Tab style={{ left: 178, top: 188, width: 784, height: 70, clipPath: "polygon(3% 0, 100% 12%, 97% 100%, 0 88%)", background: `linear-gradient(180deg,#ffe35a,${GOLD})`, color: "#1c1917", fontSize: 30, fontStyle: "normal", textAlign: "center", lineHeight: 1.1, transform: "rotate(-2deg)", boxShadow: "0 6px 14px #00000066" }}>
           <span style={{ fontStyle: "italic", fontWeight: 800 }}>Get your favorite subscriptions &amp; gift cards at the best prices in <span style={{ color: "#dc2626" }}>Ghana!</span></span>
         </Tab>
         <Tab style={{ left: 285, top: 262, width: 590, height: 52, borderRadius: 26, background: "linear-gradient(90deg,#6d28d9,#a855f7)", fontSize: 31, gap: 10, border: "2px solid #c084fc" }}>
@@ -116,14 +125,15 @@ export function SubscriptionFlyer({ storeName, storeUrl, supportNumber, storeId 
           const brand = LOGOS.find((item) => item.test.test(service.name));
           const col = index % 6;
           const row = Math.floor(index / 6);
+          const inRow = Math.min(6, shown.length - row * 6);
           return (
-            <div key={service.id} style={{ position: "absolute", left: 24 + col * 194, top: 318 + row * 148, width: 184, height: 140, boxSizing: "border-box", borderRadius: 22, background: "#08040f", border: `3px solid ${CARD_BORDERS[col]}`, boxShadow: `0 0 14px ${CARD_BORDERS[col]}99`, display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 6px 0" }}>
+            <div key={service.id} style={{ position: "absolute", left: (1200 - (inRow * 194 - 10)) / 2 + col * 194, top: 318 + row * 148, width: 184, height: 140, boxSizing: "border-box", borderRadius: 22, background: /canva/i.test(service.name) ? "linear-gradient(180deg,#00c4cc,#4d6bf5 60%,#7d2ae8)" : /disney/i.test(service.name) ? "linear-gradient(180deg,#0a1a4a,#050a24)" : "#08040f", border: `3px solid ${CARD_BORDERS[col]}`, boxShadow: `0 0 14px ${CARD_BORDERS[col]}99`, display: "flex", flexDirection: "column", alignItems: "center", padding: "8px 6px 0" }}>
               <div style={{ height: 52, display: "flex", alignItems: "center", justifyContent: "center" }}>
                 {brand
                   ? <img src={brand.logo} alt="" style={{ height: 50, maxWidth: 110, objectFit: "contain", filter: brand.invert ? "invert(1)" : undefined }} />
                   : <div style={{ width: 48, height: 48, borderRadius: 24, background: GOLD, color: "#1c1917", fontSize: 28, fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>{service.name.charAt(0).toUpperCase()}</div>}
               </div>
-              <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.05, height: 44, display: "flex", alignItems: "center", textAlign: "center" }}>{service.name}</div>
+              <div style={{ fontSize: 20, fontWeight: 700, lineHeight: 1.05, height: 44, display: "flex", alignItems: "center", textAlign: "center" }}>{/canva|disney/i.test(service.name) ? "" : service.name}</div>
               <div style={{ width: 160, borderRadius: 14, background: `linear-gradient(180deg,#ffe35a,${GOLD})`, color: "#1c1917", textAlign: "center", padding: "2px 0 3px", lineHeight: 1 }}>
                 <div style={{ fontSize: 26, fontWeight: 900 }}>GHC {priceText(Number(service.price))}</div>
                 <div style={{ fontSize: 15, fontWeight: 700 }}>/{service.duration || "month"}</div>
@@ -156,34 +166,36 @@ export function SubscriptionFlyer({ storeName, storeUrl, supportNumber, storeId 
             <div style={{ flex: 1, minWidth: 0, margin: "0 10px", fontSize: 24, fontWeight: 700, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{storeUrl || "-"}</div>
             <div style={{ width: 80, height: "100%", background: "#1d4ed8", display: "flex", alignItems: "center", justifyContent: "center" }}><Search size={32} color="#fff" /></div>
           </div>
-          <div style={{ position: "absolute", left: 24, top: 140, fontSize: 22, fontWeight: 600, lineHeight: "34px" }}>
+          <div style={{ position: "absolute", left: 22, top: 140, fontSize: 18, fontWeight: 600, lineHeight: "34px", whiteSpace: "nowrap" }}>
             {["Browse All Services", "Make Purchases", "Manage Your Subscriptions"].map((item) => (
               <div key={item} style={{ display: "flex", alignItems: "center", gap: 10 }}><GoldCheck size={26} />{item}</div>
             ))}
           </div>
-          <div style={{ position: "absolute", right: 8, top: 148, width: 230, padding: "6px 10px", textAlign: "center", background: GOLD, color: "#1c1917", transform: "rotate(-4deg)", fontSize: 32, fontWeight: 900, fontStyle: "italic", lineHeight: 1 }}>Visit Our Website Now!</div>
+          <div style={{ position: "absolute", right: 8, top: 140, width: 186, padding: "6px 8px", textAlign: "center", background: GOLD, color: "#1c1917", transform: "rotate(-4deg)", fontSize: 27, fontWeight: 900, fontStyle: "italic", lineHeight: 1.02 }}>Visit Our<br />Website<br />Now!</div>
         </div>
 
         <div style={{ position: "absolute", left: 18, top: 906, width: 584, height: 178, boxSizing: "border-box", borderRadius: 22, border: `3px solid ${GOLD}`, background: "#050308" }}>
           <div style={{ position: "absolute", left: 40, top: -26, padding: "2px 30px", borderRadius: 16, background: GOLD, color: "#1c1917", fontSize: 34, fontWeight: 900, fontStyle: "italic" }}>MORE SERVICES</div>
-          <div style={{ position: "absolute", left: 22, top: 30, width: 270 }}>
-            {MORE_LEFT.map((item) => <div key={item} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: item.length > 26 ? 17 : 22, fontWeight: 600, lineHeight: "36px" }}><GoldCheck size={26} />{item}</div>)}
+          <div style={{ position: "absolute", left: 18, top: 30, width: 290 }}>
+            {MORE_LEFT.map((item) => <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: item.length > 26 ? 14 : 18, fontWeight: 600, lineHeight: "36px", whiteSpace: "nowrap" }}><GoldCheck size={24} />{item}</div>)}
           </div>
-          <div style={{ position: "absolute", left: 304, top: 26, width: 270 }}>
-            {MORE_RIGHT.map((item) => <div key={item} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 18, fontWeight: 600, lineHeight: 1.15, marginBottom: 12 }}><GoldCheck size={26} />{item}</div>)}
+          <div style={{ position: "absolute", left: 318, top: 26, width: 258 }}>
+            {MORE_RIGHT.map((item) => <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 15, fontWeight: 600, lineHeight: 1.15, marginBottom: 12 }}><GoldCheck size={24} />{item}</div>)}
           </div>
         </div>
 
         <div style={{ position: "absolute", left: 618, top: 920, width: 330, height: 130, borderRadius: 65, background: "linear-gradient(180deg,#ff3b3b,#c40d0d)", border: "3px solid #ff9090", boxShadow: "0 8px 18px #00000088", display: "flex", alignItems: "center", gap: 14, padding: "0 20px" }}>
-          <ShoppingCart size={64} color="#fff" strokeWidth={2.4} />
-          <div style={{ lineHeight: 1.05 }}>
-            <div style={{ fontSize: 46, fontWeight: 900, fontStyle: "italic", color: GOLD }}>Buy Here</div>
-            <div style={{ fontSize: 22, fontWeight: 600, fontStyle: "italic" }}>Shop. Pay. Enjoy.</div>
+          <ShoppingCart size={54} color="#fff" strokeWidth={2.4} style={{ flexShrink: 0 }} />
+          <div style={{ lineHeight: 1.05, whiteSpace: "nowrap" }}>
+            <div style={{ fontSize: 38, fontWeight: 900, fontStyle: "italic", color: GOLD }}>Buy Here</div>
+            <div style={{ fontSize: 18, fontWeight: 600, fontStyle: "italic" }}>Shop. Pay. Enjoy.</div>
           </div>
         </div>
-        <div style={{ position: "absolute", left: 700, top: 1030, width: 210, height: 60, borderBottom: `8px solid ${GOLD}`, borderRadius: "0 0 120px 120px", transform: "rotate(-6deg)" }} />
-        <div style={{ position: "absolute", left: 944, top: 960, width: 0, height: 0, borderTop: "28px solid transparent", borderBottom: "28px solid transparent", borderLeft: `46px solid ${GOLD}` }} />
-
+        <svg width="380" height="110" viewBox="0 0 380 110" style={{ position: "absolute", left: 640, top: 1022 }}>
+          <path d="M60 6 C 90 70, 200 84, 280 40" stroke={GOLD} strokeWidth="12" fill="none" strokeLinecap="round" />
+          <polygon points="268,6 330,38 266,76" fill={GOLD} />
+          <path d="M310 -8 L352 18 L310 44 Z" fill={GOLD} transform="translate(0 -4)" />
+        </svg>
         <div style={{ position: "absolute", left: 994, top: 888, width: 188, height: 198, boxSizing: "border-box", borderRadius: 18, border: `4px solid ${GOLD}`, background: "#050308", padding: 6, textAlign: "center" }}>
           <div style={{ width: 166, height: 150, background: "#fff", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center" }}>{qr && <img src={qr} alt="" style={{ width: 146, height: 146 }} />}</div>
           <div style={{ fontSize: 17, fontWeight: 700, marginTop: 6, lineHeight: 1 }}>Scan to Visit Our Store</div>
@@ -192,13 +204,13 @@ export function SubscriptionFlyer({ storeName, storeUrl, supportNumber, storeId 
         <div style={{ position: "absolute", left: 18, top: 1106, width: 1164, height: 112, boxSizing: "border-box", borderRadius: 30, border: `3px solid ${GOLD}`, background: "#050308", display: "flex", alignItems: "center", padding: "0 24px", gap: 20 }}>
           <div style={{ position: "absolute", left: 150, top: -30, padding: "2px 30px", borderRadius: 16, background: GOLD, color: "#1c1917", fontSize: 32, fontWeight: 900, fontStyle: "italic" }}>Contact Us Today!</div>
           <img src={whatsapp} alt="" style={{ width: 84, height: 84 }} />
-          <div style={{ fontSize: 56, fontWeight: 800, fontStyle: "italic", whiteSpace: "nowrap", width: 470 }}>{supportNumber || "-"}</div>
+          <div style={{ fontSize: 44, fontWeight: 800, fontStyle: "italic", whiteSpace: "nowrap", width: 380 }}>{supportNumber || "-"}</div>
           <div style={{ width: 2, height: 80, background: "#ffffff44" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 22, fontWeight: 600, lineHeight: 1.1 }}><ShieldCheck size={56} color={GOLD} />Secure &amp;<br />Reliable</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 20, fontWeight: 600, lineHeight: 1.1, whiteSpace: "nowrap" }}><ShieldCheck size={46} color={GOLD} /><span>Secure &amp;<br />Reliable</span></div>
           <div style={{ width: 2, height: 80, background: "#ffffff44" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 22, fontWeight: 600, lineHeight: 1.1 }}><Zap size={50} color={GOLD} fill={GOLD} />Instant<br />Activation</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 20, fontWeight: 600, lineHeight: 1.1, whiteSpace: "nowrap" }}><Zap size={42} color={GOLD} fill={GOLD} /><span>Instant<br />Activation</span></div>
           <div style={{ width: 2, height: 80, background: "#ffffff44" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 22, fontWeight: 600, lineHeight: 1.1 }}><Headphones size={54} color={GOLD} />24/7<br />Support</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 20, fontWeight: 600, lineHeight: 1.1, whiteSpace: "nowrap" }}><Headphones size={44} color={GOLD} /><span>24/7<br />Support</span></div>
         </div>
 
         <div style={{ position: "absolute", right: 24, top: 1236, padding: "6px 36px", background: GOLD, color: "#1c1917", fontSize: 38, fontWeight: 900, fontStyle: "italic", transform: "rotate(-4deg)", boxShadow: "0 4px 10px #00000088" }}>Get it. Enjoy it.</div>

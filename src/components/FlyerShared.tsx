@@ -1,5 +1,13 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { toPng } from "html-to-image";
+import "@fontsource/montserrat/500.css";
+import "@fontsource/montserrat/700.css";
+import "@fontsource/montserrat/800.css";
+import "@fontsource/montserrat/900.css";
+import "@fontsource/montserrat/500-italic.css";
+import "@fontsource/montserrat/700-italic.css";
+import "@fontsource/montserrat/800-italic.css";
+import "@fontsource/montserrat/900-italic.css";
 import { Copy, Download, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";

@@ -54,16 +54,16 @@ function PlatformCard({ platform, style }: { platform: Platform; style: CSSPrope
   return (
     <div style={{ ...glowBox(platform.border, platform.glow, platform.bg), position: "absolute", display: "flex", flexDirection: "column", alignItems: "center", padding: "14px 10px 0", ...style }}>
       {platform.tile ? (
-        <div style={{ width: 96, height: 96, borderRadius: 24, background: platform.tile, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <img src={platform.logo} alt="" style={{ width: 70, height: 70 }} />
+        <div style={{ width: 84, height: 84, borderRadius: 22, background: platform.tile, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <img src={platform.logo} alt="" style={{ width: 62, height: 62 }} />
         </div>
       ) : (
-        <img src={platform.logo} alt="" style={{ width: platform.name === "YOUTUBE" ? 112 : 96, height: 96, objectFit: "contain", ...platform.logoStyle }} />
+        <img src={platform.logo} alt="" style={{ width: platform.name === "YOUTUBE" ? 100 : 84, height: 84, objectFit: "contain", ...platform.logoStyle }} />
       )}
-      <div style={{ fontSize: 25, fontWeight: 800, marginTop: 8, marginBottom: 8, letterSpacing: 0.5 }}>{platform.name}</div>
-      <div style={{ alignSelf: "stretch", paddingLeft: 8 }}>
+      <div style={{ fontSize: 22, fontWeight: 800, marginTop: 6, marginBottom: 6, letterSpacing: 0.3, whiteSpace: "nowrap" }}>{platform.name}</div>
+      <div style={{ alignSelf: "stretch", paddingLeft: 6 }}>
         {platform.items.map((item) => (
-          <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 22, fontWeight: 500, lineHeight: "30px" }}><CheckDot />{item}</div>
+          <div key={item} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 20, fontWeight: 500, lineHeight: "27px", whiteSpace: "nowrap" }}><CheckDot />{item}</div>
         ))}
       </div>
     </div>
@@ -72,10 +72,13 @@ function PlatformCard({ platform, style }: { platform: Platform; style: CSSPrope
 
 function PriceRow({ icon, label, price }: { icon: ReactNode; label: string; price: string }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, height: 44 }}>
-      <span style={{ width: 46, display: "flex", justifyContent: "center" }}>{icon}</span>
-      <span style={{ flex: 1, fontSize: 22, fontWeight: 500, lineHeight: 1.05 }}>{label}</span>
-      <span style={{ fontSize: 25, fontWeight: 800, color: "#facc15" }}>{price}</span>
+    <div style={{ display: "flex", alignItems: "center", gap: 8, height: 50 }}>
+      <span style={{ width: 40, display: "flex", justifyContent: "center", flexShrink: 0 }}>{icon}</span>
+      <span style={{ flex: 1, minWidth: 0, fontSize: 19, fontWeight: 500, lineHeight: 1.05 }}>{label}</span>
+      <span style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1, flexShrink: 0 }}>
+        <span style={{ fontSize: 22, fontWeight: 800, color: "#facc15", whiteSpace: "nowrap" }}>{price}</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: "#9cc2ff", marginTop: 2 }}>per 1K</span>
+      </span>
     </div>
   );
 }
@@ -117,7 +120,7 @@ export function SocialBoostFlyer({ storeName, storeUrl, supportNumber }: StoreIn
   }, []);
 
   const name = storeName || "Your Store";
-  const message = useMemo(() => `Boost all your social media accounts with real followers and grow your audience fast! Followers, Likes, Views and Comments for TikTok, Instagram, Facebook, YouTube, Snapchat, Telegram and Twitter. Prices are per 1000. Fast, cheap and real engagement.\nOrder here: ${storeUrl || "-"}\nWhatsApp: ${supportNumber || "-"}`, [storeUrl, supportNumber]);
+  const message = useMemo(() => `Boost all your social media accounts with real followers and grow your audience fast! Followers, Likes, Views and Comments for TikTok, Instagram, Facebook, YouTube, Snapchat, Telegram and Twitter. Prices are per 1K (1,000). Fast, cheap and real engagement.\nOrder here: ${storeUrl || "-"}\nWhatsApp: ${supportNumber || "-"}`, [storeUrl, supportNumber]);
   const nameSize = name.length > 22 ? 36 : name.length > 14 ? 48 : 62;
   const bubble: CSSProperties = { position: "absolute", top: 30, width: 128, height: 104, borderRadius: 26, background: "linear-gradient(145deg,#3b8bff,#1747d6)", border: "3px solid #7fb4ff", boxShadow: "0 0 26px #3b82f6, inset 0 0 18px #ffffff44", display: "flex", alignItems: "center", justifyContent: "center" };
 
@@ -151,24 +154,24 @@ export function SocialBoostFlyer({ storeName, storeUrl, supportNumber }: StoreIn
         <PlatformCard platform={PLATFORMS[5]} style={{ left: 18, top: 684, width: 190, height: 262 }} />
         <PlatformCard platform={PLATFORMS[6]} style={{ left: 224, top: 684, width: 190, height: 262 }} />
 
-        <div style={{ ...glowBox("#2f8cff", "#3b82f6", "rgba(4,10,52,0.9)"), position: "absolute", left: 430, top: 684, width: 578, height: 286 }}>
+        <div style={{ ...glowBox("#2f8cff", "#3b82f6", "rgba(4,10,52,0.9)"), position: "absolute", left: 430, top: 684, width: 578, height: 304 }}>
           <div style={{ margin: "-2px auto 0", width: 520, height: 56, borderRadius: 28, border: "2.5px solid #2f8cff", background: "rgba(6,20,90,0.95)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 33, fontWeight: 800, fontStyle: "italic", color: "#37d0ff", boxShadow: "0 0 14px #2f8cff" }}>SMM SERVICES &amp; PRICE LIST</div>
-          <div style={{ display: "flex", padding: "14px 18px 0", gap: 0 }}>
-            <div style={{ flex: 1, paddingRight: 14 }}>
+          <div style={{ textAlign: "center", fontSize: 17, fontWeight: 700, color: "#9cc2ff", marginTop: 4 }}>All prices are per 1K (1,000)</div>
+          <div style={{ display: "flex", padding: "2px 14px 0", gap: 0 }}>
+            <div style={{ flex: 1, minWidth: 0, paddingRight: 10 }}>
               <PriceRow icon={<Users size={44} color="#3b8bff" fill="#3b8bff" />} label="Followers" price={money(prices.Followers)} />
               <PriceRow icon={<Heart size={38} color="#ff3b4e" fill="#ff3b4e" />} label="Likes" price={money(prices.Likes)} />
               <PriceRow icon={<span style={{ width: 38, height: 38, borderRadius: 8, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}><Play size={24} color="#ef2b2b" fill="#ef2b2b" /></span>} label="Views" price={money(prices.Views)} />
             </div>
             <div style={{ width: 2, background: "#2f8cff88", margin: "4px 0" }} />
-            <div style={{ flex: 1, paddingLeft: 16 }}>
+            <div style={{ flex: 1, minWidth: 0, paddingLeft: 12 }}>
               <PriceRow icon={<MessageCircle size={42} color="#3b8bff" fill="#3b8bff" />} label="Comments" price={money(prices.Comments)} />
               <PriceRow icon={<img src={youtube} alt="" style={{ width: 44, height: 31 }} />} label="YouTube Subscribers" price={money(prices["YouTube Subscribers"])} />
-              <div style={{ fontSize: 14, fontWeight: 600, color: "#9cc2ff", textAlign: "right", marginTop: 8 }}>Prices are per 1000</div>
             </div>
           </div>
-          <div style={{ position: "absolute", left: 0, right: 0, bottom: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
+          <div style={{ position: "absolute", left: 0, right: 0, bottom: 10, display: "flex", alignItems: "center", justifyContent: "center", gap: 10 }}>
             <div style={{ width: 54, height: 3, background: "#facc15" }} />
-            <div style={{ padding: "6px 30px", borderRadius: 30, border: "2.5px solid #2f8cff", background: "rgba(6,20,90,0.95)", fontSize: 28, fontWeight: 800, fontStyle: "italic", color: "#ffd21f" }}>Get More Engagement Today!</div>
+            <div style={{ padding: "4px 24px", borderRadius: 30, border: "2.5px solid #2f8cff", background: "rgba(6,20,90,0.95)", fontSize: 23, fontWeight: 800, fontStyle: "italic", color: "#ffd21f", whiteSpace: "nowrap" }}>Get More Engagement Today!</div>
             <div style={{ width: 54, height: 3, background: "#facc15" }} />
           </div>
         </div>
@@ -186,7 +189,7 @@ export function SocialBoostFlyer({ storeName, storeUrl, supportNumber }: StoreIn
         </div>
 
         <div style={{ ...glowBox("#2f8cff", "#3b82f6", "rgba(4,12,60,0.9)"), position: "absolute", left: 30, top: 1160, width: 638, height: 186, borderRadius: 34, padding: "10px 24px" }}>
-          <div style={{ textAlign: "center", fontSize: 38, fontWeight: 800, color: "#37c8ff", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{name.toUpperCase()} STORE LINK</div>
+          <div style={{ textAlign: "center", fontSize: Math.max(22, Math.min(38, 580 / ((name.length + 11) * 0.8))), fontWeight: 800, color: "#37c8ff", whiteSpace: "nowrap", overflow: "hidden" }}>{name.toUpperCase()} STORE LINK</div>
           <div style={{ marginTop: 10, height: 76, borderRadius: 24, background: "#fff", display: "flex", alignItems: "center", padding: "0 10px 0 22px", gap: 14, boxShadow: "0 0 14px #ffffff88" }}>
             <Link2 size={44} color="#2f6bff" />
             <div style={{ flex: 1, minWidth: 0, fontSize: 26, fontWeight: 500, color: "#24306e", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{storeUrl || "-"}</div>

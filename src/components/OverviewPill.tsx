@@ -4,13 +4,13 @@ import {
   Palette, RadioTower, Receipt, Rocket, ShoppingCart, Tag, Tv, Users, Wallet, Zap,
 } from "lucide-react";
 
-type PillTheme = { background: string; color: string; border: string; glow: string; icon?: ReactNode };
+type PillTheme = { background: string; color: string; border: string; glow: string; icon?: ReactNode; trailing?: ReactNode };
 
 const VipBadge = () => (
   <span className="rounded-md bg-[#0a0f3a] px-1.5 py-0.5 text-[10px] font-extrabold leading-none text-[#c7d2fe]">VIP</span>
 );
 
-const icon = "h-6 w-6 shrink-0";
+const icon = "h-4 w-4 shrink-0 sm:h-6 sm:w-6";
 
 const THEMES: Record<string, PillTheme> = {
   GameHub: { background: "linear-gradient(90deg,#14a8f5,#00f0e6)", color: "#0b3358", border: "#22d3ee", glow: "#00e5ff", icon: <Gamepad2 className={icon} fill="currentColor" /> },
@@ -30,7 +30,8 @@ const THEMES: Record<string, PillTheme> = {
   Products: { background: "linear-gradient(90deg,#1d0a4a,#260f5c)", color: "#c9a8ff", border: "#5b3a9e", glow: "#5b3a9e", icon: <Package className={icon} fill="currentColor" /> },
   Utilities: {
     background: "linear-gradient(90deg,#134d1f,#17601f)", color: "#4ade80", border: "#22c55e", glow: "#22c55e",
-    icon: <span className="flex items-center gap-0.5"><Receipt className={icon} /><Zap className="h-4 w-4" fill="currentColor" /></span>,
+    icon: <Receipt className={icon} />,
+    trailing: <span className="flex shrink-0 flex-col items-center"><Tv className="h-3 w-3 sm:h-4 sm:w-4" /><Droplets className="h-3 w-3 sm:h-4 sm:w-4" fill="currentColor" /></span>,
   },
   "Social Boost": { background: "linear-gradient(90deg,#2a2e9a,#3a36b8)", color: "#c4b5fd", border: "#5b5be6", glow: "#5b5be6", icon: <Rocket className={icon} fill="currentColor" /> },
   "Subagent Pricing": { background: "linear-gradient(90deg,#a85e08,#c4740a)", color: "#fff0cc", border: "#f59e0b", glow: "#f59e0b", icon: <HandCoins className={icon} /> },
@@ -48,17 +49,18 @@ export default function OverviewPill({ label, text, onClick }: Props) {
     background: theme.background,
     color: theme.color,
     border: `2px solid ${theme.border}`,
-    boxShadow: `0 0 14px ${theme.glow}88, inset 0 0 10px ${theme.glow}33`,
+    boxShadow: `0 0 12px ${theme.glow}88, inset 0 0 10px ${theme.glow}33`,
   };
   return (
     <button
       type="button"
       onClick={onClick}
       style={style}
-      className="flex min-h-14 items-center justify-center gap-2 rounded-full px-3 py-2 text-center text-base font-bold leading-tight transition hover:-translate-y-0.5 hover:brightness-110"
+      className="flex min-h-12 items-center justify-center gap-1.5 rounded-full px-2 py-2 text-center text-[13px] font-bold leading-tight transition hover:-translate-y-0.5 hover:brightness-110 sm:min-h-14 sm:gap-2 sm:px-3 sm:text-base"
     >
       {theme.icon}
       <span>{text ?? label}</span>
+      {theme.trailing}
     </button>
   );
 }
