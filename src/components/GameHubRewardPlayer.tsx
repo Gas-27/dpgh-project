@@ -33,7 +33,7 @@ type RewardPlayerProps = {
 
 type GameMessage = { source?: string; type?: string; level?: number };
 
-function walletHintFromPath(pathname: string): string {
+export function walletHintFromPath(pathname: string): string {
   const path = pathname.toLowerCase();
   if (path.includes("subsub")) return "subsubagent";
   if (path.includes("subagent") || path.includes("sub-agent")) return "subagent";

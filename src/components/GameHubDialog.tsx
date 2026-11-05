@@ -21,6 +21,7 @@ import GameHubAnnouncements from "@/components/GameHubAnnouncements";
 import GameHubJoinCard from "@/components/GameHubJoinCard";
 import GameHubLeaderboard from "@/components/GameHubLeaderboard";
 import GameHubPlayer from "@/components/GameHubPlayer";
+import GameHubArcheryPlayer from "@/components/GameHubArcheryPlayer";
 import GameHubRewardPlayer from "@/components/GameHubRewardPlayer";
 import { useGameHubUser } from "@/hooks/useGameHubUser";
 import { useToast } from "@/hooks/use-toast";
@@ -380,7 +381,9 @@ export default function GameHubDialog() {
           </div>
         </Tabs>
         <GameHubAnnouncements open={open && !activeGame} />
-        {activeGame?.native ? (
+        {activeGame?.native?.bridge === "archery3d" ? (
+          <GameHubArcheryPlayer game={activeGame} signedIn={Boolean(user)} rule={settings.find((row) => row.game_id === activeGame.id)} onClose={() => setActiveGame(null)} />
+        ) : activeGame?.native ? (
           <GameHubRewardPlayer game={activeGame} signedIn={Boolean(user)} rule={settings.find((row) => row.game_id === activeGame.id)} onClose={() => setActiveGame(null)} />
         ) : activeGame ? (
           <GameHubPlayer game={activeGame} userEmail={user?.email ?? null} signedIn={Boolean(user)} onClose={() => setActiveGame(null)} />

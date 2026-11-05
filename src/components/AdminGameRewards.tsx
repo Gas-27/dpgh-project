@@ -84,7 +84,7 @@ function RewardRow({ setting }: { setting: GameRewardSetting }) {
           </div>
         )}
         <div className="space-y-1">
-          <Label htmlFor={`price-${setting.game_id}`}>Extra life (GH&#8373;)</Label>
+          <Label htmlFor={`price-${setting.game_id}`}>{setting.game_id === "archery" ? "Extra arrow / heart price (GH\u20B5)" : "Extra life (GH\u20B5)"}</Label>
           <Input id={`price-${setting.game_id}`} type="number" inputMode="decimal" min={0.5} max={500} step={0.5} value={price} onChange={(event) => setPrice(event.target.value)} className="w-28" />
         </div>
         <div className="flex items-center gap-2 pb-2">

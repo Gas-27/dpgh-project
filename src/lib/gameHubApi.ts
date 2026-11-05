@@ -262,6 +262,13 @@ export async function buyGameLife(runId: string): Promise<{ run: GameRun; balanc
   return { run: result.run, balance: Number(result.balance) };
 }
 
+export async function buyGameArrow(runId: string): Promise<{ run: GameRun; balance: number; arrows_bought: number }> {
+  const { data, error } = await db.rpc("gamehub_buy_arrow", { p_run_id: runId });
+  if (error) throw error;
+  const result = data as { run: GameRun; balance: number; arrows_bought: number };
+  return { run: result.run, balance: Number(result.balance), arrows_bought: Number(result.arrows_bought) };
+}
+
 export async function endGameRun(runId: string): Promise<GameRun> {
   const { data, error } = await db.rpc("gamehub_end_run", { p_run_id: runId });
   if (error) throw error;

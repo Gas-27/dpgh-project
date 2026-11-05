@@ -8,7 +8,7 @@ export type HubGame = {
   rating: number;
   image: string;
   stripName?: string;
-  native?: { src: string; targetLevel: number; timedMinutes?: number; cta?: string };
+  native?: { src: string; targetLevel: number; timedMinutes?: number; cta?: string; bridge?: "archery3d" };
 };
 
 export const tagClasses: Record<GameTag, string> = {
@@ -27,6 +27,7 @@ export const hubGames: HubGame[] = [
   { id: "fruits-slash", name: "Fruits Slash", tag: "Action", blurb: "Slice the fruits and dodge the bombs. Reach stage 12 to win free MTN 5GB data!", rating: 4.8, image: "/game-previews/fruits-slash.png", native: { src: "/games/fruits-slash.html", targetLevel: 12 } },
   { id: "rock-blast", name: "Rock Blast", tag: "Action", blurb: "Blast the bouncing rocks with your cannon. Reach stage 17 to win free MTN 5GB data!", rating: 4.7, image: "/game-previews/rock-blast.png", native: { src: "/games/rock-blast.html", targetLevel: 17 } },
   { id: "cut-score", name: "Cut & Score", tag: "Action", blurb: "Time your cut and score the perfect shot. Reach level 24 to win free MTN data!", rating: 4.6, image: "/game-previews/cut-score.png", native: { src: "/games/cut-score.html", targetLevel: 24 } },
+  { id: "archery", name: "Archery 3D", tag: "Action", blurb: "Aim, draw and release to hit the target. Clear stage 10 to win free MTN 5GB data!", rating: 4.8, image: img("aim-for-it"), native: { src: "/games/archery-3d.html", targetLevel: 10, bridge: "archery3d" } },
   { id: "aim-for-it", name: "Aim For It", tag: "Action", blurb: "Master the art of archery and hit bullseyes!", rating: 3.9, image: img("aim-for-it") },
   { id: "timer-challenge", name: "Timer Challenge", tag: "Action", blurb: "Stop the timer at exactly the right moment!", rating: 4.0, image: img("timer-challenge") },
   { id: "snake-game", name: "Snake Game", tag: "Strategy", blurb: "Grow your snake by eating food!", rating: 3.8, image: img("snake-game") },
