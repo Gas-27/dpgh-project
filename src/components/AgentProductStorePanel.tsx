@@ -15,7 +15,7 @@ import { uploadProductImage } from "@/lib/productImageUpload";
 import { Loader2, Plus, Trash2, Store, Wallet } from "lucide-react";
 
 type StoreKind = "customer" | "agent" | "subagent" | "subsubagent";
-type Product = { id: string; title: string; description: string; price: number; region?: string | null; image_urls: string[]; status: string; available: boolean; payment_mode?: "direct" | "whatsapp"; whatsapp_payment_number?: string | null; boost_global?: boolean; boost_global_expires_at?: string | null; boost_sitewide?: boolean; boost_sitewide_expires_at?: string | null };
+type Product = { id: string; created_at?: string; title: string; description: string; price: number; region?: string | null; image_urls: string[]; status: string; available: boolean; payment_mode?: "direct" | "whatsapp"; whatsapp_payment_number?: string | null; boost_global?: boolean; boost_global_expires_at?: string | null; boost_sitewide?: boolean; boost_sitewide_expires_at?: string | null };
 type PlanType = "weekly" | "monthly";
 
 const WEEKLY_PRICE = 5;
@@ -65,7 +65,7 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
     if (!storeId) return;
     setLoading(true);
     const [{ data: rows }, { data: entitlement }] = await Promise.all([
-      supabase.from("store_products").select("id,title,description,price,region,payment_mode,whatsapp_payment_number,image_urls,status,available,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at").eq("store_id", storeId).order("created_at", { ascending: false }),
+      supabase.from("store_products").select("id,created_at,title,description,price,region,payment_mode,whatsapp_payment_number,image_urls,status,available,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at").eq("store_id", storeId).order("created_at", { ascending: false }),
       supabase.from("store_product_entitlements").select("free_post_used,paid_post_limit,paid_post_expires_at,plan_type,auto_renew").eq("store_id", storeId).maybeSingle(),
     ]);
     const entitlementExpiresAt = entitlement?.paid_post_expires_at || null;
@@ -246,7 +246,7 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
     <Card><CardHeader><CardTitle>Your product posts</CardTitle></CardHeader><CardContent>{loading ? <Loader2 className="h-5 w-5 animate-spin" /> : products.length === 0 ? <p className="text-sm text-muted-foreground">No products posted yet.</p> : <div className="grid gap-3 md:grid-cols-2">{products.map(product => {
       const globalActive = product.boost_global && product.boost_global_expires_at && new Date(product.boost_global_expires_at) > new Date();
       const sitewideActive = product.boost_sitewide && product.boost_sitewide_expires_at && new Date(product.boost_sitewide_expires_at) > new Date();
-      return <div key={product.id} className="rounded-lg border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{product.title}</p><p className="text-sm text-muted-foreground">GHS {Number(product.price).toFixed(2)}</p></div><Badge variant={product.status === "active" ? "default" : "outline"}>{product.status}</Badge></div><p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
+      return <div key={product.id} className="rounded-lg border p-4"><div className="flex items-start justify-between gap-3"><div><p className="font-semibold">{product.title}</p><p className="text-sm text-muted-foreground">GHS {Number(product.price).toFixed(2)}</p>{product.created_at && <p className="text-xs text-muted-foreground">Posted {new Date(product.created_at).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" })}</p>}</div><Badge variant={product.status === "active" ? "default" : "outline"}>{product.status}</Badge></div><p className="mt-2 line-clamp-2 text-sm text-muted-foreground">{product.description}</p>
         <div className="mt-2 flex flex-wrap items-center gap-2">
           {globalActive && <Badge variant="secondary">Boosted globally until {new Date(product.boost_global_expires_at!).toLocaleDateString()}</Badge>}
           {sitewideActive && <Badge variant="secondary">Boosted sitewide until {new Date(product.boost_sitewide_expires_at!).toLocaleDateString()}</Badge>}
