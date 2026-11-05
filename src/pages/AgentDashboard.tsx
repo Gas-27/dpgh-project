@@ -614,6 +614,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
   // Tabs and menu state
   const [activeTab, setActiveTab] = useState("overview");
   const [afaTabActive, setAfaTabActive] = useState("register");
+  useEffect(() => { if (activeTab !== "afa") setAfaTabActive("register"); }, [activeTab]);
   const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities" | "bulk-sms">("cheap-data");
 
   // API Orders state
