@@ -123,6 +123,7 @@ const senderIdRules = (value: string, existing: string[]) => {
     { label: "Letters and numbers are allowed", ok: /[A-Za-z0-9]/.test(trimmed) },
     { label: "Cannot be only numbers", ok: trimmed.length > 0 && !/^\d+$/.test(trimmed.replace(/\s+/g, "")) },
     { label: "Spaces are permitted", ok: trimmed.length > 0 },
+    { label: "Must not contain the word \"DATA\" (MTN does not allow it)", ok: !/data/i.test(trimmed) },
     { label: "Must be unique", ok: trimmed.length > 0 && !existing.includes(trimmed.replace(/\s+/g, " ").toUpperCase()) },
   ];
 };
@@ -781,6 +782,9 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
               </div>
               <p className="text-xs text-muted-foreground">
                 {progress.waitSeconds > 0 ? `Pausing ${progress.waitSeconds}s to keep delivery steady, then continuing automatically.` : "Please keep this page open until sending finishes."}
+              </p>
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+                Do not refresh or close this page until sending is completed. Leaving now will stop the remaining messages from being sent.
               </p>
             </div>
           )}

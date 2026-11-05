@@ -15,6 +15,7 @@ import ApiExplainer from "@/components/ApiExplainer";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
 import PaymentVerifier from "@/components/PaymentVerifier";
   import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+  import WhatsAppChannelPopup from "@/components/WhatsAppChannelPopup";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
@@ -3518,6 +3519,7 @@ return (
       <PaymentVerifier />
 
       <WhatsAppFloatingButton />
+      <WhatsAppChannelPopup />
 
       <Footer />
       {/* Agent Upgrade Confirmation Modal */}

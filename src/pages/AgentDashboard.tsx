@@ -1,3 +1,5 @@
+import FlyerTabs from "@/components/FlyerExtras";
+import { overviewTabClass } from "@/lib/overviewTabStyles";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { supabase } from "@/integrations/supabase/client";
   import { debitOwnWallet, refundFailedOrder, transferToChild, newOrderId } from "@/lib/wallet";
@@ -46,6 +48,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import ChatBot from "@/components/ChatBot";
   import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+  import WhatsAppChannelPopup from "@/components/WhatsAppChannelPopup";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
@@ -610,7 +613,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
 
   // Tabs and menu state
   const [activeTab, setActiveTab] = useState("overview");
-  const [afaTabActive, setAfaTabActive] = useState("overview");
+  const [afaTabActive, setAfaTabActive] = useState("register");
   const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities" | "bulk-sms">("cheap-data");
 
   // API Orders state
@@ -2584,7 +2587,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
-  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa", label: "AFA Registration" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "flyer", label: "Flyer Generator" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} className={`rounded-lg border px-2 py-2 text-xs font-semibold transition hover:-translate-y-0.5 ${["border-cyan-600 bg-cyan-50 text-cyan-800", "border-amber-400/40 bg-amber-400/10 text-amber-800", "border-fuchsia-400/40 bg-fuchsia-400/10 text-fuchsia-200", "border-emerald-400/40 bg-emerald-400/10 text-emerald-200", "border-violet-400/40 bg-violet-400/10 text-violet-200", "border-orange-400/40 bg-orange-400/10 text-orange-200"][index % 6]}`}>{selected ? "Overview" : item.label}</button>; })}</div>
+  <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa", label: "AFA Registration" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Send SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Services" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "flyer", label: "Flyer Generator" }].map((item, index) => { const selected = activeTab === item.id; return <button key={item.id} type="button" onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} className={overviewTabClass(index)}>{selected ? "Overview" : item.label}</button>; })}</div>
   
 
   {/* ============================= DOMAINS ============================= */}
@@ -3233,7 +3236,7 @@ return (
 
           {/* ============================= FLYER GENERATOR ============================= */}
 <TabsContent value="flyer" className="mt-0">
-  <DynamicFlyer storeName={store?.store_name || ""} accessCode={store?.access_code || store?.topup_reference || ""} storeUrl={storeUrl} contactNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} packages={{ mtn: getMtnPkgs().map(p => ({ size_gb: p.size, price: p.price })), telecel: getTelecelPkgs().map(p => ({ size_gb: p.size, price: p.price })), airteltigo: getAirtelPkgs().map(p => ({ size_gb: p.size, price: p.price })) }} />
+  <FlyerTabs storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} storeId={store?.id}><DynamicFlyer storeName={store?.store_name || ""} accessCode={store?.access_code || store?.topup_reference || ""} storeUrl={storeUrl} contactNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} packages={{ mtn: getMtnPkgs().map(p => ({ size_gb: p.size, price: p.price })), telecel: getTelecelPkgs().map(p => ({ size_gb: p.size, price: p.price })), airteltigo: getAirtelPkgs().map(p => ({ size_gb: p.size, price: p.price })) }} /></FlyerTabs>
   <div className="hidden space-y-4">
               <Card className="border-border">
                 <CardHeader className="pb-3"><CardTitle className="font-display flex items-center gap-2"><Image className="h-5 w-5 text-primary" /> Flyer Generator</CardTitle><p className="text-sm text-muted-foreground">Live prices auto-populate. Customise colours, edit share message, then download or share directly to WhatsApp.</p></CardHeader>
@@ -5435,6 +5438,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
       </Dialog>
       
       <WhatsAppFloatingButton />
+      <WhatsAppChannelPopup />
       <ChatBot page="agent-dashboard" />
 
       <SourceInfoDialog

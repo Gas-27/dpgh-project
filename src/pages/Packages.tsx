@@ -13,6 +13,7 @@ import PublicProductsSection from "@/components/PublicProductsSection";
 import PaymentDialog from "@/components/PaymentDialog";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
+import WhatsAppChannelPopup from "@/components/WhatsAppChannelPopup";
 import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import DigitalServicesCatalog, { Service } from "@/components/DigitalServicesCatalog";
 import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
@@ -2000,6 +2001,7 @@ const searchOrders = async (input?: string) => {
       </Suspense>
 
       {!showSpinWheel && <WhatsAppFloatingButton />}
+      <WhatsAppChannelPopup />
 
 
 
