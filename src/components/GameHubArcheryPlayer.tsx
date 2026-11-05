@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Gift, Heart, Share2, Wallet, X } from "lucide-react";
 import ShareScoreButtons from "@/components/ShareScoreButtons";
+import GameHubProductAd from "@/components/GameHubProductAd";
+import type { GameHubAd } from "@/lib/gameHubAds";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import { walletHintFromPath } from "@/components/GameHubRewardPlayer";
 import { useToast } from "@/hooks/use-toast";
@@ -16,6 +18,7 @@ import {
   fetchGameWalletBalance,
   loseGameLife,
   startGameRun,
+  submitGuestScore,
   type GameRewardSetting,
   type GameRun,
 } from "@/lib/gameHubApi";
@@ -36,6 +39,8 @@ function formatCedis(value: number | null): string {
 
 export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: ArcheryPlayerProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const guestSessionRef = useRef(`guest-${crypto.randomUUID()}`);
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const runRef = useRef<GameRun | null>(null);
   const queueRef = useRef<Promise<void>>(Promise.resolve());
@@ -54,6 +59,15 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
   const [busy, setBusy] = useState(false);
   const [phone, setPhone] = useState("");
   const [claimedPhone, setClaimedPhone] = useState<string | null>(null);
+  const [activeAd, setActiveAd] = useState<GameHubAd | null>(null);
+
+  const { data: gameHubAds } = useQuery({
+    queryKey: ["game-hub-ads"],
+    queryFn: async () => {
+      const { fetchGameHubAds } = await import("@/lib/gameHubAds");
+      return fetchGameHubAds();
+    },
+  });
 
   const target = run?.target ?? rule?.target_level ?? game.native?.targetLevel ?? 10;
   const rewardGb = run?.reward_gb ?? rule?.reward_gb ?? 5;
@@ -74,6 +88,18 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
       return html.includes('id="root"') ? ("missing" as const) : ("ready" as const);
     },
   });
+
+  const submitGuest = useCallback((score: number) => {
+    if (score <= 0) return;
+    void submitGuestScore(game.id, guestSessionRef.current, score).then(() => {
+      void queryClient.invalidateQueries({ queryKey: ["gamehub-leaderboard"] });
+    }).catch(() => undefined);
+  }, [game.id, queryClient]);
+
+  const showGuestAd = useCallback(() => {
+    const ad = gameHubAds?.[0];
+    if (ad) setActiveAd(ad);
+  }, [gameHubAds]);
 
   const applyRun = useCallback((next: GameRun) => {
     runRef.current = next;
@@ -131,6 +157,14 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
           try {
             if (type === "start") {
               if (!signedIn) {
+                try {
+                  const guestServerRun = await startGameRun(game.id, hintRef.current, false);
+                  applyRun(guestServerRun);
+                  reply(id, { run: guestServerRun });
+                  return;
+                } catch {
+                  // Fall back to the same anonymous local-play mode used by the other games.
+                }
                 const guestRun: GameRun = {
                   run_id: "guest",
                   game_id: game.id,
@@ -157,10 +191,6 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
               return;
             }
             if (type === "claim") {
-              if (!signedIn) {
-                reply(id, { error: "Sign in to claim free data." });
-                return;
-              }
               const current = requireRun(id);
               if (!current) return;
               pendingClaimRef.current = id ?? null;
@@ -176,6 +206,7 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
                 const clearedLevel = Number(data.level);
                 const next = { ...current, level: Math.max(current.level, clearedLevel + 1), status: clearedLevel >= current.target ? "cleared" : "active" } as GameRun;
                 applyRun(next);
+                submitGuest(Math.min(clearedLevel, current.target) * 100);
                 reply(id, { ok: true, reason: null, run: next });
                 return;
               }
@@ -184,7 +215,8 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
               reply(id, { ok: result.ok, reason: result.reason, run: result.run });
             } else if (type === "buy_arrow") {
               if (!signedIn) {
-                reply(id, { error: "Sign in to buy extra arrows." });
+                showGuestAd();
+                reply(id, { error: "Guest play has no paid arrows. Watch the ad and continue playing." });
                 return;
               }
               const result = await buyGameArrow(current.run_id);
@@ -192,12 +224,20 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
               setBalance(result.balance);
               reply(id, { run: result.run, balance: result.balance });
             } else if (type === "give_up") {
+              if (!signedIn) {
+                const next = { ...current, lives: Math.max(0, current.lives - 1), status: current.lives <= 1 ? "active" : current.status } as GameRun;
+                applyRun(next);
+                showGuestAd();
+                reply(id, { run: next });
+                return;
+              }
               const next = await loseGameLife(current.run_id);
               applyRun(next);
               reply(id, { run: next });
             } else if (type === "buy_life") {
               if (!signedIn) {
-                reply(id, { error: "Sign in to buy an extra heart." });
+                showGuestAd();
+                reply(id, { error: "Guest play has no paid hearts. Watch the ad and continue playing." });
                 return;
               }
               const result = await buyGameLife(current.run_id);
@@ -218,7 +258,7 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [applyRun, game.id, refreshBalance, reply]);
+  }, [applyRun, game.id, refreshBalance, reply, showGuestAd, signedIn, submitGuest, target, rewardGb, rule?.enabled]);
 
   const finishClaim = useCallback(
     (next?: GameRun) => {
@@ -299,6 +339,17 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
         ) : (
           <iframe key={frameKey} ref={iframeRef} title={game.name} src={gameSrc} allow="autoplay; fullscreen" className="h-full w-full border-0 bg-black" />
         )}
+
+        {activeAd ? (
+          <GameHubProductAd
+            ad={activeAd}
+            onOpen={(ad) => {
+              window.open(ad.url, "_blank", "noopener,noreferrer");
+              setActiveAd(null);
+            }}
+            onClose={() => setActiveAd(null)}
+          />
+        ) : null}
 
         {rulesOpen ? (
           <div role="dialog" aria-modal="true" aria-labelledby="archery-rules-title" className="absolute inset-0 z-40 flex items-center justify-center bg-black/70 p-4">
