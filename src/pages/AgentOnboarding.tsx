@@ -195,6 +195,9 @@ const AgentOnboarding = () => {
           </div>
           <CardTitle className="font-display">Set Up Your Store</CardTitle>
           <CardDescription>Fill in your store details to get started as an agent</CardDescription>
+          <p className="mt-3 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-left text-sm text-muted-foreground">
+            After you submit, you will pay the <span className="font-semibold text-foreground">one-time agent fee</span> directly through Paystack to get your store approved. Only continue if you are ready to pay now.
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { ArrowLeft, Gift, Heart, LogIn, Share2, Wallet, X } from "lucide-react";
 import ShareScoreButtons from "@/components/ShareScoreButtons";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
@@ -58,6 +59,21 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
   const rewardGb = run?.reward_gb ?? rule?.reward_gb ?? 5;
   const price = run?.life_price ?? rule?.life_price ?? 4;
   const gameSrc = `${game.native?.src ?? ""}?hub=1&k=${frameKey}`;
+
+  // The host rewrites unknown paths to the app shell (HTTP 200), so a missing game file
+  // only shows up as the app's own HTML coming back instead of the game page.
+  const { data: gameFileState, isLoading: checkingGameFile } = useQuery({
+    queryKey: ["archery-game-file", game.native?.src],
+    enabled: signedIn,
+    retry: false,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const res = await fetch(game.native?.src ?? "", { cache: "no-store" });
+      if (!res.ok) return "missing" as const;
+      const html = await res.text();
+      return html.includes('id="root"') ? ("missing" as const) : ("ready" as const);
+    },
+  });
 
   const applyRun = useCallback((next: GameRun) => {
     runRef.current = next;
@@ -238,6 +254,16 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
             <LogIn className="h-8 w-8 text-violet-300" aria-hidden="true" />
             <p className="text-lg font-bold">Sign in to play Archery 3D</p>
             <p className="max-w-xs text-sm text-violet-200">Free MTN {rewardGb}GB rewards are verified and sent to signed-in accounts. Log in from your dashboard, then come back to play.</p>
+            <button type="button" onClick={onClose} className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold">
+              Back to Game Hub
+            </button>
+          </div>
+        ) : checkingGameFile ? (
+          <div className="flex h-full items-center justify-center text-sm text-violet-200" role="status">Loading game...</div>
+        ) : gameFileState === "missing" ? (
+          <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white">
+            <p className="text-lg font-bold">Archery 3D is being set up</p>
+            <p className="max-w-xs text-sm text-violet-200">The game files are not published yet. Please check back shortly or try another game.</p>
             <button type="button" onClick={onClose} className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold">
               Back to Game Hub
             </button>

@@ -3532,23 +3532,37 @@ return (
       {/* Agent Upgrade Confirmation Modal */}
       {showUpgradeConfirmation && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-md">
+          <Card className="w-full max-w-md max-h-[90vh] overflow-y-auto">
             <CardHeader>
               <CardTitle className="text-2xl">Ready to Become an Agent?</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="bg-red-500/10 border border-red-500/30 rounded-lg p-4 space-y-3">
+              <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/10 p-4 text-center">
+                <p className="text-xs uppercase tracking-wide text-muted-foreground">Agent registration fee</p>
+                <p className="mt-1 text-3xl font-bold text-cyan-400">
+                  {registrationFee > 0 ? `GHC ${Number(registrationFee).toFixed(2)}` : "Loading..."}
+                </p>
+                <p className="mt-1 text-xs font-semibold text-foreground">One-time payment. You never pay it again.</p>
+              </div>
+
+              <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-3">
+                <p className="text-sm font-semibold text-foreground">What happens when you become an agent</p>
+                <ul className="space-y-2 text-sm text-muted-foreground list-disc list-inside">
+                  <li>Your orders, wallet balance and account details are <span className="font-semibold text-foreground">moved to your new agent account</span> once it is approved. Nothing is lost.</li>
+                  <li>You set up your own store, choose your prices and earn on every sale.</li>
+                  <li>Your account becomes an agent account and cannot be switched back to a user account.</li>
+                </ul>
+              </div>
+
+              <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-4">
                 <div className="flex gap-2 items-start">
-                  <AlertCircle className="h-5 w-5 text-red-500 flex-shrink-0 mt-0.5" />
+                  <AlertCircle className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
                   <div className="text-sm space-y-2">
-                    <p className="font-semibold text-foreground">Important Information:</p>
+                    <p className="font-semibold text-foreground">Only continue if you are ready to pay now</p>
                     <ul className="space-y-2 text-muted-foreground list-disc list-inside">
-                      <li>Your current User account will be <span className="font-semibold text-red-400">permanently closed</span> when you upgrade to Agent</li>
-                      <li><span className="font-semibold text-red-400">Any money remaining in your wallet will be lost</span> when this account is closed</li>
-                      <li>Please <span className="font-semibold text-foreground">withdraw or spend all your wallet balance</span> before proceeding</li>
-                      <li>Current wallet balance: <span className="font-semibold text-cyan-400">GHC {Number(normalWallet).toFixed(2)}</span></li>
-                      <li>After upgrading, you cannot go back to a User account - you will become an Agent</li>
-                      <li>You will complete agent setup and proceed to payment to activate your agent account</li>
+                      <li>After you fill in your store details, you pay the fee directly through <span className="font-semibold text-foreground">Paystack</span> (card or mobile money) on the pay-to-approve page.</li>
+                      <li>Your store is approved as soon as the payment goes through.</li>
+                      <li>If you are not ready to pay yet, tap Cancel and come back later.</li>
                     </ul>
                   </div>
                 </div>
@@ -3561,7 +3575,7 @@ return (
                     id="agree-terms"
                     className="rounded border-border"
                   />
-                  <span className="text-sm text-muted-foreground">I understand that my account will be closed and I have cleared my wallet</span>
+                  <span className="text-sm text-muted-foreground">I understand the one-time agent fee{registrationFee > 0 ? ` of GHC ${Number(registrationFee).toFixed(2)}` : ""} and I am ready to pay through Paystack now</span>
                 </label>
               </div>
 
@@ -3577,7 +3591,7 @@ return (
                   onClick={() => {
                     const checkbox = document.getElementById("agree-terms") as HTMLInputElement;
                     if (!checkbox?.checked) {
-                      toast({ title: "Please confirm you understand the terms", variant: "destructive" });
+                      toast({ title: "Please confirm you are ready to pay the one-time agent fee", variant: "destructive" });
                       return;
                     }
                     setShowUpgradeConfirmation(false);
@@ -3585,7 +3599,7 @@ return (
                   }}
                   className="flex-1 bg-purple-600 hover:bg-purple-700"
                 >
-                  I Understand - Proceed
+                  I&apos;m Ready - Continue
                 </Button>
               </div>
             </CardContent>

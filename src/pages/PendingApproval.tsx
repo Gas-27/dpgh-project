@@ -237,6 +237,7 @@ const PendingApproval = () => {
           <div className="text-center py-4">
             <p className="text-sm text-muted-foreground mb-2">Registration Fee</p>
             <span className="text-4xl font-bold text-primary">GHC {registrationFee.toFixed(2)}</span>
+            <p className="mt-2 text-sm font-semibold text-foreground">One-time payment. You never pay this fee again.</p>
           </div>
 
           {/* Paystack Payment Button */}
