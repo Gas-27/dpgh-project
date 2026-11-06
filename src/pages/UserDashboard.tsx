@@ -56,6 +56,7 @@ import PromoCodesPanel from "@/components/PromoCodesPanel";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
+import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import NotificationPopup from "@/components/NotificationPopup";
 import PrivateShareMySubscriptions from "@/components/PrivateShareMySubscriptions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -1494,6 +1495,8 @@ case "api-key":
           <DeliveryProgressCard selectedNetwork={networkFilter} />
 
           <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
+
+          <ScheduleDataPurchase ownerType="customer" ownerId={effectiveUserId} variant="bar" />
 
           {/* Packages Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">

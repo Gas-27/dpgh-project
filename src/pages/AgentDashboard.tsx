@@ -75,6 +75,7 @@ import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
+import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import DomainDashboardPanel from "@/components/DomainDashboardPanel";
 import ReportCenter from "@/components/ReportCenter";
@@ -155,6 +156,7 @@ const menuItems = [
   { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
   { id: "sub-subagents", label: "Sub-Subagents", icon: Users },
   { id: "afa", label: "AFA Bundles", icon: Zap },
+  { id: "flyer", label: "Flyer Generator", icon: Image },
   { id: "marketing", label: "Marketing", icon: Share2 },
   // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
@@ -2638,7 +2640,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
-  <div className="grid grid-cols-3 gap-2 sm:gap-3">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa", label: "AFA Registration" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Bulk SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Utilities" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "marketing", label: "Marketing" }].map((item) => { const selected = activeTab === item.id; return <OverviewPill key={item.id} label={item.label} text={selected ? "Overview" : item.label} onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} />; })}</div>
+  <div className="grid grid-cols-3 gap-2 sm:gap-3">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa", label: "AFA Registration" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Bulk SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Utilities" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "flyer", label: "Flyer Generator" }, { id: "marketing", label: "Marketing" }].map((item) => { const selected = activeTab === item.id; return <OverviewPill key={item.id} label={item.label} text={selected ? "Overview" : item.label} onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} />; })}</div>
   
 
   {/* ============================= DOMAINS ============================= */}
@@ -2953,6 +2955,7 @@ return (
             </Card>)}
             <DeliveryProgressCard selectedNetwork={networkFilter} />
   <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
+  <ScheduleDataPurchase ownerType="agent" ownerId={store?.id} variant="bar" />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {packages.filter(p => {
                 if (false && networkFilter === "mtn_mashup") {
@@ -3290,8 +3293,12 @@ return (
           </TabsContent>
 
           {/* ============================= FLYER GENERATOR ============================= */}
+<TabsContent value="flyer" className="mt-0">
+
+  <FlyerTabs storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} storeId={store?.id} accessCode={store?.access_code || store?.topup_reference || ""} afaPrice={(store as any)?.afa_bundle_price}><DynamicFlyer storeName={store?.store_name || ""} accessCode={store?.access_code || store?.topup_reference || ""} storeUrl={storeUrl} contactNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} packages={{ mtn: getMtnPkgs().map(p => ({ size_gb: p.size, price: p.price })), telecel: getTelecelPkgs().map(p => ({ size_gb: p.size, price: p.price })), airteltigo: getAirtelPkgs().map(p => ({ size_gb: p.size, price: p.price })) }} /></FlyerTabs>
+</TabsContent>
 <TabsContent value="marketing" className="mt-0">
-  <MarketingHub storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber="" storeId={store?.id}><FlyerTabs storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} storeId={store?.id} accessCode={store?.access_code || store?.topup_reference || ""} afaPrice={(store as any)?.afa_bundle_price}><DynamicFlyer storeName={store?.store_name || ""} accessCode={store?.access_code || store?.topup_reference || ""} storeUrl={storeUrl} contactNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} packages={{ mtn: getMtnPkgs().map(p => ({ size_gb: p.size, price: p.price })), telecel: getTelecelPkgs().map(p => ({ size_gb: p.size, price: p.price })), airteltigo: getAirtelPkgs().map(p => ({ size_gb: p.size, price: p.price })) }} /></FlyerTabs></MarketingHub>
+  <MarketingHub storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber="" storeId={store?.id} />
   <div className="hidden space-y-4">
               <Card className="border-border">
                 <CardHeader className="pb-3"><CardTitle className="font-display flex items-center gap-2"><Image className="h-5 w-5 text-primary" /> Flyer Generator</CardTitle><p className="text-sm text-muted-foreground">Live prices auto-populate. Customise colours, edit share message, then download or share directly to WhatsApp.</p></CardHeader>

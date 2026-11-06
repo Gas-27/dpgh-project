@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, Pause, Play, Trash2 } from "lucide-react";
+import { ArrowRight, CalendarClock, Pause, Play, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type Props = { ownerType: string; ownerId?: string };
+type Props = { ownerType: string; ownerId?: string; variant?: "button" | "bar" };
 
 type Pkg = { id: string; network: string; size_gb: number; price: number; agent_price: number | null };
 type Schedule = {
@@ -42,7 +42,7 @@ function normalizePackageNetwork(network: string) {
   return ["mtn", "mtn_express", "mtn_mashup", "mashup"].includes(value) ? "mtn" : value;
 }
 
-export default function ScheduleDataPurchase({ ownerType, ownerId }: Props) {
+export default function ScheduleDataPurchase({ ownerType, ownerId, variant = "button" }: Props) {
   const supported = (ownerType === "customer" || ownerType === "agent") && !!ownerId;
   const [open, setOpen] = useState(false);
   const [packages, setPackages] = useState<Pkg[]>([]);
@@ -143,10 +143,25 @@ export default function ScheduleDataPurchase({ ownerType, ownerId }: Props) {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button type="button" variant="outline" className="w-full gap-2 sm:w-auto">
-          <CalendarClock className="h-4 w-4" />
-          Schedule data purchase
-        </Button>
+        {variant === "bar" ? (
+          <button
+            type="button"
+            className="flex w-full items-center justify-between gap-3 rounded-full border-2 border-primary/60 bg-primary/15 px-4 py-2 text-left transition hover:bg-primary/25 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <CalendarClock className="h-6 w-6 shrink-0 text-foreground" aria-hidden />
+            <span className="flex-1 text-center text-sm font-semibold text-foreground">
+              Schedule a Data <span className="underline">Purchase</span> <span className="font-normal">(Optional)</span>
+            </span>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </span>
+          </button>
+        ) : (
+          <Button type="button" variant="outline" className="w-full gap-2 sm:w-auto">
+            <CalendarClock className="h-4 w-4" />
+            Schedule data purchase
+          </Button>
+        )}
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>

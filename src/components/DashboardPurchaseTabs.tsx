@@ -9,7 +9,6 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
-import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 
 type DashboardTab = "instant" | "services" | "subscription" | "subscription-price" | "social-boost";
 
@@ -75,7 +74,6 @@ export default function DashboardPurchaseTabs({ walletBalance, ownerType, ownerI
             <DigitalServicesCatalog agentStoreId={ownerId} onBuy={setService} />
             <ServicePurchaseDialog service={service} ownerType={ownerType} ownerId={ownerId} onOpenChange={(open) => { if (!open) setService(null); }} />
           </> : <div className="space-y-4">
-            <div className="flex justify-end"><ScheduleDataPurchase ownerType={ownerType} ownerId={ownerId} /></div>
             <HubtelPurchasePanel mode="instant" walletOnly walletBalance={wallet} ownerType={ownerType} ownerId={ownerId} />
           </div>}
         </TabsContent>
