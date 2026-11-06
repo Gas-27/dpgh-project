@@ -1,4 +1,5 @@
 import FlyerTabs from "@/components/FlyerExtras";
+import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { supabase } from "@/integrations/supabase/client";
@@ -154,7 +155,7 @@ const menuItems = [
   { id: "subagent-prices", label: "Subagent Prices", icon: CreditCard },
   { id: "sub-subagents", label: "Sub-Subagents", icon: Users },
   { id: "afa", label: "AFA Bundles", icon: Zap },
-  { id: "flyer", label: "Flyer Generator", icon: Image },
+  { id: "marketing", label: "Marketing", icon: Share2 },
   // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
   { id: "withdraw", label: "Withdraw", icon: ArrowDownToLine },
@@ -647,7 +648,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
     setFlyerScale(cw / FLYER_W);
   }, []);
   useEffect(() => {
-    if (activeTab !== "flyer") return;
+    if (activeTab !== "marketing") return;
     const t = setTimeout(recalcScale, 50);
     window.addEventListener("resize", recalcScale);
     return () => { clearTimeout(t); window.removeEventListener("resize", recalcScale); };
@@ -2023,7 +2024,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
   };
 
   useEffect(() => {
-    if (activeTab !== "flyer" || !store?.id || packages.length === 0) return;
+    if (activeTab !== "marketing" || !store?.id || packages.length === 0) return;
     let cancelled = false;
     generatePng().then((url) => { if (!cancelled) setFlyerPreviewUrl(url); }).catch((error) => console.error("[v0] Flyer preview generation failed:", error));
     return () => { cancelled = true; };
@@ -2637,7 +2638,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
-  <div className="grid grid-cols-3 gap-2 sm:gap-3">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa", label: "AFA Registration" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Bulk SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Utilities" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "flyer", label: "Flyer Generator" }].map((item) => { const selected = activeTab === item.id; return <OverviewPill key={item.id} label={item.label} text={selected ? "Overview" : item.label} onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} />; })}</div>
+  <div className="grid grid-cols-3 gap-2 sm:gap-3">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa", label: "AFA Registration" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Bulk SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Utilities" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "marketing", label: "Marketing" }].map((item) => { const selected = activeTab === item.id; return <OverviewPill key={item.id} label={item.label} text={selected ? "Overview" : item.label} onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} />; })}</div>
   
 
   {/* ============================= DOMAINS ============================= */}
@@ -3289,8 +3290,8 @@ return (
           </TabsContent>
 
           {/* ============================= FLYER GENERATOR ============================= */}
-<TabsContent value="flyer" className="mt-0">
-  <FlyerTabs storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} storeId={store?.id} accessCode={store?.access_code || store?.topup_reference || ""} afaPrice={(store as any)?.afa_bundle_price}><DynamicFlyer storeName={store?.store_name || ""} accessCode={store?.access_code || store?.topup_reference || ""} storeUrl={storeUrl} contactNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} packages={{ mtn: getMtnPkgs().map(p => ({ size_gb: p.size, price: p.price })), telecel: getTelecelPkgs().map(p => ({ size_gb: p.size, price: p.price })), airteltigo: getAirtelPkgs().map(p => ({ size_gb: p.size, price: p.price })) }} /></FlyerTabs>
+<TabsContent value="marketing" className="mt-0">
+  <MarketingHub storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber="" storeId={store?.id}><FlyerTabs storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} storeId={store?.id} accessCode={store?.access_code || store?.topup_reference || ""} afaPrice={(store as any)?.afa_bundle_price}><DynamicFlyer storeName={store?.store_name || ""} accessCode={store?.access_code || store?.topup_reference || ""} storeUrl={storeUrl} contactNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} packages={{ mtn: getMtnPkgs().map(p => ({ size_gb: p.size, price: p.price })), telecel: getTelecelPkgs().map(p => ({ size_gb: p.size, price: p.price })), airteltigo: getAirtelPkgs().map(p => ({ size_gb: p.size, price: p.price })) }} /></FlyerTabs></MarketingHub>
   <div className="hidden space-y-4">
               <Card className="border-border">
                 <CardHeader className="pb-3"><CardTitle className="font-display flex items-center gap-2"><Image className="h-5 w-5 text-primary" /> Flyer Generator</CardTitle><p className="text-sm text-muted-foreground">Live prices auto-populate. Customise colours, edit share message, then download or share directly to WhatsApp.</p></CardHeader>

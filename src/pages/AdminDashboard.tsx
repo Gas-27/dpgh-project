@@ -51,6 +51,7 @@ import AdminAFABundleManager from "@/components/AdminAFABundleManager";
 import AdminAFABundleRegistrations from "@/components/AdminAFABundleRegistrations";
 import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminGameHubVideos from "@/components/AdminGameHubVideos";
+import AdminMarketing from "@/components/AdminMarketing";
 import AdminGameRewards from "@/components/AdminGameRewards";
 import AdminGameLeaderboard from "@/components/AdminGameLeaderboard";
 import AdminGameHubWins from "@/components/AdminGameHubWins";
@@ -2840,6 +2841,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>
   <TabsTrigger value="social-boost" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Social Boost</TabsTrigger>
   <TabsTrigger value="promo-codes" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Promo Codes</TabsTrigger>
+  <TabsTrigger value="marketing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Marketing</TabsTrigger>
   <TabsTrigger value="gamehub-videos" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Gift className="h-3 w-3 md:h-4 md:w-4" /> Game Hub Videos</TabsTrigger>
                 <TabsTrigger value="gamehub-rewards" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Game Hub Games</TabsTrigger>
   <TabsTrigger value="gamehub-leaderboard" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Game Hub Leaderboard</TabsTrigger>
@@ -2895,6 +2897,7 @@ const AdminDashboard = () => {
 
   <TabsContent value="social-boost" className="space-y-6"><AdminSocialBoostProviders /><AdminSocialBoostPricing /></TabsContent>
   <TabsContent value="promo-codes" className="space-y-6"><PromoCodesPanel walletBalance={0} adminMode /></TabsContent>
+  <TabsContent value="marketing" className="space-y-6"><AdminMarketing /></TabsContent>
   <TabsContent value="gamehub-videos" className="space-y-6"><AdminGameHubVideos /></TabsContent>
                 <TabsContent value="gamehub-rewards" className="space-y-6"><AdminGameRewards /></TabsContent>
   <TabsContent value="gamehub-leaderboard" className="space-y-6"><AdminGameLeaderboard /></TabsContent>

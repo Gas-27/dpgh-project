@@ -1,4 +1,5 @@
 import FlyerTabs from "@/components/FlyerExtras";
+import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
@@ -2241,7 +2242,7 @@ const handleSaveStore = async () => {
     { id: "afa-pricing", label: "AFA Pricing", icon: Zap },
     { id: "afa-registrations", label: "AFA Registrations", icon: ClipboardList },
     { id: "afa-reg-status", label: "Registration Status", icon: Search },
-    { id: "flyer", label: "Flyer Generator", icon: Image },
+  { id: "marketing", label: "Marketing", icon: Share2 },
     // COMMENTED OUT: mashup packages deactivated
   // { id: "mashup-flyer", label: "MTN Mashup Flyer", icon: Zap },
     { id: "appearance", label: "Appearance", icon: Palette },
@@ -2492,7 +2493,7 @@ return (
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="hidden" />
-          <div className="grid grid-cols-3 gap-2 sm:gap-3">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa-registrations", label: "AFA Registration" }, { id: "sub-subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Bulk SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Utilities" }, { id: "social-boost", label: "Social Boost" }, { id: "sub-subagent-pricing", label: "Subagent Pricing" }, { id: "flyer", label: "Flyer Generator" }].map((item) => { const selected = activeTab === item.id; return <OverviewPill key={item.id} label={item.label} text={selected ? "Overview" : item.label} onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} />; })}</div>
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa-registrations", label: "AFA Registration" }, { id: "sub-subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Bulk SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Utilities" }, { id: "social-boost", label: "Social Boost" }, { id: "sub-subagent-pricing", label: "Subagent Pricing" }, { id: "marketing", label: "Marketing" }].map((item) => { const selected = activeTab === item.id; return <OverviewPill key={item.id} label={item.label} text={selected ? "Overview" : item.label} onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} />; })}</div>
           <TabsContent value="domains" className="mt-0"><DomainDashboardPanel walletBalance={Number(subagentStore?.wallet_balance ?? 0)} walletLabel="Wallet" agentStoreId={subagentStore?.id ?? null} storeKind="subagent" /></TabsContent>
           <TabsContent value="products" className="mt-0"><AgentProductStorePanel storeId={subagentStore?.id} storeKind="subagent" walletBalance={Number(subagentStore?.wallet_balance ?? 0)} onWalletBalanceChange={(wallet_balance) => setSubagentStore((current) => current ? { ...current, wallet_balance } : current)} /></TabsContent>
           <TabsContent value="instant-data" className="-mx-8 sm:mx-0 mt-0"><DashboardPurchaseTabs walletBalance={Number(subagentStore?.wallet_balance ?? 0)} ownerType="subagent" ownerId={subagentStore?.id} canSetPrices initialTab="instant" onMaintenanceReturn={() => setActiveTab("overview")} /></TabsContent>
@@ -4171,9 +4172,9 @@ handleMobileNumberChange(digits);
         </TabsContent>
 
           {/* FLYER GENERATOR */}
-        <TabsContent value="flyer" className="mt-0 space-y-6">
+        <TabsContent value="marketing" className="mt-0 space-y-6">
             {subagentStore && (
-              <FlyerTabs storeName={subagentStore.store_name} storeUrl={storeUrl} supportNumber={subagentStore.support_number || subagentStore.phone_number || subagentStore.whatsapp_number || ""} storeId={subagentStore.id} accessCode={subagentStore.access_code || subagentStore.topup_reference || ""}><DynamicFlyer
+              <MarketingHub storeName={subagentStore.store_name} storeUrl={storeUrl} supportNumber="" storeId={subagentStore.id}><FlyerTabs storeName={subagentStore.store_name} storeUrl={storeUrl} supportNumber={subagentStore.support_number || subagentStore.phone_number || subagentStore.whatsapp_number || ""} storeId={subagentStore.id} accessCode={subagentStore.access_code || subagentStore.topup_reference || ""}><DynamicFlyer
                 storeName={subagentStore.store_name}
                 accessCode={subagentStore.access_code || subagentStore.topup_reference || ""}
   storeUrl={storeUrl}
@@ -4183,7 +4184,7 @@ handleMobileNumberChange(digits);
                   telecel: packages.filter((p: any) => p.network === "telecel" && p.active !== false).map((p: any) => ({ size_gb: Number(p.size_gb), price: Number(subagentPrices[p.id] ?? p.agent_price ?? p.price) })),
                   airteltigo: packages.filter((p: any) => ["airteltigo", "atbigtime", "atbigshare"].includes(p.network) && p.active !== false).map((p: any) => ({ size_gb: Number(p.size_gb), price: Number(subagentPrices[p.id] ?? p.agent_price ?? p.price) })),
                 }}
-              /></FlyerTabs>
+              /></FlyerTabs></MarketingHub>
             )}
         </TabsContent>
 

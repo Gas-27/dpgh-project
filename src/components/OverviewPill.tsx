@@ -1,6 +1,6 @@
 import type { CSSProperties, ReactNode } from "react";
 import {
-  Bell, CalendarDays, Code2, Droplets, Gamepad2, Globe, HandCoins, MessagesSquare, Package,
+  Bell, CalendarDays, Code2, Droplets, Gamepad2, Globe, HandCoins, Megaphone, MessagesSquare, Package,
   Palette, RadioTower, Receipt, Rocket, ShoppingCart, Tag, Tv, Users, Wallet, Zap,
 } from "lucide-react";
 
@@ -13,6 +13,7 @@ const VipBadge = () => (
 const icon = "h-4 w-4 shrink-0 sm:h-6 sm:w-6";
 
 const THEMES: Record<string, PillTheme> = {
+  Marketing: { background: "linear-gradient(90deg,#be185d,#f43f5e)", color: "#ffe4ec", border: "#fb7185", glow: "#fb7185", icon: <Megaphone className={icon} /> },
   GameHub: { background: "linear-gradient(90deg,#14a8f5,#00f0e6)", color: "#0b3358", border: "#22d3ee", glow: "#00e5ff", icon: <Gamepad2 className={icon} fill="currentColor" /> },
   "Buy Data": { background: "linear-gradient(90deg,#7a1c05,#a83c00)", color: "#ff8a1f", border: "#ff6a00", glow: "#ff6a00", icon: <RadioTower className={icon} /> },
   "Promo Codes": { background: "linear-gradient(90deg,#7b1fa2,#a21caf)", color: "#f6d6ff", border: "#e040fb", glow: "#e040fb", icon: <Tag className={icon} fill="currentColor" /> },
