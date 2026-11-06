@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { Check, Crown, Gift, Globe, Headphones, Search, ShieldCheck, ShoppingCart, Star, Tv, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { FlyerFrame, slug, useQrDataUrl, type StoreInfo } from "@/components/FlyerShared";
+import { FlyerFrame, slug, ussdMessageLines, useQrDataUrl, type StoreInfo } from "@/components/FlyerShared";
 import whatsapp from "@/assets/brands/whatsapp.svg";
 import netflix from "@/assets/brands/netflix.svg";
 import spotify from "@/assets/brands/spotify.svg";
@@ -73,7 +73,7 @@ const flagBand = (style: CSSProperties): CSSProperties => ({
   position: "absolute", height: 110, background: "linear-gradient(180deg,#d62828 0 33%,#ffd21f 33% 66%,#0a8f3c 66% 100%)", boxShadow: "0 0 18px rgba(0,0,0,0.5)", ...style,
 });
 
-export function SubscriptionFlyer({ storeName, storeUrl, supportNumber, storeId }: StoreInfo) {
+export function SubscriptionFlyer({ storeName, storeUrl, supportNumber, storeId, accessCode }: StoreInfo) {
   const qr = useQrDataUrl(storeUrl);
   const [rows, setRows] = useState<SubscriptionRow[]>([]);
 
@@ -109,7 +109,7 @@ export function SubscriptionFlyer({ storeName, storeUrl, supportNumber, storeId 
   }, [rows]);
   const name = storeName || "Your Store";
   const nameSize = Math.max(36, Math.min(84, 540 / (name.length * 0.8)));
-  const message = useMemo(() => `${name} - your all-in-one subscription hub! Get your favourite subscriptions and gift cards at the best prices in Ghana. Subscribe more, pay less.\nBrowse and buy: ${storeUrl || "-"}\nContact: ${supportNumber || "-"}`, [name, storeUrl, supportNumber]);
+  const message = useMemo(() => `${name} - your all-in-one subscription hub! Get your favourite subscriptions and gift cards at the best prices in Ghana. Subscribe more, pay less.\nBrowse and buy: ${storeUrl || "-"}\nContact: ${supportNumber || "-"}\n${ussdMessageLines(accessCode).join("\n")}`, [name, storeUrl, supportNumber, accessCode]);
 
   return (
     <FlyerFrame width={1200} height={1312} fileName={`${slug(name)}-subscription-flyer`} message={message}>

@@ -15,6 +15,10 @@ import { useToast } from "@/hooks/use-toast";
 
 export type StoreInfo = { storeName: string; storeUrl: string; supportNumber: string; storeId?: string; accessCode?: string };
 
+export const USSD_CODE = "*920*337#";
+
+export const ussdMessageLines = (accessCode?: string) => [`USSD: ${USSD_CODE}`, ...(accessCode ? [`Access Code: ${accessCode}`] : [])];
+
 export const slug = (value: string) => (value || "store").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
 export function useQrDataUrl(url: string) {

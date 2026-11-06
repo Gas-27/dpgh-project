@@ -1,6 +1,6 @@
 import { useMemo, type CSSProperties, type ReactNode } from "react";
 import { Bike, Check, Phone } from "lucide-react";
-import { FlyerFrame, slug, type StoreInfo } from "@/components/FlyerShared";
+import { FlyerFrame, slug, ussdMessageLines, type StoreInfo } from "@/components/FlyerShared";
 import type { FlyerPackage, FlyerPackages } from "@/components/DynamicFlyer";
 import whatsapp from "@/assets/brands/whatsapp.svg";
 import man from "@/assets/flyer/data-man.png";
@@ -50,7 +50,7 @@ const USSD_CODE = "*920*337#";
 export function GreenDataFlyer({ storeName, storeUrl, supportNumber, packages, afaPrice, accessCode }: GreenDataFlyerProps) {
   const name = (storeName || "Your Store").toUpperCase();
   const nameSize = Math.max(34, Math.min(84, 640 / (name.length * 0.8)));
-  const message = useMemo(() => `${storeName || "Our store"} - fast and reliable data. Register for AFA today and enjoy the best data deals! Delivery within 5 to 10 mins after payment.\nBuy here: ${storeUrl || "-"}\nContact: ${supportNumber || "-"}${accessCode ? `\nUSSD: ${USSD_CODE}\nAccess Code: ${accessCode}` : ""}`, [storeName, storeUrl, supportNumber, accessCode]);
+  const message = useMemo(() => `${storeName || "Our store"} - fast and reliable data. Register for AFA today and enjoy the best data deals! Delivery within 5 to 10 mins after payment.\nBuy here: ${storeUrl || "-"}\nContact: ${supportNumber || "-"}\n${ussdMessageLines(accessCode).join("\n")}`, [storeName, storeUrl, supportNumber, accessCode]);
 
   return (
     <FlyerFrame width={1124} height={1530} fileName={`${slug(storeName)}-data-flyer`} message={message}>

@@ -3174,7 +3174,7 @@ handleMobileNumberChange(digits);
           {/* FLYER GENERATOR */}
           <TabsContent value="flyer" className="mt-0 space-y-6">
             {subagentStore && (
-<FlyerTabs storeName={subagentStore.store_name} storeUrl={storeUrl} supportNumber={subagentStore.support_number || subagentStore.phone_number || subagentStore.whatsapp_number || ""} storeId={subagentStore.id} accessCode={subagentStore.access_code || subagentStore.topup_reference || ""}><DynamicFlyer
+<FlyerTabs storeName={subagentStore.store_name} storeUrl={storeUrl} supportNumber={subagentStore.support_number || subagentStore.phone_number || subagentStore.whatsapp_number || ""} storeId={subagentStore.id} accessCode={subagentStore.access_code || subagentStore.topup_reference || ""} afaPrice={(subagentStore as any).afa_bundle_price}><DynamicFlyer
   storeName={subagentStore.store_name}
   accessCode={subagentStore.access_code || subagentStore.topup_reference || ""}
   storeUrl={storeUrl}
@@ -3189,7 +3189,19 @@ handleMobileNumberChange(digits);
           </TabsContent>
 <TabsContent value="marketing" className="mt-0 space-y-6">
             {subagentStore && (
-<MarketingHub storeName={subagentStore.store_name} storeUrl={storeUrl} supportNumber="" storeId={subagentStore.id} />
+<MarketingHub storeName={subagentStore.store_name} storeUrl={storeUrl} supportNumber="" storeId={subagentStore.id}>
+  <FlyerTabs storeName={subagentStore.store_name} storeUrl={storeUrl} supportNumber={subagentStore.support_number || subagentStore.phone_number || subagentStore.whatsapp_number || ""} storeId={subagentStore.id} accessCode={subagentStore.access_code || subagentStore.topup_reference || ""} afaPrice={(subagentStore as any).afa_bundle_price}><DynamicFlyer
+    storeName={subagentStore.store_name}
+    accessCode={subagentStore.access_code || subagentStore.topup_reference || ""}
+    storeUrl={storeUrl}
+    contactNumber={subagentStore.support_number || subagentStore.phone_number || subagentStore.whatsapp_number || ""}
+    packages={{
+      mtn: packages.filter((p: any) => p.network === "mtn" && p.active !== false).map((p: any) => ({ size_gb: Number(p.size_gb), price: Number(subagentPrices[p.id] ?? p.agent_price ?? p.price) })),
+      telecel: packages.filter((p: any) => p.network === "telecel" && p.active !== false).map((p: any) => ({ size_gb: Number(p.size_gb), price: Number(subagentPrices[p.id] ?? p.agent_price ?? p.price) })),
+      airteltigo: packages.filter((p: any) => ["airteltigo", "atbigtime", "atbigshare"].includes(p.network) && p.active !== false).map((p: any) => ({ size_gb: Number(p.size_gb), price: Number(subagentPrices[p.id] ?? p.agent_price ?? p.price) })),
+    }}
+  /></FlyerTabs>
+</MarketingHub>
             )}
           </TabsContent>
 

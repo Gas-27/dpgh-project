@@ -2381,7 +2381,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     });
   };
 
-  // ─── GUARDS ──────────────���───────────────────────────────────��──────────────
+  // ─── GUARDS ──────────────���───────────────────────────────────��───────���──────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3"><Zap className="h-10 w-10 text-primary animate-pulse" /><p className="text-muted-foreground font-display">Loading dashboard...</p></div>
@@ -3298,7 +3298,9 @@ return (
   <FlyerTabs storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} storeId={store?.id} accessCode={store?.access_code || store?.topup_reference || ""} afaPrice={(store as any)?.afa_bundle_price}><DynamicFlyer storeName={store?.store_name || ""} accessCode={store?.access_code || store?.topup_reference || ""} storeUrl={storeUrl} contactNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} packages={{ mtn: getMtnPkgs().map(p => ({ size_gb: p.size, price: p.price })), telecel: getTelecelPkgs().map(p => ({ size_gb: p.size, price: p.price })), airteltigo: getAirtelPkgs().map(p => ({ size_gb: p.size, price: p.price })) }} /></FlyerTabs>
 </TabsContent>
 <TabsContent value="marketing" className="mt-0">
-  <MarketingHub storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber="" storeId={store?.id} />
+  <MarketingHub storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber="" storeId={store?.id}>
+    <FlyerTabs storeName={store?.store_name || ""} storeUrl={storeUrl} supportNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} storeId={store?.id} accessCode={store?.access_code || store?.topup_reference || ""} afaPrice={(store as any)?.afa_bundle_price}><DynamicFlyer storeName={store?.store_name || ""} accessCode={store?.access_code || store?.topup_reference || ""} storeUrl={storeUrl} contactNumber={store?.support_number || store?.phone_number || store?.whatsapp_number || ""} packages={{ mtn: getMtnPkgs().map(p => ({ size_gb: p.size, price: p.price })), telecel: getTelecelPkgs().map(p => ({ size_gb: p.size, price: p.price })), airteltigo: getAirtelPkgs().map(p => ({ size_gb: p.size, price: p.price })) }} /></FlyerTabs>
+  </MarketingHub>
   <div className="hidden space-y-4">
               <Card className="border-border">
                 <CardHeader className="pb-3"><CardTitle className="font-display flex items-center gap-2"><Image className="h-5 w-5 text-primary" /> Flyer Generator</CardTitle><p className="text-sm text-muted-foreground">Live prices auto-populate. Customise colours, edit share message, then download or share directly to WhatsApp.</p></CardHeader>

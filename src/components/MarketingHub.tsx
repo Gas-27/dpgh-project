@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Check, Clock, Copy, Download, Facebook, Heart, Instagram, Link2, Megaphone, MessageCircle, Music2, Send, Share2, Sparkles, Twitter } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { fetchMarketingPosts, type MarketingPost } from "@/lib/marketingApi";
 import type { StoreInfo } from "@/components/FlyerShared";
@@ -206,7 +207,12 @@ export default function MarketingHub({ storeName, storeUrl, children }: Marketin
   ];
 
   return (
-    <div className="space-y-6">
+    <Tabs defaultValue="message" className="space-y-6">
+      <TabsList className="grid h-auto w-full grid-cols-2">
+        <TabsTrigger value="message">Market</TabsTrigger>
+        <TabsTrigger value="flyers">Market with flyer</TabsTrigger>
+      </TabsList>
+      <TabsContent value="message" className="mt-0 space-y-6">
       <section className="relative overflow-hidden rounded-2xl border border-primary/30 bg-gradient-to-br from-primary/20 via-card to-card p-5">
         <div className="flex items-start gap-3">
           <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground">
@@ -339,12 +345,13 @@ export default function MarketingHub({ storeName, storeUrl, children }: Marketin
         </section>
       )}
 
-      {children && (
-        <section className="space-y-3">
-          <h3 className="font-display text-base font-bold text-foreground">Your flyers</h3>
-          {children}
-        </section>
-      )}
-    </div>
+      </TabsContent>
+      <TabsContent value="flyers" className="mt-0 space-y-3">
+        <p className="text-sm text-muted-foreground text-pretty">
+          Pick a flyer, download it, then copy the ready-made message (with your store link and USSD) to send with it.
+        </p>
+        {children}
+      </TabsContent>
+    </Tabs>
   );
 }

@@ -64,7 +64,7 @@ const FlyerGenerator = ({
     const [shareText, setShareText] = useState("");
 
     useEffect(() => {
-        const ussdText = topupReference ? `\n\n📲 USSD: *920*337#\n🔑 Access Code: ${topupReference}` : "";
+        const ussdText = `\n\n📲 USSD: *920*337#${topupReference ? `\n🔑 Access Code: ${topupReference}` : ""}`;
         setShareText(`🎉 Get the best data deals from ${storeName}!\n\n📱 MTN • AirtelTigo • Telecel\n💨 Instant delivery • 24/7 Support${ussdText}\n\nVisit: ${storeUrl}\nWhatsApp: ${whatsappNumber}`);
     }, [storeName, storeUrl, whatsappNumber, topupReference]);
 

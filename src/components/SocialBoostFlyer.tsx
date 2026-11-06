@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from
 import { BadgeCheck, Check, ChevronRight, Heart, Link2, MessageCircle, Play, ShieldCheck, User, Users, Zap } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { fetchAllRows } from "@/lib/fetchAllRows";
-import { FlyerFrame, slug, useQrDataUrl, type StoreInfo } from "@/components/FlyerShared";
+import { FlyerFrame, slug, ussdMessageLines, useQrDataUrl, type StoreInfo } from "@/components/FlyerShared";
 import tiktok from "@/assets/brands/tiktok.svg";
 import instagram from "@/assets/brands/instagram.svg";
 import facebook from "@/assets/brands/facebook.svg";
@@ -83,7 +83,7 @@ function PriceRow({ icon, label, price }: { icon: ReactNode; label: string; pric
   );
 }
 
-export function SocialBoostFlyer({ storeName, storeUrl, supportNumber }: StoreInfo) {
+export function SocialBoostFlyer({ storeName, storeUrl, supportNumber, accessCode }: StoreInfo) {
   const qr = useQrDataUrl(storeUrl);
   const [prices, setPrices] = useState<Record<string, number>>({});
 
@@ -120,7 +120,7 @@ export function SocialBoostFlyer({ storeName, storeUrl, supportNumber }: StoreIn
   }, []);
 
   const name = storeName || "Your Store";
-  const message = useMemo(() => `Boost all your social media accounts with real followers and grow your audience fast! Followers, Likes, Views and Comments for TikTok, Instagram, Facebook, YouTube, Snapchat, Telegram and Twitter. Prices are per 1K (1,000). Fast, cheap and real engagement.\nOrder here: ${storeUrl || "-"}\nWhatsApp: ${supportNumber || "-"}`, [storeUrl, supportNumber]);
+  const message = useMemo(() => `Boost all your social media accounts with real followers and grow your audience fast! Followers, Likes, Views and Comments for TikTok, Instagram, Facebook, YouTube, Snapchat, Telegram and Twitter. Prices are per 1K (1,000). Fast, cheap and real engagement.\nOrder here: ${storeUrl || "-"}\nWhatsApp: ${supportNumber || "-"}\n${ussdMessageLines(accessCode).join("\n")}`, [storeUrl, supportNumber, accessCode]);
   const nameSize = name.length > 22 ? 36 : name.length > 14 ? 48 : 62;
   const bubble: CSSProperties = { position: "absolute", top: 30, width: 128, height: 104, borderRadius: 26, background: "linear-gradient(145deg,#3b8bff,#1747d6)", border: "3px solid #7fb4ff", boxShadow: "0 0 26px #3b82f6, inset 0 0 18px #ffffff44", display: "flex", alignItems: "center", justifyContent: "center" };
 
