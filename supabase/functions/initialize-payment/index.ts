@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
       const { data: product } = await adminClient.from("store_products").select("id,is_guest,guest_plan,guest_payment_reference,whatsapp_payment_number").eq("id", productId).maybeSingle();
       if (!product || !product.is_guest) return jsonError("Product not found", 404);
       if (product.guest_payment_reference) return jsonError("This product has already been paid for");
-      const listingFee = product.guest_plan === "monthly" ? 5 : product.guest_plan === "weekly" ? 2 : 0;
+      const listingFee = product.guest_plan === "monthly_boost" ? 20 : product.guest_plan === "monthly" ? 5 : product.guest_plan === "weekly" ? 2 : 0;
       if (!listingFee) return jsonError("Choose a listing plan");
       const payerEmail = typeof email === "string" && /^\S+@\S+\.\S+$/.test(email) ? email : `${String(product.whatsapp_payment_number || "guest").replace(/\D/g, "")}@guest.dataplug.app`;
       const paystackRes = await fetch("https://api.paystack.co/transaction/initialize", {

@@ -15,6 +15,7 @@ const MAX_IMAGES = 4;
 const PLANS = [
   { id: "weekly", label: "1 week", price: 2 },
   { id: "monthly", label: "1 month", price: 5 },
+  { id: "monthly_boost", label: "1 month + Boost", price: 20 },
 ] as const;
 
 type Plan = (typeof PLANS)[number]["id"];
@@ -126,12 +127,12 @@ export default function GuestProductListing({ storeId, storeKind }: { storeId: s
   return (
     <>
       <Button type="button" onClick={() => setOpen(true)} className="mt-4">
-        <Plus className="mr-2 h-4 w-4" /> Pair your product here
+        <Plus className="mr-2 h-4 w-4" /> Post your product
       </Button>
       <Dialog open={open} onOpenChange={(next) => !submitting && setOpen(next)}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Pair your product here</DialogTitle>
+            <DialogTitle>Post your product</DialogTitle>
             <DialogDescription>Add your product to this store. Buyers will contact you on the WhatsApp number you enter. You pay after adding your details.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 text-left">
@@ -180,13 +181,21 @@ export default function GuestProductListing({ storeId, storeKind }: { storeId: s
             </div>
             <fieldset className="space-y-2">
               <legend className="text-sm font-medium">How long should it show?</legend>
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
                 {PLANS.map((item) => (
                   <button key={item.id} type="button" onClick={() => setPlan(item.id)} aria-pressed={plan === item.id} className={cn("rounded-md border p-3 text-left text-sm", plan === item.id ? "border-primary bg-primary/10" : "border-border")}>
                     <span className="block font-semibold">GH₵{item.price}</span>
                     <span className="text-xs text-muted-foreground">Shown for {item.label}</span>
                   </button>
                 ))}
+              </div>
+              <div className="rounded-md border border-primary/40 bg-primary/5 p-3 text-xs leading-relaxed text-muted-foreground">
+                <p className="font-semibold text-foreground">What is Boost?</p>
+                <p>
+                  With the GH₵20 plan your product is listed for 1 month and boosted for 1 month. A boosted product is pinned at the top of the
+                  marketplace so it always stays in front of buyers, and it is also shown in the Game Hub, where every player sees it while they play.
+                  That means far more people see your product and contact you on WhatsApp.
+                </p>
               </div>
             </fieldset>
             <Button type="button" className="w-full" onClick={submit} disabled={!ready || submitting}>

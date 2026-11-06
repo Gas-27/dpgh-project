@@ -50,6 +50,8 @@ const LOGOS: { test: RegExp; logo: string; invert?: boolean }[] = [
   { test: /microsoft|office|windows/i, logo: microsoft },
 ];
 
+const POPULAR_ORDER: RegExp[] = [/netflix/i, /spotify/i, /prime/i, /youtube/i, /canva/i, /disney/i, /chatgpt/i, /apple.?music/i, /crunchyroll/i, /perplexity/i, /coursera/i, /duolingo/i];
+
 const CARD_BORDERS = ["#d946ef", "#22c55e", "#ef4444", "#22d3ee", "#3b82f6", "#a855f7"];
 
 const priceText = (value: number) => (Number.isInteger(value) ? String(value) : value.toFixed(2));
@@ -92,7 +94,19 @@ export function SubscriptionFlyer({ storeName, storeUrl, supportNumber, storeId 
     return () => { cancelled = true; };
   }, [storeId]);
 
-  const shown = rows.slice(0, 12);
+  const shown = useMemo(() => {
+    const rank = (service: SubscriptionRow) => {
+      const index = POPULAR_ORDER.findIndex((test) => test.test(service.name));
+      return index === -1 ? POPULAR_ORDER.length : index;
+    };
+    const unique = new Map<string, SubscriptionRow>();
+    rows.forEach((service) => {
+      const key = service.name.trim().toLowerCase();
+      const existing = unique.get(key);
+      if (!existing || service.price < existing.price) unique.set(key, service);
+    });
+    return Array.from(unique.values()).sort((a, b) => rank(a) - rank(b)).slice(0, 12);
+  }, [rows]);
   const name = storeName || "Your Store";
   const nameSize = Math.max(36, Math.min(84, 540 / (name.length * 0.8)));
   const message = useMemo(() => `${name} - your all-in-one subscription hub! Get your favourite subscriptions and gift cards at the best prices in Ghana. Subscribe more, pay less.\nBrowse and buy: ${storeUrl || "-"}\nContact: ${supportNumber || "-"}`, [name, storeUrl, supportNumber]);
