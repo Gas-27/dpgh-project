@@ -592,7 +592,7 @@ function stageEnd(){if(mp&&mp.started){mpStageEnd();return}if(HUB){hubStageEnd()
  hud();$('result').classList.remove('hide')}
 
 function press(){if(state==='fly'){fast=true;return}if(state==='wait'){wait=Math.min(wait,.25);return}if(state!=='ready')return;
- if(left<W.cost){showMsg('NOT ENOUGH AMMO','Swap weapon or use fewer arrows');return}
+ if(left<W.cost){if(HUB){hubShortAmmo();return}showMsg('NOT ENOUGH AMMO','Swap weapon or use fewer '+AMMO[W.id]);return}
  state='draw';down=true;pw=W.mode==='tap'?1:0;hold=0;if(W.id==='bow')startCreak();alertAnimals()}
 function release(){if(state!=='draw')return;down=false;stopCreak();
  if(W.mode==='draw'&&pw<.2){state='ready';pw=0;if(W.id==='bow')setPull(0);return}
@@ -745,6 +745,10 @@ async function hubStageEnd(){const ok=score>=req;hubClearErr();
  if(r.run.status==='cleared'){hubWin();return}
  hubPanel('STAGE CLEAR!','Score '+score+' / goal '+req+'<br>Coins earned: <b style="color:#ffd24a">+'+coins+'</b><br>'+(STAGES-round)+' stage'+(STAGES-round===1?'':'s')+' left to win <b style="color:#ffd24a">'+(r.run.reward_gb||5)+' GB</b>',
   [['NEXT STAGE',async()=>offerPerks()],['HOME',goHome,1]]);$('rs').textContent='★'.repeat(stars)+'☆'.repeat(3-stars)}
+function hubShortAmmo(){hubClearErr();const p=hubRun?hubRun.life_price:4,one=AMMO1[W.id].toUpperCase(),unit=AMMO[W.id];
+ hubPanel('NOT ENOUGH '+unit.toUpperCase()+'!','The <b style="color:#ffd24a">'+W.n+'</b> needs '+W.cost+' '+unit+' per shot and you have '+left+'.<br>Buy more '+unit+' for this weapon, or go back and swap weapon.',
+  [['BUY 1 '+one+' – '+cedi(p)+' from wallet',hubBuyArrow],['BACK TO GAME',hubResume,1]])}
+function hubResume(){$('result').classList.add('hide');for(const e of['hud','arrows','pw','cross','brt','goal','swap','pauseBtn'])$(e).classList.remove('hide');state='ready';setLoaded(true);hud()}
 async function hubBuyArrow(){const r=await hubCall('buy_arrow');hubApply(r.run);left+=W.cost;SFX.coin();$('result').classList.add('hide');
  for(const e of['hud','arrows','pw','cross','brt','goal','swap','pauseBtn'])$(e).classList.remove('hide');state='ready';setLoaded(true);hud();
  showMsg('+1 '+AMMO1[W.id].toUpperCase(),(r.balance!=null?'Wallet: '+cedi(r.balance)+'  ·  ':'')+(req-score)+' points to go')}
