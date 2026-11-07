@@ -4,7 +4,10 @@ import QuickBuyWidget from "./QuickBuyWidget";
 
 const HeroSection = () => {
   return (
-    <section className="relative min-h-screen pt-16 flex items-center overflow-hidden">
+    <section
+      className="relative min-h-screen pt-16 flex items-center overflow-hidden"
+      aria-labelledby="hero-heading"
+    >
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-[120px] pointer-events-none" />
 
       <div className="container grid gap-12 lg:grid-cols-2 lg:gap-16 items-center py-20">
@@ -13,13 +16,43 @@ const HeroSection = () => {
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
             Instant Delivery • 24/7 Reliable
           </div>
-          <h1 className="font-display text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl">
-            Your <span className="text-primary">Data Plug</span> in Ghana
+          <h1 id="hero-heading" className="font-display text-4xl font-extrabold leading-tight sm:text-5xl lg:text-6xl text-balance">
+            Buy <span className="text-primary">Data Bundles</span> in Ghana — Fast &amp; Cheap
           </h1>
-          <p className="max-w-lg text-lg text-muted-foreground leading-relaxed">
-            Buy affordable data bundles for MTN, AirtelTigo & Telecel instantly.
-            Fast, reliable, and available around the clock.
+          <p className="max-w-xl text-lg text-muted-foreground leading-relaxed">
+            Ghana&apos;s #1 Data Hub. Buy MTN, Telecel &amp; AirtelTigo at wholesale from{" "}
+            <span className="text-primary font-semibold">GH&#8373; 3.85</span> with instant 24/7 delivery.
+            Plus, become an agent, get your own store link &amp; USSD code, and earn multi-tier passive income from subagents!
           </p>
+
+          {/* Network quick-links */}
+          <nav aria-label="Network quick links" className="flex flex-wrap gap-2">
+            <Link
+              to="/mtn-data-bundles"
+              className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-1 text-xs font-medium text-yellow-400 hover:bg-yellow-400/20 transition-colors"
+            >
+              MTN Data
+            </Link>
+            <Link
+              to="/telecel-data-bundles"
+              className="inline-flex items-center gap-1.5 rounded-full border border-red-400/30 bg-red-400/10 px-3 py-1 text-xs font-medium text-red-400 hover:bg-red-400/20 transition-colors"
+            >
+              Telecel Data
+            </Link>
+            <Link
+              to="/airteltigo-data-bundles"
+              className="inline-flex items-center gap-1.5 rounded-full border border-orange-400/30 bg-orange-400/10 px-3 py-1 text-xs font-medium text-orange-400 hover:bg-orange-400/20 transition-colors"
+            >
+              AirtelTigo Data
+            </Link>
+            <Link
+              to="/cheap-data-bundles-ghana"
+              className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 px-3 py-1 text-xs font-medium text-primary hover:bg-primary/20 transition-colors"
+            >
+              Cheap Data
+            </Link>
+          </nav>
+
           <div className="flex flex-wrap gap-4">
             <Button
               variant="hero"
@@ -27,24 +60,24 @@ const HeroSection = () => {
               asChild
               className="relative animate-[pulse-glow_1.5s_ease-in-out_infinite] shadow-lg shadow-primary/50 hover:scale-105 transition-transform duration-200"
             >
-              <Link to="/packages">Get Started</Link>
+              <Link to="/packages">Buy Data Bundles Now</Link>
             </Button>
             <Button variant="hero-outline" size="lg" asChild>
-              <Link to="/signup">Become an Agent</Link>
+              <Link to="/become-agent">Become an Agent</Link>
             </Button>
           </div>
           <div className="flex gap-8 pt-4">
             <div>
               <p className="font-display text-2xl font-bold text-foreground">72K+</p>
-              <p className="text-xs text-muted-foreground">Happy Users</p>
+              <p className="text-xs text-muted-foreground">Happy Customers</p>
             </div>
             <div>
               <p className="font-display text-2xl font-bold text-foreground">99.9%</p>
               <p className="text-xs text-muted-foreground">Uptime</p>
             </div>
             <div>
-              <p className="font-display text-2xl font-bold text-foreground">&lt;2 hours</p>
-              <p className="text-xs text-muted-foreground">Delivery Time</p>
+              <p className="font-display text-2xl font-bold text-foreground">Instant</p>
+              <p className="text-xs text-muted-foreground">Delivery</p>
             </div>
           </div>
         </div>
