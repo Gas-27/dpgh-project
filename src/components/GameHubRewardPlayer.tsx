@@ -2,18 +2,28 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Gift, Heart, Share2, Wallet, X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GameHubProductAd from "@/components/GameHubProductAd";
+import PaymentDialog from "@/components/PaymentDialog";
+import { fetchStoreChancePackage, savePendingChance, type ChancePackage } from "@/lib/gameHubChances";
+import { buildGameHubPath } from "@/lib/gameHubRoute";
+import { useGameHubStoreContext } from "@/lib/gameHubStoreContext";
 import ShareScoreButtons from "@/components/ShareScoreButtons";
 import { useToast } from "@/hooks/use-toast";
 import { fetchGameHubAds, pickGameHubAd, type GameHubAd } from "@/lib/gameHubAds";
 import {
   buildGameShareUrl,
+  buyGameItem,
   buyGameLife,
+  cashOutGameRun,
   claimGameReward,
   completeGameLevel,
+  createChanceOrder,
+  consumeGameItem,
   endGameRun,
+  fetchGameMarket,
   fetchGameWalletBalance,
   loseGameLife,
   recordShot,
+  resetGameStreak,
   startGameRun,
   submitGuestScore,
   timedBegin,
@@ -76,6 +86,23 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
     staleTime: 5 * 60 * 1000,
   });
   adsRef.current = ads ?? [];
+
+  const storeCtx = useGameHubStoreContext();
+  const singleGb = rule?.chance_gb_single ?? 1;
+  const doubleGb = rule?.chance_gb_double ?? 3;
+  const [chancePay, setChancePay] = useState<{ pkg: ChancePackage; chances: 1 | 2; chanceOrderId: string } | null>(null);
+  const [chancePhone, setChancePhone] = useState("");
+
+  const { data: chancePackages } = useQuery({
+    queryKey: ["gamehub-chance-packages", storeCtx?.kind, storeCtx?.storeId, storeCtx?.ownStoreId, singleGb, doubleGb],
+    queryFn: async () => {
+      if (!storeCtx) return null;
+      const [single, double] = await Promise.all([fetchStoreChancePackage(storeCtx, singleGb), fetchStoreChancePackage(storeCtx, doubleGb)]);
+      return { single, double };
+    },
+    enabled: !guest && !!storeCtx && buyOpen,
+    staleTime: 30_000,
+  });
 
   const timedMinutes = game.native?.timedMinutes ?? 0;
   const target = run?.target ?? rule?.target_level ?? game.native?.targetLevel ?? 0;
@@ -145,8 +172,13 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
       playSeconds: current.play_seconds,
       requiredSeconds: current.required_seconds,
       rewardGb: current.reward_gb,
+      config: current.config ?? {},
+      tier1Level: current.tier1_level ?? null,
+      tier1RewardGb: current.tier1_reward_gb ?? null,
+      lifePrice: current.life_price,
+      guest,
     });
-  }, [post]);
+  }, [guest, post]);
 
   const refreshBalance = useCallback(async () => {
     try {
@@ -277,7 +309,61 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
           if (current.status === "active" && current.lives <= 0) openContinueOptions();
         } else if (data.type === "gh-open-claim") {
           if (current.status === "cleared") setClaimOpen(true);
+        } else if (data.type === "gh-reset-streak") {
+          applyRun({ ...current, level: 1 });
+          post({ type: "gh-level-result", ok: true, level: 1, lives: current.lives, status: current.status, playSeconds: 0 });
+        } else if (data.type === "gh-market-load" || data.type === "gh-market-buy") {
+          post({ type: "gh-market", ok: false, guest: true, message: "Sign in to use your wallet in the market.", owned: [], inv: {}, balance: null });
         }
+        return;
+      }
+
+      if (data.type === "gh-reset-streak") {
+        enqueue(async () => {
+          try {
+            const next = await resetGameStreak(current.run_id);
+            applyRun(next);
+            post({ type: "gh-level-result", ok: true, level: next.level, lives: next.lives, status: next.status, playSeconds: next.play_seconds });
+          } catch (error) {
+            post({ type: "gh-level-result", ok: false, message: (error as Error).message });
+          }
+        });
+        return;
+      }
+
+      if (data.type === "gh-cash-out") {
+        enqueue(async () => {
+          try {
+            const next = await cashOutGameRun(current.run_id);
+            applyRun(next);
+            post({ type: "gh-level-result", ok: true, level: next.level, lives: next.lives, status: next.status, playSeconds: next.play_seconds });
+            setClaimOpen(true);
+          } catch (error) {
+            toast({ title: "Could not cash out", description: (error as Error).message, variant: "destructive" });
+          }
+        });
+        return;
+      }
+
+      if (data.type === "gh-market-load" || data.type === "gh-market-buy") {
+        enqueue(async () => {
+          try {
+            const msg = data as GameMessage & { itemType?: string; itemKey?: string };
+            const market =
+              data.type === "gh-market-buy" && msg.itemType && msg.itemKey
+                ? await buyGameItem(game.id, msg.itemType, msg.itemKey, hintRef.current)
+                : await fetchGameMarket(game.id, hintRef.current);
+            post({ type: "gh-market", ok: true, bought: data.type === "gh-market-buy" ? `${msg.itemType}:${msg.itemKey}` : null, ...market });
+          } catch (error) {
+            post({ type: "gh-market", ok: false, message: (error as Error).message, owned: [], inv: {}, balance: null, failedBuy: data.type === "gh-market-buy" });
+          }
+        });
+        return;
+      }
+
+      if (data.type === "gh-consume") {
+        const key = (data as GameMessage & { itemKey?: string }).itemKey;
+        if (key) void consumeGameItem(game.id, key).catch(() => undefined);
         return;
       }
 
@@ -362,7 +448,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [applyRun, guest, openContinueOptions, post, pushState, stopGuestTimer, stopTicking, submitGuest, toast]);
+  }, [applyRun, game.id, guest, openContinueOptions, post, pushState, stopGuestTimer, stopTicking, submitGuest, toast]);
 
   const handleBuyLife = async () => {
     const current = runRef.current;
@@ -379,6 +465,22 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
     } catch (error) {
       toast({ title: "Could not buy a life", description: (error as Error).message, variant: "destructive" });
       void refreshBalance();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleBuyChance = async (chances: 1 | 2, pkg: ChancePackage | null | undefined) => {
+    const current = runRef.current;
+    if (!current || !storeCtx || !pkg || busy) return;
+    setBusy(true);
+    try {
+      const order = await createChanceOrder(current.run_id, chances, storeCtx.kind, storeCtx.storeId);
+      const returnTo = buildGameHubPath(game.id);
+      savePendingChance({ chanceOrderId: order.chance_order_id, gameId: game.id, returnTo });
+      setChancePay({ pkg, chances, chanceOrderId: order.chance_order_id });
+    } catch (error) {
+      toast({ title: "Could not start the purchase", description: (error as Error).message, variant: "destructive" });
     } finally {
       setBusy(false);
     }
@@ -578,6 +680,29 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
                   : `You are on level ${run.level} of ${target}. `}
                 Buy 1 life for GH&#8373;{LIFE_PRICE} from your wallet to continue exactly where you stopped, or end the game and start again.
               </p>
+              {storeCtx ? (
+                <div className="mt-4 flex flex-col gap-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-violet-300">Buy a chance with data from {storeCtx.storeName}</p>
+                  {([
+                    { chances: 1 as const, gb: singleGb, pkg: chancePackages?.single },
+                    { chances: 2 as const, gb: doubleGb, pkg: chancePackages?.double },
+                  ]).map(({ chances, gb, pkg }) => (
+                    <button
+                      key={chances}
+                      type="button"
+                      onClick={() => void handleBuyChance(chances, pkg)}
+                      disabled={busy || !pkg}
+                      className="flex items-center justify-between rounded-xl bg-gradient-to-r from-fuchsia-500 to-rose-500 px-4 py-3 text-left text-sm font-bold text-white disabled:opacity-50"
+                    >
+                      <span>
+                        {gb}GB for {chances === 1 ? "1 chance" : "2 chances"}
+                      </span>
+                      <span>{pkg ? formatCedis(pkg.price) : chancePackages ? "Unavailable" : "..."}</span>
+                    </button>
+                  ))}
+                  <p className="text-xs text-violet-300">You pay like a normal data purchase, then come straight back to this game with your chance added.</p>
+                </div>
+              ) : null}
               <div className="my-4 flex items-center justify-between rounded-xl bg-violet-950 px-3 py-2 text-sm">
                 <span className="flex items-center gap-2 text-violet-200">
                   <Wallet className="h-4 w-4" aria-hidden="true" /> Wallet balance
@@ -603,6 +728,26 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
               </div>
             </div>
           </div>
+        ) : null}
+
+        {chancePay && storeCtx ? (
+          <PaymentDialog
+            open
+            onOpenChange={(next) => {
+              if (!next) setChancePay(null);
+            }}
+            package={{ id: chancePay.pkg.id, network: "mtn", size_gb: chancePay.pkg.size_gb }}
+            network="mtn"
+            price={chancePay.pkg.price}
+            packageId={chancePay.pkg.id}
+            agentStoreId={storeCtx.kind === "agent" ? storeCtx.storeId : undefined}
+            subagentStoreId={storeCtx.kind === "subagent" ? storeCtx.storeId : undefined}
+            subsubagentStoreId={storeCtx.kind === "subsubagent" ? storeCtx.ownStoreId : undefined}
+            storeName={storeCtx.storeName}
+            phoneNumber={chancePhone}
+            onPhoneNumberChange={setChancePhone}
+            returnTo={buildGameHubPath(game.id)}
+          />
         ) : null}
 
         {claimOpen && run ? (

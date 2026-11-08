@@ -4,6 +4,8 @@ export type GameHubStoreContext = {
   kind: "agent" | "subagent" | "subsubagent";
   // For "agent" this is the agent store, otherwise the subagent store new sign-ups join.
   storeId: string;
+  // The sub-subagent's own store id, set only when kind is "subsubagent".
+  ownStoreId?: string;
   storeName: string;
   primaryColor: string;
   primaryForeground: string;
@@ -28,7 +30,7 @@ export function useGameHubStoreContext(): GameHubStoreContext | null {
 
 /** Called by storefront pages so Game Hub knows which store the visitor came from. */
 export function useProvideGameHubStore(value: GameHubStoreContext | null) {
-  const key = value ? `${value.kind}:${value.storeId}:${value.storeName}:${value.primaryColor}:${value.primaryForeground}` : "";
+  const key = value ? `${value.kind}:${value.storeId}:${value.ownStoreId ?? ""}:${value.storeName}:${value.primaryColor}:${value.primaryForeground}` : "";
   useEffect(() => {
     setContext(value);
     return () => setContext(null);

@@ -530,7 +530,7 @@ export function SubSubagentStorefront() {
   const primaryForeground = theme.primary_foreground || defaultTheme.primary_foreground;
   useProvideGameHubStore(
     store?.subagent_store_id
-      ? { kind: "subsubagent", storeId: store.subagent_store_id, storeName: store.store_name, primaryColor, primaryForeground }
+      ? { kind: "subsubagent", storeId: store.subagent_store_id, ownStoreId: store.id, storeName: store.store_name, primaryColor, primaryForeground }
       : null,
   );
   const bgColor = theme.background || defaultTheme.background;

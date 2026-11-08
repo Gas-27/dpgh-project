@@ -182,6 +182,10 @@ export type GameRun = {
   reward_enabled: boolean;
   required_seconds: number | null;
   play_seconds: number;
+  cashed_tier?: boolean;
+  tier1_level?: number | null;
+  tier1_reward_gb?: number | null;
+  config?: Record<string, unknown>;
 };
 
 export type GameRewardSetting = {
@@ -194,12 +198,111 @@ export type GameRewardSetting = {
   max_level: number | null;
   life_price: number;
   required_seconds: number | null;
+  tier1_level: number | null;
+  tier1_reward_gb: number | null;
+  chance_gb_single: number;
+  chance_gb_double: number;
+  extra_config: Record<string, unknown>;
 };
 
 export async function fetchGameRewardSettings(): Promise<GameRewardSetting[]> {
-  const { data, error } = await db.from("gamehub_game_settings").select("game_id, title, reward_gb, enabled, updated_at, target_level, max_level, life_price, required_seconds").order("title");
+  const { data, error } = await db
+    .from("gamehub_game_settings")
+    .select("game_id, title, reward_gb, enabled, updated_at, target_level, max_level, life_price, required_seconds, tier1_level, tier1_reward_gb, chance_gb_single, chance_gb_double, extra_config")
+    .order("title");
   if (error) throw error;
-  return ((data ?? []) as GameRewardSetting[]).map((row) => ({ ...row, reward_gb: Number(row.reward_gb), life_price: Number(row.life_price) }));
+  return ((data ?? []) as GameRewardSetting[]).map((row) => ({
+    ...row,
+    reward_gb: Number(row.reward_gb),
+    life_price: Number(row.life_price),
+    tier1_reward_gb: row.tier1_reward_gb === null ? null : Number(row.tier1_reward_gb),
+    chance_gb_single: Number(row.chance_gb_single ?? 1),
+    chance_gb_double: Number(row.chance_gb_double ?? 3),
+    extra_config: row.extra_config ?? {},
+  }));
+}
+
+export type GameRulesV2Input = GameRulesInput & {
+  tier1Level: number | null;
+  tier1RewardGb: number | null;
+  chanceGbSingle: number;
+  chanceGbDouble: number;
+  extraConfig: Record<string, unknown>;
+};
+
+export async function adminSetGameRulesV2(input: GameRulesV2Input): Promise<void> {
+  const { error } = await db.rpc("admin_set_gamehub_rules_v2", {
+    p_game_id: input.gameId,
+    p_gb: input.gb,
+    p_enabled: input.enabled,
+    p_target_level: input.targetLevel,
+    p_life_price: input.lifePrice,
+    p_required_seconds: input.requiredSeconds,
+    p_tier1_level: input.tier1Level,
+    p_tier1_reward_gb: input.tier1RewardGb,
+    p_chance_gb_single: input.chanceGbSingle,
+    p_chance_gb_double: input.chanceGbDouble,
+    p_extra_config: input.extraConfig,
+  });
+  if (error) throw error;
+}
+
+export async function resetGameStreak(runId: string): Promise<GameRun> {
+  await requireSignedInRun(runId);
+  const { data, error } = await db.rpc("gamehub_reset_streak", { p_run_id: runId });
+  if (error) throw error;
+  return data as GameRun;
+}
+
+export async function cashOutGameRun(runId: string): Promise<GameRun> {
+  await requireSignedInRun(runId);
+  const { data, error } = await db.rpc("gamehub_cash_out", { p_run_id: runId });
+  if (error) throw error;
+  return data as GameRun;
+}
+
+export type GameMarketState = { owned: string[]; inv: Record<string, number>; balance: number | null };
+
+function toGameMarketState(data: unknown): GameMarketState {
+  const result = data as { owned?: string[]; inv?: Record<string, number>; balance?: number | string | null };
+  return {
+    owned: Array.isArray(result?.owned) ? result.owned : [],
+    inv: result?.inv ?? {},
+    balance: result?.balance === null || result?.balance === undefined ? null : Number(result.balance),
+  };
+}
+
+export async function fetchGameMarket(gameId: string, walletHint: string | null): Promise<GameMarketState> {
+  if (!(await hasSession())) return { owned: [], inv: {}, balance: null };
+  const { data, error } = await db.rpc("gamehub_game_market", { p_game_id: gameId, p_hint: walletHint });
+  if (error) throw error;
+  return toGameMarketState(data);
+}
+
+export async function buyGameItem(gameId: string, itemType: string, itemKey: string, walletHint: string | null): Promise<GameMarketState> {
+  if (!(await hasSession())) throw new Error("Sign in to buy with your wallet.");
+  const { data, error } = await db.rpc("gamehub_buy_game_item", { p_game_id: gameId, p_type: itemType, p_key: itemKey, p_hint: walletHint });
+  if (error) throw error;
+  return toGameMarketState(data);
+}
+
+export async function consumeGameItem(gameId: string, itemKey: string): Promise<void> {
+  if (!(await hasSession())) return;
+  await db.rpc("gamehub_consume_game_item", { p_game_id: gameId, p_key: itemKey });
+}
+
+export type ChanceOrder = { chance_order_id: string; game_id: string; gb: number; chances: number };
+
+export async function createChanceOrder(runId: string, chances: 1 | 2, storeKind: string | null, storeId: string | null): Promise<ChanceOrder> {
+  const { data, error } = await db.rpc("gamehub_create_chance_order", { p_run_id: runId, p_chances: chances, p_store_kind: storeKind, p_store_id: storeId });
+  if (error) throw error;
+  return data as ChanceOrder;
+}
+
+export async function applyChanceOrder(chanceOrderId: string, reference: string): Promise<{ ok: boolean; run: GameRun; game_id: string }> {
+  const { data, error } = await db.rpc("gamehub_apply_chance_by_reference", { p_chance_order_id: chanceOrderId, p_reference: reference });
+  if (error) throw error;
+  return data as { ok: boolean; run: GameRun; game_id: string };
 }
 
 export async function adminSetGameReward(gameId: string, gb: number, enabled: boolean): Promise<void> {

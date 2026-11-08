@@ -34,6 +34,7 @@ interface PaymentDialogProps {
   phoneNumber?: string;
   onPhoneNumberChange?: (phone: string) => void;
   storeName?: string;
+  returnTo?: string;
 }
 
 const LOCK_MINUTES = 4;
@@ -72,6 +73,7 @@ const PaymentDialog = ({
   storeId,
   phoneNumber,
   onPhoneNumberChange,
+  returnTo,
 }: PaymentDialogProps) => {
   const { user, hasPendingAgentStore, isAgent } = useAuth();
   const navigate = useNavigate();
@@ -400,7 +402,9 @@ const PaymentDialog = ({
       // If a regular logged-in user buys from /packages, send to /user-dashboard.
       // Guest stays on /packages where its own verifier handles it.
       const isStorefrontPage = !!(subagentStoreId || subsubagentStoreId) || window.location.pathname.includes("/store");
-      const returnPath = isStorefrontPage
+      const returnPath = returnTo
+        ? returnTo
+        : isStorefrontPage
         ? window.location.pathname
         : isAgent && actualStoreId
         ? "/agent"

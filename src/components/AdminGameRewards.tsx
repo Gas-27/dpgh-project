@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { adminSetGameRules, fetchGameRewardSettings, type GameRewardSetting } from "@/lib/gameHubApi";
+import { adminSetGameRulesV2, fetchGameRewardSettings, type GameRewardSetting } from "@/lib/gameHubApi";
 
 const QUERY_KEY = ["gamehub-reward-settings"];
 
@@ -20,6 +21,13 @@ function RewardRow({ setting }: { setting: GameRewardSetting }) {
   const [level, setLevel] = useState(String(setting.target_level ?? ""));
   const [price, setPrice] = useState(String(setting.life_price));
   const [minutes, setMinutes] = useState(String((setting.required_seconds ?? 0) / 60));
+  const [tierLevel, setTierLevel] = useState(setting.tier1_level === null ? "" : String(setting.tier1_level));
+  const [tierGb, setTierGb] = useState(setting.tier1_reward_gb === null ? "" : String(setting.tier1_reward_gb));
+  const [chanceSingle, setChanceSingle] = useState(String(setting.chance_gb_single));
+  const [chanceDouble, setChanceDouble] = useState(String(setting.chance_gb_double));
+  const [extra, setExtra] = useState(JSON.stringify(setting.extra_config ?? {}, null, 2));
+  const hasTier = setting.tier1_level !== null;
+  const hasExtra = Object.keys(setting.extra_config ?? {}).length > 0;
 
   useEffect(() => {
     setGb(String(setting.reward_gb));
@@ -27,6 +35,11 @@ function RewardRow({ setting }: { setting: GameRewardSetting }) {
     setLevel(String(setting.target_level ?? ""));
     setPrice(String(setting.life_price));
     setMinutes(String((setting.required_seconds ?? 0) / 60));
+    setTierLevel(setting.tier1_level === null ? "" : String(setting.tier1_level));
+    setTierGb(setting.tier1_reward_gb === null ? "" : String(setting.tier1_reward_gb));
+    setChanceSingle(String(setting.chance_gb_single));
+    setChanceDouble(String(setting.chance_gb_double));
+    setExtra(JSON.stringify(setting.extra_config ?? {}, null, 2));
   }, [setting]);
 
   const parsedGb = Number(gb);
@@ -37,22 +50,45 @@ function RewardRow({ setting }: { setting: GameRewardSetting }) {
 
   const levelValid = timed || (Number.isInteger(parsedLevel) && parsedLevel >= 1 && parsedLevel <= maxLevel);
   const timeValid = !timed || (parsedSeconds >= 30 && parsedSeconds <= 3600);
-  const valid = Number.isFinite(parsedGb) && parsedGb > 0 && parsedGb <= 100 && parsedPrice > 0 && parsedPrice <= 500 && levelValid && timeValid;
+  const parsedTierLevel = tierLevel === "" ? null : Number(tierLevel);
+  const parsedTierGb = tierGb === "" ? null : Number(tierGb);
+  const parsedSingle = Number(chanceSingle);
+  const parsedDouble = Number(chanceDouble);
+  let parsedExtra: Record<string, unknown> | null = null;
+  try {
+    const value = JSON.parse(extra);
+    parsedExtra = value && typeof value === "object" && !Array.isArray(value) ? (value as Record<string, unknown>) : null;
+  } catch {
+    parsedExtra = null;
+  }
+  const tierValid = !hasTier || (parsedTierLevel !== null && Number.isInteger(parsedTierLevel) && parsedTierLevel >= 1 && parsedTierGb !== null && parsedTierGb > 0);
+  const chanceValid = parsedSingle > 0 && parsedDouble > 0;
+  const valid = Number.isFinite(parsedGb) && parsedGb > 0 && parsedGb <= 100 && parsedPrice > 0 && parsedPrice <= 500 && levelValid && timeValid && tierValid && chanceValid && parsedExtra !== null;
   const dirty =
     parsedGb !== setting.reward_gb ||
     enabled !== setting.enabled ||
     parsedPrice !== setting.life_price ||
+    parsedTierLevel !== setting.tier1_level ||
+    parsedTierGb !== setting.tier1_reward_gb ||
+    parsedSingle !== setting.chance_gb_single ||
+    parsedDouble !== setting.chance_gb_double ||
+    JSON.stringify(parsedExtra) !== JSON.stringify(setting.extra_config ?? {}) ||
     (timed ? parsedSeconds !== setting.required_seconds : parsedLevel !== setting.target_level);
 
   const save = useMutation({
     mutationFn: () =>
-      adminSetGameRules({
+      adminSetGameRulesV2({
         gameId: setting.game_id,
         gb: parsedGb,
         enabled,
         targetLevel: timed ? null : parsedLevel,
         lifePrice: parsedPrice,
         requiredSeconds: timed ? parsedSeconds : null,
+        tier1Level: hasTier ? parsedTierLevel : null,
+        tier1RewardGb: hasTier ? parsedTierGb : null,
+        chanceGbSingle: parsedSingle,
+        chanceGbDouble: parsedDouble,
+        extraConfig: parsedExtra ?? {},
       }),
     onSuccess: () => {
       toast({ title: "Game rules updated", description: `${setting.title} now rewards ${parsedGb}GB${enabled ? "" : " (claims switched off)"}.` });
@@ -91,11 +127,38 @@ function RewardRow({ setting }: { setting: GameRewardSetting }) {
           <Switch id={`on-${setting.game_id}`} checked={enabled} onCheckedChange={setEnabled} />
           <Label htmlFor={`on-${setting.game_id}`}>Claims on</Label>
         </div>
+        {hasTier ? (
+          <>
+            <div className="space-y-1">
+              <Label htmlFor={`tl-${setting.game_id}`}>Cash-out at win #</Label>
+              <Input id={`tl-${setting.game_id}`} type="number" inputMode="numeric" min={1} step={1} value={tierLevel} onChange={(event) => setTierLevel(event.target.value)} className="w-28" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`tg-${setting.game_id}`}>Cash-out GB</Label>
+              <Input id={`tg-${setting.game_id}`} type="number" inputMode="decimal" min={1} step={1} value={tierGb} onChange={(event) => setTierGb(event.target.value)} className="w-28" />
+            </div>
+          </>
+        ) : null}
+        <div className="space-y-1">
+          <Label htmlFor={`cs-${setting.game_id}`}>Store: GB for 1 chance</Label>
+          <Input id={`cs-${setting.game_id}`} type="number" inputMode="decimal" min={1} step={1} value={chanceSingle} onChange={(event) => setChanceSingle(event.target.value)} className="w-28" />
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`cd-${setting.game_id}`}>Store: GB for 2 chances</Label>
+          <Input id={`cd-${setting.game_id}`} type="number" inputMode="decimal" min={1} step={1} value={chanceDouble} onChange={(event) => setChanceDouble(event.target.value)} className="w-28" />
+        </div>
         <Button type="button" disabled={!valid || !dirty || save.isPending} onClick={() => save.mutate()}>
           {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden="true" /> : <Save className="mr-2 h-4 w-4" aria-hidden="true" />}
           Save
         </Button>
       </div>
+      {hasExtra ? (
+        <div className="space-y-1">
+          <Label htmlFor={`ex-${setting.game_id}`}>Game settings (JSON: shuffles, seconds, difficulty...)</Label>
+          <Textarea id={`ex-${setting.game_id}`} value={extra} onChange={(event) => setExtra(event.target.value)} rows={4} className="font-mono text-xs" aria-invalid={parsedExtra === null} />
+          {parsedExtra === null ? <p className="text-xs text-destructive">Must be valid JSON object.</p> : null}
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -108,7 +171,7 @@ export default function AdminGameRewards() {
       <CardHeader>
         <CardTitle>JustBuy Games rules</CardTitle>
         <CardDescription>
-          For each game set the MTN reward, the level (or play time) a player must reach, and the price of an extra life. The reward size must match an active MTN package.
+          For each game set the MTN reward, the level (or play time) a player must reach, the price of an extra life, store chance packs, cash-out tiers and per-game settings. The reward size must match an active MTN package.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
