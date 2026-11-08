@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   ExternalLink,
@@ -25,7 +25,8 @@ import GameHubArcheryPlayer from "@/components/GameHubArcheryPlayer";
 import GameHubRewardPlayer from "@/components/GameHubRewardPlayer";
 import { useGameHubUser } from "@/hooks/useGameHubUser";
 import { useToast } from "@/hooks/use-toast";
-import { buildGameShareUrl, fetchGameRewardSettings, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
+import { applyChanceOrder, buildGameShareUrl, fetchGameRewardSettings, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
+import { clearPendingChance, readPendingChance } from "@/lib/gameHubChances";
 import { leaveGameHubUrl, markGameHubLanding, parseGameHubPath, syncGameHubUrl } from "@/lib/gameHubRoute";
 import { useConversations, useGameHubRealtime } from "@/lib/gameHubSocial";
 import { findHubGame, getGameBlurb, getGameHubDirectUrl, hotGames, hubGames, stripGames, tagClasses, type GameRuleSummary, type HubGame } from "@/lib/gameHubGames";
@@ -264,12 +265,52 @@ function VisitGameHubPrompt({ game, onCancel, onContinue }: { game: HubGame; onC
   );
 }
 
+function getPaymentReference(): string | null {
+  const params = new URLSearchParams(window.location.search);
+  return params.get("reference") || params.get("trxref") || params.get("clientReference");
+}
+
 export default function GameHubDialog() {
   const { toast } = useToast();
   const user = useGameHubUser();
   const [open, setOpen] = useState(false);
   const [activeGame, setActiveGame] = useState<HubGame | null>(null);
   const [pendingGame, setPendingGame] = useState<HubGame | null>(null);
+  const queryClient = useQueryClient();
+  const [applyingChance, setApplyingChance] = useState(() => Boolean(readPendingChance() && getPaymentReference()));
+
+  // Returning from a chance purchase: confirm the payment, add the chance, then reopen that exact game.
+  useEffect(() => {
+    const pending = readPendingChance();
+    const reference = getPaymentReference();
+    if (!pending || !reference) return;
+    let cancelled = false;
+    const run = async () => {
+      for (let attempt = 0; attempt < 8 && !cancelled; attempt += 1) {
+        try {
+          await applyChanceOrder(pending.chanceOrderId, reference);
+          clearPendingChance();
+          if (cancelled) return;
+          void queryClient.invalidateQueries({ queryKey: ["gamehub-wallet"] });
+          setOpen(true);
+          setActiveGame(findHubGame(pending.gameId) ?? null);
+          toast({ title: "Chance added", description: "Your payment is confirmed. Good luck!" });
+          setApplyingChance(false);
+          return;
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 2500));
+        }
+      }
+      if (cancelled) return;
+      setApplyingChance(false);
+      toast({ title: "Payment still processing", description: "Reopen the game in a minute and your chance will be added.", variant: "destructive" });
+    };
+    void run();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const requestPlay = (game: HubGame) => {
     if (game.native) setActiveGame(game);
@@ -381,7 +422,9 @@ export default function GameHubDialog() {
           </div>
         </Tabs>
         <GameHubAnnouncements open={open && !activeGame} />
-        {activeGame?.native?.bridge === "archery3d" ? (
+        {applyingChance ? (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/90 text-sm font-semibold">Confirming your payment...</div>
+        ) : activeGame?.native?.bridge === "archery3d" ? (
           <GameHubArcheryPlayer game={activeGame} signedIn={Boolean(user)} rule={settings.find((row) => row.game_id === activeGame.id)} onClose={() => setActiveGame(null)} />
         ) : activeGame?.native ? (
           <GameHubRewardPlayer game={activeGame} signedIn={Boolean(user)} rule={settings.find((row) => row.game_id === activeGame.id)} onClose={() => setActiveGame(null)} />
