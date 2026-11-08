@@ -16,7 +16,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Check, ChevronDown, Clock, Loader2, Send, Sparkles, Upload, UserPlus, Video, Wallet } from "lucide-react";
+import { Check, ChevronDown, Clock, KeyRound, Loader2, Send, Sparkles, Upload, UserPlus, Video, Wallet } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import OrderContactPicker from "@/components/OrderContactPicker";
 import SmsNumberGenerator from "@/components/SmsNumberGenerator";
@@ -173,6 +173,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const [lookupResults, setLookupResults] = useState<Sender[]>([]);
   const [walletBalance, setWalletBalance] = useState<number | null>(null);
   const [storeLink, setStoreLink] = useState(providedStoreUrl || "");
+  const [ussdAccessCode, setUssdAccessCode] = useState("");
   const [includeStoreLink, setIncludeStoreLink] = useState(false);
   const [generationType, setGenerationType] = useState("promotion");
   const [aiBrief, setAiBrief] = useState("");
@@ -187,6 +188,14 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const charsOnPage = messageUnits % PAGE_SIZE === 0 && messageUnits > 0 ? PAGE_SIZE : messageUnits % PAGE_SIZE;
   const remaining = PAGE_SIZE - charsOnPage;
   const totalCost = contactPrice * numbers.length + pagePrice * pages;
+  const ussdMessage = ussdAccessCode ? `USSD: *920*337#\nAccess Code: ${ussdAccessCode}` : "";
+  const addUssdToMessage = () => {
+    if (!ussdMessage) {
+      toast({ title: "Access code unavailable", description: "Your store access code could not be loaded.", variant: "destructive" });
+      return;
+    }
+    setMessage((current) => current.includes(ussdMessage) ? current : `${current.trim()}${current.trim() ? "\\n\\n" : ""}${ussdMessage}`);
+  };
 
   const loadSenders = async () => {
     const { data: auth } = await supabase.auth.getUser();
@@ -262,10 +271,13 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     }
     const ownerTable = ownerType === "agent" ? "agent_stores" : ownerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
     const query = ownerId
-      ? supabase.from(ownerTable).select("store_name_slug,id").eq("id", ownerId).maybeSingle()
-      : supabase.from(ownerTable).select("store_name_slug,id").eq("user_id", uid).maybeSingle();
+      ? supabase.from(ownerTable).select("store_name_slug,id,access_code,topup_reference").eq("id", ownerId).maybeSingle()
+      : supabase.from(ownerTable).select("store_name_slug,id,access_code,topup_reference").eq("user_id", uid).maybeSingle();
     const { data } = await query;
-    if (data) setStoreLink(`https://dataplug.store/store/${data.store_name_slug || data.id}`);
+    if (data) {
+      setStoreLink(`https://dataplug.store/store/${data.store_name_slug || data.id}`);
+      setUssdAccessCode(String(data.access_code || data.topup_reference || "").trim());
+    }
   };
 
   const loadAudience = async (nextAudience: SmsAudience) => {
@@ -732,8 +744,12 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
             <div className="flex flex-wrap items-center gap-2">
               <Label>Message</Label><select value={generationType} onChange={(event) => setGenerationType(event.target.value)} className="ml-auto rounded-md border bg-background px-2 py-1 text-sm"><option value="promotion">Promotion</option><option value="marketing">Marketing</option><option value="greeting">Greeting</option><option value="announcement">Announcement</option><option value="reminder">Reminder</option></select>
               <Button type="button" size="sm" variant="outline" onClick={() => void generateMessage()} disabled={generating}><Sparkles className="mr-2 h-4 w-4" />{generating ? "Generating…" : "Generate with AI"}</Button>
+              {ownerType !== "customer" && <Button type="button" size="sm" variant="outline" onClick={addUssdToMessage} disabled={!ussdAccessCode}><KeyRound className="mr-2 h-4 w-4" />Add USSD + Access Code</Button>}
             </div>
-            <div className="flex items-center gap-2 text-sm text-muted-foreground"><Switch checked={includeStoreLink} onCheckedChange={setIncludeStoreLink} id="include-store-link" /><label htmlFor="include-store-link">Include my store link by default</label></div>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex items-center gap-2"><Switch checked={includeStoreLink} onCheckedChange={setIncludeStoreLink} id="include-store-link" /><label htmlFor="include-store-link">Include my store link by default</label></div>
+              {ownerType !== "customer" && <span className="text-xs">Adds *920*337# and this store&apos;s access code.</span>}
+            </div>
             <div className="space-y-1">
               <Label htmlFor="ai-brief" className="text-xs text-muted-foreground">Describe what the AI should write (optional)</Label>
               <Textarea id="ai-brief" value={aiBrief} onChange={(event) => setAiBrief(event.target.value)} placeholder="e.g. Flash sale on MTN 5GB bundle at GHS 20, ends Friday" rows={2} />
