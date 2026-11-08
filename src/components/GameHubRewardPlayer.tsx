@@ -233,14 +233,15 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
         // Guests play without a wallet or paid lives; their score is stored under an anonymous guest ID only.
         stopGuestTimer(false);
         guestSessionRef.current = newGuestSessionId();
-        const requiredSeconds = rule?.required_seconds ?? (timedMinutes > 0 ? timedMinutes * 60 : null);
+        const isBasketball = game.id === "basketball";
+        const requiredSeconds = isBasketball ? 5 * 60 : (rule?.required_seconds ?? (timedMinutes > 0 ? timedMinutes * 60 : null));
         applyRun({
           run_id: "guest",
           game_id: game.id,
           level: 1,
-          lives: game.id === "basketball" ? 2 : 1,
+          lives: isBasketball ? 2 : 1,
           status: "active",
-          target: requiredSeconds ? 1 : (rule?.target_level ?? game.native?.targetLevel ?? 1),
+          target: isBasketball ? 300 : (requiredSeconds ? 1 : (rule?.target_level ?? game.native?.targetLevel ?? 1)),
           lives_bought: 0,
           claimed: false,
           reward_claimed: false,

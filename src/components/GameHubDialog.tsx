@@ -324,7 +324,7 @@ export default function GameHubDialog() {
 
   const { data: settings = [] } = useQuery({ queryKey: ["gamehub-rules"], queryFn: fetchGameRewardSettings, enabled: open, staleTime: 15_000, refetchOnWindowFocus: true });
   const { data: wins = {} } = useQuery({ queryKey: ["gamehub-win-counts"], queryFn: fetchGameHubWinCounts, enabled: open, staleTime: 30_000, refetchOnWindowFocus: true });
-  const rules: RuleMap = Object.fromEntries(settings.map((row) => [row.game_id, row]));
+  const rules: RuleMap = Object.fromEntries((settings ?? []).filter((row): row is GameRuleSummary => Boolean(row?.game_id)).map((row) => [row.game_id, row]));
 
   useGameHubRealtime(user?.id, open);
   const { data: conversations = [] } = useConversations(user?.id, open);
