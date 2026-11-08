@@ -667,8 +667,10 @@ const SubagentDashboard = () => {
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
           supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
-          supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id || "").eq("status", "active").order("created_at", { ascending: false })
-        ]);
+  store.user_id
+    ? supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id).eq("status", "active").order("created_at", { ascending: false })
+    : Promise.resolve({ data: [] as any[], error: null }),
+  ]);
 
         setOrders(ordersResult.data || []);
         setTotalOrderCount(ordersResult.count ?? (ordersResult.data?.length || 0));

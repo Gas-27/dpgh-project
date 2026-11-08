@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { hasUsableReference, isFinalOrderStatus } from "@/lib/orderPolling";
 
 type TrackableOrder = {
   id: string;
@@ -24,7 +25,7 @@ export function useOrderStatusRefresh<T extends TrackableOrder>(
     const candidates = orders.filter((order) => {
       const reference = (order.provider_reference ?? order.provider_order_id)?.trim();
       const status = String(order.order_status ?? order.status ?? order.fulfillment_status ?? "").toLowerCase();
-      return Boolean(reference) && CHECKABLE_STATUSES.has(status) && !checkedOrderIds.current.has(order.id);
+      return Boolean(order.id) && hasUsableReference(reference) && !isFinalOrderStatus(order.order_status, order.status, order.fulfillment_status) && CHECKABLE_STATUSES.has(status) && !checkedOrderIds.current.has(order.id);
     });
 
     if (candidates.length === 0) return;

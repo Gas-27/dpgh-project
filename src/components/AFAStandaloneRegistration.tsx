@@ -50,8 +50,8 @@ export default function AFAStandaloneRegistration({
       // Price priority: subsubagent > subagent > agent > admin default
       if (subsubagentStoreId) {
         const { data: subsubData } = await supabase
-          .from('sub_subagent_stores')
-          .select('afa_bundle_price')
+.from('public_sub_subagent_stores' as any)
+  .select('afa_bundle_price')
           .eq('id', subsubagentStoreId)
           .single();
         if ((subsubData as any)?.afa_bundle_price) {
@@ -60,8 +60,8 @@ export default function AFAStandaloneRegistration({
         }
         // Fall back to parent subagent's storefront price
         const { data: subsubStore } = await supabase
-          .from('sub_subagent_stores')
-          .select('subagent_store_id')
+.from('public_sub_subagent_stores' as any)
+  .select('subagent_store_id')
           .eq('id', subsubagentStoreId)
           .single();
         if (subsubStore?.subagent_store_id) {

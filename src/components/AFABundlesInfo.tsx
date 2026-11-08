@@ -50,8 +50,8 @@ export default function AFABundlesInfo({ agentId, subagentId, subsubagentId, sho
         if (subsubagentId && showAgentPrice) {
           // Sub-subagent storefront: own price → parent subagent's subsubagent base → admin
           const { data: subsubStore } = await supabase
-            .from('sub_subagent_stores')
-            .select('afa_bundle_price, subagent_store_id')
+.from('public_sub_subagent_stores' as any)
+  .select('afa_bundle_price, subagent_store_id')
             .eq('id', subsubagentId)
             .single();
           const ownPrice = Number(subsubStore?.afa_bundle_price || 0);

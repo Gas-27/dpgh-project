@@ -56,11 +56,15 @@ export default function ScheduleDataPurchase({ ownerType, ownerId, variant = "bu
   const [saving, setSaving] = useState(false);
 
   const loadSchedules = useCallback(async () => {
+    if (!ownerId) {
+      setSchedules([]);
+      return;
+    }
     const { data, error } = await supabase
       .from("scheduled_data_purchases" as any)
       .select("*")
       .eq("owner_type", ownerType)
-      .eq("owner_id", ownerId ?? "")
+      .eq("owner_id", ownerId)
       .order("created_at", { ascending: false });
     if (error) {
       console.error("[v0] Could not load schedules", error);

@@ -3,6 +3,7 @@ import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { cachedQuery } from "@/lib/cachedQuery";
 import { startVisiblePolling } from "@/lib/visiblePolling";
+import { isFinalOrderStatus, startOrderPolling } from "@/lib/orderPolling";
 import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -1364,27 +1365,53 @@ const Packages = () => {
     return startVisiblePolling(refreshPackages, 5 * 60 * 1000);
   }, []);
 
-  // Poll for order status updates every 30 seconds.
-  // The Packages page has no user context and no store filter, so a real-time
-  // subscription would broadcast every order in the system to every visitor.
-  // Polling is safe here — the orders list is for recent purchase tracking only.
+  // Poll non-final orders with backoff (10s -> 30s -> 60s), pause while the tab is
+  // hidden, stop once every order is final or after 30 minutes. The effect is keyed
+  // on the list of pending order ids so a status change never stacks a second loop.
+  const [orderPollingStopped, setOrderPollingStopped] = useState(false);
+  const [orderPollRun, setOrderPollRun] = useState(0);
+  const pendingOrderKey = useMemo(
+    () => orders
+      .filter((o) => o.id && !isFinalOrderStatus(o.order_status, o.status, o.fulfillment_status))
+      .map((o) => o.id)
+      .sort()
+      .join(","),
+    [orders],
+  );
+  const fetchOrderStatuses = async (ids: string[]) => {
+    const { data: polled } = await supabase.rpc("orders_by_ids_public", { p_ids: ids });
+    const data = (polled as any[] | null) ?? null;
+    if (data) {
+      setOrders((prev) =>
+        prev.map((order) => {
+          const updated = data.find((d) => d.id === order.id);
+          return updated ? { ...order, ...updated } : order;
+        })
+      );
+    }
+    return data;
+  };
   useEffect(() => {
-    if (orders.length === 0) return;
-    const ids = orders.map((o) => o.id);
-    const pollOrders = async () => {
-      const { data: polled } = await supabase.rpc("orders_by_ids_public", { p_ids: ids });
-      const data = (polled as any[] | null) ?? null;
-      if (data) {
-        setOrders((prev) =>
-          prev.map((order) => {
-            const updated = data.find((d) => d.id === order.id);
-            return updated ? { ...order, ...updated } : order;
-          })
-        );
-      }
-    };
-    return startVisiblePolling(pollOrders, 60_000);
-  }, [orders.length]);
+    setOrderPollingStopped(false);
+    if (!pendingOrderKey) return;
+    const ids = pendingOrderKey.split(",").filter(Boolean);
+    if (ids.length === 0) return;
+    return startOrderPolling({
+      task: async () => {
+        const data = await fetchOrderStatuses(ids);
+        if (!data) return true;
+        return data.some((row) => !isFinalOrderStatus(row.order_status, row.status, row.fulfillment_status));
+      },
+      onExhausted: () => setOrderPollingStopped(true),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingOrderKey, orderPollRun]);
+  const refreshOrderStatuses = async () => {
+    const ids = pendingOrderKey.split(",").filter(Boolean);
+    if (ids.length === 0) { setOrderPollingStopped(false); return; }
+    await fetchOrderStatuses(ids);
+    setOrderPollRun((n) => n + 1);
+  };
 
   // Fetch Special MTN Mashup pricing
   useEffect(() => {
@@ -1506,7 +1533,12 @@ const searchOrders = async (input?: string) => {
                         </div>
                       ) : (
                         <div className="space-y-3">
-                          <p className="text-sm font-medium text-foreground">Found {orders.length} order(s):</p>
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-medium text-foreground">Found {orders.length} order(s):</p>
+                            {orderPollingStopped && (
+                              <Button type="button" size="sm" variant="outline" onClick={() => { void refreshOrderStatuses(); }}>Refresh status</Button>
+                            )}
+                          </div>
                           <div className="max-h-[500px] overflow-y-auto pr-2 space-y-4">
                             {orders.map((order) => (
                               <div key={order.id} className="dark-surface flex flex-col p-4 border border-slate-700 rounded-lg bg-slate-950 hover:bg-slate-900 transition-colors">

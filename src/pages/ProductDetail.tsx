@@ -46,8 +46,8 @@ export default function ProductDetail() {
         const storeResult = await supabase.from("store_products").select("id,created_at,title,description,price,image_urls,store_id,store_kind,status,available,admin_boost,boost_global,boost_global_expires_at,boost_sitewide,boost_sitewide_expires_at,region,whatsapp_payment_number").eq("id", productId).eq("status", "active").eq("available", true).maybeSingle();
         item = storeResult.data;
         if (item?.store_id) {
-          const table = item.store_kind === "subagent" ? "subagent_stores" : item.store_kind === "subsubagent" ? "sub_subagent_stores" : "agent_stores";
-          const ownerResult = await supabase.from(table).select("id,store_name,support_number,whatsapp_number").eq("id", item.store_id).maybeSingle();
+          const table = item.store_kind === "subagent" ? "subagent_stores" : item.store_kind === "subsubagent" ? "public_sub_subagent_stores" : "agent_stores";
+          const ownerResult = await (supabase as any).from(table).select("id,store_name,support_number,whatsapp_number").eq("id", item.store_id).maybeSingle();
           owner = ownerResult.data;
         }
         if (!item) {

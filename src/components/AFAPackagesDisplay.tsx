@@ -205,8 +205,8 @@ export default function AFAPackagesDisplay({
       // Fallback:    parent subagent's afa_subsubagent_base_price → parent subagent's afa_bundle_price → admin price
       if (subsubagentStoreId) {
         const { data: subsubData } = await supabase
-          .from("sub_subagent_stores")
-          .select("afa_bundle_price, subagent_store_id")
+.from("public_sub_subagent_stores" as any)
+  .select("afa_bundle_price, subagent_store_id")
           .eq("id", subsubagentStoreId)
           .maybeSingle();
 

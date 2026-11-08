@@ -5,7 +5,7 @@ import { publicSupabase as supabase } from "@/integrations/supabase/public-clien
 import { cachedQuery } from "@/lib/cachedQuery";
 import { startVisiblePolling } from "@/lib/visiblePolling";
 import { DOMAINS } from "@/config/domains";
-import { findStoreByName, fetchAllStores } from "@/utils/storeUtils";
+import { findStoreByName, fetchAllStores, PUBLIC_SUB_SUBAGENT_STORE_COLUMNS } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -554,7 +554,7 @@ export function SubSubagentStorefront() {
       }
 
       // Fetch ALL sub-subagent stores via pagination (bypasses the 1000-row cap)
-      const stores = await fetchAllStores(supabase, "sub_subagent_stores");
+      const stores = await fetchAllStores(supabase, "public_sub_subagent_stores", PUBLIC_SUB_SUBAGENT_STORE_COLUMNS);
 
       if (!stores || stores.length === 0) {
         setNotFound(true);
@@ -639,7 +639,7 @@ export function SubSubagentStorefront() {
   const { data: promoSetting } = await supabase
     .from("promo_code_settings")
     .select("claim_visible")
-    .or(`owner_id.eq.${matched.user_id},owner_id.eq.${matched.id}`)
+    .or(matched.user_id ? `owner_id.eq.${matched.user_id},owner_id.eq.${matched.id}` : `owner_id.eq.${matched.id}`)
         .eq("store_type", "subsubagent")
         .order("updated_at", { ascending: false })
         .limit(1);

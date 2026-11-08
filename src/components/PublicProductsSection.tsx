@@ -138,7 +138,7 @@ export default function PublicProductsSection({
           const kind = item.store_kind || "agent";
           idsByKind.set(kind, [...(idsByKind.get(kind) || []), item.store_id || ""].filter(Boolean));
         });
-        const tableForKind: Record<string, string> = { agent: "agent_stores", subagent: "subagent_stores", subsubagent: "sub_subagent_stores" };
+        const tableForKind: Record<string, string> = { agent: "agent_stores", subagent: "subagent_stores", subsubagent: "public_sub_subagent_stores" };
         const entries = await Promise.all([...idsByKind.entries()].map(async ([kind, ids]) => {
           const table = tableForKind[kind];
           if (!table || !ids.length) return [] as [string, string][];

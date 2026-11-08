@@ -47,6 +47,9 @@ export const slugify = (name: string): string => {
  * server, which caused stores beyond row 1000 (e.g. "jerry") to never be
  * returned to the client, showing "Store Not Found".
  */
+export const PUBLIC_SUB_SUBAGENT_STORE_COLUMNS =
+  "id, subagent_store_id, agent_store_id, store_name, store_name_slug, url_slug, full_store_url, custom_domain, custom_domain_status, store_headline, theme_config, whatsapp_number, support_number, whatsapp_group, whatsapp_group_link, show_whatsapp_group_icon, approved, suspended, allow_registration, show_ussd_on_storefront, afa_bundle_price, created_at";
+
 export const fetchAllStores = async (
   supabase: any,
   table: string,

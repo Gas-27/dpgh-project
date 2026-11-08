@@ -622,7 +622,9 @@ const SubSubagentDashboard = () => {
         ] = await Promise.all([
           supabase.from("orders").select("*", { count: "exact" }).eq("sub_subagent_store_id", store.id).order("created_at", { ascending: false }).range(0, 999),
           supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", store.id).eq("requester_type", "sub_subagent").order("created_at", { ascending: false }),
-          supabase.from("transfer_recipients").select("*").eq("user_id", user?.id ?? "").eq("status", "active").order("created_at", { ascending: false }),
+          user?.id
+    ? supabase.from("transfer_recipients").select("*").eq("user_id", user.id).eq("status", "active").order("created_at", { ascending: false })
+    : Promise.resolve({ data: [] as any[], error: null }),
           supabase.from("data_packages").select("*, view_count").order("size_gb"),
           // This sub-subagent's OWN customer-facing selling price (set on their own dashboard).
           supabase.from("sub_subagent_package_prices").select("package_id, customer_sell_price").eq("sub_subagent_store_id", store.id),
@@ -975,30 +977,6 @@ const SubSubagentDashboard = () => {
 
 
 
-
-  const handleSavePrices = async () => {
-    try {
-      setSavingPrices(true);
-      const updates = Object.entries(subagentPrices).map(([packageId, price]) => ({
-        agent_store_id: subagentStore?.agent_store_id,
-        package_id: packageId,
-        sell_price: price,
-      }));
-
-      for (const update of updates) {
-        await supabase
-          .from("agent_package_prices")
-          .upsert(update, { onConflict: "agent_store_id,package_id" });
-      }
-
-      toast({ title: "Success", description: "Prices saved successfully" });
-    } catch (error) {
-      console.error("Error saving prices:", error);
-      toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
-    } finally {
-      setSavingPrices(false);
-    }
-  };
 
 const handleSaveStore = async () => {
   const normalizedStoreName = sanitizeStoreName(storeForm.store_name || "");

@@ -211,12 +211,15 @@ const CustomDomainResolver = () => {
         const storeId = pendingDomain?.store_id || pendingDomain?.agent_store_id;
         const kind = pendingDomain?.store_kind || "agent";
         if (storeId && kind === "subsubagent") {
-          const { data: store } = await supabase
-            .from("sub_subagent_stores")
-            .select("store_name, subagent_stores(store_name)")
+          const { data: store } = await (supabase as any)
+            .from("public_sub_subagent_stores")
+            .select("store_name, subagent_store_id")
             .eq("id", storeId)
             .maybeSingle();
-          const parent = (store as any)?.subagent_stores?.store_name;
+          const { data: parentStore } = store?.subagent_store_id
+            ? await supabase.from("subagent_stores").select("store_name").eq("id", store.subagent_store_id).maybeSingle()
+            : { data: null };
+          const parent = parentStore?.store_name;
           if (store?.store_name && parent) {
             resolved = { store_kind: "subsubagent", store_name: store.store_name, parent_store_name: parent };
           }

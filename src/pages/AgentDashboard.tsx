@@ -1561,8 +1561,10 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         if (numPrice < pkg.agent_price) { toast({ title: "Price below cost", variant: "destructive" }); setSavingPrices(false); return; }
       }
       for (const [id, sp] of Object.entries(editedPrices)) {
-        if (agentPrices[id] !== undefined) await supabase.from("agent_package_prices").update({ sell_price: Number(sp) }).eq("agent_store_id", store.id).eq("package_id", id);
-        else await supabase.from("agent_package_prices").insert({ agent_store_id: store.id, package_id: id, sell_price: Number(sp) });
+        const { error: priceError } = agentPrices[id] !== undefined
+          ? await supabase.from("agent_package_prices").update({ sell_price: Number(sp) }).eq("agent_store_id", store.id).eq("package_id", id)
+          : await supabase.from("agent_package_prices").insert({ agent_store_id: store.id, package_id: id, sell_price: Number(sp) });
+        if (priceError) throw priceError;
       }
       const { data: fp } = await supabase.from("agent_package_prices").select("package_id, sell_price").eq("agent_store_id", store.id);
       const nm: Record<string, number> = {}; (fp ?? []).forEach((p: any) => { nm[p.package_id] = p.sell_price; });
@@ -2381,7 +2383,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     });
   };
 
-  // ─── GUARDS ──────────────���───────────────────────────────────��───────���──────
+  // ─── GUARDS ──────────────���───────────────────────────────────��───────�����──────
   if (authLoading || loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="flex flex-col items-center gap-3"><Zap className="h-10 w-10 text-primary animate-pulse" /><p className="text-muted-foreground font-display">Loading dashboard...</p></div>
