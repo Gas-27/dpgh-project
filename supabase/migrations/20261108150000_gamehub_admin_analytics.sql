@@ -99,8 +99,8 @@ begin
     'totals', jsonb_build_object(
       'winners', (select count(*) from claims),
       'gb_total', (select coalesce(sum(gb), 0) from claims),
-      'gb_delivered', (select coalesce(sum(gb), 0) from claims where order_status = 'completed'),
-      'gb_pending', (select coalesce(sum(gb), 0) from claims where coalesce(order_status, '') <> 'completed'),
+      'gb_delivered', (select coalesce(sum(gb), 0) from claims where order_status in ('delivered', 'completed')),
+      'gb_pending', (select coalesce(sum(gb), 0) from claims where coalesce(order_status, '') not in ('delivered', 'completed')),
       'plays', (select count(*) from runs_f),
       'players', (select count(distinct user_id) from runs_f),
       'pending_claims', (select count(*) from runs_f where status = 'cleared' and not claimed),

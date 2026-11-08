@@ -74,8 +74,8 @@ export default function AdminGameHubWins() {
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
                 <Metric label="Total winners (claimed rewards)" value={totals.winners.toLocaleString()} />
                 <Metric label="Total GB won" value={gb(totals.gb_total)} accent />
-                <Metric label="GB delivered" value={gb(totals.gb_delivered)} hint="Order completed" />
-                <Metric label="GB awaiting delivery" value={gb(totals.gb_pending)} hint="Order not completed yet" />
+                <Metric label="GB delivered" value={gb(totals.gb_delivered)} hint="Order delivered" />
+                <Metric label="GB awaiting delivery" value={gb(totals.gb_pending)} hint="Order not delivered yet" />
                 <Metric label="Games played" value={totals.plays.toLocaleString()} />
                 <Metric label="Players" value={totals.players.toLocaleString()} />
                 <Metric label="Cleared, reward not claimed" value={totals.pending_claims.toLocaleString()} />
