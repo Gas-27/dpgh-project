@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { buildGameHubShareUrl } from "@/lib/gameHubRoute";
 import { getGuestId } from "@/lib/gameHubGuest";
+import { withShowcaseLeaderboard } from "@/lib/gameHubShowcase";
 
 // The Game Hub tables and functions are not part of the generated Database types yet.
 const db = supabase as unknown as SupabaseClient;
@@ -67,7 +68,7 @@ export async function fetchLeaderboard(gameId: string | null, period: Leaderboar
     rows.push(...batch.map((row) => ({ ...row, rank: Number(row.rank), score: Number(row.score) })));
     if (batch.length < pageSize) break;
   }
-  return rows;
+  return withShowcaseLeaderboard(rows, gameId, period);
 }
 
 export type AdminWalletOption = { type: "customer" | "agent" | "subagent" | "subsubagent"; label: string; balance: number };

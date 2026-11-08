@@ -25,7 +25,8 @@ import GameHubArcheryPlayer from "@/components/GameHubArcheryPlayer";
 import GameHubRewardPlayer from "@/components/GameHubRewardPlayer";
 import { useGameHubUser } from "@/hooks/useGameHubUser";
 import { useToast } from "@/hooks/use-toast";
-import { applyChanceOrder, buildGameShareUrl, fetchGameHubWinCounts, fetchGameRewardSettings, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
+import { applyChanceOrder, buildGameShareUrl, fetchGameRewardSettings, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
+import { useShowcaseWinCounts } from "@/lib/gameHubShowcase";
 import { clearPendingChance, readPendingChance } from "@/lib/gameHubChances";
 import { leaveGameHubUrl, markGameHubLanding, parseGameHubPath, syncGameHubUrl } from "@/lib/gameHubRoute";
 import { useConversations, useGameHubRealtime } from "@/lib/gameHubSocial";
@@ -323,7 +324,7 @@ export default function GameHubDialog() {
   const { data: videos = [] } = useQuery({ queryKey: ["gamehub-videos"], queryFn: fetchGameVideos, enabled: open, staleTime: 60_000 });
 
   const { data: settings = [] } = useQuery({ queryKey: ["gamehub-rules"], queryFn: fetchGameRewardSettings, enabled: open, staleTime: 15_000, refetchOnWindowFocus: true });
-  const { data: wins = {} } = useQuery({ queryKey: ["gamehub-win-counts"], queryFn: fetchGameHubWinCounts, enabled: open, staleTime: 30_000, refetchOnWindowFocus: true });
+  const wins = useShowcaseWinCounts(hubGames.map((game) => game.id), open);
   const rules: RuleMap = Object.fromEntries((settings ?? []).filter((row): row is GameRuleSummary => Boolean(row?.game_id)).map((row) => [row.game_id, row]));
 
   useGameHubRealtime(user?.id, open);
