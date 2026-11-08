@@ -587,7 +587,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
   const guestRules = [
     isTimed
       ? game.id === "basketball"
-        ? `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"}. You have 2 lives, so you can miss twice.`
+        ? `Score 300 points within ${requiredMinutes} minutes. You start with 2 shots and can buy an extra chance after failing.`
         : `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"} without missing a single shot.`
       : `Reach level ${target} to complete the challenge.`,
     "Playing is free and needs no account. There are no lives to buy, so if you miss you simply start again.",
@@ -596,13 +596,13 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
   const rulesList = guest ? guestRules : [
     isTimed
       ? game.id === "basketball"
-        ? `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"}. You can miss up to 2 shots.`
+        ? `Score 300 points within ${requiredMinutes} minutes using your 2 shots. Buy an extra chance if you fall short.`
         : `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"} without missing a single shot.`
       : `Reach level ${target} to complete the challenge.`,
     game.id === "basketball"
       ? "You start with 2 lives, so you can miss twice. Your third miss pauses the run."
       : "You start with 1 life. When you miss or lose it, the run pauses.",
-    `Buy 1 extra life for GH\u20B5${LIFE_PRICE} from your wallet to continue exactly where you stopped, or end the game and start again.`,
+    `Buy 1 extra chance for GH\u20B5${LIFE_PRICE} from your wallet after a failed attempt to continue, or end the game and start again.`,
     `Finish the challenge to win free MTN ${rewardGb}GB, sent to the MTN number you enter.`,
     "Everything is checked by our servers, so cheating or speeding up the game disables your reward.",
     "Each account can claim the reward once per game. You must be signed in to play for data.",

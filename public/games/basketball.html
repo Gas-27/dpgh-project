@@ -192,11 +192,12 @@ function showWin(){
 function hubFinish(){
  if(state==='verify')return;
  state='verify';hub.running=false;drag=null;show('turbo',0);
- hubPanel('<h1>Verifying</h1><p>Checking your 10 minutes with our servers...</p>');
- new Promise(r=>{hub.pending=r;hubSend({type:'gh-level-complete',level:1})}).then(d=>{
+ hubPanel('<h1>Verifying</h1><p>Checking your 300-point score with our servers...</p>');
+ new Promise(r=>{hub.pending=r;hubSend({type:'gh-level-complete',level:hubScore})}).then(d=>{
   if(d.ok&&d.status==='cleared'){hub.status='cleared';showWin();return}
-  if(d.status==='flagged'){hubPanel('<h1>Not <span>verified</span></h1><p>'+(d.message||'This session failed our fair-play checks.')+'</p>');return}
-  if(++hubTries<8){state='retry';setTimeout(hubFinish,2500);return}
+if(d.status==='flagged'){hubPanel('<h1>Not <span>verified</span></h1><p>'+(d.message||'This session failed our fair-play checks.')+'</p>');return}
+ if(d.status==='active'&&hubShots>=2){hubPanel('<h1>Below <span>300 points</span></h1><p>You scored '+hubScore+'. Buy an extra chance to continue, then reach 300 points.</p><button id="hubBuy">Buy extra chance</button>');$('hubBuy').onclick=()=>hubSend({type:'gh-open-buy'});return}
+ if(++hubTries<8){state='retry';setTimeout(hubFinish,2500);return}
   hubPanel('<h1>Not <span>verified</span></h1><p>'+(d.message||'We could not verify your time. Close and reopen the game to continue.')+'</p>')})}
 function resumeAfterLife(){
  if(!hub.mode)return;
