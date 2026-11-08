@@ -26,8 +26,12 @@ import {
   resetGameStreak,
   startGameRun,
   submitGuestScore,
+  timedActivity,
   timedBegin,
+  timedPause,
   timedTick,
+  reportIntegrity,
+  type IntegrityKind,
   type GameRewardSetting,
   type GameRun,
 } from "@/lib/gameHubApi";
@@ -111,7 +115,10 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
   const gameSrc = `${game.native?.src ?? ""}?hub=1&k=${frameKey}`;
   const tickTimerRef = useRef<number | null>(null);
 
+  const tickGenerationRef = useRef(0);
+
   const stopTicking = useCallback(() => {
+    tickGenerationRef.current += 1;
     if (tickTimerRef.current !== null) {
       window.clearInterval(tickTimerRef.current);
       tickTimerRef.current = null;
@@ -367,15 +374,64 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
         return;
       }
 
+      if (data.type === "gh-integrity") {
+        const kind = (data as GameMessage & { kind?: string }).kind;
+        const allowed: IntegrityKind[] = ["automation", "speed_hack", "synthetic_input", "tamper"];
+        if (!kind || !allowed.includes(kind as IntegrityKind) || current.status !== "active") return;
+        stopTicking();
+        enqueue(async () => {
+          try {
+            const next = await reportIntegrity(current.run_id, kind as IntegrityKind);
+            applyRun(next);
+            if (next.status === "flagged") {
+              post({ type: "gh-level-result", ok: false, status: "flagged", message: "This session failed our fair-play checks. Rewards are disabled for it." });
+            }
+          } catch {
+            // a failed report never helps the player: the server clock keeps its own idle rules
+          }
+        });
+        return;
+      }
+
+      if (data.type === "gh-timed-pause") {
+        if (current.required_seconds === null) return;
+        stopTicking();
+        enqueue(async () => {
+          try {
+            const next = await timedPause(current.run_id);
+            applyRun(next);
+            post({ type: "gh-timer", playSeconds: next.play_seconds });
+          } catch {
+            // the server drops uncredited idle time on its own
+          }
+        });
+        return;
+      }
+
+      if (data.type === "gh-throw") {
+        if (current.required_seconds === null || tickTimerRef.current === null) return;
+        enqueue(async () => {
+          try {
+            await timedActivity(current.run_id);
+          } catch {
+            // activity only keeps the clock alive; a miss slows the clock, never speeds it up
+          }
+        });
+        return;
+      }
+
       if (data.type === "gh-timed-start") {
         if (current.status !== "active" || current.required_seconds === null || tickTimerRef.current !== null) return;
+        const generation = tickGenerationRef.current;
         enqueue(async () => {
+          if (generation !== tickGenerationRef.current) return;
           try {
             applyRun(await timedBegin(current.run_id));
           } catch (error) {
             toast({ title: "Could not start the timer", description: (error as Error).message, variant: "destructive" });
             return;
           }
+          if (generation !== tickGenerationRef.current || tickTimerRef.current !== null) return;
           tickTimerRef.current = window.setInterval(() => {
             const active = runRef.current;
             if (!active) return;
@@ -410,6 +466,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
           try {
             const next = await loseGameLife(current.run_id);
             applyRun(next);
+            post({ type: "gh-timer", playSeconds: next.play_seconds });
             if (next.lives <= 0 && next.status === "active") openContinueOptions();
           } catch (error) {
             toast({ title: "Could not update lives", description: (error as Error).message, variant: "destructive" });

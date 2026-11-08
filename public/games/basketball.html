@@ -99,6 +99,7 @@ button.alt{background:#fff4e6;box-shadow:0 4px 0 #b79a82}
 </div>
 </div>
 
+<script src="/games/gh-guard.js"></script>
 <script>
 const cv=document.getElementById('c'),ctx=cv.getContext('2d');
 const W=360,H=640,RIMY=184,HALF=36,WALL=442;
@@ -143,19 +144,30 @@ let turbo=false,phase=0,ampCur=0,ball=null,flying=[],nextBallAt=0,streak=0,parts
 
 /* ===== Game Hub bridge: the 10 minutes, the single life and the reward are tracked by the server, not by this page ===== */
 const HUB=new URLSearchParams(location.search).get('hub')==='1'&&window.parent!==window;
-const hub={ready:false,lives:1,status:'active',play:0,req:600,gb:5,base:0,baseAt:0,mode:false,running:false,pending:null};
+const hub={ready:false,lives:1,status:'active',play:0,req:600,gb:5,base:0,baseAt:0,mode:false,running:false,pending:null,idle:false,lastAct:0};
+const IDLE_MS=6000;
 let hubTries=0;
 function hubSend(m){try{window.parent.postMessage(Object.assign({source:'gamehub'},m),location.origin)}catch(e){}}
 function setPlay(s){hub.play=+s||0;hub.base=hub.play;hub.baseAt=performance.now()}
 function hubLeft(now){return Math.max(0,Math.ceil(hub.req-hub.base-(hub.running?(now-hub.baseAt)/1000:0)))}
 function fmt(s){return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')}
 function hubPanel(html){$('hubp').innerHTML=html;show('menu',0);show('how',0);show('over',0);show('hubp',1)}
+function hubFreeze(now){
+ if(!hub.running)return;
+ hub.base+=(now-hub.baseAt)/1000;hub.baseAt=now;hub.running=false}
 function hubTick(now){
- if(state!=='play'||now<startAt)return;
- if(!hub.running){hub.running=true;hub.baseAt=now;hubSend({type:'gh-timed-start'})}
+ if(state!=='play'||now<startAt||hub.idle)return;
+ if(!hub.running){hub.running=true;hub.baseAt=now;hub.lastAct=Math.max(hub.lastAct,startAt);hubSend({type:'gh-timed-start'})}
+ else if(now-hub.lastAct>IDLE_MS&&!flying.length){hubFreeze(now);hub.idle=true;drag=null;hubSend({type:'gh-timed-pause'});return}
  if(hubLeft(now)<=0)hubFinish()}
+function hubThrow(){
+ if(!hub.mode)return;
+ const now=performance.now();hub.lastAct=now;
+ if(hub.idle){hub.idle=false;hub.running=true;hub.baseAt=now;hubSend({type:'gh-timed-start'})}
+ else hubSend({type:'gh-throw'})}
 function hubMiss(){
  if(state!=='play')return;
+ hubFreeze(performance.now());hub.idle=false;
  state='lost';drag=null;hub.running=false;hub.lives=Math.max(0,hub.lives-1);show('turbo',0);tone(180,.4,'sawtooth',.15,90);
  hubSend({type:'gh-life-lost'});
  if(hub.lives>0)showMissCard();else showLostCard(true)}
@@ -185,7 +197,7 @@ function hubFinish(){
   hubPanel('<h1>Not <span>verified</span></h1><p>'+(d.message||'We could not verify your time. Close and reopen the game to continue.')+'</p>')})}
 function resumeAfterLife(){
  if(!hub.mode)return;
- show('hubp',0);flying=[];resetBall();streak=0;hub.running=false;setPlay(hub.play);startAt=performance.now()+3000;state='play';show('turbo',1)}
+ show('hubp',0);flying=[];resetBall();streak=0;hub.running=false;hub.idle=false;setPlay(hub.play);startAt=performance.now()+3000;hub.lastAct=startAt;state='play';show('turbo',1)}
 function hubOnState(){
  const b=$('reward');b.classList.remove('hide');
  b.textContent=hub.status==='cleared'?'Claim free data':hub.play>5?'Continue - '+fmt(Math.max(0,Math.round(hub.req-hub.play)))+' left':'Play - Win free data';
@@ -204,7 +216,7 @@ if(HUB)hubSend({type:'gh-ready'});
 
 
 function resetBall(){ball={x:0,y:90,z:0,vx:0,vy:0,vz:0,rot:0,spawn:0,prevY:90,life:0,rim:false,done:false}}
-function startGame(){show('hubp',0);hub.running=false;if(hub.mode)setPlay(hub.play);score=0;oppScore=0;hoopX=W/2;hx=0;hoopT=0;phase=0;ampCur=0;setTurbo(false);show('turbo',1);resetBall();flying=[];nextBallAt=0;float=[];streak=0;parts=[];startAt=performance.now()+3000;state='play';
+function startGame(){show('hubp',0);hub.running=false;hub.idle=false;if(hub.mode)setPlay(hub.play);score=0;oppScore=0;hoopX=W/2;hx=0;hoopT=0;phase=0;ampCur=0;setTurbo(false);show('turbo',1);resetBall();flying=[];nextBallAt=0;float=[];streak=0;parts=[];startAt=performance.now()+3000;state='play';
  show('menu',0);show('lobby',0);show('over',0);if(room)room.presence({name:myName,score:0})}
 
 // ---------- sound ----------
@@ -255,7 +267,7 @@ cv.addEventListener('pointermove',e=>{if(drag)dragNow=pt(e)});
 cv.addEventListener('pointercancel',()=>{drag=dragNow=null});
 cv.addEventListener('pointerup',e=>{if(!drag)return;const a=drag,b=pt(e);drag=dragNow=null;
  const dx=b.x-a.x,dy=b.y-a.y;if(dy>-25||!ball)return;
- Object.assign(ball,shotVel(dx,dy),{fire:mult()>1,trail:[]});flying.push(ball);ball=null;nextBallAt=performance.now()+320;tone(220,.12,'triangle',.1,120)});
+ Object.assign(ball,shotVel(dx,dy),{fire:mult()>1,trail:[]});flying.push(ball);ball=null;nextBallAt=performance.now()+320;tone(220,.12,'triangle',.1,120);hubThrow()});
 // swipe length = power (arc height); depth auto-compensates so good swipes land at the hoop; direction = aim
 function shotVel(dx,dy){const u=-dy,len=Math.hypot(dx,dy),P=clamp(len/170,.45,1.5);
  const vy=820*clamp(1+(P-1)*.3,.9,1.12),disc=vy*vy-4*(GRAV/2)*(HH-ball.y);
@@ -316,6 +328,7 @@ function avatar(cx,cy,skin,hair,name,q){ctx.fillStyle='#f2c744';ctx.beginPath();
  label(name,cx,cy+41,11)}
 function hud(now){if(state!=='play'||now<startAt)return;
  if(hub.mode)label(hub.lives+(hub.lives===1?' LIFE':' LIVES')+' LEFT',W/2,98,11,'#fff');
+ if(hub.mode&&hub.idle)label('TIMER PAUSED - SHOOT TO RESUME',W/2,126,12,'#ffd21f');
  if(turbo)label('FAST HOOP x2!',W/2,80,14,'#ffd21f');
  if(streak>=2){label('STREAK '+streak,48,100,12);if(mult()>1)label('x'+mult()+' ON FIRE',48,116,12,'#ffb000')}}
 function scoreboard(now){

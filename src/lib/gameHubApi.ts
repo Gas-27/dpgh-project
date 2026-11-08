@@ -386,6 +386,25 @@ export async function timedTick(runId: string): Promise<GameRun> {
   return data as GameRun;
 }
 
+export async function timedPause(runId: string): Promise<GameRun> {
+  const { data, error } = await db.rpc("gamehub_timed_pause", { p_run_id: runId });
+  if (error) throw error;
+  return data as GameRun;
+}
+
+export async function timedActivity(runId: string): Promise<void> {
+  const { error } = await db.rpc("gamehub_timed_activity", { p_run_id: runId });
+  if (error) throw error;
+}
+
+export type IntegrityKind = "automation" | "speed_hack" | "synthetic_input" | "tamper";
+
+export async function reportIntegrity(runId: string, kind: IntegrityKind): Promise<GameRun> {
+  const { data, error } = await db.rpc("gamehub_report_integrity", { p_run_id: runId, p_kind: kind });
+  if (error) throw error;
+  return data as GameRun;
+}
+
 export async function recordShot(runId: string): Promise<GameRun> {
   const { data, error } = await db.rpc("gamehub_record_shot", { p_run_id: runId });
   if (error) throw error;
