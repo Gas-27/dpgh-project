@@ -655,22 +655,7 @@ export function SubSubagentStorefront() {
   useEffect(() => {
     if (!store?.id) return;
     
-    const storeChannel = supabase
-      .channel(`subagent-store-settings-${store.id}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "sub_subagent_stores", filter: `id=eq.${store.id}` },
-        (payload) => {
-          const newData = payload.new as any;
-          setStore(prev => prev ? { 
-            ...prev, 
-            ...newData,
-            theme_config: { ...prev.theme_config, ...(newData.theme_config || {}) }
-          } : prev);
-        }
-      )
-      .subscribe();
-    
+
     // Rebuild price exactly like the dashboard: customer_sell_price if set, else cost-from-agent
     // (admin → parent's agent cost → parent's sub-subagent template).
     const refetchMergedPrices = async () => {
@@ -743,7 +728,6 @@ export function SubSubagentStorefront() {
       : null;
     
     return () => { 
-      supabase.removeChannel(storeChannel);
       supabase.removeChannel(priceChannel);
       if (templatePriceChannel) supabase.removeChannel(templatePriceChannel);
       if (agentPriceChannel) supabase.removeChannel(agentPriceChannel);

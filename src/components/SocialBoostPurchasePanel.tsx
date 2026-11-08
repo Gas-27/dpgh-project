@@ -324,7 +324,7 @@ const userPrice = Number(data?.admin_price_per_1000 ?? service.rate ?? 0);
   const defaultAgentPrice = Number(data?.default_price_per_1000) > 0 ? Number(data?.default_price_per_1000) : basePrice;
   let customPrice: number | null = null;
   if (pricingMode === "storefront" && storeId) {
-    const storeTable = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
+    const storeTable = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : "public_sub_subagent_stores";
     const { data: storeRow } = await (supabase as any).from(storeTable).select("user_id").eq("id", storeId).maybeSingle();
     if (storeRow?.user_id) {
       const { data: savedPrice } = await (supabase as any).from("social_boost_reseller_pricing").select("price_per_1000").eq("user_id", storeRow.user_id).eq("service_id", service.service).maybeSingle();
@@ -358,9 +358,9 @@ const userPrice = Number(data?.admin_price_per_1000 ?? service.rate ?? 0);
       if (!mounted) return;
       let pricingUserId = authData.user?.id ?? null;
 if (storeId && ["agent", "subagent", "subsubagent"].includes(normalizedOwnerType)) {
-  const table = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : "sub_subagent_stores";
-        const { data: store } = await (supabase as any).from(table).select(normalizedOwnerType === "agent" ? "user_id" : "*").eq("id", storeId).maybeSingle();
-        pricingUserId = store?.user_id ?? store?.owner_id ?? store?.created_by ?? pricingUserId;
+  const table = normalizedOwnerType === "agent" ? "agent_stores" : normalizedOwnerType === "subagent" ? "subagent_stores" : "public_sub_subagent_stores";
+        const { data: store } = await (supabase as any).from(table).select("user_id").eq("id", storeId).maybeSingle();
+        pricingUserId = store?.user_id ?? pricingUserId;
       }
       if (!pricingUserId) return;
       const { data } = await (supabase as any)

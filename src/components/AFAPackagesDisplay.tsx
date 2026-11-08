@@ -143,31 +143,6 @@ export default function AFAPackagesDisplay({
     return () => { subscription.unsubscribe(); };
   }, [subagentStoreId]);
 
-  // Subscribe to sub_subagent_stores updates
-  useEffect(() => {
-    if (!subsubagentStoreId) return;
-
-    const subscription = supabase
-      .channel(`sub_subagent_stores_${subsubagentStoreId}_afa_pricing`)
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'sub_subagent_stores',
-          filter: `id=eq.${subsubagentStoreId}`,
-        },
-        (payload) => {
-          if (payload.new && 'afa_bundle_price' in payload.new) {
-            setAgentBundlePrice(payload.new.afa_bundle_price ?? 0);
-          }
-        }
-      )
-      .subscribe();
-
-    return () => { subscription.unsubscribe(); };
-  }, [subsubagentStoreId]);
-
   const fetchAFAData = async () => {
     setLoading(true);
     try {
