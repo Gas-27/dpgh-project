@@ -49,7 +49,7 @@ function dayKey(index: number): string {
 /** Winners shown on a game card. Starts at 0 at midnight and climbs through the day, then resets. */
 export function showcaseWinsToday(gameId: string, now = Date.now()): number {
   const index = dayIndex(now);
-  const dailyTarget = 22 + Math.floor(seededRandom(hashSeed(`wins|${gameId}|${dayKey(index)}`))() * 74);
+  const dailyTarget = 120 + Math.floor(seededRandom(hashSeed(`wins|${gameId}|${dayKey(index)}`))() * 371);
   const dayFraction = (now - index * DAY_MS) / DAY_MS;
   return Math.floor(dailyTarget * Math.pow(dayFraction, 0.8));
 }
