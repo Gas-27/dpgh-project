@@ -458,9 +458,12 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       .replace(/https?:\/\/\S+/gi, "")
       .replace(/\s{2,}/g, " ")
       .trim();
-    const outgoingMessage = includeStoreLink && storeLink
-      ? `${cleanMessage} ${storeLink}`.trim()
-      : cleanMessage;
+  const withUssdDetails = ownerType !== "customer" && ussdMessage && !cleanMessage.includes(ussdMessage)
+    ? `${cleanMessage}${cleanMessage ? "\n\n" : ""}${ussdMessage}`.trim()
+    : cleanMessage;
+  const outgoingMessage = includeStoreLink && storeLink
+    ? `${withUssdDetails} ${storeLink}`.trim()
+    : withUssdDetails;
     if (publicMode) {
       const email = `sms-${numbers[0]}@dataplug.store`;
       const { data: payment, error: paymentError } = await supabase.functions.invoke("initialize-payment", { body: { phone: numbers[0], amount: totalCost, callback_url: `${window.location.origin}${window.location.pathname}?payment=verifying&sms_payment=success`, metadata: { type: "sms_campaign", recipients: numbers, sender_id: senderId, message: outgoingMessage, owner_type: "customer", owner_id: null } } });
