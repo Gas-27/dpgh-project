@@ -70,7 +70,7 @@ export default function StorefrontSectionCards({ active, onSelect, onBecomeAgent
                 left: id === "social-boost" ? "2.1%" : index % 2 === 0 ? "2.1%" : "50.8%",
                 top: id === "social-boost" ? "89.5%" : `${[2.5, 19.8, 38.3, 55.3, 72.6][Math.floor(index / 2)]}%`,
               }}
-              className={`storefront-reference-hotspot ${id === "social-boost" ? "is-wide" : ""} ${active === id ? "is-active" : ""}`}
+              className={`storefront-reference-hotspot ${id === "social-boost" ? "is-wide" : ""} ${active === id ? "is-active" : ""} ${id === "products" && active !== id ? "is-pulsing" : ""}`}
             >
               <span className="sr-only">{label}: {description}</span>
               {id === "gamehub" && (

@@ -55,14 +55,21 @@ export default function PublicServiceAccess() {
   useEffect(() => {
     if (searchParams.get("service_payment") !== "verifying" || !serviceId) return;
     const pendingRaw = sessionStorage.getItem("pending_service_payment");
-    const reference = pendingRaw ? (JSON.parse(pendingRaw) as { reference?: string }).reference : null;
+    let pending: { reference?: string; phone?: string; pin?: string } = {};
+    try { pending = pendingRaw ? JSON.parse(pendingRaw) : {}; } catch { pending = {}; }
+    // Paystack appends the reference to the return URL, so verification still works when
+    // the customer comes back in a different tab/browser where sessionStorage is empty.
+    const reference = searchParams.get("reference") || searchParams.get("trxref") || pending.reference || null;
     if (!reference) return;
     let cancelled = false;
     supabase.functions.invoke("verify-payment", { body: { reference } }).then(async ({ data, error }) => {
       if (cancelled) return;
       if (error || data?.error) { setError(data?.error || "Payment could not be verified yet. Please try again."); return; }
       sessionStorage.removeItem("pending_service_payment");
-      const pending = pendingRaw ? JSON.parse(pendingRaw) as { phone?: string; pin?: string } : {};
+      if (!pending.phone || !pending.pin) {
+        setError("Payment confirmed. Enter the phone number and 4-digit access code you chose to view your login details.");
+        return;
+      }
       const accessResult = await supabase.functions.invoke("activate-service", { body: { service_id: serviceId, phone: pending.phone, pin: pending.pin } });
       if (accessResult.error || (!accessResult.data?.credential && !accessResult.data?.credentials?.length)) { setError(accessResult.data?.error || "Payment was confirmed, but access details are not ready yet."); return; }
       setPhone(pending.phone || "");

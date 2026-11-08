@@ -120,6 +120,32 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ error: "Social Boost metadata missing" }), { status: 200, headers: corsHeaders });
   }
 
+  // Public-share subscriptions: create the access order from the webhook so it exists even when
+  // the customer never returns to the site after paying.
+  if (paymentType === "service_payment" || paymentType === "subscription" || metadata?.service_payment === true || metadata?.service_payment === "true") {
+    const publicServiceId = metadata?.service_id ? String(metadata.service_id) : "";
+    const { data: publicService } = publicServiceId ? await supabaseClient.from("digital_services").select("service_type").eq("id", publicServiceId).maybeSingle() : { data: null };
+    if (publicService?.service_type === "public_shared") {
+      const publicPhone = String(metadata?.customer_phone || metadata?.phone || "").replace(/\D/g, "");
+      const publicPin = String(metadata?.access_pin || "").trim();
+      if (!/^\d{10}$/.test(publicPhone) || !/^\d{4}$/.test(publicPin)) {
+        console.error("[PUBLIC SHARE] Invalid metadata for reference:", reference);
+        return new Response(JSON.stringify({ error: "Invalid service payment metadata" }), { status: 200, headers: corsHeaders });
+      }
+      const { data: existingPublicOrder } = await supabaseClient.from("digital_service_orders").select("id").eq("paystack_reference", reference).maybeSingle();
+      if (existingPublicOrder) return new Response(JSON.stringify({ success: true, already_processed: true }), { status: 200, headers: corsHeaders });
+      const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(publicPin));
+      const publicPinHash = Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      const grantedAt = Date.now();
+      const { error: publicOrderError } = await supabaseClient.from("digital_service_orders").insert({ service_id: publicServiceId, credential_id: null, customer_id: metadata?.user_id || metadata?.customer_id || null, customer_phone: publicPhone, access_pin_hash: publicPinHash, paystack_reference: reference, payment_status: "paid", access_granted_at: new Date(grantedAt).toISOString(), access_expires_at: new Date(grantedAt + 7 * 24 * 60 * 60 * 1000).toISOString() });
+      if (publicOrderError) {
+        const { data: raced } = await supabaseClient.from("digital_service_orders").select("id").eq("paystack_reference", reference).maybeSingle();
+        if (!raced) console.error("[PUBLIC SHARE] Could not record order:", reference, publicOrderError.message);
+      }
+      return new Response(JSON.stringify({ message: "Public share payment processed" }), { status: 200, headers: corsHeaders });
+    }
+  }
+
   if (paymentType === "guest_product") {
     const { data: activation, error: activationError } = await supabaseClient.rpc("activate_guest_store_product", {
       p_product_id: String(metadata?.product_id || ""),

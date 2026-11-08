@@ -20,6 +20,31 @@ Deno.serve(async (req) => {
     if (serviceError || !service) return json({ error: "Service is unavailable" }, 404);
     let { data: order } = await db.from("digital_service_orders").select("id,credential_id,customer_id,access_expires_at").eq("service_id", service_id).eq("customer_phone", phone).eq("access_pin_hash", hash).in("payment_status", ["paid", "free"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
     if (service.service_type === "public_shared") {
+      if (!order && !service.is_free) {
+        // Self-heal: the customer paid but no order was recorded (browser never returned to verify).
+        // Find the successful Paystack transaction carrying this phone, access code and service.
+        const secret = Deno.env.get("PAYSTACK_SECRET_KEY");
+        const from = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+        for (let page = 1; secret && !order && page <= 3; page++) {
+          const res = await fetch(`https://api.paystack.co/transaction?status=success&perPage=100&page=${page}&from=${encodeURIComponent(from)}`, { headers: { Authorization: `Bearer ${secret}` } }).catch(() => null);
+          const body = res ? await res.json().catch(() => null) : null;
+          const rows = body?.data;
+          if (!res?.ok || !Array.isArray(rows) || !rows.length) break;
+          for (const tx of rows) {
+            let meta = tx.metadata;
+            if (typeof meta === "string") { try { meta = JSON.parse(meta); } catch { meta = null; } }
+            if (!meta || typeof meta !== "object") continue;
+            const txPhone = String(meta.customer_phone || meta.phone || "").replace(/\D/g, "");
+            if (String(meta.service_id) !== String(service_id) || txPhone !== String(phone) || String(meta.access_pin || "").trim() !== String(pin)) continue;
+            const paidAt = new Date(tx.paid_at || tx.paidAt || tx.created_at || Date.now()).getTime();
+            const { data: existingRef } = await db.from("digital_service_orders").select("id").eq("paystack_reference", tx.reference).maybeSingle();
+            if (existingRef) continue;
+            const { data: recovered } = await db.from("digital_service_orders").insert({ service_id, credential_id: null, customer_id: meta.user_id || meta.customer_id || null, customer_phone: phone, access_pin_hash: hash, paystack_reference: tx.reference, payment_status: "paid", access_granted_at: new Date(paidAt).toISOString(), access_expires_at: new Date(paidAt + 7 * 24 * 60 * 60 * 1000).toISOString() }).select("id,credential_id,customer_id,access_expires_at").single();
+            if (recovered) { order = recovered; break; }
+          }
+          if (rows.length < 100) break;
+        }
+      }
       if (!order && !service.is_free) return json({ error: "No paid access found for these details" }, 403);
       if (order && order.access_expires_at && new Date(order.access_expires_at).getTime() <= Date.now()) return json({ error: "Payment expired. Please pay again to access this service." }, 402);
       const { data: credentials, error: credentialsError } = await db.from("digital_service_credentials").select("email,password,instructions").eq("service_id", service_id).eq("active", true).order("slot_number");
