@@ -1,6 +1,6 @@
 import { useMemo, useState, type ReactNode } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Check, Clock, Copy, Download, Facebook, Heart, Instagram, Link2, Megaphone, MessageCircle, Music2, Send, Share2, Sparkles, Twitter } from "lucide-react";
+import { Check, Clock, Copy, Download, Facebook, Heart, Instagram, Link2, Megaphone, MessageCircle, Music2, Send, Share2, Sparkles, Twitter, Video } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -235,6 +235,20 @@ export default function MarketingHub({ storeName, storeUrl, children }: Marketin
             </span>
           ))}
         </div>
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
+        <h3 className="flex items-center gap-2 font-display text-base font-bold text-foreground">
+          <Video className="h-5 w-5 text-primary" aria-hidden /> How to market and get customers
+        </h3>
+        <video
+          src="/videos/get-your-first-customers-dataplug.mp4"
+          controls
+          playsInline
+          preload="metadata"
+          aria-label="How to market and get your first customers"
+          className="aspect-video w-full rounded-xl bg-black"
+        />
       </section>
 
       <section className="grid gap-6 lg:grid-cols-[1fr_300px]">
