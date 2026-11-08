@@ -113,12 +113,6 @@ const networkConfig: Record<Network, { label: string; color: string }> = {
   telecel: { label: "Telecel", color: "text-red-400" },
 };
 
-const SPIN_PACKAGE_IDS: Record<number, string> = {
-  1: "a9d3a307-c416-4a81-9095-9f2b85cc197d",
-  2: "1e232e3a-ba58-483a-8012-efcddeb5cd5b",
-  5: "9cab80c3-fa7b-45ad-beb2-745e79310125",
-};
-
 const SPIN_COOLDOWN_MS = 8 * 60 * 60 * 1000;
 
 const WHEEL_COLORS = [
@@ -153,15 +147,6 @@ const formatCountdown = (ms: number): string => {
   if (ms <= 0) return "0:00:00";
   const s = Math.floor(ms / 1000);
   return `${Math.floor(s / 3600)}:${String(Math.floor((s % 3600) / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-};
-
-const shuffleArray = <T,>(arr: T[]): T[] => {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
 };
 
 // ─────────────────────────────────────────── Synthesised Sound Engine ──
@@ -487,6 +472,14 @@ export interface SpinWheelPopupProps {
 
 type SpinPhase = "idle" | "freewheeling" | "decelerating";
 
+interface SpinDraw {
+  draw_id: string;
+  segment_index: number;
+  segment: SpinSegment;
+  prize_gb: number | null;
+  won: boolean;
+}
+
 export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupProps) => {
   const { toast } = useToast();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -499,6 +492,8 @@ export const SpinWheelPopup = ({ open, onOpenChange, config }: SpinWheelPopupPro
   const targetRef = useRef(0);     // final angle for deceleration
   const winIdxRef = useRef(-1);
   const lastTickRef = useRef(0);
+  const drawRef = useRef<SpinDraw | null>(null); // result decided by the server
+  const [drawLoading, setDrawLoading] = useState(false);
 
   const [phase, setPhase] = useState<SpinPhase>("idle");
   const [winningIdx, setWinningIdx] = useState<number | null>(null);
@@ -535,15 +530,8 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
  ? `Order at least ${Number(config.minimum_order_gb)}GB or have a total of ${Number(config.minimum_order_gb)}GB in orders ${eligibilityPeriod} before spinning.`
  : "Meet the Spin to Win requirement below before spinning.";
 
-  // Adjust weights to make 1GB & 2GB harder
-  const segs = useMemo<SpinSegment[]>(() => segments.map(s => {
-    if (s.type === "gb") {
-      const gb = Number(s.value);
-      if (gb === 1) return { ...s, weight: Math.max(1, Math.round((s.weight || 5) * 0.3)) };
-      if (gb === 2) return { ...s, weight: Math.max(1, Math.round((s.weight || 5) * 0.38)) };
-    }
-    return s;
-  }), [segments]);
+  // Same order as spin_config.segments so the server's segment_index lines up
+  const segs = segments;
 
   // Variable segment angles
   const segAngles = useMemo(() => {
@@ -588,11 +576,9 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
     setSuccessGb(0); setResultMsg("");
     setShowWinBanner(false); setWonGbForBanner(0);
 
-    // Remove 10 GB, then shuffle
-    const initial = config?.segments
-      ? shuffleArray(config.segments.filter(s => !(s.type === "gb" && Number(s.value) === 10)))
-      : [];
-    setSegments(initial);
+    drawRef.current = null;
+    setDrawLoading(false);
+    setSegments(config?.segments ?? []);
   }, [open]);
 
   // ── Cooldown ticker (free spins) ──
@@ -683,7 +669,8 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
 
   // ── Finalise spin ──
   const finaliseSpin = useCallback(() => {
-    const winner = getSegmentUnderPointer(angleRef.current);
+    const spin = drawRef.current;
+    const winner = spin ? spin.segment_index : getSegmentUnderPointer(angleRef.current);
     winIdxRef.current = winner;
     setWinningIdx(winner);
     draw(angleRef.current, winner);
@@ -691,7 +678,8 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
     phaseRef.current = "idle";
     setPhase("idle");
 
-    const seg = segs[winner];
+    const seg = spin?.segment ?? segs[winner];
+    const prizeGb = spin?.won ? Number(spin.prize_gb) : 0;
 
     if (seg.type === "extra_spin") {
       const newCount = spinCount;
@@ -702,9 +690,9 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
       sounds.win();
       setResultMsg("🎁 Extra Spin! +1 added!");
       toast({ title: "Extra spin!", description: "You earned an extra spin!" });
-    } else if (seg.type === "gb" && Number(seg.value) > 0) {
+    } else if (prizeGb > 0) {
       sounds.win();
-      setSuccessGb(Number(seg.value));
+      setSuccessGb(prizeGb);
       setResultMsg(`���� You won ${seg.value}GB!`);
 
       setSpinCount(0);
@@ -762,8 +750,8 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
   }, [draw, finaliseSpin]);
 
   // ── Spin button ──
-  const handleSpin = useCallback(() => {
-    if (phaseRef.current !== "idle" || segs.length === 0) return;
+  const handleSpin = useCallback(async () => {
+    if (phaseRef.current !== "idle" || segs.length === 0 || drawLoading) return;
     if (spinCount <= 0) { toast({ title: "No spins left", variant: "destructive" }); return; }
     if (config?.eligibility_mode !== "unrestricted" && eligibility?.eligible !== true) { toast({ title: "Not eligible yet", description: eligibilityMessage, variant: "destructive" }); return; }
     if (!paymentRequired && cooldownMs > 0) return;
@@ -787,86 +775,44 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
 
     setSuccessGb(0); setResultMsg(""); setShowWinBanner(false); setWonGbForBanner(0);
     setWinningIdx(null);
+    drawRef.current = null;
+
+    setDrawLoading(true);
+    let spin: SpinDraw | undefined;
+    try {
+      const { data, error } = await supabase.rpc("spin_wheel_draw", { p_phone: phone });
+      if (error) {
+        toast({ title: "Cannot spin", description: error.message, variant: "destructive" });
+        return;
+      }
+      spin = (Array.isArray(data) ? data[0] : data) as SpinDraw | undefined;
+    } finally {
+      setDrawLoading(false);
+    }
+    if (!spin || spin.segment_index < 0 || spin.segment_index >= segs.length) {
+      toast({ title: "Cannot spin", description: "The spin could not be started. Please try again.", variant: "destructive" });
+      return;
+    }
+    drawRef.current = spin;
 
     velocityRef.current = 18;
     lastTickRef.current = angleRef.current;
     phaseRef.current = "freewheeling";
     setPhase("freewheeling");
     runLoop();
-  }, [segs, spinCount, paymentRequired, cooldownMs, toast, runLoop, phone]);
+  }, [segs, spinCount, paymentRequired, cooldownMs, toast, runLoop, phone, drawLoading, config, eligibility, eligibilityMessage]);
 
-  // ── Stop button: use PROBABILITY-BASED winning, then find matching segment ──
+  // ── Stop button: ease onto the segment the server already chose ──
   const handleStop = useCallback(() => {
     if (phaseRef.current !== "freewheeling") return;
-    
-    // Get probabilities from config (defaults: 4% for 2GB, 9% for 1GB, 12% for extra spin)
-    const chance2gb = config?.chance_2gb ?? 4;
-    const chance1gb = config?.chance_1gb ?? 9;
-    const chanceExtraSpin = config?.chance_extra_spin ?? 12;
-    
-    // Roll the dice (0-100)
-    const roll = Math.random() * 100;
-    
-    // Determine what the user wins based on probabilities
-    let targetType: "2gb" | "1gb" | "extra_spin" | "message" = "message";
-    if (roll < chance2gb) {
-      targetType = "2gb";
-    } else if (roll < chance2gb + chance1gb) {
-      targetType = "1gb";
-    } else if (roll < chance2gb + chance1gb + chanceExtraSpin) {
-      targetType = "extra_spin";
+    const spin = drawRef.current;
+    if (!spin || spin.segment_index < 0 || spin.segment_index >= segs.length) {
+      phaseRef.current = "idle";
+      setPhase("idle");
+      toast({ title: "Spin error", description: "Could not land the wheel. Please try again.", variant: "destructive" });
+      return;
     }
-    
-    // Find a matching segment on the wheel
-    let chosenIdx = 0;
-    
-    if (targetType === "2gb") {
-      // Find a 2GB segment
-      const gb2Segments = segs.map((s, i) => ({ s, i })).filter(({ s }) => s.type === "gb" && Number(s.value) === 2);
-      if (gb2Segments.length > 0) {
-        chosenIdx = gb2Segments[Math.floor(Math.random() * gb2Segments.length)].i;
-      } else {
-        // Fallback to any GB segment or message
-        const anyGb = segs.findIndex(s => s.type === "gb");
-        chosenIdx = anyGb >= 0 ? anyGb : 0;
-      }
-    } else if (targetType === "1gb") {
-      // Find a 1GB segment
-      const gb1Segments = segs.map((s, i) => ({ s, i })).filter(({ s }) => s.type === "gb" && Number(s.value) === 1);
-      if (gb1Segments.length > 0) {
-        chosenIdx = gb1Segments[Math.floor(Math.random() * gb1Segments.length)].i;
-      } else {
-        // Fallback to message segment
-        const msgIdx = segs.findIndex(s => s.type === "message");
-        chosenIdx = msgIdx >= 0 ? msgIdx : 0;
-      }
-    } else if (targetType === "extra_spin") {
-      // Find an extra spin segment (message with "spin" or "extra" in label)
-      const spinSegments = segs.map((s, i) => ({ s, i })).filter(({ s }) => 
-        s.type === "message" && (s.label?.toLowerCase().includes("spin") || s.label?.toLowerCase().includes("extra"))
-      );
-      if (spinSegments.length > 0) {
-        chosenIdx = spinSegments[Math.floor(Math.random() * spinSegments.length)].i;
-      } else {
-        // Fallback to any message segment
-        const msgIdx = segs.findIndex(s => s.type === "message");
-        chosenIdx = msgIdx >= 0 ? msgIdx : 0;
-      }
-    } else {
-      // Message/no win - find a non-winning segment
-      const msgSegments = segs.map((s, i) => ({ s, i })).filter(({ s }) => 
-        s.type === "message" && !s.label?.toLowerCase().includes("spin") && !s.label?.toLowerCase().includes("extra")
-      );
-      if (msgSegments.length > 0) {
-        chosenIdx = msgSegments[Math.floor(Math.random() * msgSegments.length)].i;
-      } else {
-        // Fallback: use weighted random from all segments
-        const total = segs.reduce((sum, sg) => sum + (sg.weight || 1), 0);
-        let r = Math.random() * total;
-        for (let i = 0; i < segs.length; i++) { r -= segs[i].weight || 1; if (r < 0) { chosenIdx = i; break; } }
-      }
-    }
-    
+    const chosenIdx = spin.segment_index;
     const segCentre = segStarts[chosenIdx] + segAngles[chosenIdx] / 2;
     const targetMod = ((270 - segCentre) % 360 + 360) % 360;
     const currentMod = ((angleRef.current % 360) + 360) % 360;
@@ -874,10 +820,10 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
     const extraTurns = 360 * 2.5;
     targetRef.current = angleRef.current + delta + extraTurns;
     winIdxRef.current = chosenIdx;
-    
+
     phaseRef.current = "decelerating";
     setPhase("decelerating");
-  }, [segs, segStarts, segAngles, config]);
+  }, [segs, segStarts, segAngles, toast]);
 
   // ── Claim prize ──
   const handleClaim = async () => {
@@ -886,7 +832,7 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
     const gb = successGb;
     try {
       const { data, error } = await supabase.rpc("create_spin_order", {
-        p_phone: phone, p_network: selectedNetwork, p_size_gb: gb, p_package_id: SPIN_PACKAGE_IDS[gb] || null,
+        p_phone: phone, p_network: "mtn", p_size_gb: gb, p_package_id: null,
       });
       if (error) throw error;
       
@@ -1148,8 +1094,8 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
                 </Button>
               )}
               {isIdle && successGb === 0 && spinCount > 0 && (
-                <Button onClick={handleSpin} disabled={!paymentRequired && cooldownMs > 0} className="flex-1 bg-gradient-to-r from-pink-600 to-purple-700 hover:from-pink-700 hover:to-purple-800 font-black text-lg">
-                  🎲 SPIN
+                <Button onClick={handleSpin} disabled={drawLoading || (!paymentRequired && cooldownMs > 0)} className="flex-1 bg-gradient-to-r from-pink-600 to-purple-700 hover:from-pink-700 hover:to-purple-800 font-black text-lg">
+                  {drawLoading ? <Loader2 className="animate-spin h-5 w-5" /> : "🎲 SPIN"}
                 </Button>
               )}
             </div>
