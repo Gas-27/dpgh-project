@@ -121,12 +121,15 @@ begin
             (select sa.store_name from public.subagent_stores sa where sa.user_id = c.user_id limit 1),
             (select ss.store_name from public.sub_subagent_stores ss where ss.user_id = c.user_id limit 1)
           ) as store_name,
-          coalesce(
-            (select cu.topup_reference from public.customers cu where cu.user_id = c.user_id and cu.topup_reference is not null limit 1),
-            (select a.topup_reference from public.agent_stores a where a.user_id = c.user_id and a.topup_reference is not null limit 1),
-            (select sa.topup_reference from public.subagent_stores sa where sa.user_id = c.user_id and sa.topup_reference is not null limit 1),
-            (select ss.topup_reference from public.sub_subagent_stores ss where ss.user_id = c.user_id and ss.topup_reference is not null limit 1)
-          ) as topup_reference
+          case
+            when exists (select 1 from public.agent_stores a where a.user_id = c.user_id)
+              then (select a.topup_reference from public.agent_stores a where a.user_id = c.user_id and a.topup_reference is not null limit 1)
+            when exists (select 1 from public.subagent_stores sa where sa.user_id = c.user_id)
+              then (select sa.topup_reference from public.subagent_stores sa where sa.user_id = c.user_id and sa.topup_reference is not null limit 1)
+            when exists (select 1 from public.sub_subagent_stores ss where ss.user_id = c.user_id)
+              then (select ss.topup_reference from public.sub_subagent_stores ss where ss.user_id = c.user_id and ss.topup_reference is not null limit 1)
+            else (select cu.topup_reference from public.customers cu where cu.user_id = c.user_id and cu.topup_reference is not null limit 1)
+          end as topup_reference
         from claims c
         left join auth.users u on u.id = c.user_id
         order by c.created_at desc
