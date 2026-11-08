@@ -203,23 +203,64 @@ export type GameRewardSetting = {
   chance_gb_single: number;
   chance_gb_double: number;
   extra_config: Record<string, unknown>;
+  legacy_schema?: boolean;
 };
 
+const BASE_SETTING_COLUMNS = "game_id, title, reward_gb, enabled, updated_at, target_level, max_level, life_price, required_seconds";
+const FULL_SETTING_COLUMNS = `${BASE_SETTING_COLUMNS}, tier1_level, tier1_reward_gb, chance_gb_single, chance_gb_double, extra_config`;
+
+function isMissingColumn(error: { code?: string; message?: string } | null): boolean {
+  return Boolean(error && (error.code === "42703" || /does not exist|schema cache/i.test(error.message ?? "")));
+}
+
 export async function fetchGameRewardSettings(): Promise<GameRewardSetting[]> {
-  const { data, error } = await db
-    .from("gamehub_game_settings")
-    .select("game_id, title, reward_gb, enabled, updated_at, target_level, max_level, life_price, required_seconds, tier1_level, tier1_reward_gb, chance_gb_single, chance_gb_double, extra_config")
-    .order("title");
-  if (error) throw error;
-  return ((data ?? []) as GameRewardSetting[]).map((row) => ({
+  let result = await db.from("gamehub_game_settings").select(FULL_SETTING_COLUMNS).order("title");
+  let legacySchema = false;
+  if (isMissingColumn(result.error)) {
+    legacySchema = true;
+    result = await db.from("gamehub_game_settings").select(BASE_SETTING_COLUMNS).order("title");
+  }
+  if (result.error) throw result.error;
+  return ((result.data ?? []) as unknown as Partial<GameRewardSetting>[]).map((row) => ({
     ...row,
     reward_gb: Number(row.reward_gb),
     life_price: Number(row.life_price),
-    tier1_reward_gb: row.tier1_reward_gb === null ? null : Number(row.tier1_reward_gb),
+    tier1_level: row.tier1_level ?? null,
+    tier1_reward_gb: row.tier1_reward_gb == null ? null : Number(row.tier1_reward_gb),
     chance_gb_single: Number(row.chance_gb_single ?? 1),
     chance_gb_double: Number(row.chance_gb_double ?? 3),
     extra_config: row.extra_config ?? {},
-  }));
+    legacy_schema: legacySchema,
+  })) as GameRewardSetting[];
+}
+
+export type AnalyticsTotals = {
+  winners: number; gb_total: number; gb_delivered: number; gb_pending: number;
+  plays: number; players: number; pending_claims: number;
+  spend_total: number; spend_lives: number; spend_items: number; spend_chances: number;
+  purchases: number; paying_players: number; wallet_rewards_paid: number;
+};
+export type AnalyticsGame = {
+  game_id: string; title: string; plays: number; players: number; pending_claims: number;
+  winners: number; gb: number; spend_lives: number; spend_items: number; spend_chances: number;
+  spend_total: number; purchases: number; paying_players: number;
+};
+export type AnalyticsWinner = {
+  id: string; created_at: string; game_id: string; user_id: string; email: string | null; phone: string;
+  gb: number; order_id: string | null; order_status: string | null; store_name: string | null; topup_reference: string | null;
+};
+export type AnalyticsSpend = {
+  created_at: string; game_id: string; user_id: string | null; email: string | null;
+  spend_type: "life" | "item" | "chance"; amount: number; note: string | null;
+};
+export type GameHubAnalytics = {
+  generated_at: string; totals: AnalyticsTotals; games: AnalyticsGame[]; winners: AnalyticsWinner[]; spend: AnalyticsSpend[];
+};
+
+export async function adminFetchGameHubAnalytics(gameId: string | null, period: LeaderboardPeriod): Promise<GameHubAnalytics> {
+  const { data, error } = await db.rpc("gamehub_admin_analytics", { p_game_id: gameId, p_period: period });
+  if (error) throw error;
+  return data as GameHubAnalytics;
 }
 
 export type GameRulesV2Input = GameRulesInput & {

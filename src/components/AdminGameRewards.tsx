@@ -177,6 +177,11 @@ export default function AdminGameRewards() {
       <CardContent className="space-y-3">
         {isLoading ? <p className="text-sm text-muted-foreground">Loading...</p> : null}
         {error ? <p className="text-sm text-destructive">{(error as Error).message}</p> : null}
+        {settings.some((setting) => setting.legacy_schema) ? (
+          <p role="alert" className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm text-amber-600 dark:text-amber-400">
+            The new game rules columns have not been applied to the database yet, so chance packs and cash-out tiers show defaults and cannot be saved. Run migration 20261108120000_gamehub_new_games_chances.sql, then refresh.
+          </p>
+        ) : null}
         {settings.map((setting) => <RewardRow key={setting.game_id} setting={setting} />)}
       </CardContent>
     </Card>
