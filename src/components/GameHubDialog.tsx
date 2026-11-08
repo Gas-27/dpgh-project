@@ -213,7 +213,7 @@ function RewardGamesSection({ rules, wins, onPlay, onShare }: GameActions) {
     <section aria-labelledby="gamehub-rewards" className="space-y-3">
       <SectionHeader id="gamehub-rewards" icon={Trophy} title="Play & Win Free Data" count={rewardGames.length} />
       <div className="grid grid-cols-2 gap-3">
-        {rewardGames.map((game) => <GameCard key={game.id} game={game} rules={rules} wins={wins[game.id] ?? 0} onPlay={onPlay} onShare={onShare} />)}
+        {rewardGames.map((game) => <GameCard key={game.id} game={game} rules={rules} wins={wins?.[game.id] ?? 0} onPlay={onPlay} onShare={onShare} />)}
       </div>
     </section>
   );
@@ -223,7 +223,7 @@ function GamesTab({ videos, rules, wins, onPlay, onShare }: GameActions & { vide
   return (
     <div className="space-y-5">
       <FeaturedCarousel videos={videos} rules={rules} onPlay={onPlay} />
-      <RewardGamesSection rules={rules} onPlay={onPlay} onShare={onShare} />
+      <RewardGamesSection rules={rules} wins={wins} onPlay={onPlay} onShare={onShare} />
       <IntroCard onBrowse={() => document.getElementById("gamehub-all")?.scrollIntoView({ behavior: "smooth", block: "start" })} />
       <GamesStrip onPlay={onPlay} />
       <section aria-labelledby="gamehub-hot">
