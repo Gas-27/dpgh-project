@@ -213,6 +213,12 @@ function isMissingColumn(error: { code?: string; message?: string } | null): boo
   return Boolean(error && (error.code === "42703" || /does not exist|schema cache/i.test(error.message ?? "")));
 }
 
+export async function fetchGameHubWinCounts(): Promise<Record<string, number>> {
+  const { data, error } = await db.rpc("gamehub_public_win_counts");
+  if (error) throw error;
+  return (data ?? {}) as Record<string, number>;
+}
+
 export async function fetchGameRewardSettings(): Promise<GameRewardSetting[]> {
   let result = await db.from("gamehub_game_settings").select(FULL_SETTING_COLUMNS).order("title");
   let legacySchema = false;

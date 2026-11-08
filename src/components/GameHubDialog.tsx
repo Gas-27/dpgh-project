@@ -25,7 +25,7 @@ import GameHubArcheryPlayer from "@/components/GameHubArcheryPlayer";
 import GameHubRewardPlayer from "@/components/GameHubRewardPlayer";
 import { useGameHubUser } from "@/hooks/useGameHubUser";
 import { useToast } from "@/hooks/use-toast";
-import { applyChanceOrder, buildGameShareUrl, fetchGameRewardSettings, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
+import { applyChanceOrder, buildGameShareUrl, fetchGameHubWinCounts, fetchGameRewardSettings, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
 import { clearPendingChance, readPendingChance } from "@/lib/gameHubChances";
 import { leaveGameHubUrl, markGameHubLanding, parseGameHubPath, syncGameHubUrl } from "@/lib/gameHubRoute";
 import { useConversations, useGameHubRealtime } from "@/lib/gameHubSocial";
@@ -166,7 +166,7 @@ function GamesStrip({ onPlay }: { onPlay: (game: HubGame) => void }) {
   );
 }
 
-function GameCard({ game, rules, className = "", onPlay, onShare }: { game: HubGame; rules: RuleMap; className?: string; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void }) {
+function GameCard({ game, rules, wins, className = "", onPlay, onShare }: { game: HubGame; rules: RuleMap; wins: number; className?: string; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void }) {
   return (
     <article className={`flex flex-col overflow-hidden rounded-2xl border border-violet-400/20 bg-violet-950/70 ${className}`}>
       <div className="relative h-28 shrink-0 bg-violet-900/50">
@@ -176,7 +176,10 @@ function GameCard({ game, rules, className = "", onPlay, onShare }: { game: HubG
       <div className="flex flex-1 flex-col gap-2 p-3">
         <h4 className="text-base font-bold leading-snug text-white">{game.name}</h4>
         <p className="text-xs leading-relaxed text-violet-200/75">{getGameBlurb(game, rules[game.id])}</p>
-        <p className="mt-auto flex items-center gap-1 pt-2 text-xs text-violet-200/80"><Star className="h-3.5 w-3.5 fill-violet-300/60 text-violet-300/60" aria-hidden="true" /> {game.rating.toFixed(1)}</p>
+        <div className="mt-auto flex items-center justify-between gap-2 pt-2 text-xs text-violet-200/80">
+          <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-violet-300/60 text-violet-300/60" aria-hidden="true" /> {game.rating.toFixed(1)}</span>
+          <span className="flex items-center gap-1 font-semibold text-cyan-300"><Trophy className="h-3.5 w-3.5" aria-hidden="true" /> {wins.toLocaleString()} won</span>
+        </div>
         <div className="flex gap-2">
           <button type="button" onClick={() => onPlay(game)} className="flex-1 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500">{game.native?.cta ?? "Play Now"}</button>
           <button type="button" onClick={() => onShare(game)} aria-label={`Share ${game.name}`} className="flex w-10 items-center justify-center rounded-xl border border-violet-400/30 text-violet-100 hover:bg-violet-800/60">
@@ -200,23 +203,23 @@ function SectionHeader({ id, icon: Icon, title, count }: { id: string; icon: typ
   );
 }
 
-type GameActions = { rules: RuleMap; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void };
+type GameActions = { rules: RuleMap; wins: Record<string, number>; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void };
 
 const rewardGames = hubGames.filter((game) => game.native);
 const hubOnlyGames = hubGames.filter((game) => !game.native);
 
-function RewardGamesSection({ rules, onPlay, onShare }: GameActions) {
+function RewardGamesSection({ rules, wins, onPlay, onShare }: GameActions) {
   return (
     <section aria-labelledby="gamehub-rewards" className="space-y-3">
       <SectionHeader id="gamehub-rewards" icon={Trophy} title="Play & Win Free Data" count={rewardGames.length} />
       <div className="grid grid-cols-2 gap-3">
-        {rewardGames.map((game) => <GameCard key={game.id} game={game} rules={rules} onPlay={onPlay} onShare={onShare} />)}
+        {rewardGames.map((game) => <GameCard key={game.id} game={game} rules={rules} wins={wins[game.id] ?? 0} onPlay={onPlay} onShare={onShare} />)}
       </div>
     </section>
   );
 }
 
-function GamesTab({ videos, rules, onPlay, onShare }: GameActions & { videos: GameVideo[] }) {
+function GamesTab({ videos, rules, wins, onPlay, onShare }: GameActions & { videos: GameVideo[] }) {
   return (
     <div className="space-y-5">
       <FeaturedCarousel videos={videos} rules={rules} onPlay={onPlay} />
@@ -226,13 +229,13 @@ function GamesTab({ videos, rules, onPlay, onShare }: GameActions & { videos: Ga
       <section aria-labelledby="gamehub-hot">
         <SectionHeader id="gamehub-hot" icon={Flame} title="Hot & Popular" count={hotGames.length} />
         <div className="mt-4 flex gap-3 overflow-x-auto pb-2">
-          {hotGames.map((game) => <GameCard key={game.id} game={game} className="w-44 shrink-0" rules={rules} onPlay={onPlay} onShare={onShare} />)}
+          {hotGames.map((game) => <GameCard key={game.id} game={game} className="w-44 shrink-0" rules={rules} wins={wins[game.id] ?? 0} onPlay={onPlay} onShare={onShare} />)}
         </div>
       </section>
       <section aria-labelledby="gamehub-all">
         <SectionHeader id="gamehub-all" icon={LayoutGrid} title="More Games from Gamehub" count={hubOnlyGames.length} />
         <div className="mt-4 grid grid-cols-2 gap-3">
-          {hubOnlyGames.map((game) => <GameCard key={game.id} game={game} rules={rules} onPlay={onPlay} onShare={onShare} />)}
+          {hubOnlyGames.map((game) => <GameCard key={game.id} game={game} rules={rules} wins={wins[game.id] ?? 0} onPlay={onPlay} onShare={onShare} />)}
         </div>
       </section>
     </div>
@@ -320,6 +323,7 @@ export default function GameHubDialog() {
   const { data: videos = [] } = useQuery({ queryKey: ["gamehub-videos"], queryFn: fetchGameVideos, enabled: open, staleTime: 60_000 });
 
   const { data: settings = [] } = useQuery({ queryKey: ["gamehub-rules"], queryFn: fetchGameRewardSettings, enabled: open, staleTime: 15_000, refetchOnWindowFocus: true });
+  const { data: wins = {} } = useQuery({ queryKey: ["gamehub-win-counts"], queryFn: fetchGameHubWinCounts, enabled: open, staleTime: 30_000, refetchOnWindowFocus: true });
   const rules: RuleMap = Object.fromEntries(settings.map((row) => [row.game_id, row]));
 
   useGameHubRealtime(user?.id, open);
@@ -416,7 +420,7 @@ export default function GameHubDialog() {
             <TabsTrigger value="leaderboard" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white"><Puzzle className="mr-2 h-4 w-4" aria-hidden="true" /> Leaderboard</TabsTrigger>
           </TabsList>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-4">
-            <TabsContent value="games" className="mt-0"><GameHubJoinCard signedIn={Boolean(user)} /><GamesTab videos={videos} rules={rules} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
+            <TabsContent value="games" className="mt-0"><GameHubJoinCard signedIn={Boolean(user)} /><GamesTab videos={videos} rules={rules} wins={wins} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
             <TabsContent value="messages" className="mt-0"><GameHubChat user={user} onPlayGame={requestPlay} /></TabsContent>
             <TabsContent value="leaderboard" className="mt-0"><GameHubLeaderboard /></TabsContent>
           </div>
