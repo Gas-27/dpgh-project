@@ -2577,7 +2577,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
 
 return (
   <div className="min-h-screen bg-background">
-  <ReportNotificationBadge />
+  <ReportNotificationBadge onViewReport={() => setActiveTab("reports")} />
   <FreeDataPromoButton />
   {/* Admin Impersonation Banner */}
       {isImpersonating && (

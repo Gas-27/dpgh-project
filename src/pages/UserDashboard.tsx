@@ -3156,7 +3156,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
 return (
   <div className="min-h-screen bg-background">
   <NotificationPopup surface="user-dashboard" />
-  <ReportNotificationBadge />
+  <ReportNotificationBadge onViewReport={() => setActiveMenu("reports")} />
       <Navbar />
 
       {isImpersonating && (

@@ -2392,7 +2392,7 @@ const handleSaveStore = async () => {
 return (
   <div className="min-h-screen bg-background">
   <NotificationPopup surface="subagent-dashboard" />
-  <ReportNotificationBadge />
+  <ReportNotificationBadge onViewReport={() => setActiveTab("reports")} />
       {/* Agent Notification Popup Dialog */}
       {agentNotifications.length > 0 && showAgentNotificationPopup && (
         <Dialog open={showAgentNotificationPopup} onOpenChange={setShowAgentNotificationPopup}>
