@@ -488,9 +488,15 @@ export async function buyGameArrow(runId: string): Promise<{ run: GameRun; balan
   return data as GameRun;
 }
 
-export async function claimGameReward(runId: string, phone: string): Promise<{ order_id: string; phone: string; reward_gb: number }> {
+export const CLAIM_FEE_AMOUNT = 4;
+
+export function isClaimFeeRequired(error: unknown): boolean {
+  return error instanceof Error ? error.message.includes("CLAIM_FEE_REQUIRED") : String((error as { message?: string })?.message ?? "").includes("CLAIM_FEE_REQUIRED");
+}
+
+export async function claimGameReward(runId: string, phone: string, payFee = false): Promise<{ order_id: string; phone: string; reward_gb: number }> {
   await requireSignedInRun(runId);
-  const { data, error } = await db.rpc("gamehub_claim_reward", { p_run_id: runId, p_phone: phone });
+  const { data, error } = await db.rpc("gamehub_claim_reward", { p_run_id: runId, p_phone: phone, p_pay_fee: payFee });
   if (error) throw error;
   return data as { order_id: string; phone: string; reward_gb: number };
 }

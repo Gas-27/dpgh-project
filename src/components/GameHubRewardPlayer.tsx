@@ -14,7 +14,9 @@ import {
   buyGameItem,
   buyGameLife,
   cashOutGameRun,
+  CLAIM_FEE_AMOUNT,
   claimGameReward,
+  isClaimFeeRequired,
   completeGameLevel,
   createChanceOrder,
   consumeGameItem,
@@ -73,6 +75,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
   const [loadError, setLoadError] = useState<string | null>(null);
   const [buyOpen, setBuyOpen] = useState(false);
   const [claimOpen, setClaimOpen] = useState(false);
+  const [feeDue, setFeeDue] = useState(false);
   const [rulesOpen, setRulesOpen] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
   const [balance, setBalance] = useState<number | null>(null);
@@ -569,12 +572,16 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
     if (!current || busy) return;
     setBusy(true);
     try {
-      const result = await claimGameReward(current.run_id, phone);
+      const result = await claimGameReward(current.run_id, phone, feeDue);
       applyRun({ ...current, claimed: true, reward_claimed: true });
       setClaimedPhone(result.phone);
       toast({ title: "Reward claimed", description: `Your free MTN ${result.reward_gb ?? rewardGb}GB is on its way to ${result.phone}.` });
     } catch (error) {
-      toast({ title: "Could not claim reward", description: (error as Error).message, variant: "destructive" });
+      if (isClaimFeeRequired(error)) {
+        setFeeDue(true);
+      } else {
+        toast({ title: "Could not claim reward", description: (error as Error).message, variant: "destructive" });
+      }
     } finally {
       setBusy(false);
     }
@@ -841,6 +848,11 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
                 </>
               ) : (
                 <form onSubmit={handleClaim} className="flex flex-col gap-3">
+                  {feeDue ? (
+                    <p role="alert" className="rounded-xl border border-amber-300/40 bg-amber-400/10 p-3 text-sm text-amber-100">
+                      A claim fee of GH₵{CLAIM_FEE_AMOUNT} applies to this reward. It is taken from your wallet when you claim.
+                    </p>
+                  ) : null}
                   <p className="text-sm text-emerald-100">Enter the MTN number that should receive the free {rewardGb}GB. Each account can claim this reward once per game.</p>
                   <label htmlFor="reward-phone" className="sr-only">MTN number</label>
                   <input
@@ -853,7 +865,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
                     className="rounded-xl border border-emerald-400/30 bg-emerald-950 px-3 py-3 text-sm text-white placeholder:text-emerald-300/50"
                   />
                   <button type="submit" disabled={busy || phone.length < 10} className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-bold text-emerald-950 disabled:opacity-50">
-                    {busy ? "Claiming" : `Claim free MTN ${rewardGb}GB`}
+                    {busy ? "Claiming" : feeDue ? `Pay GH₵${CLAIM_FEE_AMOUNT} and claim MTN ${rewardGb}GB` : `Claim free MTN ${rewardGb}GB`}
                   </button>
                   <button type="button" onClick={() => setClaimOpen(false)} className="px-4 py-1 text-xs text-emerald-200 underline">
                     Later

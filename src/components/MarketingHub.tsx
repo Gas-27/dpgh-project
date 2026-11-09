@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { fetchMarketingPosts, type MarketingPost } from "@/lib/marketingApi";
 import type { StoreInfo } from "@/components/FlyerShared";
+import BulkSmsHowToVideo from "@/components/BulkSmsHowToVideo";
 
 type Platform = "whatsapp" | "tiktok" | "instagram" | "facebook";
 
@@ -264,6 +265,8 @@ export default function MarketingHub({ storeName, storeUrl, children }: Marketin
           className="aspect-video w-full rounded-xl bg-black"
         />
       </section>
+
+      <BulkSmsHowToVideo />
 
       <section className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="space-y-4 rounded-2xl border border-border bg-card p-4">

@@ -20,6 +20,7 @@ import { Check, ChevronDown, Clock, KeyRound, Loader2, Send, Sparkles, Upload, U
 import { Switch } from "@/components/ui/switch";
 import OrderContactPicker from "@/components/OrderContactPicker";
 import SmsNumberGenerator from "@/components/SmsNumberGenerator";
+import BulkSmsHowToVideo from "@/components/BulkSmsHowToVideo";
 
 type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; storeUrl?: string; publicMode?: boolean; hideSenderPhone?: boolean };
 type SmsAudience = "all" | "recent" | "inactive" | "custom";
@@ -554,6 +555,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
 
   return (
     <div className="storefront-light-form space-y-6">
+      <BulkSmsHowToVideo />
       {videoUrl && (
         <Card className="border-primary/20 overflow-hidden">
           <CardHeader className="pb-3">
