@@ -15,6 +15,7 @@ import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
 import ApiExplainer from "@/components/ApiExplainer";
 import WebhookDocs from "@/components/WebhookDocs";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
+import ApiWeeklyTargetMeter from "@/components/ApiWeeklyTargetMeter";
 import PaymentVerifier from "@/components/PaymentVerifier";
   import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
   import WhatsAppChannelPopup from "@/components/WhatsAppChannelPopup";
@@ -1301,6 +1302,8 @@ case "api-key":
           counts={overviewSourceCounts}
         />
       </div>
+
+      <ApiWeeklyTargetMeter identityId={effectiveUserId} />
 
       {/* Stats Cards Row - Like Agent Dashboard */}
       <div className="grid grid-cols-1 gap-4">

@@ -184,6 +184,7 @@ export default function SubagentRegistrationForm({
         email: formData.email,
         password: formData.password,
         options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
           data: {
             role: "subagent",
           },

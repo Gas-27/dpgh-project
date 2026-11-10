@@ -77,11 +77,24 @@ const Login = () => {
     });
 
     if (error) {
-      toast({
-        title: "Login failed",
-        description: error.message,
-        variant: "destructive",
-      });
+      if (/email not confirmed/i.test(error.message)) {
+        await supabase.auth.resend({
+          type: "signup",
+          email: email.trim(),
+          options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+        });
+        toast({
+          title: "Verify your email to continue",
+          description: "Your email is not verified yet. We just sent a fresh verification link to your inbox.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
       setLoading(false);
       return;
     }

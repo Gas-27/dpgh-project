@@ -62,6 +62,7 @@ import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
 import ApiExplainer from "@/components/ApiExplainer";
 import WebhookDocs from "@/components/WebhookDocs";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
+import ApiWeeklyTargetMeter from "@/components/ApiWeeklyTargetMeter";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
 import SubagentsList from "@/components/SubagentsList";
 import SubagentPricesManager from "@/components/SubagentPricesManager";
@@ -2663,6 +2664,7 @@ return (
             <MarketplaceBanner onPost={() => setActiveTab("products")} onBrowse={() => setActiveTab("marketplace")} />
   <div className="flex flex-wrap items-center gap-2"><SpinToWinCard target="agent" /><Button type="button" size="sm" className="rounded-full border-primary bg-primary px-4 py-2 text-sm font-medium text-primary-foreground" onClick={() => setActiveTab("withdraw")}>Withdraw</Button></div>
   <WeeklyOrderTargetMeter storeId={store?.id} storeType="agent" />
+  <ApiWeeklyTargetMeter identityId={user?.id} />
   <Card className="hidden border-primary/30 bg-primary/5">
               <button onClick={() => setManualOpen(v => !v)} className="w-full flex items-center justify-between p-4 text-left">
                 <div className="flex items-center gap-3"><BookOpen className="h-5 w-5 text-primary" /><div><p className="font-display font-bold text-foreground">📖 Dashboard Instruction Manual</p><p className="text-xs text-muted-foreground">Tap to {manualOpen ? "hide" : "view"} a full guide on how every section works</p></div></div>

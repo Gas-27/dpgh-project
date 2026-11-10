@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Zap, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Zap, Eye, EyeOff, Loader2, MailCheck } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 const GoogleIcon = () => (
@@ -26,8 +26,26 @@ const Signup = () => {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [pendingVerificationEmail, setPendingVerificationEmail] = useState<string | null>(null);
+  const [resending, setResending] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  const handleResendVerification = async () => {
+    if (!pendingVerificationEmail) return;
+    setResending(true);
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: pendingVerificationEmail,
+      options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+    });
+    setResending(false);
+    toast(
+      error
+        ? { title: "Could not resend email", description: error.message, variant: "destructive" }
+        : { title: "Verification email sent", description: "Check your inbox and spam folder." },
+    );
+  };
 
   const handleGoogleSignup = async () => {
     setGoogleLoading(true);
@@ -64,12 +82,17 @@ const Signup = () => {
       email,
       password,
       options: {
+        emailRedirectTo: `${window.location.origin}/auth/callback`,
         data: { full_name: fullName, role: "customer" },
       },
     });
     setLoading(false);
     if (error) {
       toast({ title: "Signup failed", description: error.message, variant: "destructive" });
+    } else if (!data.session || !data.user?.email_confirmed_at) {
+      // The account cannot be used until the email link is opened.
+      if (data.session) await supabase.auth.signOut();
+      setPendingVerificationEmail(email.trim());
     } else {
       // Safety check: verify new user is not an admin
       if (data.user?.id) {
@@ -93,6 +116,40 @@ const Signup = () => {
       navigate("/user-dashboard");
     }
   };
+
+  if (pendingVerificationEmail) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-border">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+              <MailCheck className="h-6 w-6 text-primary" />
+            </div>
+            <CardTitle className="font-display">Verify your email</CardTitle>
+            <CardDescription>
+              We sent a verification link to <span className="font-medium text-foreground">{pendingVerificationEmail}</span>.
+              Open it to activate your account, then sign in to continue.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <Button className="w-full" variant="outline" onClick={handleResendVerification} disabled={resending}>
+              {resending ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Sending...</> : "Resend verification email"}
+            </Button>
+            <Button asChild className="w-full" variant="hero">
+              <Link to="/login">Go to sign in</Link>
+            </Button>
+            <button
+              type="button"
+              className="w-full text-center text-sm text-muted-foreground hover:text-foreground"
+              onClick={() => setPendingVerificationEmail(null)}
+            >
+              Use a different email
+            </button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
