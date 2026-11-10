@@ -16,6 +16,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork } from "@/lib/phoneUtils";
+import { isNumberSubmittedForApproval } from "@/lib/numberApprovalCheck";
 import { verifyHubtelMsisdn } from "@/services/hubtelService";
 
 interface PaymentDialogProps {
@@ -274,7 +275,7 @@ const PaymentDialog = ({
 
       setChecking(false);
 
-      if ((count ?? 0) === 0) {
+      if ((count ?? 0) === 0 && !(await isNumberSubmittedForApproval(phone))) {
         // Brand-new MTN number — show the beneficiary verification warning first
         setShowNewNumberWarning(true);
       } else {

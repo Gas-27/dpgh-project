@@ -43,6 +43,7 @@ import { isValidStoreName, sanitizeStoreName, STORE_NAME_RULE } from "@/utils/st
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
+import { isNumberSubmittedForApproval } from "@/lib/numberApprovalCheck";
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
 import DynamicFlyer from "@/components/DynamicFlyer";
@@ -2027,7 +2028,7 @@ const handleSaveStore = async () => {
     const isMTNPackage = buyingPkg.network === "mtn" || buyingPkg.network === "mtn_express";
     if (isMTNPackage && !acknowledgedNewNumber.current) {
       const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("customer_number", buyCustomerNumber.trim());
-      if ((count ?? 0) === 0) {
+      if ((count ?? 0) === 0 && !(await isNumberSubmittedForApproval(buyCustomerNumber))) {
         setShowNewNumberWarning(true);
         return;
       }

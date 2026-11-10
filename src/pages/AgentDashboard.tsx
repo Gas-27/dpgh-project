@@ -6,6 +6,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { debitOwnWallet, refundFailedOrder, transferToChild, newOrderId } from "@/lib/wallet";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
 import PartnerServicesApiDocs from "@/components/PartnerServicesApiDocs";
+import AfaApiDocs from "@/components/AfaApiDocs";
+import { isNumberSubmittedForApproval } from "@/lib/numberApprovalCheck";
   import { VerificationOrdersCard } from "@/components/VerificationOrdersCard";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
@@ -621,7 +623,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
   const [activeTab, setActiveTab] = useState("overview");
   const [afaTabActive, setAfaTabActive] = useState("register");
   useEffect(() => { if (activeTab !== "afa") setAfaTabActive("register"); }, [activeTab]);
-  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities" | "bulk-sms">("cheap-data");
+  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities" | "bulk-sms" | "afa">("cheap-data");
 
   // API Orders state
   const [apiOrders, setApiOrders] = useState<any[]>([]);
@@ -4111,15 +4113,17 @@ handleMobileNumberChange(digits);
 
           {/* ============================= API DOCS ============================= */}
           <TabsContent value="api-docs" className="mt-0 space-y-6">
-  <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1 sm:grid-cols-5">
+  <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1 sm:grid-cols-4 lg:grid-cols-7">
   <Button type="button" variant="ghost" onClick={() => setActiveTab("api-key")}>API Key</Button>
   <Button type="button" variant={apiDocTab === "cheap-data" ? "secondary" : "ghost"} className={apiDocTab === "cheap-data" ? "bg-background" : ""} onClick={() => setApiDocTab("cheap-data")}>Cheap Data</Button>
   <Button type="button" variant={apiDocTab === "social-boost" ? "secondary" : "ghost"} className={apiDocTab === "social-boost" ? "bg-background" : ""} onClick={() => setApiDocTab("social-boost")}>Social Boost</Button>
   <Button type="button" variant={apiDocTab === "data-airtime" ? "secondary" : "ghost"} className={apiDocTab === "data-airtime" ? "bg-background" : ""} onClick={() => setApiDocTab("data-airtime")}>Data &amp; Airtime</Button>
   <Button type="button" variant={apiDocTab === "utilities" ? "secondary" : "ghost"} className={apiDocTab === "utilities" ? "bg-background" : ""} onClick={() => setApiDocTab("utilities")}>Utilities</Button>
 <Button type="button" variant={apiDocTab === "bulk-sms" ? "secondary" : "ghost"} className={apiDocTab === "bulk-sms" ? "bg-background" : ""} onClick={() => setApiDocTab("bulk-sms")}>Bulk SMS</Button>
+  <Button type="button" variant={apiDocTab === "afa" ? "secondary" : "ghost"} className={apiDocTab === "afa" ? "bg-background" : ""} onClick={() => setApiDocTab("afa")}>AFA API</Button>
   </div>
-  {apiDocTab === "data-airtime" && <PartnerServicesApiDocs variant="data-airtime" />}
+  {apiDocTab === "afa" && <AfaApiDocs />}
+{apiDocTab === "data-airtime" && <PartnerServicesApiDocs variant="data-airtime" />}
   {apiDocTab === "utilities" && <PartnerServicesApiDocs variant="utilities" />}
 {apiDocTab === "bulk-sms" && <PartnerServicesApiDocs variant="bulk-sms" />}
   {apiDocTab === "social-boost" && <Card className="border-cyan-500/30 bg-cyan-500/5">
@@ -4422,70 +4426,6 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
     "fulfillment_status": "completed",
     "created_at": "2026-07-08T10:00:00.000Z",
     "updated_at": "2026-07-08T10:05:00.000Z"
-  }
-}`}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* POST /afa-api-registration */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-mono">POST</span>
-                    <span>/afa-api-registration</span>
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-2">Register for AFA services. Cost: GHC 9.50</p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm font-semibold mb-2">Request Body:</p>
-                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>��� <span className="font-mono">fullName</span> (required) - Full name</li>
-                      <li>• <span className="font-mono">phoneNumber</span> (required) - Phone number</li>
-                      <li>• <span className="font-mono">idNumber</span> (required) - ID number</li>
-                      <li>• <span className="font-mono">dateOfBirth</span> (required) - Date of birth (YYYY-MM-DD)</li>
-                      <li>• <span className="font-mono">town</span> (required) - Town/City</li>
-                      <li>• <span className="font-mono">occupation</span> (required) - Occupation</li>
-                      <li>• <span className="font-mono">region</span> (required) - Region</li>
-                      <li>• <span className="font-mono">cropProduce</span> (required) - Crop produce</li>
-                      <li>• <span className="font-mono">callbackUrl</span> (optional) - Webhook URL for status updates</li>
-                    </ul>
-                  </div>
-                  <div className="bg-muted p-3 rounded-lg border border-border">
-                    <p className="text-xs text-muted-foreground mb-2">Example Request:</p>
-                    <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
-{`curl -X POST "https://api.dataplug.store/functions/v1/afa-api-registration" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "fullName": "John Doe",
-    "phoneNumber": "0241234567",
-    "idNumber": "GHA-123456789-0",
-    "dateOfBirth": "1990-01-15",
-    "town": "Accra",
-    "occupation": "Teacher",
-    "region": "Greater Accra",
-    "cropProduce": "Maize",
-    "callbackUrl": "https://your-domain.com/webhook/afa"
-  }'`}
-                    </pre>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold mb-2">Success Response (200):</p>
-                    <pre className="font-mono text-xs overflow-x-auto bg-muted p-3 rounded-lg border border-border whitespace-pre-wrap break-words">
-{`{
-  "success": true,
-  "message": "AFA registration successful",
-  "data": {
-    "registration_id": "uuid",
-    "fullName": "John Doe",
-    "phoneNumber": "0241234567",
-    "idNumber": "GHA-123456789-0",
-    "status": "completed",
-    "amount_paid": 9.50,
-    "wallet_balance": 90.50
   }
 }`}
                     </pre>
@@ -5471,7 +5411,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
         <DialogContent className="sm:max-w-md border-border bg-card">
           <DialogHeader><DialogTitle className="font-display text-xl">{buyPkg?.network === "special-mtn" ? `Buy ${(buyPkg as any).mins || 0} mins + ${buyPkg?.size_gb}GB` : `Buy ${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</DialogTitle><DialogDescription>Purchase {buyPkg?.network === "special-mtn" ? "minutes + data" : "data"} at agent price</DialogDescription></DialogHeader>
           {buyStep === "phone" ? (
-            <div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number (exactly 10 digits)</Label><div><Input type="tel" placeholder="0XX XXX XXXX" maxLength={10} value={buyPhone} onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} className={`${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoFocus />{buySimLookupLoading && <p className="mt-1 text-xs text-muted-foreground">Checking who this SIM is registered to…</p>}{buySimName && <p className="mt-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">SIM registered to <span className="font-semibold">{buySimName}</span></p>}{buySimLookupError && <p className="mt-1 text-xs text-muted-foreground">SIM registration lookup unavailable. You can still continue.</p>}</div>{buyPhone.length > 0 && buyPhone.length < 10 && (<p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>)}<NetworkIndicator phone={buyPhone} /></div><Button variant="hero" className="w-full" onClick={async () => { if (!isValidPhoneLength(buyPhone)) { toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" }); return; } const detected = detectNetwork(buyPhone); if ((buyPkg?.network === "mtn_mashup" || buyPkg?.network === "mashup") && detected !== "mtn") { toast({ title: "MTN Only", description: `This package is only available for MTN numbers. This appears to be ${detected.toUpperCase()}.`, variant: "destructive" }); return; } if (buyPkg?.network && buyPkg.network !== "mtn_mashup" && buyPkg.network !== "mashup" && !phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) { toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyPkg?.network.toUpperCase()} package`, variant: "destructive" }); return; } const isMTNPackage = buyPkg?.network === "mtn" || buyPkg?.network === "mtn_express"; if (isMTNPackage) { const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("customer_number", buyPhone.trim()); if ((count ?? 0) === 0) { setShowNewNumberWarning(true); return; } } setBuyStep("confirm"); }}>Continue</Button></div>
+            <div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number (exactly 10 digits)</Label><div><Input type="tel" placeholder="0XX XXX XXXX" maxLength={10} value={buyPhone} onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} className={`${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoFocus />{buySimLookupLoading && <p className="mt-1 text-xs text-muted-foreground">Checking who this SIM is registered to…</p>}{buySimName && <p className="mt-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">SIM registered to <span className="font-semibold">{buySimName}</span></p>}{buySimLookupError && <p className="mt-1 text-xs text-muted-foreground">SIM registration lookup unavailable. You can still continue.</p>}</div>{buyPhone.length > 0 && buyPhone.length < 10 && (<p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>)}<NetworkIndicator phone={buyPhone} /></div><Button variant="hero" className="w-full" onClick={async () => { if (!isValidPhoneLength(buyPhone)) { toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" }); return; } const detected = detectNetwork(buyPhone); if ((buyPkg?.network === "mtn_mashup" || buyPkg?.network === "mashup") && detected !== "mtn") { toast({ title: "MTN Only", description: `This package is only available for MTN numbers. This appears to be ${detected.toUpperCase()}.`, variant: "destructive" }); return; } if (buyPkg?.network && buyPkg.network !== "mtn_mashup" && buyPkg.network !== "mashup" && !phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) { toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyPkg?.network.toUpperCase()} package`, variant: "destructive" }); return; } const isMTNPackage = buyPkg?.network === "mtn" || buyPkg?.network === "mtn_express"; if (isMTNPackage) { const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("customer_number", buyPhone.trim()); if ((count ?? 0) === 0 && !(await isNumberSubmittedForApproval(buyPhone))) { setShowNewNumberWarning(true); return; } } setBuyStep("confirm"); }}>Continue</Button></div>
           ) : (
             <div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
               <>

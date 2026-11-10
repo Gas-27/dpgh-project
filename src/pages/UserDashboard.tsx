@@ -56,6 +56,8 @@ import MarketplaceBanner from "@/components/MarketplaceBanner";
 import PublicProductsSection from "@/components/PublicProductsSection";
 import PromoCodesPanel from "@/components/PromoCodesPanel";
 import OrderNumberApprovalForm from "@/components/OrderNumberApprovalForm";
+import AfaApiDocs from "@/components/AfaApiDocs";
+import { isNumberSubmittedForApproval } from "@/lib/numberApprovalCheck";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
 import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
@@ -177,7 +179,7 @@ const UserDashboard = () => {
   const [buySimLookupError, setBuySimLookupError] = useState(false);
   const [topupReference, setTopupReference] = useState<string>("");
   const [showApiWalletTopup, setShowApiWalletTopup] = useState(false);
-  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities" | "bulk-sms">("cheap-data");
+  const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities" | "bulk-sms" | "afa">("cheap-data");
   const [orderFilter, setOrderFilter] = useState<"all" | "today" | "yesterday" | "week" | "month" | "custom">("all");
   const [totalOrders, setTotalOrders] = useState(0);
   const [topupHistory, setTopupHistory] = useState<any[]>([]);
@@ -2226,7 +2228,9 @@ const renderApiDocs = () => (
     <Button type="button" variant={apiDocTab === "data-airtime" ? "secondary" : "ghost"} className={apiDocTab === "data-airtime" ? "bg-background" : ""} onClick={() => setApiDocTab("data-airtime")}>Data &amp; Airtime</Button>
     <Button type="button" variant={apiDocTab === "utilities" ? "secondary" : "ghost"} className={apiDocTab === "utilities" ? "bg-background" : ""} onClick={() => setApiDocTab("utilities")}>Utilities</Button>
             <Button type="button" variant={apiDocTab === "bulk-sms" ? "secondary" : "ghost"} className={apiDocTab === "bulk-sms" ? "bg-background" : ""} onClick={() => setApiDocTab("bulk-sms")}>Bulk SMS</Button>
+    <Button type="button" variant={apiDocTab === "afa" ? "secondary" : "ghost"} className={apiDocTab === "afa" ? "bg-background" : ""} onClick={() => setApiDocTab("afa")}>AFA API</Button>
   </div>
+  {apiDocTab === "afa" && <AfaApiDocs />}
   {apiDocTab === "data-airtime" && <PartnerServicesApiDocs variant="data-airtime" />}
   {apiDocTab === "utilities" && <PartnerServicesApiDocs variant="utilities" />}
         {apiDocTab === "bulk-sms" && <PartnerServicesApiDocs variant="bulk-sms" />}
@@ -2530,70 +2534,6 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
     "fulfillment_status": "completed",
     "created_at": "2026-07-08T10:00:00.000Z",
     "updated_at": "2026-07-08T10:05:00.000Z"
-  }
-}`}
-              </pre>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* POST /afa-api-registration */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-mono">POST</span>
-              <span>/afa-api-registration</span>
-            </CardTitle>
-            <p className="text-sm text-muted-foreground mt-2">Register for AFA services. Cost: GHC 9.50</p>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <p className="text-sm font-semibold mb-2">Request Body:</p>
-              <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                <li>• <span className="font-mono">fullName</span> (required) - Full name</li>
-                <li>• <span className="font-mono">phoneNumber</span> (required) - Phone number</li>
-                <li>• <span className="font-mono">idNumber</span> (required) - ID number</li>
-                <li>�� <span className="font-mono">dateOfBirth</span> (required) - Date of birth (YYYY-MM-DD)</li>
-                <li>• <span className="font-mono">town</span> (required) - Town/City</li>
-                <li>• <span className="font-mono">occupation</span> (required) - Occupation</li>
-                <li>• <span className="font-mono">region</span> (required) - Region</li>
-                <li>• <span className="font-mono">cropProduce</span> (required) - Crop produce</li>
-                <li>• <span className="font-mono">callbackUrl</span> (optional) - Webhook URL for status updates</li>
-              </ul>
-            </div>
-            <div className="bg-muted p-3 rounded-lg border border-border">
-              <p className="text-xs text-muted-foreground mb-2">Example Request:</p>
-              <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
-{`curl -X POST "https://api.dataplug.store/functions/v1/afa-api-registration" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "fullName": "John Doe",
-    "phoneNumber": "0241234567",
-    "idNumber": "GHA-123456789-0",
-    "dateOfBirth": "1990-01-15",
-    "town": "Accra",
-    "occupation": "Teacher",
-    "region": "Greater Accra",
-    "cropProduce": "Maize",
-    "callbackUrl": "https://your-domain.com/webhook/afa"
-  }'`}
-              </pre>
-            </div>
-            <div>
-              <p className="text-sm font-semibold mb-2">Success Response (200):</p>
-              <pre className="font-mono text-xs overflow-x-auto bg-muted p-3 rounded-lg border border-border whitespace-pre-wrap break-words">
-{`{
-  "success": true,
-  "message": "AFA registration successful",
-  "data": {
-    "registration_id": "uuid",
-    "fullName": "John Doe",
-    "phoneNumber": "0241234567",
-    "idNumber": "GHA-123456789-0",
-    "status": "completed",
-    "amount_paid": 9.50,
-    "wallet_balance": 90.50
   }
 }`}
               </pre>
@@ -3436,7 +3376,7 @@ return (
                   const isMTNPackage = buyPkg?.network === "mtn" || buyPkg?.network === "mtn_express";
                   if (isMTNPackage) {
                     const { data: count } = await supabase.rpc("phone_order_count", { p_phone: buyPhone.trim() });
-                    if ((count ?? 0) === 0) { setShowNewNumberWarning(true); return; }
+                    if ((count ?? 0) === 0 && !(await isNumberSubmittedForApproval(buyPhone))) { setShowNewNumberWarning(true); return; }
                   }
                   setBuyStep("confirm");
                 }}
