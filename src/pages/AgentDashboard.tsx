@@ -1,3 +1,4 @@
+import DashboardTutorial, { AGENT_TUTORIAL } from "@/components/DashboardTutorial";
 import FlyerTabs from "@/components/FlyerExtras";
 import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
@@ -7,6 +8,8 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
 import PartnerServicesApiDocs from "@/components/PartnerServicesApiDocs";
 import AfaApiDocs from "@/components/AfaApiDocs";
+import ApiDocNav from "@/components/ApiDocNav";
+import { CHEAP_DATA_NAV, SOCIAL_BOOST_NAV } from "@/lib/apiDocNavItems";
 import { isNumberSubmittedForApproval } from "@/lib/numberApprovalCheck";
   import { VerificationOrdersCard } from "@/components/VerificationOrdersCard";
   import PromoCodesPanel from "@/components/PromoCodesPanel";
@@ -2643,6 +2646,7 @@ return (
           </Card>
         )}
 
+        <DashboardTutorial storageKey="agent" userId={user?.id} steps={AGENT_TUTORIAL} onNavigate={setActiveTab} />
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
   <div className="grid grid-cols-3 gap-2 sm:gap-3">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa", label: "AFA Registration" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Bulk SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Utilities" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "flyer", label: "Flyer Generator" }, { id: "marketing", label: "Marketing" }].map((item) => { const selected = activeTab === item.id; return <OverviewPill key={item.id} label={item.label} text={selected ? "Overview" : item.label} onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} />; })}</div>
@@ -4126,20 +4130,22 @@ handleMobileNumberChange(digits);
 {apiDocTab === "data-airtime" && <PartnerServicesApiDocs variant="data-airtime" />}
   {apiDocTab === "utilities" && <PartnerServicesApiDocs variant="utilities" />}
 {apiDocTab === "bulk-sms" && <PartnerServicesApiDocs variant="bulk-sms" />}
-  {apiDocTab === "social-boost" && <Card className="border-cyan-500/30 bg-cyan-500/5">
+  {apiDocTab === "social-boost" && <><ApiDocNav items={SOCIAL_BOOST_NAV} /><Card className="border-cyan-500/30 bg-cyan-500/5">
   <CardHeader><CardTitle>Social Boost API</CardTitle><p className="text-sm text-muted-foreground">Source DataPlug Social Boost services from your own website or application. Your customers can purchase through your integration using your API wallet.</p></CardHeader>
   <CardContent className="space-y-5">
     <SocialBoostApiCatalog />
-    <div><h3 className="font-semibold">1. Endpoint and authentication</h3><p className="mt-1 text-sm text-muted-foreground">Send JSON POST requests to the Edge Function. Never expose your API key in browser code; call this endpoint from your server.</p><div className="mt-2 rounded-lg border border-border bg-muted p-3 font-mono text-xs break-all">POST https://api.dataplug.store/functions/v1/social-boost</div><pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`Authorization: Bearer YOUR_API_KEY\nContent-Type: application/json`}</pre></div>
-    <div><h3 className="font-semibold">2. Discover live services and prices</h3><p className="mt-1 text-sm text-muted-foreground">Call <span className="font-mono">services</span> to receive the current catalog. Every item includes the exact service <span className="font-mono">id</span>, name, category, admin base price per 1,000, quantity limits, completion time, and notes. Use the returned ID in every order; do not hardcode IDs or prices.</p><pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`Request: {"action":"services"}\nResponse: {"services":[{"id":101,"name":"Instagram Followers","category":"Instagram","base_price_per_1000":25,"min_quantity":100,"max_quantity":100000}]}`}</pre><p className="mt-1 text-xs text-muted-foreground">Use the returned service ID, service name, rate, minimum, maximum, and category in your product selector. The first preferred services are TikTok Followers and Instagram Followers.</p></div>
-    <div><h3 className="font-semibold">3. Create an order</h3><pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`{"action":"add","platform":"instagram","service":101,"link":"https://instagram.com/username","quantity":1000}`}</pre><p className="mt-1 text-sm text-muted-foreground">Send the numeric <span className="font-mono">id</span> from the services response as <span className="font-mono">service</span>. Service names repeat across suppliers, so names are not accepted. The catalog covers every platform (TikTok, Instagram, Facebook, YouTube, Twitter/X, Telegram, Snapchat, Spotify and more) and includes both our original and GainRealGrowth services; each id is routed to the right supplier automatically. The API validates your key and wallet, looks up the admin-configured base price for the selected service, calculates the charge from quantity, creates the order, debits the API wallet, and forwards the provider service ID. Do not send or trust a client-provided price; the admin base price is authoritative.</p></div>
-    <div><h3 className="font-semibold">4. Manage orders</h3><pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`{"action":"status","order":"ORDER_NUMBER"}\n{"action":"refill","order":"ORDER_NUMBER"}\n{"action":"refill_status","refill":"REFILL_ID"}\n{"action":"cancel","orders":"ORDER_NUMBER"}\n{"action":"balance"}`}</pre></div>
-    <div><h3 className="font-semibold">5. Integration flow for your website</h3><ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground"><li>Load services from the <span className="font-mono">services</span> action and show the live catalog.</li><li>Let your customer choose a platform, service, quantity, and target link.</li><li>Set your own customer/resale price on your website; DataPlug does not enforce a resale-price minimum or maximum. Keep your DataPlug API key private. Your wallet is charged only the returned admin base price.</li><li>Submit the order from your server, save the returned order number, and show a pending state.</li><li>Poll <span className="font-mono">status</span> from your server until the order is completed or fails.</li></ol></div>
-    <div><h3 className="font-semibold">Responses and errors</h3><p className="mt-1 text-sm text-muted-foreground">Successful responses are returned as JSON from the provider. Common HTTP responses: <span className="font-mono">401</span> invalid key, <span className="font-mono">402</span> insufficient wallet, <span className="font-mono">400</span> invalid fields, <span className="font-mono">409</span> wallet update conflict, and <span className="font-mono">502</span> provider unavailable.</p></div>
+    <div id="sb-auth" className="scroll-mt-32"><h3 className="font-semibold">1. Endpoint and authentication</h3><p className="mt-1 text-sm text-muted-foreground">Send JSON POST requests to the Edge Function. Never expose your API key in browser code; call this endpoint from your server.</p><div className="mt-2 rounded-lg border border-border bg-muted p-3 font-mono text-xs break-all">POST https://api.dataplug.store/functions/v1/social-boost</div><pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`Authorization: Bearer YOUR_API_KEY\nContent-Type: application/json`}</pre></div>
+    <div id="sb-services" className="scroll-mt-32"><h3 className="font-semibold">2. Discover live services and prices</h3><p className="mt-1 text-sm text-muted-foreground">Call <span className="font-mono">services</span> to receive the current catalog. Every item includes the exact service <span className="font-mono">id</span>, name, category, admin base price per 1,000, quantity limits, completion time, and notes. Use the returned ID in every order; do not hardcode IDs or prices.</p><pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`Request: {"action":"services"}\nResponse: {"services":[{"id":101,"name":"Instagram Followers","category":"Instagram","base_price_per_1000":25,"min_quantity":100,"max_quantity":100000}]}`}</pre><p className="mt-1 text-xs text-muted-foreground">Use the returned service ID, service name, rate, minimum, maximum, and category in your product selector. The first preferred services are TikTok Followers and Instagram Followers.</p></div>
+    <div id="sb-order" className="scroll-mt-32"><h3 className="font-semibold">3. Create an order</h3><pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`{"action":"add","platform":"instagram","service":101,"link":"https://instagram.com/username","quantity":1000}`}</pre><p className="mt-1 text-sm text-muted-foreground">Send the numeric <span className="font-mono">id</span> from the services response as <span className="font-mono">service</span>. Service names repeat across suppliers, so names are not accepted. The catalog covers every platform (TikTok, Instagram, Facebook, YouTube, Twitter/X, Telegram, Snapchat, Spotify and more) and includes both our original and GainRealGrowth services; each id is routed to the right supplier automatically. The API validates your key and wallet, looks up the admin-configured base price for the selected service, calculates the charge from quantity, creates the order, debits the API wallet, and forwards the provider service ID. Do not send or trust a client-provided price; the admin base price is authoritative.</p></div>
+    <div id="sb-manage" className="scroll-mt-32"><h3 className="font-semibold">4. Manage orders</h3><pre className="mt-2 overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`{"action":"status","order":"ORDER_NUMBER"}\n{"action":"refill","order":"ORDER_NUMBER"}\n{"action":"refill_status","refill":"REFILL_ID"}\n{"action":"cancel","orders":"ORDER_NUMBER"}\n{"action":"balance"}`}</pre></div>
+    <div id="sb-flow" className="scroll-mt-32"><h3 className="font-semibold">5. Integration flow for your website</h3><ol className="mt-2 list-decimal space-y-1 pl-5 text-sm text-muted-foreground"><li>Load services from the <span className="font-mono">services</span> action and show the live catalog.</li><li>Let your customer choose a platform, service, quantity, and target link.</li><li>Set your own customer/resale price on your website; DataPlug does not enforce a resale-price minimum or maximum. Keep your DataPlug API key private. Your wallet is charged only the returned admin base price.</li><li>Submit the order from your server, save the returned order number, and show a pending state.</li><li>Poll <span className="font-mono">status</span> from your server until the order is completed or fails.</li></ol></div>
+    <div id="sb-errors" className="scroll-mt-32"><h3 className="font-semibold">Responses and errors</h3><p className="mt-1 text-sm text-muted-foreground">Successful responses are returned as JSON from the provider. Common HTTP responses: <span className="font-mono">401</span> invalid key, <span className="font-mono">402</span> insufficient wallet, <span className="font-mono">400</span> invalid fields, <span className="font-mono">409</span> wallet update conflict, and <span className="font-mono">502</span> provider unavailable.</p></div>
     <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm"><strong>Security:</strong> store the API key as a server environment variable, validate links and quantities, rate-limit your checkout endpoint, and do not send the key to client-side JavaScript.</div>
   </CardContent>
-  </Card>}
+  </Card></>}
 
+            {apiDocTab === "cheap-data" && <>
+            <ApiDocNav items={CHEAP_DATA_NAV} />
             {/* Header Card */}
             <Card className="border-blue-500/30 bg-gradient-to-r from-blue-500/10 to-cyan-500/10">
               <CardContent className="p-6">
@@ -4179,7 +4185,7 @@ handleMobileNumberChange(digits);
             </Card>
 
             {/* Delivery Progress API */}
-            <Card className="border-purple-500/30 bg-purple-500/5">
+            <Card id="cd-delivery" className="scroll-mt-32 border-purple-500/30 bg-purple-500/5">
               <CardHeader><CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5 text-purple-400" />Delivery Progress API</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">Expose the same delivery-progress card and messages from your dashboard on your own website.</p>
@@ -4192,7 +4198,7 @@ handleMobileNumberChange(digits);
             </Card>
 
             {/* Supported Networks */}
-            <Card>
+            <Card id="cd-networks" className="scroll-mt-32">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Globe className="h-5 w-5 text-green-400" />
@@ -4219,7 +4225,7 @@ handleMobileNumberChange(digits);
             {/* Main Endpoints */}
             <div className="space-y-4">
               {/* GET /get-packages */}
-              <Card>
+              <Card id="cd-get-packages" className="scroll-mt-32">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
@@ -4256,7 +4262,7 @@ handleMobileNumberChange(digits);
               </Card>
 
               {/* POST /purchase */}
-              <Card>
+              <Card id="cd-purchase" className="scroll-mt-32">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-mono">POST</span>
@@ -4323,7 +4329,7 @@ Error 404 - package not found:
               </Card>
 
               {/* GET /get-orders */}
-              <Card>
+              <Card id="cd-get-orders" className="scroll-mt-32">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
@@ -4388,7 +4394,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </Card>
 
               {/* GET /track-order */}
-              <Card>
+              <Card id="cd-track-order" className="scroll-mt-32">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
@@ -4434,7 +4440,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </Card>
 
               {/* Order Status Values */}
-              <Card>
+              <Card id="cd-statuses" className="scroll-mt-32">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <BarChart3 className="h-5 w-5 text-purple-400" />
@@ -4467,7 +4473,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               <Card className="border-cyan-500/30 bg-cyan-500/5"><CardHeader><CardTitle className="text-lg">Order statuses and polling</CardTitle></CardHeader><CardContent className="space-y-3 text-sm text-muted-foreground"><p><span className="font-mono">pending</span>: accepted and queued. <span className="font-mono">processing</span>: delivery in progress.</p><p><span className="font-mono">waiting</span>: MTN approval for a new recipient number; this one-time process takes 3–10 days, is automatic, and needs no repeat order.</p><p><span className="font-mono">delivered</span> / <span className="font-mono">completed</span>: delivered and final. <span className="font-mono">failed</span>: could not be completed and final. <span className="font-mono">refunded</span>: refunded and final.</p><p>Poll every 30–60 seconds and stop at a final status. For <span className="font-mono">waiting</span>, poll only every few hours. Use <span className="font-mono">fulfillment_status</span> to check delivery; <span className="font-mono">order_status</span> holds the same value and <span className="font-mono">payment_status</span> is backward compatibility only.</p></CardContent></Card>
 
               {/* Error Codes */}
-              <Card>
+              <Card id="cd-errors" className="scroll-mt-32">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <AlertCircle className="h-5 w-5 text-red-400" />
@@ -4494,7 +4500,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
               </Card>
 
               {/* Additional Notes */}
-              <Card className="border-yellow-500/30 bg-yellow-500/5">
+              <Card id="cd-notes" className="scroll-mt-32 border-yellow-500/30 bg-yellow-500/5">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Zap className="h-5 w-5 text-yellow-400" />
@@ -4512,6 +4518,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                 </CardContent>
               </Card>
             </div>
+            </>}
           </TabsContent>
 
           {/* ============================= API ORDERS ============================= */}

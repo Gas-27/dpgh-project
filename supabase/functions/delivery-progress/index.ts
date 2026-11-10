@@ -33,6 +33,29 @@ function fakeNumber(prefixValue: unknown, slot: number) {
   return `${prefix}${String((seed * 2654435761) % 1000000).padStart(6, "0")}`;
 }
 
+const DEFAULT_PREFIXES: Record<string, string> = {
+  mtn: "024,054,055,059",
+  mtn_express: "024,054,055,059",
+  telecel: "020,050",
+  airteltigo: "026,056,027,057",
+};
+
+const dateFormatter = new Intl.DateTimeFormat("en-GH", { month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit", timeZone: "Africa/Accra" });
+
+function displayDate(value: unknown) {
+  return value ? dateFormatter.format(new Date(String(value))) : "-";
+}
+
+function displayDuration(minutes: number | null) {
+  if (minutes === null) return "-";
+  if (minutes === 0) return "instant";
+  return minutes < 60 ? `${minutes} minutes` : `${Math.floor(minutes / 60)}h ${minutes % 60 ? `${minutes % 60}m` : ""}`.trim();
+}
+
+function displayWindow(minutes: number) {
+  return minutes < 60 ? `${minutes} minutes` : `${Math.floor(minutes / 60)}${minutes % 60 ? `h ${minutes % 60}m` : " hours"}`;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 }
@@ -53,25 +76,31 @@ Deno.serve(async (req) => {
   if (settingError) return json({ error: "Unable to load delivery settings" }, 500);
 
   const networks = network === "mtn_express" ? ["mtn_express", "mtn"] : [network];
-  const { data: orders, error: orderError } = await supabase.from("orders").select("id,customer_number,network,status,fulfillment_status,order_status,created_at,updated_at").in("network", networks).or("order_status.ilike.delivered,fulfillment_status.ilike.delivered,status.ilike.delivered").order("updated_at", { ascending: false }).limit(1);
+  const { data: orders, error: orderError } = await supabase.from("orders").select("id,customer_number,network,status,fulfillment_status,order_status,created_at,updated_at").in("network", networks).or("order_status.ilike.delivered,fulfillment_status.ilike.delivered,status.ilike.delivered").order("updated_at", { ascending: false }).limit(100);
   if (orderError) return json({ error: "Unable to load delivery history" }, 500);
 
-  const latest = orders?.[0] || null;
+  const deliveredOrders = (orders || []).filter((order) => order.created_at && order.updated_at && new Date(order.updated_at).getTime() >= new Date(order.created_at).getTime());
+  const latest = deliveredOrders[0] || null;
   const minMinutes = Math.max(2, Number(setting?.min_minutes || 30));
   const maxMinutes = Math.max(minMinutes, Number(setting?.max_minutes || 240));
   const fakeMode = setting?.fake_enabled === true || setting?.source === "fake";
   const rotation = Math.max(1, Number(setting?.rotation_minutes || 30));
-  const count = Math.max(1, Number(setting?.fake_count || 10));
-  const slot = Math.floor(Date.now() / (rotation * 60000)) % count;
-  const fakeCustomer = fakeNumber(setting?.fake_prefix, slot);
+  const slot = Math.floor(Date.now() / (rotation * 60000));
+  const fakeCustomer = fakeNumber(setting?.fake_prefix || DEFAULT_PREFIXES[network], slot);
   const fakeTook = minMinutes + (Math.abs(slot * 7919) % Math.max(1, maxMinutes - minMinutes + 1));
   const fakeDeliveredAt = new Date();
   const fakePlacedAt = new Date(fakeDeliveredAt.getTime() - fakeTook * 60000);
   const shown = fakeMode ? { orderId: `fake-${slot}`, customerNumber: maskNumber(fakeCustomer), placedAt: fakePlacedAt.toISOString(), deliveredAt: fakeDeliveredAt.toISOString(), durationMinutes: fakeTook, isFake: true } : latest ? { orderId: latest.id, customerNumber: maskNumber(latest.customer_number), placedAt: latest.created_at, deliveredAt: latest.updated_at, durationMinutes: durationMinutes(latest.created_at, latest.updated_at), isFake: false } : null;
-  const realDurations = orders?.filter((order) => order.created_at && order.updated_at).map((order) => durationMinutes(order.created_at, order.updated_at) || 0) || [];
+  const realDurations = deliveredOrders.map((order) => durationMinutes(order.created_at, order.updated_at) || 0);
   const extra = setting?.source === "orders" ? Math.min(240, Math.floor(0 / 100) * 15) : 0;
   const estimateMin = setting?.source === "orders" && realDurations.length ? Math.min(...realDurations) : minMinutes + extra;
   const estimateMax = setting?.source === "orders" && realDurations.length ? Math.max(...realDurations) : maxMinutes + extra;
+  const display = {
+    customerNumber: shown?.customerNumber ?? "-",
+    lastDelivered: shown ? `Last delivered: ${shown.customerNumber ?? "-"}` : null,
+    timeline: shown ? `Placed ${displayDate(shown.placedAt)} · Delivered ${displayDate(shown.deliveredAt)} · Took ${displayDuration(shown.durationMinutes)}` : null,
+    estimatedDelivery: `Estimated delivery: ${displayWindow(estimateMin)} – ${displayWindow(estimateMax)}`,
+  };
   const label = network === "mtn_express" ? "MTN Express" : network === "airteltigo" ? "AirtelTigo" : network.charAt(0).toUpperCase() + network.slice(1);
-  return json({ success: true, data: { network, label, enabled: setting?.enabled ?? true, statusColor: setting?.status_color || "green", source: setting?.source || "orders", fakeMode, message: setting?.message?.trim() || `${label} orders are being processed. Please allow the estimated delivery window.`, estimatedDelivery: { minMinutes: estimateMin, maxMinutes: estimateMax }, lastDelivered: shown, infoMessage: "This is an estimated delivery window, not a guarantee. Track your own order for its actual status.", updatedAt: setting?.updated_at || null }, meta: { version: "2", generatedAt: new Date().toISOString() } });
+  return json({ success: true, data: { network, label, enabled: setting?.enabled ?? true, statusColor: setting?.status_color || "green", source: setting?.source || "orders", fakeMode, message: setting?.message?.trim() || `${label} orders are being processed. Please allow the estimated delivery window.`, estimatedDelivery: { minMinutes: estimateMin, maxMinutes: estimateMax }, lastDelivered: shown, display, infoMessage: "This is an estimated delivery window, not a guarantee. Track your own order for its actual status.", updatedAt: setting?.updated_at || null }, meta: { version: "2", generatedAt: new Date().toISOString() } });
 });

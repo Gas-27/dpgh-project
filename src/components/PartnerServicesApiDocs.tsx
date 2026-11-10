@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
+import ApiDocNav from "@/components/ApiDocNav";
+import { BULK_SMS_NAV, DATA_AIRTIME_NAV, UTILITIES_NAV } from "@/lib/apiDocNavItems";
 
 export type PartnerServicesDocVariant = "data-airtime" | "utilities" | "bulk-sms";
 
@@ -35,9 +37,9 @@ function Code({ children }: { children: string }) {
   );
 }
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Section({ title, id, children }: { title: string; id?: string; children: React.ReactNode }) {
   return (
-    <div>
+    <div id={id} className="scroll-mt-32">
       <h3 className="font-semibold">{title}</h3>
       <div className="mt-1 space-y-2 text-sm text-muted-foreground">{children}</div>
     </div>
@@ -82,7 +84,7 @@ function CommissionTable({ rows }: { rows: RateRow[] }) {
 function SharedBasics({ rows }: { rows: RateRow[] }) {
   return (
     <>
-      <Section title="Your commission">
+      <Section id="pd-commission" title="Your commission">
         <p>
           Every successful purchase is paid from your API wallet at the normal price, and your commission is credited back to the same wallet automatically once the provider accepts the request.
           Failed purchases are refunded in full and earn no commission.
@@ -92,7 +94,7 @@ function SharedBasics({ rows }: { rows: RateRow[] }) {
           The commission rate and amount applied to each order are returned in the purchase response as <Mono>commission_rate</Mono> and <Mono>commission_amount</Mono>.
         </p>
       </Section>
-      <Section title="1. Endpoint and authentication">
+      <Section id="pd-auth" title="1. Endpoint and authentication">
         <p>Send requests from your server only. Never expose your API key in browser code.</p>
         <div className="rounded-lg border border-border bg-muted p-3 font-mono text-xs break-all">{ENDPOINT}</div>
         <Code>{`x-api-key: YOUR_API_KEY        (or Authorization: Bearer YOUR_API_KEY)\nContent-Type: application/json\nidempotency-key: UNIQUE_ORDER_ID   (required on purchase)`}</Code>
@@ -104,7 +106,7 @@ function SharedBasics({ rows }: { rows: RateRow[] }) {
 function Errors() {
   return (
     <>
-      <Section title="Responses and errors">
+      <Section id="pd-errors" title="Responses and errors">
         <p>
           Responses are JSON with <Mono>success</Mono> true or false. Common HTTP codes: <Mono>400</Mono> invalid fields, <Mono>401</Mono> invalid or inactive API key, <Mono>402</Mono> insufficient API wallet, <Mono>502</Mono> provider failed (wallet refunded), <Mono>500</Mono> unexpected error.
         </p>
@@ -191,6 +193,8 @@ function NetworkBundleTabs() {
 function DataAirtimeDocs() {
   const [catalogueOpen, setCatalogueOpen] = useState(false);
   return (
+    <div className="space-y-4">
+      <ApiDocNav items={DATA_AIRTIME_NAV} />
     <Card className="border-cyan-500/30 bg-cyan-500/5">
       <CardHeader>
         <CardTitle>Normal Data and Airtime API</CardTitle>
@@ -205,7 +209,7 @@ function DataAirtimeDocs() {
         <SharedBasics rows={DATA_AIRTIME_RATES} />
 
         <Collapsible open={catalogueOpen} onOpenChange={setCatalogueOpen}>
-          <Section title="2. Choose a network and see its bundle format">
+          <Section id="pd-catalogue" title="2. Choose a network and see its bundle format">
             <CollapsibleTrigger className="flex w-full items-center justify-between rounded-lg border border-border bg-muted p-3 text-left font-medium">
               <span>Open the complete MTN, Telecel and AirtelTigo instant-data catalogue</span>
               <ChevronDown className={`size-4 transition-transform ${catalogueOpen ? "rotate-180" : ""}`} />
@@ -217,7 +221,7 @@ function DataAirtimeDocs() {
           </Section>
         </Collapsible>
 
-        <Section title="3. Get the live data catalogue (which package to send)">
+        <Section id="pd-live-catalogue" title="3. Get the live data catalogue (which package to send)">
           <p>
             Normal data is not ordered by a size name like &quot;1GB&quot;. Every bundle has a <Mono>product_id</Mono> and you must send that exact value. Call the catalogue first, optionally filtered with <Mono>?network=mtn</Mono>, <Mono>?network=telecel</Mono> or <Mono>?network=airteltigo</Mono>. Bundles are grouped by network and then by category (for example MTN Data Bundles, Midnight Bundles, Social Media Bundles; Telecel HOURLY, DAILY, WEEKLY, MONTHLY; AirtelTigo BigTime, Sika Kokoo, Fuse).
           </p>
@@ -244,7 +248,7 @@ function DataAirtimeDocs() {
           </p>
         </Section>
 
-        <Section title="3. Buy a data bundle">
+        <Section id="pd-buy-data" title="3. Buy a data bundle">
           <p>
             Send <Mono>network</Mono> (<Mono>mtn</Mono>, <Mono>telecel</Mono> or <Mono>airteltigo</Mono>), the bundle <Mono>product_id</Mono> and the <Mono>recipient</Mono> number. The price is always taken from the catalogue, so any <Mono>amount</Mono> you send for data is ignored. Recipients are Ghana numbers such as <Mono>0241234567</Mono> or <Mono>233241234567</Mono>.
           </p>
@@ -254,18 +258,18 @@ function DataAirtimeDocs() {
           </p>
         </Section>
 
-        <Section title="4. Buy airtime">
+        <Section id="pd-buy-airtime" title="4. Buy airtime">
           <p>
             Send the amount in GHS (greater than 0, maximum 5,000, up to two decimals).
           </p>
           <Code>{`POST ${ENDPOINT}\nidempotency-key: order-10046\n\n{\n  "action": "purchase",\n  "service_type": "airtime",\n  "network": "telecel",\n  "amount": 10,\n  "recipient": "0201234567"\n}`}</Code>
         </Section>
 
-        <Section title="5. Successful response">
+        <Section id="pd-response" title="5. Successful response">
           <Code>{`{\n  "success": true,\n  "purchase": {\n    "id": "0b6f...",\n    "service_type": "data",\n    "network": "mtn",\n    "recipient": "0241234567",\n    "amount": 0.5,\n    "status": "completed",\n    "provider_reference": "KB123456",\n    "commission_rate": 0.015,\n    "commission_amount": 0.0075,\n    "created_at": "2026-10-12T10:00:00Z"\n  },\n  "wallet_balance": 250.0075\n}`}</Code>
         </Section>
 
-        <Section title="6. Integration flow for your website">
+        <Section id="pd-flow" title="6. Integration flow for your website">
           <ol className="list-decimal space-y-1 pl-5">
             <li>Call the catalogue on your server, show each bundle&apos;s <Mono>name</Mono> grouped by <Mono>category</Mono> with your own resale price, and keep its <Mono>product_id</Mono> behind the scenes.</li>
             <li>When a customer pays you, generate a unique order ID and send the purchase request with it as the <Mono>idempotency-key</Mono>.</li>
@@ -277,11 +281,14 @@ function DataAirtimeDocs() {
         <Errors />
       </CardContent>
     </Card>
+    </div>
   );
 }
 
 function UtilitiesDocs() {
   return (
+    <div className="space-y-4">
+      <ApiDocNav items={UTILITIES_NAV} />
     <Card className="border-cyan-500/30 bg-cyan-500/5">
       <CardHeader>
         <CardTitle>Utilities API: ECG, GOtv, DSTV, StarTimes and Ghana Water</CardTitle>
@@ -292,14 +299,14 @@ function UtilitiesDocs() {
       <CardContent className="space-y-5">
         <SharedBasics rows={UTILITY_RATES} />
 
-        <Section title="2. Verify the customer first (lookup)">
+        <Section id="pd-lookup" title="2. Verify the customer first (lookup)">
           <p>
             Always look the account up before charging so you can show the customer name and confirm the right account. Lookup works for <Mono>ecg</Mono>, <Mono>gotv</Mono>, <Mono>dstv</Mono>, <Mono>startimes</Mono> and <Mono>water</Mono>. It is free and does not touch your wallet.
           </p>
           <Code>{`POST ${ENDPOINT}\n\n{\n  "action": "lookup",\n  "service_type": "gotv",\n  "recipient": "1234567890"\n}\n\nResponse:\n{ "success": true, "service_type": "gotv", "recipient": "1234567890", "customer_name": "KOFI MENSAH", "detail": null }`}</Code>
         </Section>
 
-        <Section title="3. Required fields per service">
+        <Section id="pd-fields" title="3. Required fields per service">
           <div className="overflow-x-auto rounded-lg border border-border">
             <table className="w-full min-w-[520px] text-left text-sm">
               <thead className="bg-muted">
@@ -323,15 +330,15 @@ function UtilitiesDocs() {
           </p>
         </Section>
 
-        <Section title="4. Pay a bill">
+        <Section id="pd-pay-bill" title="4. Pay a bill">
           <Code>{`POST ${ENDPOINT}\nidempotency-key: bill-5521\n\n// ECG prepaid\n{\n  "action": "purchase",\n  "service_type": "ecg",\n  "recipient": "01234567890",\n  "phone_number": "0241234567",\n  "amount": 50\n}\n\n// GOtv, DSTV, StarTimes\n{ "action": "purchase", "service_type": "dstv", "recipient": "7012345678", "amount": 129 }\n\n// Ghana Water\n{ "action": "purchase", "service_type": "water", "recipient": "123456789", "amount": 40 }`}</Code>
         </Section>
 
-        <Section title="5. Successful response">
+        <Section id="pd-response" title="5. Successful response">
           <Code>{`{\n  "success": true,\n  "purchase": {\n    "id": "5e1c...",\n    "service_type": "ecg",\n    "recipient": "01234567890",\n    "amount": 50,\n    "status": "completed",\n    "provider_reference": "KB778899",\n    "commission_rate": 0.006,\n    "commission_amount": 0.3,\n    "created_at": "2026-10-12T10:00:00Z"\n  },\n  "wallet_balance": 200.3\n}`}</Code>
         </Section>
 
-        <Section title="6. Integration flow for your website">
+        <Section id="pd-flow" title="6. Integration flow for your website">
           <ol className="list-decimal space-y-1 pl-5">
             <li>Customer picks a service and enters their meter, smart card or account number.</li>
             <li>Call <Mono>lookup</Mono> from your server and show the returned customer name for confirmation.</li>
@@ -343,6 +350,7 @@ function UtilitiesDocs() {
         <Errors />
       </CardContent>
     </Card>
+    </div>
   );
 }
 
@@ -370,7 +378,7 @@ function BulkSmsPricing() {
   const page = data?.page ?? 0;
   const example = recipient * 100 + page * 1;
   return (
-    <Section title="Pricing">
+    <Section id="pd-pricing" title="Pricing">
       <p>
         Prices are set by JUSTBUY and charged from your API wallet for every message you send. One page is 160 characters. Longer messages use more pages.
       </p>
@@ -411,6 +419,8 @@ function BulkSmsPricing() {
 
 function BulkSmsDocs() {
   return (
+    <div className="space-y-4">
+      <ApiDocNav items={BULK_SMS_NAV} />
     <Card className="border-cyan-500/30 bg-cyan-500/5">
       <CardHeader>
         <CardTitle>Bulk SMS API</CardTitle>
@@ -421,13 +431,13 @@ function BulkSmsDocs() {
       <CardContent className="space-y-5">
         <BulkSmsPricing />
 
-        <Section title="1. Endpoint and authentication">
+        <Section id="pd-auth" title="1. Endpoint and authentication">
           <p>Call this API from your server only. Never place your API key in browser or mobile app code.</p>
           <div className="rounded-lg border border-border bg-muted p-3 font-mono text-xs break-all">{SMS_ENDPOINT}</div>
           <Code>{`x-api-key: YOUR_API_KEY        (or Authorization: Bearer YOUR_API_KEY)\nContent-Type: application/json\nidempotency-key: UNIQUE_MESSAGE_ID   (required when sending)`}</Code>
         </Section>
 
-        <Section title="2. Submit a sender ID for approval">
+        <Section id="pd-sender" title="2. Submit a sender ID for approval">
           <p>
             A sender ID is the name recipients see (3 to 11 letters, numbers or spaces, not only digits). Submit it from your site, then wait for approval. It shows up in the JUSTBUY admin SMS section where it is reviewed. You can only send with approved sender IDs.
           </p>
@@ -435,14 +445,14 @@ function BulkSmsDocs() {
           <Code>{`201 { "success": true, "sender": { "id": "...", "sender_id": "MYSHOP", "status": "pending" } }\n409 { "success": false, "error": "This sender ID already exists and must be unique" }`}</Code>
         </Section>
 
-        <Section title="3. Check balance, prices and approved sender IDs">
+        <Section id="pd-balance" title="3. Check balance, prices and approved sender IDs">
           <Code>{`GET ${SMS_ENDPOINT}\n\n200 {\n  "success": true,\n  "pricing": { "currency": "GHS", "per_recipient": 0.0, "per_page": 0.0, "characters_per_page": 160 },\n  "balance": 25.5,\n  "sender_ids": [ { "sender_id": "MYSHOP", "status": "approved" } ]\n}`}</Code>
           <p>
             The <Mono>official_sender_ids</Mono> list contains every currently approved global/official sender ID that any API client may use. Use those values directly in your site. You can also post <Mono>{`{ "action": "senders" }`}</Mono> to return both official and account-specific approved sender IDs, or <Mono>{`{ "action": "balance" }`}</Mono> for your API wallet balance.
           </p>
         </Section>
 
-        <Section title="4. Send bulk SMS">
+        <Section id="pd-send" title="4. Send bulk SMS">
           <p>
             Send up to 1000 Ghana numbers per request. Numbers can be written as <Mono>0241234567</Mono> or <Mono>233241234567</Mono>, and duplicates are removed automatically.
           </p>
@@ -450,16 +460,16 @@ function BulkSmsDocs() {
           <Code>{`200 {\n  "success": true,\n  "id": "MESSAGE_RECORD_ID",\n  "status": "sent",             // sent | partial\n  "sent": 2,\n  "failed": [],\n  "pages": 1,\n  "charge": 0.0,\n  "refunded": 0,\n  "balance": 24.5,\n  "message_ids": [ { "to": "0241234567", "message_id": "..." } ]\n}`}</Code>
         </Section>
 
-        <Section title="5. Check a message">
+        <Section id="pd-status" title="5. Check a message">
           <Code>{`POST ${SMS_ENDPOINT}\n{ "action": "status", "id": "MESSAGE_RECORD_ID" }`}</Code>
         </Section>
 
-        <Section title="6. Integration example (Node.js)">
+        <Section id="pd-example" title="6. Integration example (Node.js)">
           <Code>{`const response = await fetch("${SMS_ENDPOINT}", {\n  method: "POST",\n  headers: {\n    "x-api-key": process.env.JUSTBUY_API_KEY,\n    "Content-Type": "application/json",\n    "idempotency-key": crypto.randomUUID(),\n  },\n  body: JSON.stringify({\n    action: "send",\n    sender_id: "MYSHOP",\n    recipients: ["0241234567"],\n    message: "Hello from MYSHOP",\n  }),\n});\nconst result = await response.json();\nif (!result.success) console.error(result.error);`}</Code>
           <Code>{`curl -X POST "${SMS_ENDPOINT}" \\\n  -H "x-api-key: YOUR_API_KEY" \\\n  -H "idempotency-key: order-10045" \\\n  -H "Content-Type: application/json" \\\n  -d '{"action":"send","sender_id":"MYSHOP","recipients":["0241234567"],"message":"Hello"}'`}</Code>
         </Section>
 
-        <Section title="Responses and errors">
+        <Section id="pd-errors" title="Responses and errors">
           <p>
             Responses are JSON with <Mono>success</Mono> true or false. <Mono>400</Mono> invalid fields, <Mono>401</Mono> invalid or inactive API key, <Mono>402</Mono> insufficient API wallet (the response includes <Mono>required</Mono> and <Mono>balance</Mono>), <Mono>403</Mono> sender ID not approved or locked, <Mono>409</Mono> sender ID already exists, <Mono>502</Mono> every message failed (wallet refunded), <Mono>503</Mono> SMS pricing or provider not configured.
           </p>
@@ -469,6 +479,7 @@ function BulkSmsDocs() {
         </div>
       </CardContent>
     </Card>
+    </div>
   );
 }
 

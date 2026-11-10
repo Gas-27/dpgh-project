@@ -1,3 +1,4 @@
+import DashboardTutorial, { SUBSUBAGENT_TUTORIAL } from "@/components/DashboardTutorial";
 import FlyerTabs from "@/components/FlyerExtras";
 import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
@@ -2069,6 +2070,7 @@ return (
           </CardContent>
         </Card>
 
+        <DashboardTutorial storageKey="sub-subagent" userId={user?.id} steps={SUBSUBAGENT_TUTORIAL} onNavigate={setActiveTab} />
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
   <div className="grid grid-cols-3 gap-2 sm:gap-3">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa-registrations", label: "AFA Registration" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Bulk SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Utilities" }, { id: "social-boost", label: "Social Boost" }, { id: "flyer", label: "Flyer Generator" }, { id: "marketing", label: "Marketing" }].map((item) => { const selected = activeTab === item.id; return <OverviewPill key={item.id} label={item.label} text={selected ? "Overview" : item.label} onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} />; })}</div>

@@ -1,3 +1,5 @@
+import ApiDocNav from "@/components/ApiDocNav";
+import { AFA_NAV } from "@/lib/apiDocNavItems";
 import { BookOpen, Key, ShieldAlert, Webhook } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -152,6 +154,7 @@ function Code({ children }: { children: string }) {
 export default function AfaApiDocs() {
   return (
     <div className="space-y-6">
+      <ApiDocNav items={AFA_NAV} />
       <Card className="border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-violet-500/10">
         <CardContent className="p-6">
           <div className="flex items-start gap-4">
@@ -177,7 +180,7 @@ export default function AfaApiDocs() {
         </CardContent>
       </Card>
 
-      <Card id="afa-auth" className="scroll-mt-20">
+      <Card id="afa-auth" className="scroll-mt-32">
         <CardHeader>
           <CardTitle className="flex items-center gap-2"><Key className="h-5 w-5 text-cyan-400" />Authentication</CardTitle>
         </CardHeader>
@@ -189,7 +192,7 @@ export default function AfaApiDocs() {
         </CardContent>
       </Card>
 
-      <Card id="afa-register" className="scroll-mt-20">
+      <Card id="afa-register" className="scroll-mt-32">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <span className="rounded bg-blue-500/20 px-2 py-1 font-mono text-xs text-blue-400">POST</span>
@@ -235,7 +238,7 @@ export default function AfaApiDocs() {
         </CardContent>
       </Card>
 
-      <Card id="afa-examples" className="scroll-mt-20">
+      <Card id="afa-examples" className="scroll-mt-32">
         <CardHeader><CardTitle className="text-lg">Code examples</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div><p className="mb-2 text-sm font-semibold">cURL</p><Code>{curlExample}</Code></div>
@@ -245,7 +248,7 @@ export default function AfaApiDocs() {
         </CardContent>
       </Card>
 
-      <Card id="afa-errors" className="scroll-mt-20">
+      <Card id="afa-errors" className="scroll-mt-32">
         <CardHeader><CardTitle className="text-lg">Errors</CardTitle></CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -260,7 +263,7 @@ export default function AfaApiDocs() {
         </CardContent>
       </Card>
 
-      <Card id="afa-webhooks" className="scroll-mt-20">
+      <Card id="afa-webhooks" className="scroll-mt-32">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg"><Webhook className="h-5 w-5 text-purple-400" />Webhooks</CardTitle>
         </CardHeader>
