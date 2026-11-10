@@ -196,7 +196,7 @@ Payment Methods:
 
 NOTE: If you have a pending withdrawal, the system will prevent you from buying data that would push your balance below the pending withdrawal amount to protect your funds.
 
-Note: 4-minute cooldown per phone number to prevent duplicate orders.` },
+Note: 10-minute cooldown per phone number to prevent duplicate orders.` },
   {
     icon: "i", title: "Bulk Orders", content: `Send data to multiple recipients at once using your wallet.
 
@@ -1641,9 +1641,9 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         setBuyLoading(false); return;
       }
     }
-    const cutoff = new Date(Date.now() - 4 * 60 * 1000).toISOString();
+    const cutoff = new Date(Date.now() - 10 * 60 * 1000).toISOString();
     const { data: ro } = await supabase.from("orders").select("created_at").eq("customer_number", buyPhone.trim()).eq("agent_store_id", store.id).gte("created_at", cutoff).order("created_at", { ascending: false }).limit(1);
-    if (ro && ro.length > 0) { const el = Math.floor((Date.now() - new Date(ro[0].created_at).getTime()) / 60000); toast({ title: "Rate limit", description: `Wait ${Math.max(1, 4 - el)} more minute(s).`, variant: "destructive" }); setBuyLoading(false); return; }
+    if (ro && ro.length > 0) { const el = Math.floor((Date.now() - new Date(ro[0].created_at).getTime()) / 60000); toast({ title: "Rate limit", description: `Wait ${Math.max(1, 10 - el)} more minute(s).`, variant: "destructive" }); setBuyLoading(false); return; }
     const ap = Number(buyPkg.agent_price);
     if (buyPaymentMethod === "wallet") {
       if (Number(store.wallet_balance) < ap) { toast({ title: "Insufficient balance", variant: "destructive" }); setBuyLoading(false); return; }

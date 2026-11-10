@@ -7,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { fetchMarketingPosts, type MarketingPost } from "@/lib/marketingApi";
 import type { StoreInfo } from "@/components/FlyerShared";
-import BulkSmsHowToVideo from "@/components/BulkSmsHowToVideo";
+import MarketingHowToVideos from "@/components/MarketingHowToVideos";
 
 type Platform = "whatsapp" | "tiktok" | "instagram" | "facebook";
 
@@ -238,35 +238,7 @@ export default function MarketingHub({ storeName, storeUrl, children }: Marketin
         </div>
       </section>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
-        <h3 className="flex items-center gap-2 font-display text-base font-bold text-foreground">
-          <Video className="h-5 w-5 text-primary" aria-hidden /> How to market on WhatsApp
-        </h3>
-        <video
-          src="/videos/get-your-first-customers-dataplug.mp4"
-          controls
-          playsInline
-          preload="metadata"
-          aria-label="How to market on WhatsApp and get your first customers"
-          className="aspect-video w-full rounded-xl bg-black"
-        />
-      </section>
-
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
-        <h3 className="flex items-center gap-2 font-display text-base font-bold text-foreground">
-          <Video className="h-5 w-5 text-primary" aria-hidden /> How to promote on TikTok, Instagram and Facebook
-        </h3>
-        <video
-          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/sell-on-instagram-facebook-tiktok-0DiJo5cjT2SWZ1zoeEbUfmhVhzKoK3.mp4"
-          controls
-          playsInline
-          preload="metadata"
-          aria-label="How to sell and promote on TikTok, Instagram and Facebook"
-          className="aspect-video w-full rounded-xl bg-black"
-        />
-      </section>
-
-      <BulkSmsHowToVideo />
+      <MarketingHowToVideos />
 
       <section className="grid gap-6 lg:grid-cols-[1fr_300px]">
         <div className="space-y-4 rounded-2xl border border-border bg-card p-4">
