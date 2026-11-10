@@ -37,3 +37,6 @@ verify_jwt = false
 
 [functions.refund-storefront-order]
 verify_jwt = false
+
+[functions.register-agent-user]
+verify_jwt = false

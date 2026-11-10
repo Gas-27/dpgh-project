@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { signUpWithoutVerification } from "@/lib/signUpWithoutVerification";
 import { DOMAINS } from "@/config/domains";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -186,23 +187,18 @@ export default function SubSubagentRegistrationForm({
 
       // sub_subagent is a valid app_role in this project. Passing user here
       // was the reason these registrations were classified as normal users.
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await signUpWithoutVerification({
         email: formData.email,
         password: formData.password,
-        options: {
-          emailRedirectTo:
-            import.meta.env.VITE_SUPABASE_REDIRECT_URL ??
-            `${window.location.origin}/auth/callback`,
-          data: {
-            role: "sub_subagent",
-            subagent_store_id: subagentStoreId,
-            store_name: formData.storeName,
-            whatsapp_number: formData.whatsappNumber,
-            support_number: formData.supportNumber,
-            momo_name: formData.momoName,
-            momo_number: formData.momoNumber,
-            momo_network: formData.momoNetwork,
-          },
+        data: {
+          role: "sub_subagent",
+          subagent_store_id: subagentStoreId,
+          store_name: formData.storeName,
+          whatsapp_number: formData.whatsappNumber,
+          support_number: formData.supportNumber,
+          momo_name: formData.momoName,
+          momo_number: formData.momoNumber,
+          momo_network: formData.momoNetwork,
         },
       });
 

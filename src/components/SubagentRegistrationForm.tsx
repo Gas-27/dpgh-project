@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { signUpWithoutVerification } from "@/lib/signUpWithoutVerification";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -180,14 +181,11 @@ export default function SubagentRegistrationForm({
       console.log("[v0] Creating user account and subagent store first");
 
       // Sign up the user
-      const { data: authData, error: authError } = await supabase.auth.signUp({
+      const { data: authData, error: authError } = await signUpWithoutVerification({
         email: formData.email,
         password: formData.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-          data: {
-            role: "subagent",
-          },
+        data: {
+          role: "subagent",
         },
       });
 
