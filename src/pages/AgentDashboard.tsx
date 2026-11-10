@@ -55,6 +55,7 @@ import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
 import ApiExplainer from "@/components/ApiExplainer";
+import WebhookDocs from "@/components/WebhookDocs";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
 import SubagentsList from "@/components/SubagentsList";
@@ -4146,13 +4147,18 @@ handleMobileNumberChange(digits);
                     <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/30">
                       <p className="text-sm font-mono text-foreground">Base URL: https://api.dataplug.store/functions/v1</p>
                     </div>
+                    <nav aria-label="On this page" className="mt-3 flex flex-wrap items-center gap-2 text-sm">
+                      <span className="text-muted-foreground">On this page:</span>
+                      <a href="#api-endpoints" className="rounded-md border border-border px-2 py-1 hover:bg-muted">Endpoints</a>
+                      <a href="#webhooks" className="rounded-md border border-border px-2 py-1 hover:bg-muted">Webhooks</a>
+                    </nav>
                   </div>
                 </div>
               </CardContent>
             </Card>
 
             {/* Authentication */}
-            <Card>
+            <Card id="api-endpoints" className="scroll-mt-20">
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Key className="h-5 w-5 text-cyan-400" />
@@ -4515,7 +4521,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                 </CardContent>
               </Card>
 
-              {/* Order status and polling guidance */}
+              <WebhookDocs hasApiKey={!!apiKey && !isRevokedApiKey(apiKey)} />
+
+        {/* Order status and polling guidance */}
               <Card className="border-cyan-500/30 bg-cyan-500/5"><CardHeader><CardTitle className="text-lg">Order statuses and polling</CardTitle></CardHeader><CardContent className="space-y-3 text-sm text-muted-foreground"><p><span className="font-mono">pending</span>: accepted and queued. <span className="font-mono">processing</span>: delivery in progress.</p><p><span className="font-mono">waiting</span>: MTN approval for a new recipient number; this one-time process takes 3–10 days, is automatic, and needs no repeat order.</p><p><span className="font-mono">delivered</span> / <span className="font-mono">completed</span>: delivered and final. <span className="font-mono">failed</span>: could not be completed and final. <span className="font-mono">refunded</span>: refunded and final.</p><p>Poll every 30–60 seconds and stop at a final status. For <span className="font-mono">waiting</span>, poll only every few hours. Use <span className="font-mono">fulfillment_status</span> to check delivery; <span className="font-mono">order_status</span> holds the same value and <span className="font-mono">payment_status</span> is backward compatibility only.</p></CardContent></Card>
 
               {/* Error Codes */}
