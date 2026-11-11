@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getFriendlyAuthMessage, BANNED_ACCOUNT_MESSAGE } from "@/lib/blockedMessages";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,9 +90,10 @@ const Login = () => {
           variant: "destructive",
         });
       } else {
+        const friendly = getFriendlyAuthMessage(error);
         toast({
-          title: "Login failed",
-          description: error.message,
+          title: friendly === BANNED_ACCOUNT_MESSAGE ? "Account suspended" : "Login failed",
+          description: friendly ?? error.message,
           variant: "destructive",
         });
       }

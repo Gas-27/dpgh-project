@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getFriendlyAuthMessage } from "@/lib/blockedMessages";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -36,7 +37,7 @@ const SubAdminLogin = () => {
     });
 
     if (error) {
-      toast({ title: "Login failed", description: error.message, variant: "destructive" });
+      toast({ title: "Login failed", description: getFriendlyAuthMessage(error) ?? error.message, variant: "destructive" });
       setLoading(false);
       return;
     }

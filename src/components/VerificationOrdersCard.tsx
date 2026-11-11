@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Clock, Eye, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cancelWaitingOrder, type WaitingOrderActorRole } from "@/services/waitingOrderCancellation";
-import { toast } from "sonner";
+import { toast } from "@/lib/friendlySonner";
 
 type VerificationOrdersCardProps = {
   orders: any[];

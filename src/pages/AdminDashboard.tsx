@@ -67,6 +67,7 @@ import AdminOrderNumberApprovals from "@/components/AdminOrderNumberApprovals";
 import AdminWaitingOrders from "@/components/AdminWaitingOrders";
   import AdminBlockedSenderIds from "@/components/AdminBlockedSenderIds";
 import AdminBlockedContacts from "@/components/AdminBlockedContacts";
+import AdminBlockedNumbers from "@/components/AdminBlockedNumbers";
 import WeeklyOrderTargetAdmin from "@/components/WeeklyOrderTargetAdmin";
 import PriceReductionRequestsAdmin from "@/components/PriceReductionRequestsAdmin";
 import SmsAdmin from "@/components/SmsAdmin";
@@ -2849,6 +2850,7 @@ const AdminDashboard = () => {
   <TabsTrigger value="gamehub-notifications" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Bell className="h-3 w-3 md:h-4 md:w-4" /> Game Hub Notifications</TabsTrigger>
 <TabsTrigger value="social-boost-orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Boost Orders</TabsTrigger>
             <TabsTrigger value="order_approvals" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><ClipboardList className="h-3 w-3 md:h-4 md:w-4" /> Approvals</TabsTrigger>
+            <TabsTrigger value="blocked_numbers" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><ShieldAlert className="h-3 w-3 md:h-4 md:w-4" /> Blocked Numbers</TabsTrigger>
             <TabsTrigger value="waiting_numbers" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Eye className="h-3 w-3 md:h-4 md:w-4" /> Waiting numbers</TabsTrigger>
 <TabsTrigger value="subscriptions" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Paid subscriptions</TabsTrigger>
 <TabsTrigger value="orders" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1">
@@ -2891,6 +2893,7 @@ const AdminDashboard = () => {
           <TabsContent value="subscriptions" className="space-y-6"><SubscriptionPaymentsPanel admin /></TabsContent>
           <TabsContent value="price_reduction_requests" className="space-y-6"><PriceReductionRequestsAdmin /></TabsContent>
 <TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /><AdminBlockedContacts /><AdminBlockedSenderIds /></TabsContent>
+          <TabsContent value="blocked_numbers" className="space-y-6"><AdminBlockedNumbers /></TabsContent>
           <TabsContent value="waiting_numbers" className="space-y-6"><AdminWaitingOrders orders={orders as any[]} onRefresh={() => { setLoadedTabs((current) => { const next = new Set(current); next.delete("orders"); return next; }); setActiveTab("orders"); }} /></TabsContent>
           <TabsContent value="domain_purchases" className="space-y-6"><AdminDomainPurchasesPanel /></TabsContent>
   <TabsContent value="domain_renewals" className="space-y-6"><AdminDomainRenewalsPanel /></TabsContent>

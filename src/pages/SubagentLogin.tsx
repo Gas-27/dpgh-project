@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { getFriendlyAuthMessage } from "@/lib/blockedMessages";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,7 +40,7 @@ const SubagentLogin = () => {
     if (error) {
       toast({
         title: "Login failed",
-        description: error.message,
+        description: getFriendlyAuthMessage(error) ?? error.message,
         variant: "destructive",
       });
       setLoading(false);

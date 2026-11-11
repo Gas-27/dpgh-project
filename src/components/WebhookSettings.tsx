@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatDistanceToNow } from "date-fns";
-import { toast } from "sonner";
+import { toast } from "@/lib/friendlySonner";
 import { AlertTriangle, Check, Copy, Eye, EyeOff, Loader2, RefreshCw, Webhook } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";

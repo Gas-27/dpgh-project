@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ArrowRight, CalendarClock, Pause, Play, Trash2 } from "lucide-react";
-import { toast } from "sonner";
+import { toast } from "@/lib/friendlySonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
