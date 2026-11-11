@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -222,7 +223,7 @@ export default function ClaimFreeDataDialog({ open, onOpenChange, storeId, subag
                   className="bg-white/10 text-white border-white/20 placeholder:text-white/30 tracking-widest font-mono"
                   disabled={eligibilityChecked}
                 />
-                {codeError && <p className="mt-1 text-xs text-red-300">{codeError}</p>}
+                {codeError && <p className="mt-1 text-xs text-red-300">{getFriendlyBlockedMessage(codeError) ?? codeError}</p>}
                 {validatedCode && <p className="mt-1 text-xs text-green-300">Code accepted. Continue with your phone number.</p>}
               </div>
               <div>

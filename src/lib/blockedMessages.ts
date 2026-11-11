@@ -1,7 +1,7 @@
 export const BLOCKED_NUMBER_MESSAGE =
   "This number has been associated with fraudulent activity across our networks and cannot make purchases on our system.";
 export const BANNED_ACCOUNT_MESSAGE =
-  "This account has been suspended because it is linked to fraudulent activity. Please contact support if you believe this is a mistake.";
+  "This account has been suspended because it is linked to suspicious or fraudulent activity on site. Please contact support if you believe this is a mistake.";
 export const WALLET_FROZEN_MESSAGE = "This wallet has been frozen. Please contact support.";
 
 const KNOWN_MESSAGES = new Set([BLOCKED_NUMBER_MESSAGE, BANNED_ACCOUNT_MESSAGE, WALLET_FROZEN_MESSAGE]);

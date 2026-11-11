@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Gift, Heart, Share2, Wallet, X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GameHubProductAd from "@/components/GameHubProductAd";
+import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import PaymentDialog from "@/components/PaymentDialog";
 import { fetchStoreChancePackage, savePendingChance, type ChancePackage } from "@/lib/gameHubChances";
 import { buildGameHubPath } from "@/lib/gameHubRoute";
@@ -336,7 +337,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
             applyRun(next);
             post({ type: "gh-level-result", ok: true, level: next.level, lives: next.lives, status: next.status, playSeconds: next.play_seconds });
           } catch (error) {
-            post({ type: "gh-level-result", ok: false, message: (error as Error).message });
+            post({ type: "gh-level-result", ok: false, message: getFriendlyBlockedMessage(error) ?? (error as Error).message });
           }
         });
         return;
@@ -366,7 +367,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
                 : await fetchGameMarket(game.id, hintRef.current);
             post({ type: "gh-market", ok: true, bought: data.type === "gh-market-buy" ? `${msg.itemType}:${msg.itemKey}` : null, ...market });
           } catch (error) {
-            post({ type: "gh-market", ok: false, message: (error as Error).message, owned: [], inv: {}, balance: null, failedBuy: data.type === "gh-market-buy" });
+            post({ type: "gh-market", ok: false, message: getFriendlyBlockedMessage(error) ?? (error as Error).message, owned: [], inv: {}, balance: null, failedBuy: data.type === "gh-market-buy" });
           }
         });
         return;
@@ -497,7 +498,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
                   : "That level finished too quickly to be verified. Please play it again.",
             });
           } catch (error) {
-            post({ type: "gh-level-result", ok: false, message: (error as Error).message });
+            post({ type: "gh-level-result", ok: false, message: getFriendlyBlockedMessage(error) ?? (error as Error).message });
           }
         });
       } else if (data.type === "gh-open-buy") {
@@ -649,7 +650,7 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
         {loadError ? (
           <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center text-white">
             <p className="text-lg font-bold">Could not start the game</p>
-            <p className="text-sm text-violet-200">{loadError}</p>
+            <p className="text-sm text-violet-200">{getFriendlyBlockedMessage(loadError) ?? loadError}</p>
             <button type="button" onClick={() => void beginRun(false)} className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-semibold">
               Try again
             </button>

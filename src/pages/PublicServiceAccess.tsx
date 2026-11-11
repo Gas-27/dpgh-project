@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Copy, ExternalLink, Eye, EyeOff, Lock } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -180,7 +181,7 @@ export default function PublicServiceAccess() {
                       </button>
                     </div>
                   </div>
-                  {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">{error}</p>}
+                  {error && <p role="alert" className="rounded-xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">{getFriendlyBlockedMessage(error) ?? error}</p>}
                   <Button onClick={unlock} disabled={unlocking} className="w-full bg-[#2864e8] hover:bg-[#1d52ca]">{unlocking ? "Checking payment..." : "View my service"}</Button>
                 </div>
               </>

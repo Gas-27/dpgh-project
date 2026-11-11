@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 
 type Mode = "instant" | "services";
 type InstantProduct = "data" | "airtime";
@@ -715,7 +716,7 @@ const resultRoot = (record.results || record.result || record) as Record<string,
                   </p>
                 ) : catalogError ? (
                   <p className="col-span-full rounded-lg border border-dashed bg-muted/30 px-4 py-6 text-center text-sm text-destructive">
-                    {catalogError}
+                    {getFriendlyBlockedMessage(catalogError) ?? catalogError}
                   </p>
                 ) : null}
                 {(liveBundles[network] || []).map(

@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, ShieldCheck, AlertTriangle, Clock, RefreshCw, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import NetworkIndicator from "@/components/NetworkIndicator";
@@ -811,7 +812,7 @@ const PaymentDialog = ({
                 {paymentError && (
                   <div className="flex items-start gap-2 bg-red-50 border border-red-200 rounded p-3">
                     <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-xs text-red-700">{paymentError}</p>
+                    <p className="text-xs text-red-700">{getFriendlyBlockedMessage(paymentError) ?? paymentError}</p>
                   </div>
                 )}
 

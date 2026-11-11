@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getPayoutHistory, PayoutRequest } from "@/lib/withdrawal";
+import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
@@ -83,7 +84,7 @@ export default function PayoutHistory({ userRole, storeId, refreshKey }: PayoutH
     return (
       <Card className="border-red-200 bg-red-50">
         <CardContent className="pt-6">
-          <p className="text-red-600">{error}</p>
+          <p className="text-red-600">{getFriendlyBlockedMessage(error) ?? error}</p>
         </CardContent>
       </Card>
     );

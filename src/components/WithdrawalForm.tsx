@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getTransferRecipients, getAgentBalance, getSubagentBalance, createPayoutRequest, TransferRecipient, Balance } from "@/lib/withdrawal";
+import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -251,7 +252,7 @@ export default function WithdrawalForm({
           {error && (
             <Alert className="border-red-200 bg-red-50">
               <AlertTriangle className="h-4 w-4 text-red-600" />
-              <AlertDescription className="text-red-600">{error}</AlertDescription>
+              <AlertDescription className="text-red-600">{getFriendlyBlockedMessage(error) ?? error}</AlertDescription>
             </Alert>
           )}
 

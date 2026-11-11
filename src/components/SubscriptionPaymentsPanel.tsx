@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -87,7 +88,7 @@ export default function SubscriptionPaymentsPanel({ admin = false }: Props) {
     <CardContent className="space-y-4">
       <div className="flex gap-2"><Input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search payment reference, service, customer, or phone" /><Button variant="outline" onClick={load}>Refresh</Button></div>
       <p className="text-xs text-muted-foreground">Payment and admin review are tracked here. Account assignment is a separate step and is not shown or changed by this table.</p>
-      {loadError && <p role="alert" className="text-sm text-destructive">Subscriptions could not be loaded: {loadError}</p>}
+      {loadError && <p role="alert" className="text-sm text-destructive">Subscriptions could not be loaded: {getFriendlyBlockedMessage(loadError) ?? loadError}</p>}
       <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Payment reference</TableHead><TableHead>Service</TableHead><TableHead>Customer</TableHead><TableHead>Amount</TableHead><TableHead>Paid at</TableHead><TableHead>Payment</TableHead><TableHead>Admin review</TableHead><TableHead>Action</TableHead></TableRow></TableHeader><TableBody>
         {loading ? <TableRow><TableCell colSpan={8}>Loading subscriptions...</TableCell></TableRow>
           : filtered.length === 0 ? <TableRow><TableCell colSpan={8}>{loadError ? "Unavailable." : "No subscriptions found."}</TableCell></TableRow>

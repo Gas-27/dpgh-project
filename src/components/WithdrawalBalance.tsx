@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { getAgentBalance, getSubagentBalance, Balance } from "@/lib/withdrawal";
+import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 
@@ -56,7 +57,7 @@ export default function WithdrawalBalance({ userRole, storeId, refreshKey }: Wit
     return (
       <Card className="border-red-200 bg-red-50">
         <CardContent className="pt-6">
-          <p className="text-red-600">{error}</p>
+          <p className="text-red-600">{getFriendlyBlockedMessage(error) ?? error}</p>
         </CardContent>
       </Card>
     );
