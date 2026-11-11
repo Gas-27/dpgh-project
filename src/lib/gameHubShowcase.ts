@@ -79,12 +79,15 @@ function periodKey(period: LeaderboardPeriod, now: number): string {
   }
 }
 
+// Every board, including a single game's, always lists at least this many players.
+const MIN_BOARD_SIZE = 5000;
+
 const PERIOD_SIZE: Record<LeaderboardPeriod, [number, number]> = {
-  today: [1120, 1380],
-  yesterday: [1180, 1420],
-  week: [1900, 2200],
-  month: [2300, 2700],
-  all: [2800, 3300],
+  today: [5100, 5500],
+  yesterday: [5200, 5600],
+  week: [5600, 6100],
+  month: [6200, 6800],
+  all: [7000, 7800],
 };
 
 function showcaseRows(gameId: string | null, period: LeaderboardPeriod, now: number): LeaderboardRow[] {
@@ -92,8 +95,7 @@ function showcaseRows(gameId: string | null, period: LeaderboardPeriod, now: num
   const random = seededRandom(hashSeed(`board|${key}`));
   const [min, max] = PERIOD_SIZE[period];
   const allGamesSize = min + Math.floor(random() * (max - min));
-  // A single game holds roughly a fifth to a third of the day's players.
-  const size = gameId ? Math.floor(allGamesSize * (0.16 + random() * 0.14)) : allGamesSize;
+  const size = gameId ? Math.max(MIN_BOARD_SIZE + Math.floor(random() * 400), Math.floor(allGamesSize * (0.75 + random() * 0.2))) : allGamesSize;
   const topScore = (gameId ? 1400 + random() * 2600 : 3200 + random() * 5200) * (period === "today" || period === "yesterday" ? 1 : 1.8);
   const usedNames = new Set<string>();
   const rows: LeaderboardRow[] = [];

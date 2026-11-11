@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarClock, Pause, Play, Trash2 } from "lucide-react";
+import { ArrowRight, CalendarClock, ChevronDown, Pause, Play, Trash2 } from "lucide-react";
 import { toast } from "@/lib/friendlySonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,10 @@ type Schedule = {
   last_status: string | null;
   last_error: string | null;
 };
+
+const SCHEDULE_VIDEO_SRC = "/videos/schedule-data-purchase.mp4";
+
+const isExpress = (network: string) => network.toLowerCase() === "mtn_express";
 
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const NETWORK_LABEL: Record<string, string> = { mtn: "MTN", airteltigo: "AirtelTigo", telecel: "Telecel" };
@@ -54,6 +58,8 @@ export default function ScheduleDataPurchase({ ownerType, ownerId, variant = "bu
   const [dayOfWeek, setDayOfWeek] = useState("1");
   const [dayOfMonth, setDayOfMonth] = useState("1");
   const [saving, setSaving] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(false);
+  const [videoFailed, setVideoFailed] = useState(false);
 
   const loadSchedules = useCallback(async () => {
     if (!ownerId) {
@@ -175,6 +181,37 @@ export default function ScheduleDataPurchase({ ownerType, ownerId, variant = "bu
           </DialogDescription>
         </DialogHeader>
 
+        <div className="rounded-lg border border-primary/30 bg-primary/5">
+          <button
+            type="button"
+            aria-expanded={videoOpen}
+            aria-controls="schedule-video-panel"
+            onClick={() => setVideoOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-3 p-3 text-left"
+          >
+            <span className="text-sm font-semibold leading-snug text-foreground">
+              Never have to worry about late delivery since before your data finishes you have already scheduled delivery
+            </span>
+            <ChevronDown className={`h-5 w-5 shrink-0 text-primary transition-transform ${videoOpen ? "rotate-180" : ""}`} aria-hidden />
+          </button>
+          {videoOpen && (
+            <div id="schedule-video-panel" className="px-3 pb-3">
+              {videoFailed ? (
+                <p className="text-sm text-muted-foreground">The video is not available right now. Please check back soon.</p>
+              ) : (
+                <video
+                  className="w-full rounded-md bg-black"
+                  src={SCHEDULE_VIDEO_SRC}
+                  controls
+                  playsInline
+                  preload="metadata"
+                  onError={() => setVideoFailed(true)}
+                />
+              )}
+            </div>
+          )}
+        </div>
+
         <div className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="schedule-phone">Recipient number</Label>
@@ -192,7 +229,10 @@ export default function ScheduleDataPurchase({ ownerType, ownerId, variant = "bu
               <SelectTrigger><SelectValue placeholder={matching.length ? "Choose a package" : "Enter a number first"} /></SelectTrigger>
               <SelectContent>
                 {matching.map((p) => (
-                  <SelectItem key={p.id} value={p.id}>{p.size_gb}GB - GHC {priceOf(p).toFixed(2)}</SelectItem>
+                  <SelectItem key={p.id} value={p.id}>
+                    {p.size_gb}GB - GHC {priceOf(p).toFixed(2)}
+                    {isExpress(p.network) ? <span className="ml-2 rounded bg-amber-400 px-1.5 py-0.5 text-[10px] font-bold uppercase text-black">Express</span> : null}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -251,7 +291,7 @@ export default function ScheduleDataPurchase({ ownerType, ownerId, variant = "bu
                 return (
                   <li key={row.id} className="flex items-start justify-between gap-2 rounded-lg border border-border p-3 text-sm">
                     <div className="min-w-0 space-y-0.5">
-                      <p className="font-medium">{row.phone}{pkg ? ` · ${pkg.size_gb}GB` : ""}</p>
+                      <p className="font-medium">{row.phone}{pkg ? ` · ${pkg.size_gb}GB` : ""}{pkg && isExpress(pkg.network) ? " · Express" : ""}</p>
                       <p className="text-xs text-muted-foreground">{describe(row)}</p>
                       <p className="text-xs text-muted-foreground">
                         {row.active ? `Next: ${new Date(row.next_run_at).toLocaleString()}` : "Paused"}

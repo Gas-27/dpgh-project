@@ -4,6 +4,8 @@ import { isRevokedApiKey } from "@/lib/apiKeyAccount";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { Plug } from "lucide-react";
 
 export const DEFAULT_API_WEEKLY_TARGET = 14000;
@@ -23,7 +25,8 @@ const EXCLUDED_STATUSES = "(failed,refunded)";
  * key and has placed at least one order through it. Dashboard, wallet and
  * storefront orders are never counted.
  */
-export default function ApiWeeklyTargetMeter({ identityId }: { identityId?: string | null }) {
+export default function ApiWeeklyTargetMeter({ identityId, minOrders = 0 }: { identityId?: string | null; minOrders?: number }) {
+  const { toast } = useToast();
   const [state, setState] = useState<{ visible: boolean; weekly: number; total: number; target: number }>({
     visible: false,
     weekly: 0,
@@ -31,6 +34,21 @@ export default function ApiWeeklyTargetMeter({ identityId }: { identityId?: stri
     target: DEFAULT_API_WEEKLY_TARGET,
   });
   const [loading, setLoading] = useState(true);
+  const [requested, setRequested] = useState(false);
+  const [requesting, setRequesting] = useState(false);
+
+  async function requestReduction() {
+    setRequesting(true);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { error } = await (supabase as any).rpc("request_api_price_reduction");
+    setRequesting(false);
+    if (error) {
+      toast({ title: "Could not send request", description: error.message, variant: "destructive" });
+      return;
+    }
+    setRequested(true);
+    toast({ title: "Request sent", description: "Admin has received your price reduction request." });
+  }
 
   useEffect(() => {
     if (!identityId) {
@@ -57,7 +75,7 @@ export default function ApiWeeklyTargetMeter({ identityId }: { identityId?: stri
         return;
       }
 
-      const [{ count: totalCount }, { count: weeklyCount }, { data: settings }] = await Promise.all([
+      const [{ count: totalCount }, { count: weeklyCount }, { data: settings }, { data: existingRequest }] = await Promise.all([
         db
           .from("orders")
           .select("id", { count: "exact", head: true })
@@ -70,12 +88,19 @@ export default function ApiWeeklyTargetMeter({ identityId }: { identityId?: stri
           .not("order_status", "in", EXCLUDED_STATUSES)
           .gte("created_at", getWeekStartIso()),
         db.from("weekly_order_target_settings").select("api_weekly_order_target").eq("id", true).maybeSingle(),
+        db
+          .from("api_price_reduction_requests")
+          .select("id")
+          .eq("identity_id", identityId)
+          .eq("week_start", getWeekStartIso().slice(0, 10))
+          .maybeSingle(),
       ]);
 
       if (cancelled) return;
+      setRequested(Boolean(existingRequest));
       const configuredTarget = Number((settings as { api_weekly_order_target?: number } | null)?.api_weekly_order_target);
       setState({
-        visible: (totalCount ?? 0) > 0,
+        visible: (totalCount ?? 0) > minOrders,
         weekly: weeklyCount ?? 0,
         total: totalCount ?? 0,
         target: Number.isFinite(configuredTarget) && configuredTarget > 0 ? configuredTarget : DEFAULT_API_WEEKLY_TARGET,
@@ -87,7 +112,7 @@ export default function ApiWeeklyTargetMeter({ identityId }: { identityId?: stri
     return () => {
       cancelled = true;
     };
-  }, [identityId]);
+  }, [identityId, minOrders]);
 
   if (loading) return null;
   if (!state.visible) return null;
@@ -125,6 +150,17 @@ export default function ApiWeeklyTargetMeter({ identityId }: { identityId?: stri
           <p className="text-xs text-muted-foreground">
             {(state.target - state.weekly).toLocaleString()} more API orders to reach this week&apos;s target.
           </p>
+        )}
+        <Button
+          type="button"
+          className="w-full sm:w-auto"
+          disabled={!reached || requested || requesting}
+          onClick={requestReduction}
+        >
+          {requesting ? "Sending..." : requested ? "Request sent this week" : "Request price reduction"}
+        </Button>
+        {!reached && (
+          <p className="text-xs text-muted-foreground">This button unlocks once you reach the weekly target.</p>
         )}
       </CardContent>
     </Card>

@@ -167,7 +167,7 @@ function GamesStrip({ onPlay }: { onPlay: (game: HubGame) => void }) {
   );
 }
 
-function GameCard({ game, rules, wins, className = "", onPlay, onShare }: { game: HubGame; rules: RuleMap; wins: number; className?: string; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void }) {
+function GameCard({ game, rules, wins, showWins = false, className = "", onPlay, onShare }: { game: HubGame; rules: RuleMap; wins: number; showWins?: boolean; className?: string; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void }) {
   return (
     <article className={`flex flex-col overflow-hidden rounded-2xl border border-violet-400/20 bg-violet-950/70 ${className}`}>
       <div className="relative h-28 shrink-0 bg-violet-900/50">
@@ -179,7 +179,7 @@ function GameCard({ game, rules, wins, className = "", onPlay, onShare }: { game
         <p className="text-xs leading-relaxed text-violet-200/75">{getGameBlurb(game, rules[game.id])}</p>
         <div className="mt-auto flex items-center justify-between gap-2 pt-2 text-xs text-violet-200/80">
           <span className="flex items-center gap-1"><Star className="h-3.5 w-3.5 fill-violet-300/60 text-violet-300/60" aria-hidden="true" /> {game.rating.toFixed(1)}</span>
-          <span className="flex items-center gap-1 font-semibold text-cyan-300"><Trophy className="h-3.5 w-3.5" aria-hidden="true" /> {wins.toLocaleString()} won</span>
+          {showWins ? <span className="flex items-center gap-1 font-semibold text-cyan-300"><Trophy className="h-3.5 w-3.5" aria-hidden="true" /> {wins.toLocaleString()} won</span> : null}
         </div>
         <div className="flex gap-2">
           <button type="button" onClick={() => onPlay(game)} className="flex-1 rounded-xl bg-violet-600 px-3 py-2 text-sm font-semibold text-white hover:bg-violet-500">{game.native?.cta ?? "Play Now"}</button>
@@ -214,7 +214,7 @@ function RewardGamesSection({ rules, wins, onPlay, onShare }: GameActions) {
     <section aria-labelledby="gamehub-rewards" className="space-y-3">
       <SectionHeader id="gamehub-rewards" icon={Trophy} title="Play & Win Free Data" count={rewardGames.length} />
       <div className="grid grid-cols-2 gap-3">
-        {rewardGames.map((game) => <GameCard key={game.id} game={game} rules={rules} wins={wins?.[game.id] ?? 0} onPlay={onPlay} onShare={onShare} />)}
+        {rewardGames.map((game) => <GameCard key={game.id} game={game} rules={rules} wins={wins?.[game.id] ?? 0} showWins onPlay={onPlay} onShare={onShare} />)}
       </div>
     </section>
   );
