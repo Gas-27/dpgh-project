@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useProvideGameHubStore } from "@/lib/gameHubStoreContext";
+import { SHOW_USSD } from "@/lib/ussdVisibility";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { cachedQuery } from "@/lib/cachedQuery";
 import { startVisiblePolling } from "@/lib/visiblePolling";
@@ -175,7 +176,7 @@ interface Notification {
   created_at: string;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
+// ───────────────��─────────────────────────────────────────────────────────────
 // HELPERS
 // ──────────────────���──────────────────────────────────────────────────────────
 const formatNetworkName = (network: string) => {
@@ -1404,7 +1405,7 @@ const searchOrders = useCallback(async (input?: string) => {
           </div>
 
           {/* USSD Info Banner */}
-          {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
+          {SHOW_USSD && store?.show_ussd_on_storefront !== false && store?.topup_reference && (
             <div className="container pb-4">
               <a href={`tel:*920*337*${encodeURIComponent(store.topup_reference)}#`} className="block rounded-xl border border-[#064e5f] bg-[#071316] p-4 text-foreground shadow-sm hover:bg-[#071316] transition-colors">
                 <div className="flex items-center justify-center gap-3 text-center">

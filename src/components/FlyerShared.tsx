@@ -12,12 +12,13 @@ import { Copy, Download, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { SHOW_USSD } from "@/lib/ussdVisibility";
 
 export type StoreInfo = { storeName: string; storeUrl: string; supportNumber: string; storeId?: string; accessCode?: string };
 
 export const USSD_CODE = "*920*337#";
 
-export const ussdMessageLines = (accessCode?: string) => [`USSD: ${USSD_CODE}`, ...(accessCode ? [`Access Code: ${accessCode}`] : [])];
+export const ussdMessageLines = (accessCode?: string) => SHOW_USSD ? [`USSD: ${USSD_CODE}`, ...(accessCode ? [`Access Code: ${accessCode}`] : [])] : [];
 
 export const slug = (value: string) => (value || "store").toLowerCase().replace(/[^a-z0-9]+/g, "-");
 

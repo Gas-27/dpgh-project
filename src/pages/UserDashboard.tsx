@@ -68,6 +68,7 @@ import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import NotificationPopup from "@/components/NotificationPopup";
 import PrivateShareMySubscriptions from "@/components/PrivateShareMySubscriptions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { SHOW_USSD } from "@/lib/ussdVisibility";
 
 interface DataPackage {
   id: string;
@@ -277,7 +278,7 @@ const UserDashboard = () => {
     { id: "settings", label: "Settings", icon: Settings },
   ];
 
-  const showUserUssd = totalOrders > 1;
+  const showUserUssd = SHOW_USSD && totalOrders > 1;
 
   // Agent-only features (locked for regular users)
   const agentOnlyItems = [
@@ -1127,11 +1128,11 @@ case "api-key":
           <Users className="mt-1 h-6 w-6 shrink-0 text-purple-400" aria-hidden="true" />
           <span className="flex-1">
             <span className="block font-display text-lg font-bold leading-tight text-foreground sm:text-2xl">
-              Sign up as an Agent to get your own USSD
+              Sign up as an Agent to get your own store
             </span>
             {agentCtaOpen && (
               <span className="mt-2 block text-base leading-snug text-muted-foreground">
-                Launch your agency, let customers buy offline, &amp; profit!
+                Launch your agency, let customers buy from your site, &amp; profit!
               </span>
             )}
           </span>
@@ -1147,12 +1148,11 @@ case "api-key":
         >
           <section>
             <h3 className="flex items-center gap-2 text-lg font-bold">
-              <span aria-hidden="true">{"\u{1F30D}"}</span> NETWORK &amp; USSD
+              <span aria-hidden="true">{"\u{1F30D}"}</span> NETWORK
             </h3>
             <ul className="mt-1 space-y-1">
               <li>{"\u2022"} Set your prices &amp; get your website link (customers can buy from your site).</li>
               <li>{"\u2022"} Earn by adding Agents (sub-agents) &amp; Sub-sub agents under you.</li>
-              <li>{"\u2022"} Everyone gets USSD codes for customer offline purchases (no internet needed!).</li>
               <li>{"\u2022"} Dashboard perks: Free flyer generator, bulk SMS, &amp; free marketing materials.</li>
             </ul>
           </section>
@@ -2142,7 +2142,7 @@ case "api-key":
           <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-4 space-y-3">
             <h3 className="font-display text-base font-semibold">Want More Benefits? Become an Agent! (Recommended)</h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Sign up as a JUSTBUY agent and generate your API key from your Agent Dashboard to enjoy extra benefits, including a free dedicated USSD code for your website, allowing customers to purchase via USSD without additional integration. You can also set your selling prices and earn profits on sales.
+              Sign up as a JUSTBUY agent and generate your API key from your Agent Dashboard to enjoy extra benefits, including your own branded storefront for your customers. You can also set your selling prices and earn profits on sales.
             </p>
             <p className="text-sm text-muted-foreground">Get started here or become an agent to unlock more benefits!</p>
             <Button type="button" variant="outline" size="sm" onClick={() => setActiveMenu("become-agent")}>
@@ -2890,7 +2890,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
   <Users className="h-6 w-6" />
   Sign up as an Agent
           </CardTitle>
-          <p className="text-sm text-muted-foreground mt-2">Create your own agent store, get your own store dedicated USSD, let customers buy offline from your store, add subagents and sub-subagents, set your own selling price, and make profit.</p>
+          <p className="text-sm text-muted-foreground mt-2">Create your own agent store, let customers buy from your store, add subagents and sub-subagents, set your own selling price, and make profit.</p>
           <Button
             className="mt-4 w-full h-12 text-lg font-semibold"
             onClick={handleUpgradeToAgent}
@@ -2949,13 +2949,13 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
         <h3 className="text-lg font-bold mb-4 text-foreground">Exclusive Agent Benefits</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {[
-            { icon: Smartphone, title: "Free Personal USSD", description: "Get your own USSD code to sell data bundles directly to customers - free of charge", color: "from-blue-600 to-blue-700" },
-            { icon: Store, title: "Free Shop USSD", description: "Create your shop with a unique USSD code - your subagents also get free USSD codes", color: "from-cyan-600 to-cyan-700" },
+            { icon: Smartphone, title: "Free Personal Store", description: "Get your own store to sell data bundles directly to customers - free of charge", color: "from-blue-600 to-blue-700" },
+            { icon: Store, title: "Free Shop", description: "Create your shop with a unique store link - your subagents also get their own stores", color: "from-cyan-600 to-cyan-700" },
             { icon: Crown, title: "Boss Mode - You're in Charge", description: "Build your own hierarchy - subagents who recruit sub-subagents, all under your control", color: "from-yellow-600 to-yellow-700" },
             { icon: Globe, title: "Custom Store Link", description: "Get your personalized storefront URL with your shop name - build your brand", color: "from-purple-600 to-purple-700" },
             { icon: Palette, title: "Free Flyer Generator", description: "Create beautiful, customizable flyers to promote your business on social media", color: "from-pink-600 to-pink-700" },
             { icon: Send, title: "Notification System", description: "Send notifications to all your subagents instantly and update your storefront for customers to see every visit", color: "from-teal-600 to-teal-700" },
-            { icon: Users, title: "Build Subagents", description: "Recruit subagents who get their own USSD codes, stores, and earning power", color: "from-green-600 to-green-700" },
+            { icon: Users, title: "Build Subagents", description: "Recruit subagents who get their own stores and earning power", color: "from-green-600 to-green-700" },
             { icon: BarChart3, title: "Multi-Level Earnings", description: "Your subagents can recruit agents - earn commissions at every level", color: "from-orange-600 to-orange-700" },
             { icon: Settings, title: "AFA Management", description: "Set your own AFA bundle prices and manage registrations from your dashboard", color: "from-red-600 to-red-700" },
             { icon: Zap, title: "API Access", description: "Access our API with heavily discounted pricing for bulk operations", color: "from-yellow-600 to-yellow-700" },
@@ -2990,7 +2990,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
             <CardContent className="p-4 text-center">
               <div className="bg-primary text-primary-foreground rounded-full w-10 h-10 flex items-center justify-center font-bold mx-auto mb-3">1</div>
               <p className="font-semibold text-sm mb-2">Sign Up</p>
-              <p className="text-xs text-muted-foreground">Set up your store details &amp; get your personal USSD</p>
+              <p className="text-xs text-muted-foreground">Set up your store details &amp; get your personal store link</p>
             </CardContent>
           </Card>
           <Card>

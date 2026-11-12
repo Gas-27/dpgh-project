@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Download, Loader2, Share2, Image, QrCode, ExternalLink } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { toPng } from "html-to-image";
+import { SHOW_USSD } from "@/lib/ussdVisibility";
 
 interface DataPackage {
   id: string;
@@ -49,7 +50,7 @@ const MashupFlyerGenerator = ({
   const [shareText, setShareText] = useState("");
 
   useEffect(() => {
-    const ussdText = `\n\n📲 USSD: *920*337#${topupReference && topupReference !== "0" ? `\n🔑 Access Code: ${topupReference}` : ""}`;
+    const ussdText = !SHOW_USSD ? "" : `\n\n📲 USSD: *920*337#${topupReference && topupReference !== "0" ? `\n🔑 Access Code: ${topupReference}` : ""}`;
     setShareText(`🎉 Special MTN Mashup Data from ${storeName}!\n\n⚡ Express Data Delivery\n💨 Instant • Affordable • Reliable${ussdText}\n\nVisit: ${storeUrl}\nWhatsApp: ${whatsappNumber}`);
   }, [storeName, storeUrl, whatsappNumber, topupReference]);
 
@@ -297,6 +298,7 @@ const MashupFlyerGenerator = ({
 
           {/* INFO BOXES - 4 boxes in a row */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, padding: "20px 32px", backgroundColor: "#000" }}>
+            {SHOW_USSD && (<>
             {/* USSD CODE */}
             <div style={{ border: "2px solid #333", borderRadius: 12, padding: "16px", textAlign: "center", backgroundColor: "#0a0a0a" }}>
               <div style={{ fontSize: 32, marginBottom: 8 }}>📲</div>
@@ -312,6 +314,7 @@ const MashupFlyerGenerator = ({
               <div style={{ fontSize: 32, fontWeight: 900, color: "#fff", marginBottom: 8, fontFamily: "monospace" }}>{topupReference}</div>
               <div style={{ fontSize: 12, color: "#888" }}>Required for all purchases.</div>
             </div>
+            </>)}
 
             {/* HELP */}
             <div style={{ border: "2px solid #333", borderRadius: 12, padding: "16px", textAlign: "center", backgroundColor: "#0a0a0a" }}>

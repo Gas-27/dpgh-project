@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Download, Share2, SlidersHorizontal, Copy, QrCode, ExternalLink } from "lucide-react";
+import { SHOW_USSD } from "@/lib/ussdVisibility";
 
 export type FlyerPackage = { size_gb: number; price: number };
 export type FlyerPackages = { mtn: FlyerPackage[]; telecel: FlyerPackage[]; airteltigo: FlyerPackage[] };
@@ -64,6 +65,7 @@ function drawUssdCode(ctx: CanvasRenderingContext2D) {
   ctx.save();
   ctx.fillStyle = "#0a0f2c";
   ctx.fillRect(USSD_COVER.x, USSD_COVER.y, USSD_COVER.width, USSD_COVER.height);
+  if (!SHOW_USSD) { ctx.restore(); return; }
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
   ctx.font = "900 italic 40px Montserrat, Arial, sans-serif";
@@ -96,8 +98,7 @@ function drawRows(ctx: CanvasRenderingContext2D, list: FlyerPackage[], region: R
 export function DynamicFlyer({ storeName, bannerText = "DATA PLUG", accessCode, storeUrl, contactNumber = "", packages }: { storeName: string; bannerText?: string; accessCode: string; storeUrl: string; contactNumber?: string; packages: FlyerPackages }) {
   const shareMessage = `Get the BEST data deals from ${storeName || "our store"}! 🔥
 MTN • AirtelTigo • Telecel ⚡ Instant Delivery • 24/7 Support
-📲 USSD: *920*337# 🔑 Access Code: ${accessCode || "—"}
-🛒 Shop: ${storeUrl || "—"}
+${SHOW_USSD ? `📲 USSD: *920*337# 🔑 Access Code: ${accessCode || "—"}\n` : ""}🛒 Shop: ${storeUrl || "—"}
 🔥 More services available: 📶 Data Bundles • Airtime ⚡ ECG Prepaid • AFA Registration 📺 DSTV • GOtv • StarTimes 💧 Water Bill Payments 📱 Social Media Boosting 🎬 Netflix • Canva • Spotify • ChatGPT & more 🎮 Game Hub • Bulk SMS • Marketplace
 💰 Buy • Sell • Earn — All in One Place!
 📞 Contact: ${contactNumber || "—"}`;

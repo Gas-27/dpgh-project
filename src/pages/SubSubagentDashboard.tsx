@@ -67,6 +67,7 @@ import NetworkTabs from "@/components/NetworkTabs";
 import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import NotificationPopup from "@/components/NotificationPopup";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
+import { SHOW_USSD } from "@/lib/ussdVisibility";
 
 // Helper function to get current order stage
 function getOrderStatusLabel(status: string): string {
@@ -2192,7 +2193,7 @@ return (
                   <ArrowDownToLine className="h-8 w-8 text-yellow-400 opacity-50" />
                 </div>
                 {/* USSD Code with Access Code */}
-                {subagentStore?.topup_reference && (
+                {SHOW_USSD && subagentStore?.topup_reference && (
                   <div className="mt-4 pt-4 border-t border-yellow-500/20">
                     <div className="text-center space-y-3">
                       <p className="text-xs text-muted-foreground">Your customers can buy data via USSD</p>
@@ -3282,7 +3283,7 @@ handleMobileNumberChange(digits);
                         {storeForm.show_whatsapp_group_icon !== false ? "A WhatsApp join icon will appear on your storefront." : "The join icon will be hidden."}
                       </p>
                     </div>
-                    <div className="space-y-2">
+                    <div className={SHOW_USSD ? "space-y-2" : "hidden"}>
                       <div className="flex items-center justify-between gap-4 flex-wrap">
                         <Label>USSD Access Code</Label>
                         <div className="flex items-center gap-2">

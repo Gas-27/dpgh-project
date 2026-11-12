@@ -98,6 +98,7 @@ import { toPng } from "html-to-image";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
+import { SHOW_USSD } from "@/lib/ussdVisibility";
 
 // Helper function to get current order stage from all status columns.
 function getOrderStatusLabel(status: string): string {
@@ -1120,7 +1121,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
 
       const slug = sd.store_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
       const url = DOMAINS.getAgentStoreUrl(sd.store_name);
-      const ussdText = sd.topup_reference ? `\n\n📲 USSD: *920*337#\n🔑 Access Code: ${sd.topup_reference}` : "";
+      const ussdText = SHOW_USSD && sd.topup_reference ? `\n\n📲 USSD: *920*337#\n🔑 Access Code: ${sd.topup_reference}` : "";
       setShareText(
         `�������� Get the BEST data deals from *${sd.store_name}*!\n\n` +
         `�������� MTN • AirtelTigo • Telecel\n` +
@@ -2027,8 +2028,10 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     cover(365, 350, 275, 75, "#06101f"); drawText("TELECEL", 502, 388, 30, "#ef4444");
     cover(695, 350, 275, 75, "#06101f"); drawText("AIRTELTIGO", 832, 388, 27, "#ef4444");
     cover(285, 885, 510, 130, "#06101f");
-    drawText(`*920*337#`, 540, 925, 48, "#ffd21a");
-    drawText(`Access Code: ${store?.topup_reference || ""}`, 540, 980, 27, "#fff");
+    if (SHOW_USSD) {
+      drawText(`*920*337#`, 540, 925, 48, "#ffd21a");
+      drawText(`Access Code: ${store?.topup_reference || ""}`, 540, 980, 27, "#fff");
+    }
     cover(115, 1515, 850, 68, "#06101f");
     drawText(storeUrl, 540, 1548, 27, "#fff");
     return canvas.toDataURL("image/png");
@@ -2755,7 +2758,7 @@ return (
             </div>
             
             {/* USSD Access Code Card */}
-            {store?.topup_reference && (
+            {SHOW_USSD && store?.topup_reference && (
               <Card className="border-primary/30 bg-gradient-to-r from-primary/10 to-primary/5">
                 <CardContent className="p-6">
                   <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
@@ -3357,6 +3360,7 @@ return (
                   
                   {/* INFO HEADER - USSD Code, Access Code, Help, Phone */}
                   <div style={{ display: "flex", alignItems: "stretch", padding: "16px 32px", gap: 16, backgroundColor: "#0a0a0a" }}>
+                    {SHOW_USSD && (<>
                     {/* USSD Code Box */}
                     <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", background: "#111", border: "1.5px solid #333", borderRadius: 12 }}>
                       <div style={{ width: 48, height: 48, background: "#222", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #444" }}>
@@ -3379,6 +3383,7 @@ return (
                         <div style={{ fontSize: 11, color: "#666", marginTop: 0 }}>Required for all purchases.</div>
                       </div>
                     </div>
+                    </>)}
                     {/* Help Box */}
                     <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", background: "#111", border: "1.5px solid #333", borderRadius: 12 }}>
                       <div style={{ width: 48, height: 48, background: "#fbbf24", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>

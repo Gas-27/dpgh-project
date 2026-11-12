@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef, lazy, Suspense } from "react";
 import { useParams } from "react-router-dom";
 import { useProvideGameHubStore } from "@/lib/gameHubStoreContext";
+import { SHOW_USSD } from "@/lib/ussdVisibility";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { cachedQuery } from "@/lib/cachedQuery";
 import { startVisiblePolling } from "@/lib/visiblePolling";
@@ -185,7 +186,7 @@ const defaultTheme = {
 // ─────────────────────────────────────────────────────────────────────────────
 // ORDER TRACKING CARD (same as AgentStorefront)
 // Delivery (step 4) only appears after 200 minutes.
-// ─────────────────────────────────────────────────────────────────────────────
+// ───────────────────────────────���─────────────────────────────────────────────
 const SubSubagentOrderTrackingCard = ({
   order,
   store,
@@ -1139,7 +1140,7 @@ const searchOrders = useCallback(async (input?: string) => {
         {/* Packages Grid */}
         {activeSection === "data" && <>
         {/* USSD Info Banner */}
-          {store?.show_ussd_on_storefront !== false && store?.topup_reference && (
+          {SHOW_USSD && store?.show_ussd_on_storefront !== false && store?.topup_reference && (
             <a href="tel:*920*337#" className="block mb-4 rounded-xl border border-[#064e5f] bg-[#071316] p-4 text-foreground shadow-sm hover:bg-[#071316] transition-colors">
               <div className="flex items-center justify-center gap-3 text-center">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">

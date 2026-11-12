@@ -4,6 +4,7 @@ import { FlyerFrame, slug, ussdMessageLines, type StoreInfo } from "@/components
 import type { FlyerPackage, FlyerPackages } from "@/components/DynamicFlyer";
 import whatsapp from "@/assets/brands/whatsapp.svg";
 import man from "@/assets/flyer/data-man.png";
+import { SHOW_USSD } from "@/lib/ussdVisibility";
 
 const FONT = "Montserrat, 'Arial Black', 'Helvetica Neue', Arial, sans-serif";
 const GOLD = "#ffd21f";
@@ -52,6 +53,7 @@ export function GreenDataFlyer({ storeName, storeUrl, supportNumber, packages, a
       <div style={{ position: "relative", width: 1124, height: 1530, overflow: "hidden", fontFamily: FONT, color: "#fff", background: "radial-gradient(ellipse at 60% 45%, #b6ff4a 0%, #3ed21c 30%, #12961a 60%, #07551a 100%)" }}>
         <div style={{ position: "absolute", inset: 0, background: "repeating-conic-gradient(from 0deg at 62% 62%, rgba(255,255,170,0.22) 0deg 3deg, transparent 3deg 11deg)" }} />
 
+        {SHOW_USSD && (
         <div style={darkPill({ left: 14, top: 10, width: 1096, height: 100, borderRadius: 50, display: "flex", alignItems: "center", justifyContent: "space-around", padding: "0 30px" })}>
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
             <div style={{ fontSize: 26, fontWeight: 800, fontStyle: "italic", color: GOLD, lineHeight: 1.05 }}>USSD<br />CODE</div>
@@ -63,6 +65,7 @@ export function GreenDataFlyer({ storeName, storeUrl, supportNumber, packages, a
             <div style={{ fontSize: 62, fontWeight: 900, fontFamily: "monospace", lineHeight: 1 }}>{accessCode || "-"}</div>
           </div>
         </div>
+        )}
 
         <div style={{ position: "absolute", left: 0, top: HEADER_TOP, width: 1124, height: 336 }}>
         <div style={{ position: "absolute", left: 38, top: 10, width: 230, height: 190 }}>
@@ -123,6 +126,7 @@ export function GreenDataFlyer({ storeName, storeUrl, supportNumber, packages, a
         </div>
 
         <img src={man} alt="" style={{ position: "absolute", left: 720, top: 1086, height: 292, width: "auto", filter: "drop-shadow(0 8px 18px #00000088)" }} />
+        {SHOW_USSD && (
         <div style={darkPill({ left: 14, top: 1388, width: 1096, height: 124, borderRadius: 62, display: "flex", alignItems: "center", justifyContent: "space-around", padding: "0 30px" })}>
           <div style={{ textAlign: "center", lineHeight: 1.1 }}>
             <div style={{ fontSize: 24, fontWeight: 800, fontStyle: "italic", color: GOLD }}>USSD CODE</div>
@@ -134,6 +138,7 @@ export function GreenDataFlyer({ storeName, storeUrl, supportNumber, packages, a
             <div style={{ fontSize: 54, fontWeight: 900, fontFamily: "monospace" }}>{accessCode || "-"}</div>
           </div>
         </div>
+        )}
       </div>
     </FlyerFrame>
   );

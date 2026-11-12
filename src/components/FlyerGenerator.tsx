@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { toPng } from "html-to-image";
+import { SHOW_USSD } from "@/lib/ussdVisibility";
 
 interface DataPackage {
     id: string;
@@ -64,7 +65,7 @@ const FlyerGenerator = ({
     const [shareText, setShareText] = useState("");
 
     useEffect(() => {
-        const ussdText = `\n\n📲 USSD: *920*337#${topupReference ? `\n🔑 Access Code: ${topupReference}` : ""}`;
+        const ussdText = !SHOW_USSD ? "" : `\n\n📲 USSD: *920*337#${topupReference ? `\n🔑 Access Code: ${topupReference}` : ""}`;
         setShareText(`🎉 Get the best data deals from ${storeName}!\n\n📱 MTN • AirtelTigo • Telecel\n💨 Instant delivery • 24/7 Support${ussdText}\n\nVisit: ${storeUrl}\nWhatsApp: ${whatsappNumber}`);
     }, [storeName, storeUrl, whatsappNumber, topupReference]);
 
@@ -429,6 +430,7 @@ const FlyerGenerator = ({
 
                     {/* INFO HEADER - USSD Code, Access Code, Help, Phone */}
                     <div style={{ display: "flex", alignItems: "stretch", padding: "16px 32px", gap: 16, backgroundColor: "#0a0a0a" }}>
+                        {SHOW_USSD && (<>
                         {/* USSD Code Box */}
                         <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", background: "#111", border: "1.5px solid #333", borderRadius: 12 }}>
                             <div style={{ width: 48, height: 48, background: "#222", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", border: "1px solid #444" }}>
@@ -452,6 +454,7 @@ const FlyerGenerator = ({
                                 <div style={{ fontSize: 11, color: "#666", marginTop: 0 }}>Required for all purchases.</div>
                             </div>
                         </div>
+                        </>)}
 
                         {/* Help Box */}
                         <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 14, padding: "16px 20px", background: "#111", border: "1.5px solid #333", borderRadius: 12 }}>

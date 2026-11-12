@@ -21,6 +21,7 @@ import { Switch } from "@/components/ui/switch";
 import OrderContactPicker from "@/components/OrderContactPicker";
 import SmsNumberGenerator from "@/components/SmsNumberGenerator";
 import BulkSmsHowToVideo from "@/components/BulkSmsHowToVideo";
+import { SHOW_USSD } from "@/lib/ussdVisibility";
 
 type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; storeUrl?: string; publicMode?: boolean; hideSenderPhone?: boolean };
 type SmsAudience = "all" | "recent" | "inactive" | "custom";
@@ -189,7 +190,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const charsOnPage = messageUnits % PAGE_SIZE === 0 && messageUnits > 0 ? PAGE_SIZE : messageUnits % PAGE_SIZE;
   const remaining = PAGE_SIZE - charsOnPage;
   const totalCost = contactPrice * numbers.length + pagePrice * pages;
-  const ussdMessage = ussdAccessCode ? `USSD: *920*337#\nAccess Code: ${ussdAccessCode}` : "";
+  const ussdMessage = SHOW_USSD && ussdAccessCode ? `USSD: *920*337#\nAccess Code: ${ussdAccessCode}` : "";
   const addUssdToMessage = () => {
     if (!ussdMessage) {
       toast({ title: "Access code unavailable", description: "Your store access code could not be loaded.", variant: "destructive" });
@@ -749,11 +750,11 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
             <div className="flex flex-wrap items-center gap-2">
               <Label>Message</Label><select value={generationType} onChange={(event) => setGenerationType(event.target.value)} className="ml-auto rounded-md border bg-background px-2 py-1 text-sm"><option value="promotion">Promotion</option><option value="marketing">Marketing</option><option value="greeting">Greeting</option><option value="announcement">Announcement</option><option value="reminder">Reminder</option></select>
               <Button type="button" size="sm" variant="outline" onClick={() => void generateMessage()} disabled={generating}><Sparkles className="mr-2 h-4 w-4" />{generating ? "Generating…" : "Generate with AI"}</Button>
-              {ownerType !== "customer" && <Button type="button" size="sm" variant="outline" onClick={addUssdToMessage} disabled={!ussdAccessCode}><KeyRound className="mr-2 h-4 w-4" />Add USSD + Access Code</Button>}
+              {SHOW_USSD && ownerType !== "customer" && <Button type="button" size="sm" variant="outline" onClick={addUssdToMessage} disabled={!ussdAccessCode}><KeyRound className="mr-2 h-4 w-4" />Add USSD + Access Code</Button>}
             </div>
             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-2"><Switch checked={includeStoreLink} onCheckedChange={setIncludeStoreLink} id="include-store-link" /><label htmlFor="include-store-link">Include my store link by default</label></div>
-              {ownerType !== "customer" && <span className="text-xs">Adds *920*337# and this store&apos;s access code.</span>}
+              {SHOW_USSD && ownerType !== "customer" && <span className="text-xs">Adds *920*337# and this store&apos;s access code.</span>}
             </div>
             <div className="space-y-1">
               <Label htmlFor="ai-brief" className="text-xs text-muted-foreground">Describe what the AI should write (optional)</Label>
