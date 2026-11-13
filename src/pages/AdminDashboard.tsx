@@ -20,6 +20,17 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -1717,6 +1728,25 @@ const AdminDashboard = () => {
     }
   };
 
+  const [confirmRetryOrderId, setConfirmRetryOrderId] = useState<string | null>(null);
+
+  const getProviderMarker = (apiResponse: string | null | undefined) => {
+    const text = (apiResponse || "").trimStart();
+    if (text.startsWith("UNCERTAIN_PROVIDER_RESULT")) return "UNCERTAIN_PROVIDER_RESULT" as const;
+    if (text.startsWith("NOT_CONFIRMED_BY_PROVIDER")) return "NOT_CONFIRMED_BY_PROVIDER" as const;
+    if (text.startsWith("CONFIRMED_NOT_RECEIVED")) return "CONFIRMED_NOT_RECEIVED" as const;
+    if (text.startsWith("CONFIRMED_RECEIVED")) return "CONFIRMED_RECEIVED" as const;
+    return null;
+  };
+
+  const handleRetryClick = (order: Order) => {
+    if (getProviderMarker(order.api_response) === "NOT_CONFIRMED_BY_PROVIDER") {
+      setConfirmRetryOrderId(order.id);
+      return;
+    }
+    retryOrder(order.id);
+  };
+
   // Manual only: runs once per click on a failed order. Never call this from an effect, interval, or loop.
   const retryingOrderIdsRef = useRef<Set<string>>(new Set());
   const retryOrder = async (orderId: string) => {
@@ -3343,6 +3373,31 @@ const AdminDashboard = () => {
                                   {(order.provider_send_count ?? 0) > 1 && (
                                     <Badge variant="outline" className="mt-1 text-xs border-amber-500/40 text-amber-500">Sent ×{order.provider_send_count}</Badge>
                                   )}
+                                  {(() => {
+                                    const marker = getProviderMarker(order.api_response);
+                                    if (marker === "UNCERTAIN_PROVIDER_RESULT") {
+                                      return (
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <Badge className="mt-1 block w-fit cursor-help bg-amber-500/20 text-amber-500 border-amber-500/40 text-xs">Checking with provider</Badge>
+                                            </TooltipTrigger>
+                                            <TooltipContent>The provider did not answer clearly. The system is checking automatically — do not resend.</TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
+                                      );
+                                    }
+                                    if (marker === "NOT_CONFIRMED_BY_PROVIDER") {
+                                      return <Badge className="mt-1 block w-fit bg-red-500/20 text-red-400 border-red-500/30 text-xs">Check provider before retry</Badge>;
+                                    }
+                                    if (marker === "CONFIRMED_NOT_RECEIVED") {
+                                      return <Badge className="mt-1 block w-fit bg-slate-500/20 text-slate-400 border-slate-500/30 text-xs">Not received — safe to retry</Badge>;
+                                    }
+                                    if (marker === "CONFIRMED_RECEIVED") {
+                                      return <Badge className="mt-1 block w-fit bg-green-500/20 text-green-400 border-green-500/30 text-xs">Received by provider</Badge>;
+                                    }
+                                    return null;
+                                  })()}
                                 </TableCell>
                                 <TableCell>
                                   {(() => {
@@ -3361,10 +3416,30 @@ const AdminDashboard = () => {
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex gap-1 flex-wrap">
-                                    {order.fulfillment_status === "failed" && (
-                                      <Button variant="outline" size="sm" onClick={() => retryOrder(order.id)} disabled={retryingOrders.has(order.id)}>
+                                    {order.fulfillment_status === "failed" &&
+                                      !["UNCERTAIN_PROVIDER_RESULT", "CONFIRMED_RECEIVED"].includes(getProviderMarker(order.api_response) ?? "") && (
+                                      <Button variant="outline" size="sm" onClick={() => handleRetryClick(order)} disabled={retryingOrders.has(order.id)}>
                                         {retryingOrders.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>}
                                       </Button>
+                                    )}
+                                    {confirmRetryOrderId === order.id && (
+                                      <AlertDialog open onOpenChange={(open) => { if (!open) setConfirmRetryOrderId(null); }}>
+                                        <AlertDialogContent>
+                                          <AlertDialogHeader>
+                                            <AlertDialogTitle>Resend order {order.customer_number}?</AlertDialogTitle>
+                                            <AlertDialogDescription asChild>
+                                              <div className="space-y-3">
+                                                <p>The provider never confirmed this order. Check the provider&apos;s dashboard for this number first. If it is not there, press Resend.</p>
+                                                <pre className="max-h-48 overflow-auto whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-xs text-foreground">{order.api_response}</pre>
+                                              </div>
+                                            </AlertDialogDescription>
+                                          </AlertDialogHeader>
+                                          <AlertDialogFooter>
+                                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                            <AlertDialogAction onClick={() => { setConfirmRetryOrderId(null); retryOrder(order.id); }}>Resend</AlertDialogAction>
+                                          </AlertDialogFooter>
+                                        </AlertDialogContent>
+                                      </AlertDialog>
                                     )}
                                     <Button 
                                       variant={order.fulfillment_status === "completed" || order.fulfillment_status === "delivered" ? "default" : "secondary"} 
