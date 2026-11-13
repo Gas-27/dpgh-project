@@ -75,6 +75,7 @@ export default function DashboardTutorial({ storageKey, userId, steps, onNavigat
       }
     }
     setOpen(false);
+    onNavigate?.("overview");
   };
 
   const goTo = (next: number) => {

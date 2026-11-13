@@ -60,6 +60,9 @@ import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
 import ApiExplainer from "@/components/ApiExplainer";
+import { ProgressKeyField } from "@/components/ProgressKeyField";
+import { DeliveryProgressApiDocs } from "@/components/DeliveryProgressApiDocs";
+import { fetchProgressKey } from "@/lib/fetchProgressKey";
 import WebhookDocs from "@/components/WebhookDocs";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
 import ApiWeeklyTargetMeter from "@/components/ApiWeeklyTargetMeter";
@@ -513,6 +516,7 @@ const localNumber = number.replace(/\D/g, "");
 
   // API Key
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [progressKey, setProgressKey] = useState<string | null>(null);
   const [wallet, setWallet] = useState<number>(0);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
  const [loadingApiKey, setLoadingApiKey] = useState(true);
@@ -883,14 +887,17 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         console.log("[v0] API user data found, setting wallet state");
         setApiKey(data.api_key);
         setWallet(data.wallet || 0);
+        setProgressKey(await fetchProgressKey(userId, true));
       } else {
         console.log("[v0] No API user data found for store");
         setApiKey(null);
+        setProgressKey(null);
         setWallet(0);
       }
     } catch (err) {
       console.error("[v0] Exception fetching API key:", err);
       setApiKey(null);
+      setProgressKey(null);
       setWallet(0);
     } finally {
       setLoadingApiKey(false);
@@ -916,6 +923,8 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
 
       setApiKey(result.data.api_key);
       setWallet(Number(result.data.wallet || 0));
+      const ownerId = impersonatedUserId || user?.id;
+      if (ownerId) setProgressKey(await fetchProgressKey(ownerId, true));
       setShowRegenerateConfirm(false);
       toast({
         title: "Success",
@@ -4192,17 +4201,7 @@ handleMobileNumberChange(digits);
             </Card>
 
             {/* Delivery Progress API */}
-            <Card id="cd-delivery" className="scroll-mt-32 border-purple-500/30 bg-purple-500/5">
-              <CardHeader><CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5 text-purple-400" />Delivery Progress API</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm text-muted-foreground">Expose the same delivery-progress card and messages from your dashboard on your own website.</p>
-                <div className="rounded-lg border border-border bg-muted p-3 font-mono text-xs break-all">GET https://api.dataplug.store/functions/v1/delivery-progress?network=mtn</div>
-                <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`curl "https://api.dataplug.store/functions/v1/delivery-progress?network=mtn" \\\n  -H "Authorization: Bearer YOUR_API_KEY"`}</pre>
-                <p className="text-sm font-semibold">Embeddable card</p>
-                <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`<iframe src="https://api.dataplug.store/api/delivery-progress-widget?network=mtn" style="width:100%;min-height:360px;border:0" title="Delivery Progress"></iframe>`}</pre>
-                <p className="text-xs text-muted-foreground">The response includes your configured message, provider status, estimated delivery window, last delivered order, timestamps, and delivery duration. Use the Supabase Edge Function URL when calling the API directly: <span className="font-mono">/functions/v1/delivery-progress</span>.</p>
-              </CardContent>
-            </Card>
+            <DeliveryProgressApiDocs />
 
             {/* Supported Networks */}
             <Card id="cd-networks" className="scroll-mt-32">
@@ -4699,7 +4698,9 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
                     </div>
                     <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/20 p-3 rounded">
                       ⚠️ Keep this key secret. Never share it publicly.
+                      <span className="mt-1 block">Never put this key in your website code. Use it only from your server.</span>
                     </p>
+                    <ProgressKeyField progressKey={progressKey} />
                     <Button 
                       variant="outline" 
                       onClick={() => setShowRegenerateConfirm(true)}
@@ -4870,7 +4871,7 @@ curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed
         open={showDeleteApiKey}
         onOpenChange={setShowDeleteApiKey}
         walletBalance={Number(wallet) || 0}
-        onDeleted={() => { setApiKey(null); setWallet(0); }}
+        onDeleted={() => { setApiKey(null); setProgressKey(null); setWallet(0); }}
       />
 
       {/* Regenerate Confirmation Dialog */}

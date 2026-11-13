@@ -1,5 +1,6 @@
 import DashboardTutorial, { USER_TUTORIAL } from "@/components/DashboardTutorial";
 import { useEffect, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { openGameHubIfAvailable } from "@/lib/tabControls";
@@ -13,6 +14,9 @@ import Footer from "@/components/Footer";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
 import ApiExplainer from "@/components/ApiExplainer";
+import { ProgressKeyField } from "@/components/ProgressKeyField";
+import { DeliveryProgressApiDocs } from "@/components/DeliveryProgressApiDocs";
+import { fetchProgressKey } from "@/lib/fetchProgressKey";
 import WebhookDocs from "@/components/WebhookDocs";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
 import ApiWeeklyTargetMeter from "@/components/ApiWeeklyTargetMeter";
@@ -162,6 +166,7 @@ const UserDashboard = () => {
   const [totalDataPurchased, setTotalDataPurchased] = useState(0);
   const [totalSpent, setTotalSpent] = useState(0);
   const [apiKey, setApiKey] = useState<string | null>(null);
+  const [progressKey, setProgressKey] = useState<string | null>(null);
   const [showApiKey, setShowApiKey] = useState(false);
   const [apiWallet, setApiWallet] = useState(0);
   const [normalWallet, setNormalWallet] = useState(0);
@@ -229,6 +234,49 @@ const UserDashboard = () => {
 
   // Orders search state
   const [orderSearch, setOrderSearch] = useState("");
+  const [debouncedOrderSearch, setDebouncedOrderSearch] = useState("");
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedOrderSearch(orderSearch.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [orderSearch]);
+  const orderSearchActive = orderSearch.trim().length > 0;
+  const { data: orderSearchResults, isFetching: orderSearchLoading } = useQuery({
+    queryKey: ["user-orders-search", effectiveUserId, debouncedOrderSearch],
+    enabled: !!effectiveUserId && debouncedOrderSearch.length > 0,
+    staleTime: 15_000,
+    queryFn: async (): Promise<Order[]> => {
+      const term = debouncedOrderSearch.replace(/[,()*%\\]/g, " ").trim();
+      if (!term) return [];
+      const { data: apiIdentity } = await supabase
+        .from("api_users")
+        .select("id")
+        .eq("identity_id", effectiveUserId!)
+        .maybeSingle();
+      const ownerFilter = [
+        `customer_id.eq.${effectiveUserId}`,
+        `user_id.eq.${effectiveUserId}`,
+        ...(apiIdentity?.id && apiIdentity.id !== effectiveUserId ? [`user_id.eq.${apiIdentity.id}`] : []),
+      ].join(",");
+      const searchFilters = [
+        `customer_number.ilike.%${term}%`,
+        `network.ilike.%${term}%`,
+        `provider_reference.ilike.%${term}%`,
+      ];
+      if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(term)) {
+        searchFilters.push(`id.eq.${term}`);
+      }
+      const { data, error } = await supabase
+        .from("orders")
+        .select("id, customer_id, user_id, customer_number, package_id, network, size_gb, size_gb_text, amount, selling_price, status, order_status, fulfillment_status, payment_method, source, provider_reference, provider_order_id, created_at, updated_at")
+        .or(ownerFilter)
+        .or(searchFilters.join(","))
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (error) throw error;
+      return (data as unknown as Order[]) ?? [];
+    },
+  });
+  const searchedOrders: Order[] = orderSearchResults ?? [];
   const [orderSourceFilter, setOrderSourceFilter] = useState<OrderSourceFilterKey>("all");
 
   // Announcement video iframe (Overview top)
@@ -372,6 +420,7 @@ const UserDashboard = () => {
           if (!isRevokedApiKey(apiUserData.api_key)) {
             setApiKey(apiUserData.api_key);
             setApiWallet(apiUserData.wallet || 0);
+            setProgressKey(await fetchProgressKey(effectiveUserId));
           }
         }
 
@@ -757,6 +806,8 @@ const UserDashboard = () => {
       setApiKey(result.data.api_key);
       setApiWallet(Number(result.data.wallet || 0));
       setShowApiKey(true);
+      const ownerId = impersonatedUserId || user?.id;
+      if (ownerId) setProgressKey(await fetchProgressKey(ownerId));
       toast({
         title: "Success",
         description: wasRegeneration ? "API key regenerated. Your previous key is no longer valid." : "API key generated successfully",
@@ -1393,7 +1444,7 @@ case "api-key":
       <Card className="border-border">
         <CardHeader className="flex flex-col gap-3">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <CardTitle className="font-display text-lg">Orders ({orders.length})</CardTitle>
+            <CardTitle className="font-display text-lg">Orders ({orderSearchActive ? searchedOrders.length : orders.length})</CardTitle>
             <div className="relative w-full sm:w-64">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
@@ -1402,6 +1453,9 @@ case "api-key":
                 onChange={e => setOrderSearch(e.target.value)}
                 className="pl-9"
               />
+              {orderSearchActive && orderSearchLoading && (
+                <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" aria-label="Searching orders" />
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1410,10 +1464,14 @@ case "api-key":
           </div>
         </CardHeader>
         <CardContent>
-          {orders.length === 0 ? (
+          {(orderSearchActive ? searchedOrders.length === 0 : orders.length === 0) ? (
             <div className="text-center py-12">
               <ShoppingCart className="h-12 w-12 mx-auto text-muted-foreground/50 mb-3" />
-              <p className="text-muted-foreground">No orders yet. Start by purchasing a data package.</p>
+              <p className="text-muted-foreground">
+                {orderSearchActive
+                  ? (orderSearchLoading || orderSearch.trim() !== debouncedOrderSearch ? "Searching your orders..." : "No orders found matching your search")
+                  : "No orders yet. Start by purchasing a data package."}
+              </p>
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -1432,8 +1490,8 @@ case "api-key":
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {orders.filter(o => {
-                    const matchesSearch = o.customer_number?.includes(orderSearch.toLowerCase()) || o.id.toLowerCase().includes(orderSearch.toLowerCase());
+                  {(orderSearchActive ? searchedOrders : orders).filter(o => {
+                    const matchesSearch = true;
                     const matchesRefundFilter = showRefundedOnly ? (o.status === "refunded" || o.fulfillment_status === "refunded") : true;
                     const matchesSource = orderSourceFilter === "all" || getOrderSource(o as any) === orderSourceFilter;
                     return matchesSearch && matchesRefundFilter && matchesSource;
@@ -1543,16 +1601,7 @@ case "api-key":
 
   const renderOrders = () => {
     // Filter orders based on search
-    const filteredOrders = orders.filter(order => {
-      if (!orderSearch) return true;
-      const search = orderSearch.toLowerCase();
-      return (
-        (order.customer_number && String(order.customer_number).toLowerCase().includes(search)) ||
-        (order.id && String(order.id).toLowerCase().includes(search)) ||
-        (order.network && String(order.network).toLowerCase().includes(search)) ||
-        (order.paystack_reference && String(order.paystack_reference).toLowerCase().includes(search))
-      );
-    });
+    const filteredOrders = orderSearchActive ? searchedOrders : orders;
 
     // Calculate stats
   const totalSpent = orders.reduce((sum, o) => sum + (Number(o.amount) || 0), 0);
@@ -1623,6 +1672,9 @@ case "api-key":
                   onChange={e => setOrderSearch(e.target.value)}
                   className="pl-9"
                 />
+                {orderSearchActive && orderSearchLoading && (
+                  <Loader2 className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin text-muted-foreground" aria-label="Searching orders" />
+                )}
               </div>
             </div>
           </CardHeader>
@@ -2110,7 +2162,11 @@ case "api-key":
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
+                <p className="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                  Never put this key in your website code. Use it only from your server.
+                </p>
               </div>
+              <ProgressKeyField progressKey={progressKey} />
               <Button onClick={generateApiKey} disabled={generatingApiKey} className="w-full">
                 {generatingApiKey ? "Generating..." : "Regenerate Key"}
               </Button>
@@ -2122,7 +2178,7 @@ case "api-key":
                 open={showDeleteApiKey}
                 onOpenChange={setShowDeleteApiKey}
                 walletBalance={Number(apiWallet) || 0}
-                onDeleted={() => { setApiKey(null); setApiWallet(0); setShowApiKey(false); }}
+                onDeleted={() => { setApiKey(null); setProgressKey(null); setApiWallet(0); setShowApiKey(false); }}
               />
             </>
           ) : (
@@ -2295,17 +2351,7 @@ const renderApiDocs = () => (
       </Card>
 
   {/* Delivery Progress API */}
-  <Card id="cd-delivery" className="scroll-mt-32 border-purple-500/30 bg-purple-500/5">
-  <CardHeader><CardTitle className="flex items-center gap-2"><BookOpen className="h-5 w-5 text-purple-400" />Delivery Progress API</CardTitle></CardHeader>
-  <CardContent className="space-y-4">
-  <p className="text-sm text-muted-foreground">Display the same delivery-progress card, status messages, estimates, and latest delivery details on your own website.</p>
-  <div className="rounded-lg border border-border bg-muted p-3 font-mono text-xs break-all">GET https://api.dataplug.store/functions/v1/delivery-progress?network=mtn</div>
-  <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`curl "https://api.dataplug.store/functions/v1/delivery-progress?network=mtn" \\\n  -H "Authorization: Bearer YOUR_API_KEY"`}</pre>
-  <p className="text-sm font-semibold">Embeddable card</p>
-  <pre className="overflow-x-auto whitespace-pre-wrap rounded-lg border border-border bg-muted p-3 font-mono text-xs">{`<iframe src="https://api.dataplug.store/api/delivery-progress-widget?network=mtn" style="width:100%;min-height:360px;border:0" title="Delivery Progress"></iframe>`}</pre>
-  <p className="text-xs text-muted-foreground">Your configured message, provider status, estimated window, last delivered order, timestamps, and duration are returned by the API and reflected in the widget.</p>
-  </CardContent>
-  </Card>
+  <DeliveryProgressApiDocs />
 
   {/* Supported Networks */}
   <Card id="cd-networks" className="scroll-mt-32">
