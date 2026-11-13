@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowRight, CalendarClock, ChevronDown, Pause, Play, Trash2 } from "lucide-react";
+import { ArrowRight, CalendarClock, ChevronDown, Copy, Pause, Play, Trash2 } from "lucide-react";
 import { toast } from "@/lib/friendlySonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ type Schedule = {
 };
 
 const SCHEDULE_VIDEO_SRC = "/videos/schedule-data-purchase.mp4";
+const SCHEDULE_USSD_CODE = "*928*337#";
 
 const isExpress = (network: string) => network.toLowerCase() === "mtn_express";
 
@@ -197,7 +198,28 @@ export default function ScheduleDataPurchase({ ownerType, ownerId, variant = "bu
           {videoOpen && (
             <div id="schedule-video-panel" className="px-3 pb-3">
               {videoFailed ? (
-                <p className="text-sm text-muted-foreground">The video is not available right now. Please check back soon.</p>
+                <div className="space-y-2 rounded-md border border-primary/30 bg-background/60 p-3 text-center">
+                  <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed!</p>
+                  <a
+                    href={`tel:${SCHEDULE_USSD_CODE.replace("#", "%23")}`}
+                    className="block font-mono text-2xl font-bold text-primary"
+                  >
+                    {SCHEDULE_USSD_CODE}
+                  </a>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(SCHEDULE_USSD_CODE);
+                      toast.success("USSD code copied");
+                    }}
+                  >
+                    <Copy className="h-4 w-4" aria-hidden />
+                    Copy USSD code
+                  </Button>
+                </div>
               ) : (
                 <video
                   className="w-full rounded-md bg-black"
