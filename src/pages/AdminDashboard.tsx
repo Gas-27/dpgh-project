@@ -104,6 +104,7 @@ interface Order {
   api_user?: string | null; package_id?: string | null; base_price?: number | null;
   agent_price?: number | null; refunded_amount?: number | null; fulfillment_provider?: string | null; purchase_provider?: string | null; purchase_provider_source?: string | null; provider_attempts?: Array<{ provider?: string; status?: string; created_at?: string }> | null;
   admin_seen?: boolean; admin_seen_at?: string | null; order_status?: string; sub_subagent_store_id?: string | null;
+  provider_send_count?: number | null;
 }
   interface WithdrawalRequest {
     id: string; agent_store_id: string | null; subagent_store_id?: string | null; sub_subagent_store_id?: string | null; amount: number; status: string;
@@ -1358,33 +1359,6 @@ const AdminDashboard = () => {
   );
   */
 
-  // Auto-retry pending orders - 3 second interval
-  useEffect(() => {
-    const autoRetryPendingOrders = async () => {
-      try {
-        const { data: pendingOrders } = await supabase
-          .from("orders")
-          .select("id")
-          .eq("fulfillment_status", "pending")
-          .eq("status", "paid");
-        if (!pendingOrders?.length) return;
-        for (const order of pendingOrders) {
-          if (retryingOrders.has(order.id)) continue;
-          const { data: fresh } = await supabase
-            .from("orders")
-            .select("fulfillment_status")
-            .eq("id", order.id)
-            .single();
-          if (fresh?.fulfillment_status !== "pending") continue;
-          await retryOrder(order.id);
-        }
-      } catch (error) {
-        console.error("[v0] Auto-retry error:", error);
-      }
-    };
-    return startVisiblePolling(autoRetryPendingOrders, 60000);
-  }, []);
-
   // Calculate unapproved withdrawals count
   useEffect(() => {
     if (withdrawals && withdrawals.length > 0) {
@@ -1743,45 +1717,30 @@ const AdminDashboard = () => {
     }
   };
 
+  // Manual only: runs once per click on a failed order. Never call this from an effect, interval, or loop.
+  const retryingOrderIdsRef = useRef<Set<string>>(new Set());
   const retryOrder = async (orderId: string) => {
-    if (retryingOrders.has(orderId)) return;
+    if (retryingOrderIdsRef.current.has(orderId)) return;
+    retryingOrderIdsRef.current.add(orderId);
     setRetryingOrders((prev) => new Set(prev).add(orderId));
     try {
-      const { data: currentOrder } = await supabase
-        .from("orders")
-        .select("fulfillment_status, status")
-        .eq("id", orderId)
-        .single();
-      if (!currentOrder) { toast({ title: "Order not found" }); return; }
-      if (currentOrder.fulfillment_status === "completed") {
-        toast({ title: "Order already completed", description: "This order has already been fulfilled successfully." });
-        return;
-      }
-      if (currentOrder.status !== "paid") { toast({ title: "Order not paid yet", variant: "destructive" }); return; }
       const { data, error } = await supabase.functions.invoke("fulfill-order", { body: { order_id: orderId } });
       if (error) throw error;
-      if (data?.success) {
-        toast({ title: "Order fulfilled successfully!" });
+      if (data?.already_sent) {
+        toast({ title: "Already sent", description: "This order was already sent to the provider — not sent again." });
+      } else if (data?.success) {
+        toast({ title: "Order sent", description: data?.message || "Order was sent to the provider." });
         setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed" } : o));
+        setFilteredOrdersFromDB((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "completed" } : o));
       } else {
-        toast({ title: "Fulfillment failed", description: data?.message || "Check API balance", variant: "destructive" });
-        setOrders((prev) => prev.map((o) => o.id === orderId ? { ...o, fulfillment_status: "failed" } : o));
+        toast({ title: "Fulfillment failed", description: data?.message || "The provider did not accept the order.", variant: "destructive" });
       }
     } catch (err: any) {
       toast({ title: "Retry failed", description: err.message, variant: "destructive" });
     } finally {
+      retryingOrderIdsRef.current.delete(orderId);
       setRetryingOrders((prev) => { const next = new Set(prev); next.delete(orderId); return next; });
     }
-  };
-
-  const retryAllFailed = async () => {
-    const failedOrders = orders.filter((o) => o.fulfillment_status === "failed" && o.status === "paid");
-    if (failedOrders.length === 0) {
-      toast({ title: "No failed orders", description: "There are no failed orders to retry." });
-      return;
-    }
-    toast({ title: "Retrying failed orders", description: `Retrying ${failedOrders.length} failed order(s)...` });
-    for (const order of failedOrders) { await retryOrder(order.id); }
   };
 
   const updateOrderProvider = async (order: Order, provider: string) => {
@@ -2966,8 +2925,7 @@ const AdminDashboard = () => {
             <TabsContent value="orders" className="space-y-4">
               {failedCount > 0 && (
                 <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/30 bg-destructive/5">
-                  <p className="text-sm text-foreground"><span className="font-bold text-destructive">{failedCount} failed</span> order(s) — payment received but data not fulfilled. Top up API balance and retry.</p>
-                  <Button variant="destructive" size="sm" onClick={retryAllFailed}><RefreshCw className="h-4 w-4 mr-1" /> Retry All Failed</Button>
+                  <p className="text-sm text-foreground"><span className="font-bold text-destructive">{failedCount} failed</span> order(s) — payment received but data not fulfilled. Use the Retry button on each failed order.</p>
                 </div>
               )}
               {refundedCount > 0 && (
@@ -3382,6 +3340,9 @@ const AdminDashboard = () => {
                                   ) : (
                                     <Badge variant={order.fulfillment_status === "completed" ? "default" : order.fulfillment_status === "failed" ? "destructive" : "secondary"}>{order.fulfillment_status}</Badge>
                                   )}
+                                  {(order.provider_send_count ?? 0) > 1 && (
+                                    <Badge variant="outline" className="mt-1 text-xs border-amber-500/40 text-amber-500">Sent ×{order.provider_send_count}</Badge>
+                                  )}
                                 </TableCell>
                                 <TableCell>
                                   {(() => {
@@ -3400,7 +3361,7 @@ const AdminDashboard = () => {
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex gap-1 flex-wrap">
-                                    {order.fulfillment_status !== "completed" && order.fulfillment_status !== "delivered" && (
+                                    {order.fulfillment_status === "failed" && (
                                       <Button variant="outline" size="sm" onClick={() => retryOrder(order.id)} disabled={retryingOrders.has(order.id)}>
                                         {retryingOrders.has(order.id) ? <Loader2 className="h-4 w-4 animate-spin" /> : <><RefreshCw className="h-4 w-4 mr-1" /> Retry</>}
                                       </Button>
