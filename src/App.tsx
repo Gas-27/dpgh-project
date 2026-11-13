@@ -64,6 +64,7 @@ const SubSubagentLogin = lazyWithReload(() => import("./pages/SubSubagentLogin")
 const SubagentStorefront = lazyWithReload(() => import("./pages/SubagentStorefront"));
 const SubSubagentStorefront = lazyWithReload(() => import("./pages/SubSubagentStorefront"));
 const SubagentRegistration = lazyWithReload(() => import("./pages/SubagentRegistration"));
+const SubagentPaymentComplete = lazyWithReload(() => import("./pages/SubagentPaymentComplete"));
 const SubagentApprovalPayment = lazyWithReload(() => import("./pages/SubagentApprovalPayment"));
 const VerifySubagentPayment = lazyWithReload(() => import("./pages/VerifySubagentPayment"));
 const SubSubagentDashboard = lazyWithReload(() => import("./pages/SubSubagentDashboard"));
@@ -302,6 +303,15 @@ return (
                   <Route path="/become-agent" element={<BecomeAgent />} />
                   <Route path="/gamehub" element={<CustomDomainResolver />} />
                   <Route path="/gamehub/:gameId" element={<CustomDomainResolver />} />
+                  <Route path="/subagent-payment-complete" element={<SubagentPaymentComplete />} />
+                  <Route
+                    path="/subagent-dashboard"
+                    element={
+                      <AuthGuard requiredRole="subagent">
+                        <SubagentDashboard />
+                      </AuthGuard>
+                    }
+                  />
                   <Route path="/__custom/agent/:storeName" element={<AgentStorefront />} />
                   <Route path="/__custom/agent/:storeName/gamehub" element={<AgentStorefront />} />
                   <Route path="/__custom/agent/:storeName/gamehub/:gameId" element={<AgentStorefront />} />
@@ -324,6 +334,7 @@ return (
                   <Route path="/" element={<SubagentLogin />} />
                   <Route path="/login" element={<SubagentLogin />} />
                   <Route path="/sub-subagent-login" element={<SubSubagentLogin />} />
+                  <Route path="/subagent-payment-complete" element={<SubagentPaymentComplete />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route
@@ -375,6 +386,15 @@ return (
                   <Route path="/marketplace/product/:productId" element={<ProductDetail />} />
                   <Route path="/private-subscription/:serviceId" element={<PrivateSubscriptionCheckout />} />
                   <Route path="/service-access/:serviceId" element={<PublicServiceAccess />} />
+                  <Route path="/subagent-payment-complete" element={<SubagentPaymentComplete />} />
+                  <Route
+                    path="/subagent-dashboard"
+                    element={
+                      <AuthGuard requiredRole="subagent">
+                        <SubagentDashboard />
+                      </AuthGuard>
+                    }
+                  />
                   <Route path="*" element={<AgentStorefront />} />
                 </Routes>
               ) : (
@@ -410,6 +430,7 @@ return (
                   <Route path="/agent-registration-callback" element={<AgentRegistrationCallback />} />
                   <Route path="/subagent-registration/:agentStoreId" element={<SubagentRegistration />} />
                   <Route path="/sub-subagent-registration/:subagentStoreId" element={<SubagentRegistration />} />
+                  <Route path="/subagent-payment-complete" element={<SubagentPaymentComplete />} />
                   <Route path="/subagent-approval-payment" element={<SubagentApprovalPayment />} />
                   <Route path="/verify-subagent-payment" element={<VerifySubagentPayment />} />
                   <Route path="/sub-admin-login" element={<SubAdminLogin />} />

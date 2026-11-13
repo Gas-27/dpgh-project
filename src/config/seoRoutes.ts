@@ -39,7 +39,7 @@ const PRIVATE_PREFIXES = [
   "/user-dashboard", "/agent-dashboard", "/subagent-dashboard", "/sub-subagent-dashboard", "/dashboard",
   "/admin", "/admin-only", "/sub-admin", "/login", "/signup", "/reset-password", "/verify-email",
   "/auth/", "/api/", "/agent-registration-callback", "/subagent-registration", "/sub-subagent-registration",
-  "/subagent-approval-payment", "/verify-subagent-payment", "/pending-approval", "/only-admin",
+  "/subagent-approval-payment", "/verify-subagent-payment", "/subagent-payment-complete", "/pending-approval", "/only-admin",
 ];
 
 export function isPrivatePath(pathname: string) {

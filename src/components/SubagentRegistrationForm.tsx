@@ -1,6 +1,11 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { signUpWithoutVerification } from "@/lib/signUpWithoutVerification";
+import {
+  getSubagentDashboardPath,
+  readFunctionErrorMessage,
+  savePendingSubagentLogin,
+} from "@/lib/subagentRegistration";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -169,6 +174,94 @@ export default function SubagentRegistrationForm({
     return true;
   };
 
+  // Free path: create the account now (pre-confirmed, already signed in), then
+  // create the approved store and land on the dashboard of the current origin.
+  const registerWithoutFee = async () => {
+    const { data: authData, error: authError } = await signUpWithoutVerification({
+      email: formData.email,
+      password: formData.password,
+      data: {
+        role: "subagent",
+      },
+    });
+
+    if (authError) throw authError;
+    if (!authData.user?.id) throw new Error("Failed to create user account");
+
+    // The database signup trigger assigns the fixed `subagent` role from
+    // trusted signup metadata. Never insert roles from the browser.
+
+    const { count: subagentCount } = await supabase
+      .from("subagent_stores")
+      .select("*", { count: "exact", head: true });
+    const topupReference = `agt${(subagentCount || 0) + 1}`;
+
+    const { error: storeError } = await supabase
+      .from("subagent_stores")
+      .insert({
+        user_id: authData.user.id,
+        agent_store_id: agentStoreId,
+        store_name: formData.storeName,
+        whatsapp_number: formData.whatsappNumber,
+        support_number: formData.supportNumber,
+        momo_name: formData.momoName,
+        momo_number: formData.momoNumber,
+        momo_network: formData.momoNetwork,
+        wallet_balance: 0,
+        approved: true,
+        topup_reference: topupReference,
+      })
+      .select()
+      .single();
+
+    if (storeError) throw storeError;
+
+    toast({
+      title: "Subagent Account Created!",
+      description: "Your subagent account has been created and is ready to use.",
+    });
+
+    if (onClose) onClose();
+
+    window.location.href = getSubagentDashboardPath();
+  };
+
+  // Paid path: the account is only created by the backend after payment, so
+  // nothing is signed up from the browser here.
+  const startPaidRegistration = async (): Promise<"redirected" | "no_fee"> => {
+    const { data, error } = await supabase.functions.invoke("start-subagent-registration", {
+      body: {
+        email: formData.email,
+        password: formData.password,
+        agent_store_id: agentStoreId,
+        store_name: formData.storeName,
+        whatsapp_number: formData.whatsappNumber,
+        support_number: formData.supportNumber,
+        momo_name: formData.momoName,
+        momo_number: formData.momoNumber,
+        momo_network: formData.momoNetwork,
+        callback_url: `${window.location.origin}/subagent-payment-complete`,
+      },
+    });
+
+    if (error) {
+      throw new Error(await readFunctionErrorMessage(error, "Failed to start registration"));
+    }
+    if (data?.error) throw new Error(String(data.error));
+    if (data?.fee_required === false) return "no_fee";
+    if (!data?.authorization_url) throw new Error("Failed to get payment URL");
+
+    savePendingSubagentLogin({
+      email: formData.email,
+      password: formData.password,
+      reference: data.reference,
+      createdAt: Date.now(),
+    });
+
+    window.location.href = data.authorization_url;
+    return "redirected";
+  };
+
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -177,170 +270,16 @@ export default function SubagentRegistrationForm({
     try {
       setLoading(true);
 
-      // Step 1: Always create the user account and subagent store first
-      console.log("[v0] Creating user account and subagent store first");
+      const feeRequired = !!(
+        agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0
+      );
 
-      // Sign up the user
-      const { data: authData, error: authError } = await signUpWithoutVerification({
-        email: formData.email,
-        password: formData.password,
-        data: {
-          role: "subagent",
-        },
-      });
-
-      if (authError) throw authError;
-      if (!authData.user?.id) throw new Error("Failed to create user account");
-
-      console.log("[v0] User account created:", authData.user.id);
-
-      // COMMENTED OUT: Store creation moved to webhook after payment
-      // const approvalStatus = agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0 ? false : true;
-      // const { data: storeData, error: storeError } = await supabase
-      //   .from("subagent_stores")
-      //   .insert({...})
-      //   .select()
-      //   .single();
-
-      // The database signup trigger assigns the fixed `subagent` role from
-      // trusted signup metadata. Never insert roles from the browser.
-
-      // Step 2: Check if fees are required
-      if (agentStore?.subagent_fee_enabled && agentStore?.subagent_fee_amount > 0) {
-        console.log("[v0] Fees enabled, initiating payment:", agentStore.subagent_fee_amount);
-
-        // Create a registration record for payment tracking
-        const { data: registration, error: regError } = await supabase
-          .from("subagent_registrations")
-          .insert({
-            agent_store_id: agentStoreId,
-            user_id: authData.user.id,
-            email: formData.email,
-            phone_number: formData.supportNumber,
-            business_name: formData.storeName,
-            fee_amount: agentStore.subagent_fee_amount,
-            payment_required: true,
-            payment_status: "pending",
-            status: "pending_payment",
-            registration_data: {
-              store_name: formData.storeName,
-              whatsapp_number: formData.whatsappNumber,
-              support_number: formData.supportNumber,
-              momo_name: formData.momoName,
-              momo_number: formData.momoNumber,
-              momo_network: formData.momoNetwork,
-            }
-          })
-          .select()
-          .single();
-
-        if (regError) {
-          console.error("[v0] Error creating registration:", regError);
-          throw regError;
-        }
-
-        console.log("[v0] Registration record created:", registration.id);
-
-        // After Paystack payment, redirect directly to subagent dashboard
-        const callbackUrl = `https://agentsstore.shop/dashboard`;
-        
-        console.log("[v0] Calling initialize-payment with:", {
-          email: formData.email,
-          amount: agentStore.subagent_fee_amount,
-          phone: formData.supportNumber,
-          callback_url: callbackUrl,
-          metadata: {
-            type: "subagent_registration",
-            subagent_registration_id: registration.id,
-            agent_store_id: agentStoreId,
-            user_id: authData.user.id,
-          }
-        });
-
-        const { data, error } = await supabase.functions.invoke(
-          "initialize-payment",
-          {
-            body: {
-              email: formData.email,
-              amount: agentStore.subagent_fee_amount,
-              phone: formData.supportNumber,
-              callback_url: callbackUrl,
-              metadata: {
-                type: "subagent_registration",
-                subagent_registration_id: registration.id,
-                agent_store_id: agentStoreId,
-                user_id: authData.user.id,
-              }
-            },
-          }
-        );
-
-        console.log("[v0] initialize-payment response:", { data, error });
-
-        if (error) {
-          console.error("[v0] Payment initialization error:", error);
-          throw error;
-        }
-
-        if (!data?.authorization_url) {
-          throw new Error("Failed to get payment URL");
-        }
-
-        // Update registration with payment reference
-        await supabase
-          .from("subagent_registrations")
-          .update({
-            payment_reference: data.reference,
-            payment_status: "processing"
-          })
-          .eq("id", registration.id);
-
-        console.log("[v0] Redirecting to Paystack:", data.authorization_url);
-
-        // Redirect to Paystack checkout
-        window.location.href = data.authorization_url;
-        return;
+      if (feeRequired) {
+        const result = await startPaidRegistration();
+        if (result === "redirected") return;
       }
 
-      // No fees - create the store immediately with approved: true
-      console.log("[v0] No fees required, creating approved subagent store");
-
-      // Generate sequential top-up reference (agt1, agt2, agt3, etc.)
-      const { count: subagentCount } = await supabase
-        .from("subagent_stores")
-        .select("*", { count: "exact", head: true });
-      const topupReference = `agt${(subagentCount || 0) + 1}`;
-
-      const { data: storeData, error: storeError } = await supabase
-        .from("subagent_stores")
-        .insert({
-          user_id: authData.user.id,
-          agent_store_id: agentStoreId,
-          store_name: formData.storeName,
-          whatsapp_number: formData.whatsappNumber,
-          support_number: formData.supportNumber,
-          momo_name: formData.momoName,
-          momo_number: formData.momoNumber,
-          momo_network: formData.momoNetwork,
-          wallet_balance: 0,
-          approved: true, // Auto-approve for no-fee registration
-          topup_reference: topupReference,
-        })
-        .select()
-        .single();
-
-      if (storeError) throw storeError;
-
-      console.log("[v0] Approved subagent store created:", storeData.id);
-
-      toast({
-        title: "✅ Subagent Account Created!",
-        description: "Your subagent account has been created and is ready to use.",
-      });
-
-      if (onClose) onClose();
-
-      window.location.href = "https://agentsstore.shop/dashboard";
+      await registerWithoutFee();
     } catch (error: any) {
       console.error("[v0] Registration error:", error);
       toast({
