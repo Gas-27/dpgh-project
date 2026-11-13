@@ -64,6 +64,7 @@ import { ProgressKeyField } from "@/components/ProgressKeyField";
 import { DeliveryProgressApiDocs } from "@/components/DeliveryProgressApiDocs";
 import { fetchProgressKey } from "@/lib/fetchProgressKey";
 import WebhookDocs from "@/components/WebhookDocs";
+import CheapDataOrderApiDocs from "@/components/CheapDataOrderApiDocs";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
 import ApiWeeklyTargetMeter from "@/components/ApiWeeklyTargetMeter";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
@@ -4194,7 +4195,7 @@ handleMobileNumberChange(digits);
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">All API requests require your API key in the Authorization header:</p>
                 <div className="bg-muted p-4 rounded-lg border border-border font-mono text-sm space-y-2">
-                  <div>Authorization: Bearer YOUR_API_KEYxxxxxxxxxxxxxxxxxxxxxxxxxxxxx</div>
+                  <div>Authorization: Bearer YOUR_API_KEY</div>
                 </div>
                 <p className="text-xs text-muted-foreground">Your API key can be found in the <span className="font-semibold">API Key</span> tab above.</p>
               </CardContent>
@@ -4267,216 +4268,10 @@ handleMobileNumberChange(digits);
           </CardContent>
               </Card>
 
-              {/* POST /purchase */}
-              <Card id="cd-purchase" className="scroll-mt-32">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <span className="px-2 py-1 bg-blue-500/20 text-blue-400 rounded text-xs font-mono">POST</span>
-                    <span>/purchase</span>
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-2">Purchase a data package using your wallet balance.</p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm font-semibold mb-2">Request Body:</p>
-                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>• <span className="font-mono">network</span> (required) - mtn, mtn_express, telecel, airteltigo</li>
-                      <li>• <span className="font-mono">size_gb</span> (required) - Package size in GB</li>
-                      <li>• <span className="font-mono">phone</span> (required) - Recipient phone number (024XXXXXXX)</li>
-                    </ul>
-                  </div>
-                  <div className="bg-muted p-3 rounded-lg border border-border">
-                    <p className="text-xs text-muted-foreground mb-2">Example Request:</p>
-                    <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
-{`curl -X POST "https://api.dataplug.store/functions/v1/purchase" \\
-  -H "Authorization: Bearer YOUR_API_KEY" \\
-  -H "Content-Type: application/json" \\
-  -d '{
-    "network": "mtn",
-    "size_gb": 2,
-    "phone": "024XXXXXXX"
-  }'`}
-                    </pre>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold mb-2">Success Response (200):</p>
-                    <pre className="font-mono text-xs overflow-x-auto bg-muted p-3 rounded-lg border border-border whitespace-pre-wrap break-words">
-{`{
-  "success": true,
-  "message": "Purchase successful",
-  "data": {
-    "order_id": "9b2f3c1e-6d4a-4f0b-8a57-2c1e9d7f4a10",
-    "provider_reference": "API_1782860161668_k3x9ab",
-    "network": "mtn",
-    "size_gb": 2,
-    "size_gb_text": null,
-    "phone": "0241234567",
-    "amount": 7.8,
-    "wallet_balance": 92.2,
-    "status": "completed"
-  }
-}
-
-Error 402 - insufficient wallet balance:
-{
-  "error": "Insufficient wallet balance",
-  "wallet_balance": 1.5,
-  "required": 7.8,
-  "deficit": "6.30"
-}
-
-Error 404 - package not found:
-{
-  "error": "Package not found"
-}`}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* GET /get-orders */}
-              <Card id="cd-get-orders" className="scroll-mt-32">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
-                    <span>/get-orders</span>
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-2">Returns the orders placed by the authenticated API user, newest first. API orders are paid from the API wallet; payment_method is always api_wallet.</p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
-                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>��� <span className="font-mono">limit</span> (integer) - Orders to return (default: 50)</li>
-                      <li>• <span className="font-mono">offset</span> (integer) - Orders to skip (default: 0)</li>
-                      <li>• <span className="font-mono">status</span> - Filter by order_status: pending, processing, waiting, delivered, completed, failed, refunded</li>
-                      <li>• <span className="font-mono">network</span> - Filter by network (mtn, mtn_express, telecel, airteltigo)</li>
-                    </ul>
-                  </div>
-                  <div className="bg-muted p-3 rounded-lg border border-border">
-                    <p className="text-xs text-muted-foreground mb-2">Example Requests:</p>
-                    <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
-{`# Get all orders (default limit 50)
-curl -X GET "https://api.dataplug.store/functions/v1/get-orders" \\
-  -H "Authorization: Bearer YOUR_API_KEY"
-
-# Get orders filtered by status
-curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed" \\
-  -H "Authorization: Bearer YOUR_API_KEY"
-
-# Get orders with pagination and filters
-curl -X GET "https://api.dataplug.store/functions/v1/get-orders?status=completed&network=mtn&limit=10" \\
-  -H "Authorization: Bearer YOUR_API_KEY"`}
-                    </pre>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold mb-2">Success Response (200):</p>
-                    <pre className="font-mono text-xs overflow-x-auto bg-muted p-3 rounded-lg border border-border whitespace-pre-wrap break-words">
-{`{
-  "success": true,
-  "data": {
-    "orders": [
-      {
-        "id": "30218de5-2991-4c8d",
-        "customer_number": "0200511211",
-        "network": "telecel",
-        "amount": 36.20,
-        "order_status": "completed",
-        "provider_reference": "API_1782860161668",
-        "created_at": "2026-06-30T22:56:02.022+00:00"
-      }
-    ],
-    "pagination": {
-      "limit": 50,
-      "offset": 0,
-      "total": 1,
-      "returned": 1
-    }
-  }
-}`}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* GET /track-order */}
-              <Card id="cd-track-order" className="scroll-mt-32">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
-                    <span>/track-order</span>
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-2">Get the current status of a specific order.</p>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <p className="text-sm font-semibold mb-2">Required Parameters:</p>
-                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>• <span className="font-mono">reference</span> (string) - Order ID (UUID) or provider_reference</li>
-                    </ul>
-                  </div>
-                  <div className="bg-muted p-3 rounded-lg border border-border">
-                    <p className="text-xs text-muted-foreground mb-2">Example Request:</p>
-                    <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap break-words">
-{`curl -X GET "https://api.dataplug.store/functions/v1/track-order?reference=API_1782860161668" \\
-  -H "Authorization: Bearer YOUR_API_KEY"`}
-                    </pre>
-                  </div>
-                  <div>
-                    <p className="text-sm font-semibold mb-2">Success Response (200):</p>
-                    <pre className="font-mono text-xs overflow-x-auto bg-muted p-3 rounded-lg border border-border whitespace-pre-wrap break-words">
-{`{
-  "success": true,
-  "data": {
-    "order_id": "550e8400-e29b-41d4",
-    "reference": "REF_12345",
-    "phone": "024XXXXXXX",
-    "network": "mtn",
-    "size_gb": 2,
-    "amount": 7.59,
-    "payment_method": "completed",
-    "fulfillment_status": "completed",
-    "created_at": "2026-07-08T10:00:00.000Z",
-    "updated_at": "2026-07-08T10:05:00.000Z"
-  }
-}`}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Order Status Values */}
-              <Card id="cd-statuses" className="scroll-mt-32">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5 text-purple-400" />
-                    Order Status Values
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2">
-                    {[
-{ status: "pending", desc: "Order created, awaiting processing" },
-  { status: "waiting", desc: "Waiting for number verification or approval" },
-  { status: "number_verification", desc: "Number verification is required before fulfillment" },
-  { status: "processing", desc: "Order is being processed" },
-                      { status: "completed", desc: "Order completed successfully" },
-                      { status: "failed", desc: "Order failed" },
-                      { status: "delivered", desc: "Data delivered to recipient" },
-                    ].map(item => (
-                      <div key={item.status} className="flex gap-3 items-start p-2 rounded-lg hover:bg-muted/50 transition-colors">
-                        <span className="font-mono text-xs bg-muted px-2 py-1 rounded text-cyan-400 whitespace-nowrap">{item.status}</span>
-                        <span className="text-sm text-muted-foreground">{item.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              <CheapDataOrderApiDocs />
 
               <WebhookDocs hasApiKey={!!apiKey && !isRevokedApiKey(apiKey)} />
 
-        {/* Order status and polling guidance */}
-              <Card className="border-cyan-500/30 bg-cyan-500/5"><CardHeader><CardTitle className="text-lg">Order statuses and polling</CardTitle></CardHeader><CardContent className="space-y-3 text-sm text-muted-foreground"><p><span className="font-mono">pending</span>: accepted and queued. <span className="font-mono">processing</span>: delivery in progress.</p><p><span className="font-mono">waiting</span>: MTN approval for a new recipient number; this one-time process takes 3–10 days, is automatic, and needs no repeat order.</p><p><span className="font-mono">delivered</span> / <span className="font-mono">completed</span>: delivered and final. <span className="font-mono">failed</span>: could not be completed and final. <span className="font-mono">refunded</span>: refunded and final.</p><p>Poll every 30–60 seconds and stop at a final status. For <span className="font-mono">waiting</span>, poll only every few hours. Use <span className="font-mono">fulfillment_status</span> to check delivery; <span className="font-mono">order_status</span> holds the same value and <span className="font-mono">payment_status</span> is backward compatibility only.</p></CardContent></Card>
 
               {/* Error Codes */}
               <Card id="cd-errors" className="scroll-mt-32">

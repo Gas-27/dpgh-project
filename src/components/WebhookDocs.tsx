@@ -8,93 +8,73 @@ import WebhookSettings from "@/components/WebhookSettings";
 const BASE_URL = "https://api.dataplug.store/functions/v1";
 
 const EXAMPLE_BODY = `{
-  "id": "evt_271ce71ad8904bd193a08e904b88988b",
+  "id": "evt_3f2a9c0e8b1d4c7fa1e2b3c4d5e6f708",
   "event": "order.status_changed",
-  "created_at": "2026-11-10T10:19:52Z",
+  "created_at": "2026-11-13T09:23:52Z",
   "data": {
-    "order_id": "35660ba7-7c86-4ebb-b837-d6c7e8c80273",
+    "order_id": "1a84e3a4-b25f-44eb-9579-61a19deccfc1",
     "status": "delivered",
     "previous_status": "processing",
-    "phone": "0241234567",
-    "network": "mtn",
-    "size_gb": 5,
+    "phone": "0540391236",
+    "network": "mtn_express",
+    "size_gb": 1,
     "size_gb_text": null,
-    "amount": 19.45,
+    "amount": 3.94,
     "refunded": false,
-    "order_created_at": "2026-11-10T10:19:49.386Z",
-    "updated_at": "2026-11-10T10:21:02.000Z"
+    "order_created_at": "2026-11-13T08:25:24.666+00:00",
+    "updated_at": "2026-11-13T09:23:52.436476+00:00"
   }
 }`;
 
 const NODE_CODE = `const crypto = require("crypto");
-app.post("/webhooks/justbuy", express.raw({ type: "application/json" }), (req, res) => {
-  const ts = req.header("X-Webhook-Timestamp");
-  const sig = (req.header("X-Webhook-Signature") || "").replace("sha256=", "");
+app.post("/webhooks/dataplug", express.raw({ type: "application/json" }), (req, res) => {
+  const ts = req.get("X-Webhook-Timestamp");
+  const sig = (req.get("X-Webhook-Signature") || "").replace("sha256=", "");
   const raw = req.body.toString("utf8");
-  if (!ts || Math.abs(Date.now() / 1000 - Number(ts)) > 300) return res.status(400).send("stale");
   const expected = crypto.createHmac("sha256", process.env.WEBHOOK_SECRET).update(\`\${ts}.\${raw}\`).digest("hex");
-  if (sig.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected))) {
-    return res.status(401).send("bad signature");
-  }
+  const ok = sig.length === expected.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+  if (!ok || Math.abs(Date.now() / 1000 - Number(ts)) > 300) return res.status(401).end();
   const event = JSON.parse(raw);
-  // TODO: skip if event.id already processed, then update your order using event.data.order_id + event.data.status
-  res.sendStatus(200);
+  // update your order using event.data.order_id and event.data.status
+  res.status(200).json({ ok: true });
 });`;
 
-const PHP_CODE = `<?php
-$secret = getenv('WEBHOOK_SECRET');
-$raw = file_get_contents('php://input');
-$ts = $_SERVER['HTTP_X_WEBHOOK_TIMESTAMP'] ?? '';
+const PHP_CODE = `$raw = file_get_contents('php://input');
+$ts  = $_SERVER['HTTP_X_WEBHOOK_TIMESTAMP'] ?? '';
 $sig = str_replace('sha256=', '', $_SERVER['HTTP_X_WEBHOOK_SIGNATURE'] ?? '');
-if (!$ts || abs(time() - (int)$ts) > 300) { http_response_code(400); exit('stale'); }
-$expected = hash_hmac('sha256', $ts . '.' . $raw, $secret);
-if (!hash_equals($expected, $sig)) { http_response_code(401); exit('bad signature'); }
+$expected = hash_hmac('sha256', $ts . '.' . $raw, getenv('WEBHOOK_SECRET'));
+if (!hash_equals($expected, $sig) || abs(time() - (int)$ts) > 300) { http_response_code(401); exit; }
 $event = json_decode($raw, true);
-// TODO: skip if $event['id'] already processed, then update order $event['data']['order_id'] to $event['data']['status']
-http_response_code(200); echo 'ok';`;
-
-const PYTHON_CODE = `import hmac, hashlib, os, time
-from flask import request, abort
-@app.post("/webhooks/justbuy")
-def justbuy_webhook():
-    raw = request.get_data()
-    ts = request.headers.get("X-Webhook-Timestamp", "")
-    sig = request.headers.get("X-Webhook-Signature", "").replace("sha256=", "")
-    if not ts or abs(time.time() - int(ts)) > 300: abort(400)
-    expected = hmac.new(os.environ["WEBHOOK_SECRET"].encode(), f"{ts}.".encode() + raw, hashlib.sha256).hexdigest()
-    if not hmac.compare_digest(expected, sig): abort(401)
-    event = request.get_json()
-    # skip duplicates by event["id"], then update your order
-    return "ok", 200`;
+http_response_code(200);
+echo '{"ok":true}';`;
 
 const CURL_CODE = `curl -X POST ${BASE_URL}/api-webhook-settings \\
   -H "Authorization: Bearer YOUR_API_KEY" -H "Content-Type: application/json" \\
-  -d '{"action":"set","url":"https://yourdomain.com/webhooks/justbuy"}'
+  -d '{"action":"set","url":"https://yourdomain.com/webhooks/dataplug"}'
 
 curl -X POST ${BASE_URL}/api-webhook-settings \\
   -H "Authorization: Bearer YOUR_API_KEY" -H "Content-Type: application/json" \\
   -d '{"action":"test"}'`;
 
 const HEADERS: Array<[string, string]> = [
-  ["X-Webhook-Event", "order.status_changed"],
-  ["X-Webhook-Id", "Unique event id, e.g. evt_271ce71ad8904bd193a08e904b88988b. It stays the same on retries, so use it to ignore duplicates."],
-  ["X-Webhook-Timestamp", "Unix time in seconds"],
+  ["X-Webhook-Event", "order.status_changed or webhook.test"],
+  ["X-Webhook-Id", "Unique event id (evt_...). It is the same on retries, so use it to ignore duplicates."],
+  ["X-Webhook-Timestamp", "Unix seconds when the event was signed"],
   ["X-Webhook-Signature", "sha256=<hex>"],
   ["User-Agent", "JustBuy-Webhooks/1.0"],
 ];
 
-const STATUSES = ["processing", "waiting", "delivered", "refunded", "cancelled", "failed"];
+const STATUSES = ["processing", "waiting", "unverified", "delivered", "failed", "refunded"];
 
 const ACTIONS: Array<[string, string, string]> = [
-  ["get", "-", "Read your webhook settings (secret is masked)"],
-  ["set", "url, enabled", "Save your URL. The full secret is returned the first time only"],
-  ["enable / disable", "-", "Turn deliveries on or off"],
-  ["test", "-", "Send a signed webhook.test event now (once every 10 seconds)"],
-  ["reveal_secret", "-", "Return the full signing secret"],
+  ["get", "-", "Current settings (secret masked)"],
+  ["set", "url, enabled (optional)", "Save your URL. The first save returns the signing secret ONCE. Copy it."],
+  ["enable / disable / delete", "-", "Turn deliveries on or off, or remove the webhook"],
   ["rotate_secret", "-", "Create a new secret. The old one stops working immediately"],
-  ["delete", "-", "Remove your webhook"],
-  ["deliveries", "limit, status, order_id", "List recent deliveries (status: pending, sending, delivered, failed)"],
-  ["redeliver", "delivery_id", "Queue a failed or delivered event to be sent again"],
+  ["reveal_secret", "-", "Return the full signing secret"],
+  ["test", "-", "Send a webhook.test event now (max once per 10 seconds). Returns your server's status code"],
+  ["deliveries", "limit (1-100), status, order_id", "Delivery history. status: pending, sending, delivered, failed"],
+  ["redeliver", "delivery_id", "Send a past event again"],
 ];
 
 async function copyCode(code: string) {
@@ -146,11 +126,12 @@ export default function WebhookDocs({ hasApiKey }: WebhookDocsProps) {
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>
-            Instead of polling <Mono>track-order</Mono>, give us a URL and we POST to it every time one of your API orders changes
-            status (for example processing, waiting, delivered, or refunded).
+            Instead of polling <Mono>/track-order</Mono>, give us a URL and we POST to it every time one of your API orders changes
+            status. Manage the webhook with <Mono>POST /api-webhook-settings</Mono> (same Bearer API key) or from the settings
+            below.
           </p>
           <p>
-            We recommend using webhooks and keeping <Mono>track-order</Mono> as a backup to double-check an order.
+            Use webhooks for instant updates and keep <Mono>GET /track-order</Mono> as a backup: it always has the current status.
           </p>
         </CardContent>
       </Card>
@@ -159,26 +140,17 @@ export default function WebhookDocs({ hasApiKey }: WebhookDocsProps) {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">Setup steps</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ol className="list-decimal space-y-2 pl-5 text-sm text-muted-foreground">
-            <li>Open Webhook Settings above and enter an https URL.</li>
-            <li>Copy the signing secret. It is shown once, so save it in your server settings.</li>
-            <li>Click &quot;Send test event&quot;.</li>
-            <li>Verify signatures on your server (see below).</li>
-          </ol>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg">Events and statuses</CardTitle>
+          <CardTitle className="text-lg">When it fires</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
           <p>
-            <Mono>order.status_changed</Mono> is sent whenever an order status changes. <Mono>webhook.test</Mono> is sent by the
-            &quot;Send test event&quot; button.
+            Event <Mono>order.status_changed</Mono> is sent every time an API order&apos;s <Mono>status</Mono> changes (processing to
+            waiting, waiting to delivered, etc.). It is NOT sent when the order is created: the <Mono>/purchase</Mono> response is
+            your confirmation. Expect several events per order; the last one has a final status (<Mono>delivered</Mono>,{" "}
+            <Mono>failed</Mono> or <Mono>refunded</Mono>).
+          </p>
+          <p>
+            <Mono>webhook.test</Mono> is sent by the <Mono>test</Mono> action.
           </p>
           <div className="flex flex-wrap gap-2">
             {STATUSES.map((status) => (
@@ -209,7 +181,8 @@ export default function WebhookDocs({ hasApiKey }: WebhookDocsProps) {
           <p className="font-semibold text-foreground">Example body</p>
           <CodeBlock code={EXAMPLE_BODY} />
           <p>
-            <Mono>data.order_id</Mono> is the same <Mono>order_id</Mono> returned by the purchase endpoint.
+            <Mono>data.order_id</Mono> is the same <Mono>order_id</Mono> returned by <Mono>/purchase</Mono>, and{" "}
+            <Mono>data.status</Mono> is the same value returned by polling.
           </p>
         </CardContent>
       </Card>
@@ -220,28 +193,25 @@ export default function WebhookDocs({ hasApiKey }: WebhookDocsProps) {
         </CardHeader>
         <CardContent className="space-y-4 text-sm text-muted-foreground">
           <p>
-            The signature is the HMAC-SHA256 of the string <Mono>{"{X-Webhook-Timestamp}.{raw request body}"}</Mono> using your
-            signing secret, hex-encoded, and compared to the part after <Mono>sha256=</Mono>.
+            signature = HMAC-SHA256 with your signing secret (<Mono>whsec_...</Mono>) over the string{" "}
+            <Mono>{'TIMESTAMP + "." + RAW_BODY'}</Mono>, hex-encoded. Compare it to the value after <Mono>sha256=</Mono> in{" "}
+            <Mono>X-Webhook-Signature</Mono>.
           </p>
           <ul className="list-disc space-y-1 pl-5">
-            <li>Use the RAW request body, not re-serialized JSON.</li>
-            <li>Reject the request if the timestamp is more than 5 minutes old.</li>
-            <li>Use a constant-time compare.</li>
+            <li>Use the raw request body exactly as received. Do not re-serialize the JSON.</li>
+            <li>Compare with a constant-time compare.</li>
+            <li>Reject timestamps older than 5 minutes.</li>
           </ul>
           <Tabs defaultValue="node">
             <TabsList>
               <TabsTrigger value="node">Node.js</TabsTrigger>
               <TabsTrigger value="php">PHP</TabsTrigger>
-              <TabsTrigger value="python">Python</TabsTrigger>
             </TabsList>
             <TabsContent value="node">
               <CodeBlock code={NODE_CODE} />
             </TabsContent>
             <TabsContent value="php">
               <CodeBlock code={PHP_CODE} />
-            </TabsContent>
-            <TabsContent value="python">
-              <CodeBlock code={PYTHON_CODE} />
             </TabsContent>
           </Tabs>
         </CardContent>
@@ -252,20 +222,24 @@ export default function WebhookDocs({ hasApiKey }: WebhookDocsProps) {
           <CardTitle className="text-lg">Responding and retries</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3 text-sm text-muted-foreground">
-          <p>
-            Return any 2xx within 10 seconds and do slow work after replying. Redirects are NOT followed.
-          </p>
-          <p>
-            If we do not get a 2xx we retry after 1 min, 5 min, 30 min, 2 h, 6 h and 12 h (7 tries in total, about 21 hours).
-          </p>
-          <p>
-            Events can arrive more than once or out of order. Use <Mono>X-Webhook-Id</Mono> to skip duplicates and trust the latest{" "}
-            <Mono>updated_at</Mono>.
-          </p>
-          <p>
-            After 25 events in a row fail every retry, the webhook is automatically disabled. Fix your server and re-enable it in
-            Webhook Settings. You can resend any event from &quot;Recent deliveries&quot;.
-          </p>
+          <ul className="list-disc space-y-2 pl-5">
+            <li>Reply with any 2xx within 10 seconds. Do slow work after replying.</li>
+            <li>
+              Anything else (non-2xx, redirect, timeout, connection error) is retried: 7 attempts in total, waiting 1 min, 5 min,
+              30 min, 2 h, 6 h, 12 h between them (about 21 hours).
+            </li>
+            <li>
+              After 25 events in a row fail every retry, the webhook is disabled automatically. Fix your endpoint, then{" "}
+              <Mono>enable</Mono> it.
+            </li>
+            <li>
+              Events can arrive more than once and, rarely, out of order. Use <Mono>X-Webhook-Id</Mono> to skip duplicates, and
+              never move an order out of a final status.
+            </li>
+            <li>
+              If you miss events, <Mono>GET /track-order</Mono> always has the current status.
+            </li>
+          </ul>
         </CardContent>
       </Card>
 
@@ -275,23 +249,27 @@ export default function WebhookDocs({ hasApiKey }: WebhookDocsProps) {
         </CardHeader>
         <CardContent>
           <ul className="list-disc space-y-1 pl-5 text-sm text-muted-foreground">
-            <li>https only.</li>
-            <li>Must be a public domain name (no IP addresses, localhost, or private networks).</li>
+            <li>
+              Must be <Mono>https://</Mono>.
+            </li>
+            <li>A public domain name (no IP addresses, no localhost or private networks).</li>
             <li>Port 443 or 8443.</li>
             <li>Maximum 500 characters.</li>
+            <li>No username or password in the URL.</li>
+            <li>Redirects are NOT followed: use the final URL.</li>
           </ul>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg flex items-center gap-2">
+          <CardTitle className="flex items-center gap-2 text-lg">
             <span className="rounded bg-blue-500/20 px-2 py-1 font-mono text-xs text-blue-400">POST</span>
             <span>/api-webhook-settings</span>
           </CardTitle>
           <p className="mt-2 text-sm text-muted-foreground">
-            Manage your webhook from your own server with <Mono>Authorization: Bearer YOUR_API_KEY</Mono>. Every response is JSON:{" "}
-            <Mono>{"{ success, message?, error?, data? }"}</Mono>.
+            Manage your webhook with <Mono>Authorization: Bearer YOUR_API_KEY</Mono> and a JSON body{" "}
+            <Mono>{'{ "action": ... }'}</Mono>, or use the dashboard.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -318,11 +296,6 @@ export default function WebhookDocs({ hasApiKey }: WebhookDocsProps) {
           </div>
         </CardContent>
       </Card>
-
-      <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3 text-sm">
-        <strong>Tip:</strong> use webhooks for instant updates; use <span className="font-mono">track-order</span> to double-check an
-        order or if your webhook was down.
-      </div>
     </section>
   );
 }
