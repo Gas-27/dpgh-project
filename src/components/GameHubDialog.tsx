@@ -6,7 +6,6 @@ import {
   Flame,
   Gamepad2,
   LayoutGrid,
-  MessageCircle,
   Play,
   Puzzle,
   Share2,
@@ -16,7 +15,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import GameHubChat from "@/components/GameHubChat";
+import GameHubTournaments from "@/components/GameHubTournaments";
 import GameHubAnnouncements from "@/components/GameHubAnnouncements";
 import GameHubJoinCard from "@/components/GameHubJoinCard";
 import GameHubLeaderboard from "@/components/GameHubLeaderboard";
@@ -29,7 +28,7 @@ import { applyChanceOrder, buildGameShareUrl, fetchGameRewardSettings, fetchGame
 import { useShowcaseWinCounts } from "@/lib/gameHubShowcase";
 import { clearPendingChance, readPendingChance } from "@/lib/gameHubChances";
 import { leaveGameHubUrl, markGameHubLanding, parseGameHubPath, syncGameHubUrl } from "@/lib/gameHubRoute";
-import { useConversations, useGameHubRealtime } from "@/lib/gameHubSocial";
+import { useGameHubRealtime } from "@/lib/gameHubSocial";
 import { findHubGame, getGameBlurb, getGameHubDirectUrl, hotGames, hubGames, stripGames, tagClasses, type GameRuleSummary, type HubGame } from "@/lib/gameHubGames";
 
 type RuleMap = Record<string, GameRuleSummary>;
@@ -328,8 +327,6 @@ export default function GameHubDialog() {
   const rules: RuleMap = Object.fromEntries((settings ?? []).filter((row): row is GameRuleSummary => Boolean(row?.game_id)).map((row) => [row.game_id, row]));
 
   useGameHubRealtime(user?.id, open);
-  const { data: conversations = [] } = useConversations(user?.id, open);
-  const unreadCount = conversations.reduce((total, conversation) => total + conversation.unread, 0);
 
   useEffect(() => {
     const handleOpen = (event: Event) => {
@@ -414,15 +411,14 @@ export default function GameHubDialog() {
         <Tabs defaultValue="games" className="flex min-h-0 flex-1 flex-col">
           <TabsList className="mx-4 mt-3 grid grid-cols-3 bg-violet-950/80 text-violet-200">
             <TabsTrigger value="games" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white"><Gamepad2 className="mr-2 h-4 w-4" aria-hidden="true" /> Games</TabsTrigger>
-            <TabsTrigger value="messages" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white">
-              <MessageCircle className="mr-2 h-4 w-4" aria-hidden="true" /> Chat
-              {unreadCount > 0 ? <span className="ml-1.5 rounded-full bg-rose-500 px-1.5 text-[10px] font-bold text-white">{unreadCount}</span> : null}
+            <TabsTrigger value="tournaments" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white">
+              <Trophy className="mr-2 h-4 w-4" aria-hidden="true" /> Tournament
             </TabsTrigger>
             <TabsTrigger value="leaderboard" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white"><Puzzle className="mr-2 h-4 w-4" aria-hidden="true" /> Leaderboard</TabsTrigger>
           </TabsList>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-4">
             <TabsContent value="games" className="mt-0"><GameHubJoinCard signedIn={Boolean(user)} /><GamesTab videos={videos} rules={rules} wins={wins} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
-            <TabsContent value="messages" className="mt-0"><GameHubChat user={user} onPlayGame={requestPlay} /></TabsContent>
+            <TabsContent value="tournaments" className="mt-0"><GameHubTournaments signedIn={Boolean(user)} /></TabsContent>
             <TabsContent value="leaderboard" className="mt-0"><GameHubLeaderboard /></TabsContent>
           </div>
         </Tabs>
