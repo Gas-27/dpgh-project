@@ -90,6 +90,25 @@ Deno.serve(async (req) => {
     console.log(`[CREATE-PAYOUT] Caller ${user.id} isAdmin: ${isAdmin}`);
 
     // =============================================
+    // Admin withdrawal pause (per role). Admins acting on behalf of a store are not blocked.
+    // =============================================
+    if (!isAdmin) {
+      const { data: settings } = await supabase
+        .from("app_settings")
+        .select("withdrawal_controls")
+        .eq("id", 1)
+        .maybeSingle();
+      const control = (settings?.withdrawal_controls ?? {})[requester_type];
+      if (control?.paused) {
+        const message = String(control.message ?? "").trim() || "Withdrawals are temporarily unavailable. Please try again later.";
+        return new Response(JSON.stringify({ success: false, error: message, withdrawals_paused: true }), {
+          status: 423,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
+    // =============================================
     // STEP 1: Validate requester and check balance
     // Look up the store by id ONLY (service role bypasses RLS),
     // then authorize: allow if caller owns the store OR is an admin.

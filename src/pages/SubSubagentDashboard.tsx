@@ -4,6 +4,7 @@ import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
+  import { getWithdrawalPauseMessage } from "@/lib/withdrawalControls";
 import { debitOwnWallet, refundFailedOrder, creditUpline, newOrderId } from "@/lib/wallet";
    import PromoCodesPanel from "@/components/PromoCodesPanel";
 import { refundStorefrontOrder } from "@/services/paystackRefund";
@@ -1169,6 +1170,10 @@ const handleSaveStore = async () => {
 
   const handleRequestWithdrawal = async () => {
     if (!withdrawAmount || !subagentStore) return;
+    {
+      const pauseMessage = await getWithdrawalPauseMessage("sub_subagent");
+      if (pauseMessage) { toast({ title: "Withdrawals paused", description: pauseMessage, variant: "destructive" }); return; }
+    }
     const amount = parseFloat(withdrawAmount);
 
     if (amount < 10) { toast({ title: "Error", description: "Minimum withdrawal is GHC 10.00", variant: "destructive" }); return; }

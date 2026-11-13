@@ -4,6 +4,7 @@ import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { supabase } from "@/integrations/supabase/client";
+  import { getWithdrawalPauseMessage } from "@/lib/withdrawalControls";
   import { debitOwnWallet, refundFailedOrder, transferToChild, newOrderId } from "@/lib/wallet";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
 import PartnerServicesApiDocs from "@/components/PartnerServicesApiDocs";
@@ -1864,6 +1865,10 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
 
   const handleWithdraw = async () => {
     if (!store) return;
+    if (!impersonatedUserId) {
+      const pauseMessage = await getWithdrawalPauseMessage("agent");
+      if (pauseMessage) { toast({ title: "Withdrawals paused", description: pauseMessage, variant: "destructive" }); return; }
+    }
     if (hasPendingWithdrawal) { toast({ title: "Pending withdrawal exists", variant: "destructive" }); return; }
     
     const amt = parseFloat(withdrawAmount);

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getTransferRecipients, getAgentBalance, getSubagentBalance, createPayoutRequest, TransferRecipient, Balance } from "@/lib/withdrawal";
 import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
+import { getWithdrawalPauseMessage } from "@/lib/withdrawalControls";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,6 +83,10 @@ export default function WithdrawalForm({
     setSuccess(null);
 
     try {
+      const pauseMessage = await getWithdrawalPauseMessage(userRole === "agent" ? "agent" : "subagent");
+      if (pauseMessage) {
+        throw new Error(pauseMessage);
+      }
       if (!selectedRecipient) {
         throw new Error("Please select a recipient");
       }

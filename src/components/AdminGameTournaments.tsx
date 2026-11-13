@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import TournamentBracket from "@/components/TournamentBracket";
 import { useToast } from "@/hooks/use-toast";
 import {
   cancelAdminTournament,
@@ -135,6 +136,11 @@ function TournamentForm({ editing, onDone }: { editing: AdminTournament | null; 
           </div>
         </div>
         {locked ? <p className="text-xs text-muted-foreground">Players have joined, so fee, prize and pool size are locked. Stages can still change.</p> : null}
+        {editing?.status === "live" ? (
+          <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs">
+            This tournament is live. You can change the title, description and the games or wins needed for any stage that has not started yet. Stages already in play keep their games.
+          </p>
+        ) : null}
 
         <div className="space-y-3">
           <h4 className="text-sm font-semibold">Stages</h4>
@@ -171,7 +177,7 @@ function TournamentForm({ editing, onDone }: { editing: AdminTournament | null; 
         <div className="flex flex-wrap gap-2">
           <Button onClick={() => save.mutate(true)} disabled={!valid || save.isPending}>
             {save.isPending ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            {editing?.status === "open" ? "Save changes" : "Publish tournament"}
+            {editing?.status === "open" || editing?.status === "live" ? "Save changes" : "Publish tournament"}
           </Button>
           {!editing || editing.status === "draft" ? (
             <Button variant="outline" onClick={() => save.mutate(false)} disabled={!valid || save.isPending}>Save as draft</Button>
@@ -197,7 +203,13 @@ function PlayerManager({ id }: { id: string }) {
   });
   if (!data) return null;
   return (
-    <ul className="mt-3 flex flex-wrap gap-2">
+    <div className="mt-3 space-y-3">
+    {data.matches.length > 0 ? (
+      <div className="overflow-x-auto rounded-lg bg-violet-950 p-2">
+        <TournamentBracket detail={data} selectedId={null} onSelect={() => undefined} />
+      </div>
+    ) : null}
+    <ul className="flex flex-wrap gap-2">
       {data.entries.map((entry) => (
         <li key={entry.user_id} className="flex items-center gap-2 rounded-full border px-3 py-1 text-xs">
           <span className={entry.status === "disqualified" ? "line-through" : ""}>@{entry.username}</span>
@@ -216,6 +228,7 @@ function PlayerManager({ id }: { id: string }) {
       ))}
       {data.entries.length === 0 ? <li className="text-xs text-muted-foreground">No players yet.</li> : null}
     </ul>
+    </div>
   );
 }
 
@@ -287,11 +300,20 @@ export default function AdminGameTournaments() {
                 {t.winner_name ? <p className="mt-1 text-xs font-medium">Winner @{t.winner_name} ({t.prize_claimed ? "prize claimed" : "prize not claimed yet"})</p> : null}
               </div>
               <div className="flex flex-wrap gap-2">
-                {t.status === "draft" || t.status === "open" ? (
+                {t.status === "draft" || t.status === "open" || t.status === "live" ? (
                   <Button size="sm" variant="outline" onClick={() => setFormFor(t)}><Pencil className="mr-1 h-3.5 w-3.5" /> Edit</Button>
                 ) : null}
-                {t.status === "open" && t.entries_count >= 2 ? (
-                  <Button size="sm" onClick={() => start.mutate(t.id)} disabled={start.isPending}><Play className="mr-1 h-3.5 w-3.5" /> Start now</Button>
+                {t.status === "open" ? (
+                  <Button
+                    size="sm"
+                    disabled={start.isPending || t.entries_count < 2}
+                    onClick={() => {
+                      const short = t.entries_count < t.max_players;
+                      if (!short || window.confirm(`Only ${t.entries_count} of ${t.max_players} players have joined. Start now? Joining closes and players are paired at random.`)) start.mutate(t.id);
+                    }}
+                  >
+                    <Play className="mr-1 h-3.5 w-3.5" /> {t.entries_count < t.max_players ? `Start with ${t.entries_count} players` : "Start now"}
+                  </Button>
                 ) : null}
                 {t.status === "open" || t.status === "live" ? (
                   <Button
