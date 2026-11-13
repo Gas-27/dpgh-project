@@ -55,11 +55,11 @@ Error 429 - same number and same size ordered within 65 seconds:
 }`;
 
 const ORDERS_REQUEST = `# Get your latest orders (default limit 50)
-curl -X GET "${BASE_URL}/get-api-user-orders" \\
+curl -X GET "${BASE_URL}/get-orders" \\
   -H "Authorization: Bearer YOUR_API_KEY"
 
 # Filter by status and network, with pagination
-curl -X GET "${BASE_URL}/get-api-user-orders?status=delivered&network=mtn&limit=10&offset=0" \\
+curl -X GET "${BASE_URL}/get-orders?status=delivered&network=mtn&limit=10&offset=0" \\
   -H "Authorization: Bearer YOUR_API_KEY"`;
 
 const ORDERS_RESPONSE = `{
@@ -202,10 +202,13 @@ export default function CheapDataOrderApiDocs() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
             <MethodBadge method="GET" />
-            <span>/get-api-user-orders</span>
+            <span>/get-orders</span>
           </CardTitle>
           <p className="mt-2 text-sm text-muted-foreground">
             Returns the orders placed by the authenticated API user, newest first. API orders are paid from the API wallet.
+          </p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            <Mono>GET /get-api-user-orders</Mono> is an identical alias of this endpoint.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -279,7 +282,7 @@ export default function CheapDataOrderApiDocs() {
           </CardTitle>
           <p className="mt-2 text-sm text-muted-foreground">
             Every order has a single delivery status in the <Mono>status</Mono> field. Polling (<Mono>/track-order</Mono>,{" "}
-            <Mono>/get-api-user-orders</Mono>) and the webhook (<Mono>data.status</Mono>) always return the same value.
+            <Mono>/get-orders</Mono>) and the webhook (<Mono>data.status</Mono>) always return the same value.
           </p>
         </CardHeader>
         <CardContent className="space-y-4">
