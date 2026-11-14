@@ -93,11 +93,20 @@ Deno.serve(async (req) => {
     // Admin withdrawal pause (per role). Admins acting on behalf of a store are not blocked.
     // =============================================
     if (!isAdmin) {
-      const { data: settings } = await supabase
+      const { data: settings, error: settingsError } = await supabase
         .from("app_settings")
         .select("withdrawal_controls")
         .eq("id", 1)
         .maybeSingle();
+      // 42703 = column missing, i.e. the pause migration has not run so no pause can exist yet.
+      // Any other failure means we cannot confirm withdrawals are allowed, so refuse before touching any balance.
+      if (settingsError && settingsError.code !== "42703") {
+        console.error("[CREATE-PAYOUT] Could not read withdrawal controls:", settingsError.message);
+        return new Response(JSON.stringify({ success: false, error: "Withdrawals are temporarily unavailable. Please try again shortly." }), {
+          status: 503,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const control = (settings?.withdrawal_controls ?? {})[requester_type];
       if (control?.paused) {
         const message = String(control.message ?? "").trim() || "Withdrawals are temporarily unavailable. Please try again later.";
