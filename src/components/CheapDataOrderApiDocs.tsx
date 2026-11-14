@@ -12,6 +12,50 @@ const STATUS_ROWS: Array<{ status: string; meaning: string; final: boolean }> = 
   { status: "refunded", meaning: "Amount returned to your API wallet.", final: true },
 ];
 
+const BALANCE_CURL = `curl -X GET "${BASE_URL}/get-balance" \\
+  -H "Authorization: Bearer YOUR_API_KEY"`;
+
+const BALANCE_JS = `const res = await fetch("${BASE_URL}/get-balance", {
+  headers: { Authorization: "Bearer YOUR_API_KEY" },
+});
+const data = await res.json();
+console.log(data.data.balance);`;
+
+const BALANCE_PHP = `$ch = curl_init("${BASE_URL}/get-balance");
+curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: Bearer YOUR_API_KEY"]);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+echo $response["data"]["balance"];`;
+
+const BALANCE_RESPONSE = `{
+  "success": true,
+  "data": {
+    "balance": 152.5,
+    "wallet_balance": 152.5,
+    "currency": "GHS",
+    "checked_at": "2026-11-14T17:45:00.000Z"
+  }
+}`;
+
+const BALANCE_FIELDS: Array<{ field: string; type: string; description: string }> = [
+  { field: "balance", type: "number", description: "Available API wallet balance in Ghana cedis" },
+  { field: "wallet_balance", type: "number", description: "Same value as balance (matches the field name returned by Purchase)" },
+  { field: "currency", type: "string", description: 'Always "GHS"' },
+  { field: "checked_at", type: "string", description: "ISO timestamp of when the balance was read" },
+];
+
+const BALANCE_ERRORS: Array<{ code: string; body: string; meaning: string }> = [
+  {
+    code: "401",
+    body: '{"success": false, "error": "Missing or invalid Authorization header. Use: Bearer YOUR_API_KEY"}',
+    meaning: "No key sent",
+  },
+  { code: "401", body: '{"success": false, "error": "Invalid API key"}', meaning: "Key not recognised" },
+  { code: "403", body: '{"success": false, "error": "API key is inactive"}', meaning: "Key is inactive" },
+  { code: "405", body: "-", meaning: "Method other than GET/POST" },
+  { code: "500", body: '{"success": false, "error": "Internal server error"}', meaning: "Server error" },
+];
+
 const PURCHASE_REQUEST = `curl -X POST "${BASE_URL}/purchase" \\
   -H "Authorization: Bearer YOUR_API_KEY" \\
   -H "Content-Type: application/json" \\
@@ -133,6 +177,98 @@ function MethodBadge({ method }: { method: "GET" | "POST" }) {
 export default function CheapDataOrderApiDocs() {
   return (
     <>
+      <Card id="cd-check-balance" className="scroll-mt-32">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <MethodBadge method="GET" />
+            <span>/get-balance</span>
+          </CardTitle>
+          <p className="mt-1 text-sm font-semibold">Check Wallet Balance</p>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Returns the current balance of your API wallet — the same balance that is charged when you place an order through the
+            API. Use it before placing orders to make sure you have enough funds.
+          </p>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <p className="mb-2 text-sm font-semibold">Authentication:</p>
+            <ul className="ml-4 space-y-1 text-sm text-muted-foreground">
+              <li>
+                • Send your API key in the header <Mono>Authorization: Bearer YOUR_API_KEY</Mono>. (
+                <Mono>x-api-key: YOUR_API_KEY</Mono> is also accepted.)
+              </li>
+              <li>• Never put the API key in the URL. No request body is needed.</li>
+            </ul>
+          </div>
+          <div>
+            <p className="mb-2 text-xs text-muted-foreground">Example Request (cURL):</p>
+            <Code>{BALANCE_CURL}</Code>
+          </div>
+          <div>
+            <p className="mb-2 text-xs text-muted-foreground">JavaScript:</p>
+            <Code>{BALANCE_JS}</Code>
+          </div>
+          <div>
+            <p className="mb-2 text-xs text-muted-foreground">PHP:</p>
+            <Code>{BALANCE_PHP}</Code>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-semibold">Success Response (200):</p>
+            <Code>{BALANCE_RESPONSE}</Code>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-semibold">Response Fields:</p>
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-muted text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2">Field</th>
+                    <th className="px-3 py-2">Type</th>
+                    <th className="px-3 py-2">Description</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {BALANCE_FIELDS.map((row) => (
+                    <tr key={row.field} className="border-t border-border align-top">
+                      <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-cyan-400">{row.field}</td>
+                      <td className="whitespace-nowrap px-3 py-2 text-muted-foreground">{row.type}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{row.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-semibold">Errors:</p>
+            <div className="overflow-x-auto rounded-lg border border-border">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-muted text-xs uppercase text-muted-foreground">
+                  <tr>
+                    <th className="px-3 py-2">Status</th>
+                    <th className="px-3 py-2">Response</th>
+                    <th className="px-3 py-2">Meaning</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {BALANCE_ERRORS.map((row) => (
+                    <tr key={`${row.code}-${row.meaning}`} className="border-t border-border align-top">
+                      <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-red-400">{row.code}</td>
+                      <td className="break-words px-3 py-2 font-mono text-xs text-muted-foreground">{row.body}</td>
+                      <td className="px-3 py-2 text-muted-foreground">{row.meaning}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-muted-foreground">
+            <strong className="text-foreground">Tip:</strong> The Purchase response also returns <Mono>wallet_balance</Mono> after
+            each order, so you don&apos;t need to call this endpoint after every purchase.
+          </div>
+        </CardContent>
+      </Card>
+
       <Card id="cd-purchase" className="scroll-mt-32">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">

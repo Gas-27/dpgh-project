@@ -5,6 +5,7 @@ export const CHEAP_DATA_NAV: ApiDocNavItem[] = [
   { id: "cd-delivery", label: "Delivery Progress" },
   { id: "cd-networks", label: "Networks" },
   { id: "cd-get-packages", label: "Get Packages" },
+  { id: "cd-check-balance", label: "Check Wallet Balance" },
   { id: "cd-purchase", label: "Purchase" },
   { id: "cd-get-orders", label: "Get Orders" },
   { id: "cd-track-order", label: "Track Order" },
