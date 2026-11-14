@@ -1,0 +1,1857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json?v=10">
+  <meta name="theme-color" content="#9B30FF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="GameHub">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=10">
+  <link rel="icon" type="image/png" href="/icon.png?v=10">
+  <meta property="og:image" content="https://www.gamehubgh.com/icon.png?v=10">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://www.gamehubgh.com/icon.png?v=10">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Brain Memory - Gamehub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;600;700&display=swap" rel="stylesheet">
+    <script src="/games/gh-guard.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="/js/game-sfx.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Rajdhani', sans-serif;
+            background: linear-gradient(135deg, #0a0a1a 0%, #1a0a2e 50%, #0a1a2e 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ============ HOMEPAGE STYLES ============ */
+        #homepage {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            transition: opacity 0.8s ease, transform 0.8s ease;
+        }
+
+        #homepage.hidden {
+            opacity: 0;
+            transform: scale(1.1);
+            pointer-events: none;
+        }
+
+        #homeCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+        }
+
+        .home-content {
+            text-align: center;
+            z-index: 10;
+            padding: 40px;
+            max-width: 600px;
+        }
+
+        .brain-icon {
+            font-size: 80px;
+            margin-bottom: 20px;
+            animation: brainPulse 2s ease-in-out infinite;
+            filter: drop-shadow(0 0 30px rgba(76, 201, 240, 0.6));
+        }
+
+        @keyframes brainPulse {
+            0%, 100% { transform: scale(1); filter: drop-shadow(0 0 30px rgba(76, 201, 240, 0.6)); }
+            50% { transform: scale(1.1); filter: drop-shadow(0 0 50px rgba(76, 201, 240, 0.9)); }
+        }
+
+        .game-logo {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 3.5em;
+            font-weight: 900;
+            background: linear-gradient(135deg, #4cc9f0 0%, #4361ee 25%, #7209b7 50%, #4361ee 75%, #4cc9f0 100%);
+            background-size: 200% auto;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            animation: shimmer 3s linear infinite;
+            letter-spacing: 3px;
+            margin-bottom: 10px;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: 0% center; }
+            100% { background-position: 200% center; }
+        }
+
+        /* Enhanced level progression animations */
+        @keyframes levelUp {
+            0% {
+                transform: scale(0) rotateY(0deg);
+                opacity: 0;
+            }
+            50% {
+                transform: scale(1.1) rotateY(180deg);
+            }
+            100% {
+                transform: scale(1) rotateY(360deg);
+                opacity: 1;
+            }
+        }
+
+        @keyframes perfectMatch {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+
+        .level-up-effect {
+            animation: levelUp 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+            color: #4cc9f0;
+            font-weight: bold;
+        }
+
+        .perfect-match {
+            animation: perfectMatch 0.4s ease-in-out;
+        }
+
+        .game-subtitle {
+            font-size: 1.3em;
+            color: #4cc9f0;
+            letter-spacing: 6px;
+            text-transform: uppercase;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+
+        .menu-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .menu-btn {
+            font-family: 'Orbitron', sans-serif;
+            padding: 18px 50px;
+            font-size: 1.2em;
+            font-weight: 700;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            position: relative;
+            overflow: hidden;
+            min-width: 280px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .menu-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+            transition: left 0.5s;
+        }
+
+        .menu-btn:hover::before {
+            left: 100%;
+        }
+
+        .menu-btn:hover {
+            transform: scale(1.05) translateY(-3px);
+        }
+
+        .btn-play {
+            background: linear-gradient(135deg, #4cc9f0, #4361ee);
+            color: white;
+            box-shadow: 0 8px 30px rgba(76, 201, 240, 0.4), inset 0 2px 0 rgba(255,255,255,0.2);
+        }
+
+        .btn-play:hover {
+            box-shadow: 0 12px 40px rgba(76, 201, 240, 0.6), inset 0 2px 0 rgba(255,255,255,0.2);
+        }
+
+        .btn-levels {
+            background: linear-gradient(135deg, #7209b7, #560bad);
+            color: white;
+            box-shadow: 0 8px 30px rgba(114, 9, 183, 0.4), inset 0 2px 0 rgba(255,255,255,0.2);
+        }
+
+        .btn-levels:hover {
+            box-shadow: 0 12px 40px rgba(114, 9, 183, 0.6), inset 0 2px 0 rgba(255,255,255,0.2);
+        }
+
+        .btn-how {
+            background: linear-gradient(135deg, #f72585, #b5179e);
+            color: white;
+            box-shadow: 0 8px 30px rgba(247, 37, 133, 0.4), inset 0 2px 0 rgba(255,255,255,0.2);
+        }
+
+        .btn-how:hover {
+            box-shadow: 0 12px 40px rgba(247, 37, 133, 0.6), inset 0 2px 0 rgba(255,255,255,0.2);
+        }
+
+        .btn-scores {
+            background: linear-gradient(135deg, #ffd700, #ff8c00);
+            color: #1a1a2e;
+            box-shadow: 0 8px 30px rgba(255, 215, 0, 0.4), inset 0 2px 0 rgba(255,255,255,0.2);
+        }
+
+        .btn-scores:hover {
+            box-shadow: 0 12px 40px rgba(255, 215, 0, 0.6), inset 0 2px 0 rgba(255,255,255,0.2);
+        }
+
+        .features-grid {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .feature-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            padding: 20px 25px;
+            text-align: center;
+            transition: all 0.3s ease;
+            min-width: 140px;
+        }
+
+        .feature-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-5px);
+            border-color: rgba(76, 201, 240, 0.5);
+        }
+
+        .feature-icon {
+            font-size: 2em;
+            margin-bottom: 8px;
+        }
+
+        .feature-title {
+            font-size: 1em;
+            font-weight: 700;
+            color: #4cc9f0;
+            margin-bottom: 3px;
+        }
+
+        .feature-desc {
+            font-size: 0.8em;
+            color: #aaa;
+        }
+
+        /* ============ MODAL STYLES ============ */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            backdrop-filter: blur(10px);
+            padding: 20px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: linear-gradient(135deg, #1a1a3a 0%, #0a0a2a 100%);
+            border: 2px solid #4cc9f0;
+            border-radius: 25px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 85vh;
+            overflow-y: auto;
+            position: relative;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.8);
+        }
+
+        .modal-close {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            font-size: 1.8em;
+            background: none;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            transition: color 0.3s;
+        }
+
+        .modal-close:hover {
+            color: #ff4444;
+        }
+
+        .modal-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.8em;
+            color: #4cc9f0;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .instruction-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 15px;
+            margin-bottom: 15px;
+            padding: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 12px;
+            border-left: 3px solid #4cc9f0;
+        }
+
+        .instruction-icon {
+            font-size: 1.5em;
+            min-width: 40px;
+            text-align: center;
+        }
+
+        .instruction-text h3 {
+            color: #f72585;
+            margin-bottom: 3px;
+            font-size: 1.1em;
+        }
+
+        .instruction-text p {
+            color: #aaa;
+            font-size: 0.9em;
+            line-height: 1.4;
+        }
+
+        .modal-footer {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .btn-got-it {
+            font-family: 'Orbitron', sans-serif;
+            padding: 12px 40px;
+            font-size: 1.1em;
+            font-weight: 700;
+            background: linear-gradient(135deg, #4cc9f0, #4361ee);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-got-it:hover {
+            transform: scale(1.05);
+            box-shadow: 0 10px 30px rgba(76, 201, 240, 0.5);
+        }
+
+        /* Levels Modal */
+        .levels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(55px, 1fr));
+            gap: 8px;
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 10px;
+            margin-bottom: 15px;
+        }
+
+        .level-btn {
+            padding: 12px 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(76, 201, 240, 0.3);
+            border-radius: 10px;
+            color: white;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            font-size: 0.9em;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .level-btn:hover:not(:disabled) {
+            background: rgba(76, 201, 240, 0.3);
+            transform: scale(1.05);
+        }
+
+        .level-btn.unlocked {
+            background: rgba(76, 201, 240, 0.2);
+            border-color: #4cc9f0;
+        }
+
+        .level-btn.current {
+            background: linear-gradient(135deg, #4361ee, #7209b7);
+            border-color: #f72585;
+            box-shadow: 0 0 15px rgba(247, 37, 133, 0.5);
+        }
+
+        .level-btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        /* Scores Modal */
+        .score-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 15px;
+            background: rgba(255, 255, 255, 0.05);
+            margin-bottom: 8px;
+            border-radius: 10px;
+            border-left: 3px solid #ffd700;
+        }
+
+        .score-value {
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .total-score-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5em;
+            color: #ffd700;
+            text-align: center;
+            margin: 20px 0;
+            text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+        }
+
+        /* ============ GAME CONTAINER ============ */
+        #game-container {
+            display: none;
+            width: 100%;
+            max-width: 500px;
+            height: 100%;
+            max-height: 100%;
+            margin: 0 auto;
+            flex-direction: column;
+            position: relative;
+            padding: 15px;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        #game-container.active {
+            display: flex;
+            opacity: 1;
+        }
+
+        .game-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+            flex-shrink: 0;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid #555;
+            color: #aaa;
+            padding: 8px 16px;
+            border-radius: 25px;
+            cursor: pointer;
+            font-family: 'Rajdhani', sans-serif;
+            font-size: 0.9em;
+            font-weight: 600;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #888;
+            color: white;
+        }
+
+        .game-title {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5em;
+            background: linear-gradient(135deg, #4cc9f0, #4361ee);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .game-stats {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .stat-bar {
+            flex: 1;
+            background: rgba(10, 15, 35, 0.8);
+            border-radius: 12px;
+            padding: 10px;
+            text-align: center;
+            border: 2px solid;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .stat-bar.level-stat { border-color: #4cc9f0; }
+        .stat-bar.score-stat { border-color: #ffd700; }
+        .stat-bar.lives-stat { border-color: #f72585; }
+
+        .stat-value {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1.5em;
+            font-weight: bold;
+        }
+
+        .level-stat .stat-value { color: #4cc9f0; }
+        .score-stat .stat-value { color: #ffd700; }
+        .lives-stat .stat-value { color: #f72585; }
+
+        .stat-label {
+            font-size: 0.7em;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .timer-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 12px;
+            flex-shrink: 0;
+        }
+
+        .timer-label {
+            font-size: 0.9em;
+            color: #aaa;
+        }
+
+        .timer-bar {
+            flex: 1;
+            max-width: 200px;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .timer-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4cc9f0, #4361ee);
+            border-radius: 4px;
+            width: 100%;
+            transition: width 0.1s linear, background 0.3s;
+        }
+
+        .tile-grid-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 0;
+            padding: 10px;
+        }
+
+        .tile-grid {
+            display: grid;
+            gap: 6px;
+            width: 100%;
+            max-width: 350px;
+            aspect-ratio: 1/1;
+        }
+
+        .tile {
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
+            border: 2px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 1rem;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .tile::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        .tile:hover::before {
+            opacity: 0.5;
+        }
+
+        .tile.active {
+            transform: scale(0.92);
+            box-shadow: 0 0 30px currentColor, inset 0 0 20px rgba(255,255,255,0.3);
+            border-color: rgba(255, 255, 255, 0.8);
+            animation: tilePulse 0.4s ease;
+        }
+
+        @keyframes tilePulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.88); }
+            100% { transform: scale(0.92); }
+        }
+
+        .game-controls {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-top: 12px;
+            flex-shrink: 0;
+        }
+
+        .control-btn {
+            padding: 10px 20px;
+            font-size: 0.9em;
+            font-weight: bold;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .control-btn.pause {
+            background: linear-gradient(135deg, #4361ee, #3a0ca3);
+            color: white;
+        }
+
+        .control-btn.restart {
+            background: linear-gradient(135deg, #f72585, #b5179e);
+            color: white;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .game-message {
+            margin-top: 12px;
+            padding: 15px;
+            border-radius: 12px;
+            background: rgba(10, 15, 35, 0.8);
+            text-align: center;
+            border: 2px solid rgba(76, 201, 240, 0.3);
+            font-size: 1em;
+            flex-shrink: 0;
+            min-height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .game-message.level-up {
+            background: rgba(0, 200, 100, 0.2);
+            border-color: #00ff88;
+            animation: celebrate 0.5s ease;
+        }
+
+        .game-message.game-over {
+            background: rgba(247, 37, 133, 0.2);
+            border-color: #f72585;
+            animation: shake 0.5s ease;
+        }
+
+        @keyframes celebrate {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.02); }
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        .play-again-btn {
+            padding: 10px 25px;
+            font-size: 0.95em;
+            font-weight: bold;
+            background: linear-gradient(135deg, #4cc9f0, #4361ee);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .play-again-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 5px 20px rgba(76, 201, 240, 0.5);
+        }
+
+        /* Grid sizes */
+        .grid-3x3 { grid-template-columns: repeat(3, 1fr); }
+        .grid-4x4 { grid-template-columns: repeat(4, 1fr); }
+        .grid-5x5 { grid-template-columns: repeat(5, 1fr); }
+        .grid-6x6 { grid-template-columns: repeat(6, 1fr); }
+        .grid-7x7 { grid-template-columns: repeat(7, 1fr); }
+
+        /* Back to Gamehub Button */
+        .back-to-gamehubb {
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 3000;
+            background: linear-gradient(135deg, #ff6b6b, #ee5a24);
+            color: white;
+            border: none;
+            border-radius: 25px;
+            padding: 10px 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            font-family: 'Rajdhani', sans-serif;
+        }
+
+        .back-to-gamehubb:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(238, 90, 36, 0.5);
+            background: linear-gradient(135deg, #ff7979, #f79f1f);
+        }
+
+        .back-to-gamehubb:active {
+            transform: translateY(0);
+        }
+
+        .version-text {
+            position: fixed;
+            bottom: 10px;
+            right: 15px;
+            color: #333;
+            font-size: 0.75em;
+        }
+
+        #score-chart-container {
+            max-height: 200px;
+            margin: 15px 0;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+        }
+
+        #score-chart {
+            max-height: 180px;
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .home-content { padding: 20px; }
+            .game-logo { font-size: 2.2em; }
+            .game-subtitle { font-size: 1em; letter-spacing: 4px; }
+            .menu-btn { padding: 14px 30px; font-size: 1em; min-width: 240px; }
+            .features-grid { gap: 10px; }
+            .feature-card { padding: 15px; min-width: 100px; }
+            .modal-content { padding: 20px; }
+            .levels-grid { grid-template-columns: repeat(5, 1fr); }
+            .game-title { font-size: 1.2em; }
+            .stat-value { font-size: 1.2em; }
+            .tile-grid { max-width: 280px; gap: 4px; }
+            .back-to-gamehubb { 
+                padding: 8px 14px; 
+                font-size: 0.8rem;
+                top: 10px;
+                left: 10px;
+            }
+        }
+
+        @media (max-height: 600px) {
+            .brain-icon { font-size: 50px; margin-bottom: 10px; }
+            .game-logo { font-size: 2em; }
+            .game-subtitle { margin-bottom: 20px; }
+            .menu-btn { padding: 12px 30px; }
+            .features-grid { display: none; }
+        }
+    </style>
+<script src="/js/mobile-ux.js?v=20260808" defer></script>
+</head>
+<body>
+    <!-- Back to Gamehub Button -->
+    <a href="/index.html" class="back-to-gamehubb" id="back-to-gamehubb-btn">
+        <i class="fas fa-arrow-left"></i> Back to Gamehub
+    </a>
+
+    <!-- Homepage -->
+    <div id="homepage">
+        <canvas id="homeCanvas"></canvas>
+        
+        <div class="home-content">
+            <div class="brain-icon">🧠</div>
+            
+            <h1 class="game-logo">BRAIN MEMORY</h1>
+            <p class="game-subtitle">Train Your Mind</p>
+            
+            <div class="menu-buttons">
+                <button class="menu-btn btn-play" onclick="startGame()">
+                    <i class="fas fa-play"></i> Play Now
+                </button>
+                <button class="menu-btn btn-levels" onclick="showLevelsModal()">
+                    <i class="fas fa-layer-group"></i> Levels
+                </button>
+                <button class="menu-btn btn-how" onclick="showHowToPlay()">
+                    <i class="fas fa-question-circle"></i> How to Play
+                </button>
+                <button class="menu-btn btn-scores" onclick="showScoresModal()">
+                    <i class="fas fa-trophy"></i> Scores
+                </button>
+            </div>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <div class="feature-title">Focus</div>
+                    <div class="feature-desc">Test your memory</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <div class="feature-title">Speed</div>
+                    <div class="feature-desc">Beat the timer</div>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🏆</div>
+                    <div class="feature-title">Progress</div>
+                    <div class="feature-desc">100 levels</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- How to Play Modal -->
+    <div id="howToPlayModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('howToPlayModal')">×</button>
+            <h2 class="modal-title"><i class="fas fa-question-circle"></i> How to Play</h2>
+            
+            <div class="instruction-item">
+                <div class="instruction-icon">👀</div>
+                <div class="instruction-text">
+                    <h3>Watch Carefully</h3>
+                    <p>Observe the sequence of tiles that light up. Memorize the order!</p>
+                </div>
+            </div>
+            
+            <div class="instruction-item">
+                <div class="instruction-icon">👆</div>
+                <div class="instruction-text">
+                    <h3>Repeat the Pattern</h3>
+                    <p>Click the tiles in the exact same order you saw them light up.</p>
+                </div>
+            </div>
+            
+            <div class="instruction-item">
+                <div class="instruction-icon">⏱️</div>
+                <div class="instruction-text">
+                    <h3>Beat the Clock</h3>
+                    <p>Complete the sequence before time runs out. Higher levels = less time!</p>
+                </div>
+            </div>
+            
+            <div class="instruction-item">
+                <div class="instruction-icon">❤️</div>
+                <div class="instruction-text">
+                    <h3>Protect Your Lives</h3>
+                    <p>You have 3 lives. Wrong clicks or timeout = lose a life. Game over at 0!</p>
+                </div>
+            </div>
+            
+            <div class="instruction-item">
+                <div class="instruction-icon">📈</div>
+                <div class="instruction-text">
+                    <h3>Level Up</h3>
+                    <p>Higher levels have longer sequences and larger grids. Earn more points!</p>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="btn-got-it" onclick="closeModal('howToPlayModal')">Got It!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Levels Modal -->
+    <div id="levelsModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('levelsModal')">×</button>
+            <h2 class="modal-title"><i class="fas fa-layer-group"></i> Select Level</h2>
+            
+            <div class="levels-grid" id="levelsGrid"></div>
+            
+            <div class="modal-footer">
+                <button class="btn-got-it" onclick="closeModal('levelsModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scores Modal -->
+    <div id="scoresModal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close" onclick="closeModal('scoresModal')">×</button>
+            <h2 class="modal-title"><i class="fas fa-trophy"></i> Your Scores</h2>
+            
+            <div class="total-score-display" id="totalScoreDisplay">0</div>
+            <p style="text-align: center; color: #888; margin-bottom: 20px;">Total Points Earned</p>
+            
+            <div id="score-chart-container">
+                <canvas id="score-chart"></canvas>
+            </div>
+            
+            <div id="scoresList"></div>
+            
+            <div class="modal-footer">
+                <button class="btn-got-it" onclick="closeModal('scoresModal')">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Container -->
+    <div id="game-container">
+        <div class="game-header">
+            <button class="back-btn" onclick="goToHomepage()">
+                <i class="fas fa-arrow-left"></i> Menu
+            </button>
+            <h1 class="game-title">🧠 Brain Memory</h1>
+            <div style="width: 80px;"></div>
+        </div>
+
+        <div class="game-stats">
+            <div class="stat-bar level-stat">
+                <div class="stat-value" id="level-display">1</div>
+                <div class="stat-label">Level</div>
+            </div>
+            <div class="stat-bar score-stat">
+                <div class="stat-value" id="score-display">0</div>
+                <div class="stat-label">Score</div>
+            </div>
+            <div class="stat-bar lives-stat">
+                <div class="stat-value" id="lives-display">❤️❤️❤️</div>
+                <div class="stat-label">Lives</div>
+            </div>
+        </div>
+
+        <div class="timer-container">
+            <span class="timer-label">⏱️ TIME</span>
+            <div class="timer-bar">
+                <div class="timer-fill" id="timer-fill"></div>
+            </div>
+        </div>
+
+        <div class="tile-grid-container">
+            <div class="tile-grid grid-3x3" id="tile-grid"></div>
+        </div>
+
+        <div class="game-controls">
+            <button class="control-btn pause" id="pause-btn">
+                <i class="fas fa-pause"></i> Pause
+            </button>
+            <button class="control-btn restart" id="restart-btn">
+                <i class="fas fa-redo"></i> Restart
+            </button>
+        </div>
+
+        <div class="game-message" id="game-message">
+            Get ready! Watch the sequence carefully!
+        </div>
+    </div>
+
+    <div class="version-text">v2.1</div>
+
+    <script src="/games/gh-bridge.js"></script>
+    <script>
+        // ============ HOMEPAGE ANIMATION ============
+        const homeCanvas = document.getElementById('homeCanvas');
+        const homeCtx = homeCanvas.getContext('2d');
+        let particles = [];
+        let floatingTiles = [];
+        let homeAnimationId = null;
+
+        const TILE_COLORS = [
+            { h: 195, s: 90, l: 60 },  // Cyan
+            { h: 230, s: 80, l: 55 },  // Blue
+            { h: 280, s: 85, l: 50 },  // Purple
+            { h: 330, s: 90, l: 55 },  // Pink
+            { h: 45, s: 100, l: 50 },  // Gold
+            { h: 150, s: 80, l: 45 }   // Green
+        ];
+
+        function resizeHomeCanvas() {
+            homeCanvas.width = window.innerWidth;
+            homeCanvas.height = window.innerHeight;
+        }
+
+        function initHomeAnimation() {
+            resizeHomeCanvas();
+            window.addEventListener('resize', resizeHomeCanvas);
+            
+            floatingTiles = [];
+            for (let i = 0; i < 12; i++) {
+                const color = TILE_COLORS[Math.floor(Math.random() * TILE_COLORS.length)];
+                floatingTiles.push({
+                    x: Math.random() * homeCanvas.width,
+                    y: Math.random() * homeCanvas.height,
+                    vx: (Math.random() - 0.5) * 1.5,
+                    vy: (Math.random() - 0.5) * 1.5,
+                    size: 30 + Math.random() * 40,
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.03,
+                    color: color,
+                    pulsePhase: Math.random() * Math.PI * 2
+                });
+            }
+            
+            particles = [];
+            for (let i = 0; i < 60; i++) {
+                particles.push({
+                    x: Math.random() * homeCanvas.width,
+                    y: Math.random() * homeCanvas.height,
+                    size: 1 + Math.random() * 3,
+                    speed: 0.2 + Math.random() * 0.5,
+                    opacity: Math.random(),
+                    twinkleSpeed: 0.02 + Math.random() * 0.03
+                });
+            }
+            
+            animateHome();
+        }
+
+        function drawFloatingTile(ctx, tile) {
+            const pulse = Math.sin(tile.pulsePhase) * 5;
+            const size = tile.size + pulse;
+            
+            ctx.save();
+            ctx.translate(tile.x, tile.y);
+            ctx.rotate(tile.rotation);
+            
+            // Glow
+            const glowGradient = ctx.createRadialGradient(0, 0, size * 0.3, 0, 0, size * 1.5);
+            glowGradient.addColorStop(0, `hsla(${tile.color.h}, ${tile.color.s}%, ${tile.color.l}%, 0.3)`);
+            glowGradient.addColorStop(1, 'transparent');
+            ctx.fillStyle = glowGradient;
+            ctx.fillRect(-size * 1.5, -size * 1.5, size * 3, size * 3);
+            
+            // Tile
+            const gradient = ctx.createLinearGradient(-size/2, -size/2, size/2, size/2);
+            gradient.addColorStop(0, `hsl(${tile.color.h}, ${tile.color.s}%, ${tile.color.l + 15}%)`);
+            gradient.addColorStop(1, `hsl(${tile.color.h}, ${tile.color.s}%, ${tile.color.l - 10}%)`);
+            
+            ctx.fillStyle = gradient;
+            ctx.beginPath();
+            ctx.roundRect(-size/2, -size/2, size, size, 8);
+            ctx.fill();
+            
+            // Highlight
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+            ctx.beginPath();
+            ctx.roundRect(-size/2 + 4, -size/2 + 4, size - 8, size/3, 4);
+            ctx.fill();
+            
+            ctx.restore();
+        }
+
+        function animateHome() {
+            // Background
+            const gradient = homeCtx.createRadialGradient(
+                homeCanvas.width / 2, homeCanvas.height / 2, 0,
+                homeCanvas.width / 2, homeCanvas.height / 2, homeCanvas.width / 2
+            );
+            gradient.addColorStop(0, '#1a1a3a');
+            gradient.addColorStop(0.5, '#0f0f2f');
+            gradient.addColorStop(1, '#050515');
+            homeCtx.fillStyle = gradient;
+            homeCtx.fillRect(0, 0, homeCanvas.width, homeCanvas.height);
+            
+            // Grid
+            homeCtx.strokeStyle = 'rgba(76, 201, 240, 0.03)';
+            homeCtx.lineWidth = 1;
+            for (let x = 0; x < homeCanvas.width; x += 60) {
+                homeCtx.beginPath();
+                homeCtx.moveTo(x, 0);
+                homeCtx.lineTo(x, homeCanvas.height);
+                homeCtx.stroke();
+            }
+            for (let y = 0; y < homeCanvas.height; y += 60) {
+                homeCtx.beginPath();
+                homeCtx.moveTo(0, y);
+                homeCtx.lineTo(homeCanvas.width, y);
+                homeCtx.stroke();
+            }
+            
+            // Particles
+            particles.forEach(p => {
+                p.y -= p.speed;
+                p.opacity += Math.sin(Date.now() * p.twinkleSpeed) * 0.02;
+                p.opacity = Math.max(0.2, Math.min(1, p.opacity));
+                
+                if (p.y < 0) {
+                    p.y = homeCanvas.height;
+                    p.x = Math.random() * homeCanvas.width;
+                }
+                
+                homeCtx.fillStyle = `rgba(76, 201, 240, ${p.opacity})`;
+                homeCtx.beginPath();
+                homeCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                homeCtx.fill();
+            });
+            
+            // Floating tiles
+            floatingTiles.forEach(tile => {
+                tile.x += tile.vx;
+                tile.y += tile.vy;
+                tile.rotation += tile.rotationSpeed;
+                tile.pulsePhase += 0.05;
+                
+                if (tile.x < -tile.size || tile.x > homeCanvas.width + tile.size) tile.vx *= -1;
+                if (tile.y < -tile.size || tile.y > homeCanvas.height + tile.size) tile.vy *= -1;
+                
+                homeCtx.globalAlpha = 0.6;
+                drawFloatingTile(homeCtx, tile);
+                homeCtx.globalAlpha = 1;
+            });
+            
+            homeAnimationId = requestAnimationFrame(animateHome);
+        }
+
+        // ============ MODAL FUNCTIONS ============
+        function showHowToPlay() {
+            document.getElementById('howToPlayModal').classList.add('active');
+        }
+
+        function showLevelsModal() {
+            generateLevelButtons();
+            document.getElementById('levelsModal').classList.add('active');
+        }
+
+        function showScoresModal() {
+            displayScores();
+            document.getElementById('scoresModal').classList.add('active');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.remove('active');
+        }
+
+        // ============ NAVIGATION ============
+        function startGame() {
+            document.getElementById('homepage').classList.add('hidden');
+            
+            setTimeout(() => {
+                cancelAnimationFrame(homeAnimationId);
+                document.getElementById('game-container').classList.add('active');
+                initializeGame();
+            }, 800);
+        }
+
+        function goToHomepage() {
+            document.getElementById('game-container').classList.remove('active');
+            document.getElementById('homepage').classList.remove('hidden');
+            
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            gameState.gameActive = false;
+            
+            initHomeAnimation();
+        }
+
+        function startFromLevel(level) {
+            gameState.currentLevel = level;
+            closeModal('levelsModal');
+            startGame();
+        }
+
+        // ============ GAME STATE ============
+        let gameState = {
+            currentLevel: 1,
+            score: 0,
+            lives: 3,
+            gameSequence: [],
+            playerSequence: [],
+            isPlayerTurn: false,
+            gameActive: false,
+            timer: 5.0,
+            maxTimer: 5.0,
+            timerInterval: null,
+            baseSpeed: 700,
+            totalScore: 0,
+            unlockedLevels: [1],
+            levelScores: {},
+            timerStarted: false,
+            isPaused: false
+        };
+
+        let isTileClickAllowed = true;
+
+        // ============ AUDIO — powered by GameSFX ============
+        function initAudio() { if (window.GameSFX) GameSFX.unlock(); }
+
+        function playTileSound(tileId) {
+            if (!window.GameSFX) return;
+            // Each tile gets a unique pitch based on its ID
+            const notes = [261, 294, 330, 349, 392, 440, 494, 523, 587, 659, 698, 784, 880, 988, 1047, 1175];
+            const freq = notes[tileId % notes.length];
+            // Use GameSFX internals via the pianoTile variant
+            GameSFX.play('pianoTile', tileId);
+        }
+
+        function playSuccessSound() {
+            if (window.GameSFX) GameSFX.play('match');
+        }
+
+        function playFailSound() {
+            if (window.GameSFX) GameSFX.play('mismatch');
+        }
+
+        function playLevelCompleteSound() {
+            if (window.GameSFX) GameSFX.play('win');
+        }
+
+        function playGameOverSound() {
+            if (window.GameSFX) GameSFX.play('lose');
+        }
+
+        // ============ GAME LOGIC ============
+        function getSequenceLength(level) {
+            return 4 + Math.floor((level - 1) / 3);
+        }
+
+        function calculatePointsForLevel(level) {
+            return 5 + Math.floor(level / 5) * 2;
+        }
+
+        function getGridSizeForLevel(level) {
+            if (level <= 5) return 3;
+            if (level <= 15) return 4;
+            if (level <= 30) return 5;
+            if (level <= 50) return 6;
+            return 7;
+        }
+
+        function initializeGame() {
+            initAudio();
+            
+            gameState.gameSequence = [];
+            gameState.playerSequence = [];
+            gameState.isPlayerTurn = false;
+            gameState.gameActive = true;
+            gameState.isPaused = false;
+            gameState.lives = GH.hub ? Math.max(GH.lives, 0) : 3;
+            gameState.score = 0;
+            // Hub mode shortens the answer window (admin-editable scale) so the boxes must be entered faster.
+            const timeScale = GH.hub ? Number(GH.cfg.seconds_scale) || 0.7 : 1;
+            gameState.maxTimer = Math.max(GH.hub ? 2 : 3.5, (6.5 - gameState.currentLevel * 0.15) * timeScale);
+            gameState.timer = gameState.maxTimer;
+            gameState.baseSpeed = 700;
+            gameState.timerStarted = false;
+            
+            document.getElementById('pause-btn').innerHTML = '<i class="fas fa-pause"></i> Pause';
+            
+            updateDisplay();
+            setupGrid();
+            
+            setTimeout(() => nextRound(), 500);
+        }
+
+        function updateDisplay() {
+            document.getElementById('level-display').textContent = gameState.currentLevel;
+            document.getElementById('score-display').textContent = gameState.score;
+            
+            let hearts = '';
+            const heartCount = GH.hub ? Math.max(gameState.lives, 1) : 3;
+            for (let i = 0; i < heartCount; i++) {
+                hearts += i < gameState.lives ? '❤️' : '🖤';
+            }
+            document.getElementById('lives-display').textContent = hearts;
+        }
+
+        function setupGrid() {
+            const grid = document.getElementById('tile-grid');
+            const gridSize = getGridSizeForLevel(gameState.currentLevel);
+            
+            grid.innerHTML = '';
+            grid.className = `tile-grid grid-${gridSize}x${gridSize}`;
+            
+            for (let i = 1; i <= gridSize * gridSize; i++) {
+                const tile = document.createElement('div');
+                tile.className = 'tile';
+                tile.id = `tile-${i}`;
+                tile.dataset.tileId = i;
+                tile.textContent = i;
+                
+                const hue = (i * 40 + 180) % 360;
+                tile.style.background = `linear-gradient(145deg, hsl(${hue}, 70%, 35%), hsl(${hue}, 70%, 22%))`;
+                tile.style.color = `hsl(${hue}, 100%, 75%)`;
+                
+                tile.addEventListener('click', handleTileClick);
+                grid.appendChild(tile);
+            }
+        }
+
+        function handleTileClick(event) {
+            if (!gameState.isPlayerTurn || !gameState.gameActive || gameState.isPaused || !isTileClickAllowed) return;
+            
+            isTileClickAllowed = false;
+            setTimeout(() => { isTileClickAllowed = true; }, 250);
+            
+            const tileId = parseInt(event.target.dataset.tileId);
+            gameState.playerSequence.push(tileId);
+            
+            if (!gameState.timerStarted) {
+                startTimer();
+                gameState.timerStarted = true;
+            }
+            
+            activateTile(tileId);
+            checkPlayerMove(tileId);
+        }
+
+        function activateTile(tileId) {
+            const tile = document.getElementById(`tile-${tileId}`);
+            if (!tile) return;
+            
+            tile.classList.add('active');
+            playTileSound(tileId);
+            
+            setTimeout(() => {
+                tile.classList.remove('active');
+            }, 250);
+        }
+
+        function checkPlayerMove(tileId) {
+            const currentMove = gameState.playerSequence.length - 1;
+            
+            if (gameState.playerSequence[currentMove] !== gameState.gameSequence[currentMove]) {
+                playFailSound();
+                loseLife();
+                return;
+            }
+            
+            if (gameState.playerSequence.length === gameState.gameSequence.length) {
+                clearInterval(gameState.timerInterval);
+                playSuccessSound();
+                levelCompleted();
+            }
+        }
+
+        function nextRound() {
+            gameState.isPlayerTurn = false;
+            gameState.playerSequence = [];
+            gameState.timerStarted = false;
+            gameState.timer = gameState.maxTimer;
+            updateTimerDisplay(gameState.timer);
+            
+            const sequenceLength = getSequenceLength(gameState.currentLevel);
+            gameState.gameSequence = [];
+            
+            const gridSize = getGridSizeForLevel(gameState.currentLevel);
+            const totalTiles = gridSize * gridSize;
+            
+            for (let i = 0; i < sequenceLength; i++) {
+                gameState.gameSequence.push(Math.floor(Math.random() * totalTiles) + 1);
+            }
+            
+            const messageEl = document.getElementById('game-message');
+            messageEl.className = 'game-message';
+            messageEl.innerHTML = `Level ${gameState.currentLevel} - Get ready...`;
+            
+            let countdown = 2;
+            const countdownInterval = setInterval(() => {
+                countdown--;
+                if (countdown > 0) {
+                    messageEl.innerHTML = `Level ${gameState.currentLevel} - Starting in ${countdown}...`;
+                } else {
+                    clearInterval(countdownInterval);
+                    messageEl.innerHTML = `🎯 Memorize ${sequenceLength} tiles!`;
+                    showSequence();
+                }
+            }, 800);
+        }
+
+        function showSequence() {
+            const speed = Math.max(350, gameState.baseSpeed - gameState.currentLevel * 15);
+            let i = 0;
+            
+            const showNext = () => {
+                if (!gameState.gameActive || gameState.isPaused) return;
+                
+                if (i >= gameState.gameSequence.length) {
+                    setTimeout(() => {
+                        if (gameState.gameActive && !gameState.isPaused) {
+                            gameState.isPlayerTurn = true;
+                            document.getElementById('game-message').innerHTML = "👆 Your turn! Repeat the sequence!";
+                        }
+                    }, 300);
+                    return;
+                }
+                
+                activateTile(gameState.gameSequence[i]);
+                i++;
+                setTimeout(showNext, speed);
+            };
+            
+            showNext();
+        }
+
+        function startTimer() {
+            clearInterval(gameState.timerInterval);
+            let timeLeft = gameState.timer;
+            
+            gameState.timerInterval = setInterval(() => {
+                if (gameState.isPaused) return;
+                
+                timeLeft -= 0.1;
+                
+                if (timeLeft <= 0) {
+                    clearInterval(gameState.timerInterval);
+                    if (gameState.isPlayerTurn && gameState.gameActive) {
+                        playFailSound();
+                        document.getElementById('game-message').innerHTML = "⏱️ Time's up!";
+                        loseLife();
+                    }
+                } else {
+                    updateTimerDisplay(timeLeft);
+                }
+            }, 100);
+        }
+
+        function updateTimerDisplay(time) {
+            const timerFill = document.getElementById('timer-fill');
+            const percent = (time / gameState.maxTimer) * 100;
+            timerFill.style.width = percent + '%';
+            
+            if (time < gameState.maxTimer * 0.3) {
+                timerFill.style.background = 'linear-gradient(90deg, #f72585, #b5179e)';
+            } else if (time < gameState.maxTimer * 0.5) {
+                timerFill.style.background = 'linear-gradient(90deg, #ffd700, #ff8c00)';
+            } else {
+                timerFill.style.background = 'linear-gradient(90deg, #4cc9f0, #4361ee)';
+            }
+        }
+
+        function levelCompleted() {
+            playLevelCompleteSound();
+            const points = calculatePointsForLevel(gameState.currentLevel);
+            const oldScore = gameState.levelScores[gameState.currentLevel] || 0;
+            
+            gameState.score += points;
+            gameState.totalScore = gameState.totalScore - oldScore + points;
+            gameState.levelScores[gameState.currentLevel] = points;
+            
+            if (!gameState.unlockedLevels.includes(gameState.currentLevel + 1)) {
+                gameState.unlockedLevels.push(gameState.currentLevel + 1);
+            }
+            
+            if (GH.hub) {
+                const doneLevel = gameState.currentLevel;
+                const hubMsg = document.getElementById('game-message');
+                hubMsg.className = 'game-message level-up';
+                hubMsg.innerHTML = 'Checking your result...';
+                GH.complete(doneLevel).then(res => {
+                    if (!res || res.ok === false) {
+                        hubMsg.className = 'game-message game-over';
+                        hubMsg.innerHTML = (res && res.message) || 'Could not verify that level. Try it again.';
+                        setTimeout(() => { if (gameState.gameActive && GH.status === 'active') { setupGrid(); nextRound(); } }, 2200);
+                        return;
+                    }
+                    if (res.status === 'cleared') {
+                        gameState.gameActive = false;
+                        hubMsg.innerHTML = 'Level ' + doneLevel + ' cleared! You win free MTN ' + GH.rewardGb + 'GB!';
+                        GH.showWin();
+                        return;
+                    }
+                    gameState.currentLevel = res.level || doneLevel + 1;
+                    updateDisplay();
+                    hubMsg.innerHTML = 'Perfect! +' + points + ' points! Level ' + gameState.currentLevel + ' of ' + GH.target + ' next.';
+                    setTimeout(() => { if (gameState.gameActive) { setupGrid(); nextRound(); } }, 1600);
+                });
+                return;
+            }
+            saveGameData();
+            gameState.currentLevel++;
+            updateDisplay();
+            
+            const messageEl = document.getElementById('game-message');
+            messageEl.className = 'game-message level-up';
+            
+            const nextSeq = getSequenceLength(gameState.currentLevel);
+            const currentGrid = getGridSizeForLevel(gameState.currentLevel - 1);
+            const nextGrid = getGridSizeForLevel(gameState.currentLevel);
+            
+            let msg = `🎉 Perfect! +${points} points!`;
+            if (currentGrid !== nextGrid) {
+                msg += ` Grid expanding to ${nextGrid}x${nextGrid}!`;
+            }
+            messageEl.innerHTML = msg;
+            
+            setTimeout(() => {
+                if (gameState.gameActive) {
+                    setupGrid();
+                    nextRound();
+                }
+            }, 2000);
+        }
+
+        function loseLife() {
+            gameState.lives--;
+            updateDisplay();
+            clearInterval(gameState.timerInterval);
+            if (GH.hub) GH.lifeLost();
+            
+            if (gameState.lives <= 0) {
+                if (GH.hub) { hubOutOfLives(); return; }
+                gameOver(); if(typeof window.saveGameScore==='function') window.saveGameScore('memory-game', score);
+            } else {
+                const messageEl = document.getElementById('game-message');
+                messageEl.className = 'game-message game-over';
+                messageEl.innerHTML = `💔 Wrong! ${gameState.lives} ${gameState.lives === 1 ? 'life' : 'lives'} remaining. Watch again...`;
+                
+                gameState.playerSequence = [];
+                gameState.timerStarted = false;
+                gameState.timer = gameState.maxTimer;
+                updateTimerDisplay(gameState.timer);
+                
+                setTimeout(() => {
+                    if (gameState.gameActive && gameState.lives > 0) {
+                        messageEl.className = 'game-message';
+                        messageEl.innerHTML = '🎯 Watch the sequence again...';
+                        showSequence();
+                    }
+                }, 1500);
+            }
+        }
+
+        function gameOver() {
+            playGameOverSound();
+            gameState.gameActive = false;
+            gameState.isPlayerTurn = false;
+            clearInterval(gameState.timerInterval);
+            saveGameData();
+            
+            // Add score to leaderboard if LeaderboardManager exists
+            if (typeof LeaderboardManager !== 'undefined' && gameState.score > 0) {
+                LeaderboardManager.addScore('Brain Memory', gameState.score);
+            }
+            
+            const messageEl = document.getElementById('game-message');
+            messageEl.className = 'game-message game-over';
+            messageEl.innerHTML = `
+                💀 Game Over!<br>
+                Level ${gameState.currentLevel} • Score: ${gameState.score}
+                <button class="play-again-btn" onclick="restartGame()">
+                    <i class="fas fa-redo"></i> Play Again
+                </button>
+            `;
+        }
+
+        function restartGame() {
+            if (gameState.timerInterval) clearInterval(gameState.timerInterval);
+            gameState.currentLevel = 1;
+            initializeGame();
+        }
+
+        // ============ GAME HUB REWARD MODE ============
+        function hubOutOfLives() {
+            gameState.gameActive = false;
+            gameState.isPlayerTurn = false;
+            const m = document.getElementById('game-message');
+            m.className = 'game-message game-over';
+            m.innerHTML = 'Out of lives at level ' + gameState.currentLevel;
+            GH.showOutOfLives('You ran out of lives.');
+        }
+        if (GH.hub) {
+            let hubStarted = false;
+            GH.on('state', () => {
+                if (hubStarted || GH.status !== 'active') return;
+                hubStarted = true;
+                gameState.currentLevel = GH.level || 1;
+                document.getElementById('homepage').classList.add('hidden');
+                cancelAnimationFrame(homeAnimationId);
+                document.getElementById('game-container').classList.add('active');
+                initializeGame();
+            });
+            GH.on('cont', (d) => {
+                if (clearTimeout && gameState.timerInterval) clearInterval(gameState.timerInterval);
+                gameState.lives = d.lives;
+                gameState.gameActive = true;
+                gameState.isPaused = false;
+                updateDisplay();
+                setupGrid();
+                setTimeout(() => nextRound(), 400);
+            });
+            ['pause-btn', 'restart-btn'].forEach((id) => { const el = document.getElementById(id); if (el && id === 'restart-btn') el.style.display = 'none'; });
+        }
+
+        // ============ PAUSE FUNCTIONALITY ============
+        document.getElementById('pause-btn').addEventListener('click', () => {
+            if (!gameState.gameActive) return;
+            
+            const pauseBtn = document.getElementById('pause-btn');
+            const messageEl = document.getElementById('game-message');
+            
+            if (gameState.isPaused) {
+                gameState.isPaused = false;
+                pauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
+                
+                if (gameState.isPlayerTurn && gameState.timerStarted) {
+                    startTimer();
+                    messageEl.innerHTML = "👆 Your turn! Repeat the sequence!";
+                } else if (gameState.isPlayerTurn) {
+                    messageEl.innerHTML = "👆 Your turn! Repeat the sequence!";
+                } else {
+                    showSequence();
+                }
+            } else {
+                gameState.isPaused = true;
+                clearInterval(gameState.timerInterval);
+                pauseBtn.innerHTML = '<i class="fas fa-play"></i> Resume';
+                messageEl.innerHTML = "⏸️ Game Paused";
+            }
+        });
+
+        document.getElementById('restart-btn').addEventListener('click', restartGame);
+
+        // ============ LEVEL BUTTONS ============
+        function generateLevelButtons() {
+            const container = document.getElementById('levelsGrid');
+            container.innerHTML = '';
+            
+            for (let i = 1; i <= 50; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'level-btn';
+                btn.textContent = i;
+                
+                if (gameState.unlockedLevels.includes(i)) {
+                    btn.classList.add('unlocked');
+                    if (i === gameState.currentLevel) {
+                        btn.classList.add('current');
+                    }
+                    btn.onclick = () => startFromLevel(i);
+                } else {
+                    btn.disabled = true;
+                }
+                
+                container.appendChild(btn);
+            }
+        }
+
+        // ============ SCORES ============
+        let scoreChart = null;
+        
+        function displayScores() {
+            document.getElementById('totalScoreDisplay').textContent = gameState.totalScore;
+            
+            const list = document.getElementById('scoresList');
+            list.innerHTML = '';
+            
+            const playedLevels = Object.keys(gameState.levelScores).map(Number).sort((a, b) => a - b);
+            
+            if (playedLevels.length === 0) {
+                list.innerHTML = '<p style="text-align: center; color: #888;">No levels completed yet!</p>';
+                document.getElementById('score-chart-container').style.display = 'none';
+                return;
+            }
+            
+            // Show chart container
+            document.getElementById('score-chart-container').style.display = 'block';
+            
+            // Create/Update Chart
+            const chartCanvas = document.getElementById('score-chart');
+            if (scoreChart) {
+                scoreChart.destroy();
+            }
+            
+            scoreChart = new Chart(chartCanvas, {
+                type: 'line',
+                data: {
+                    labels: playedLevels.map(level => `Lvl ${level}`),
+                    datasets: [{
+                        label: 'Score per Level',
+                        data: playedLevels.map(level => gameState.levelScores[level]),
+                        borderColor: '#4cc9f0',
+                        backgroundColor: 'rgba(76, 201, 240, 0.2)',
+                        fill: true,
+                        tension: 0.4,
+                        pointBackgroundColor: '#4cc9f0',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Score', color: '#888' },
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#888' }
+                        },
+                        x: {
+                            title: { display: true, text: 'Level', color: '#888' },
+                            grid: { color: 'rgba(255,255,255,0.1)' },
+                            ticks: { color: '#888' }
+                        }
+                    }
+                }
+            });
+            
+            // Display level scores (most recent first)
+            playedLevels.reverse().slice(0, 10).forEach(level => {
+                const item = document.createElement('div');
+                item.className = 'score-item';
+                item.innerHTML = `
+                    <span>Level ${level}</span>
+                    <span class="score-value">+${gameState.levelScores[level]}</span>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // ============ STORAGE UTILITIES ============
+        const GamehubUtils = {
+            fallbackStorage: {},
+            
+            setToStorage: function(key, value) {
+                try {
+                    localStorage.setItem(key, JSON.stringify(value));
+                } catch (e) {
+                    console.warn("LocalStorage not available, using fallback");
+                    this.fallbackStorage[key] = value;
+                }
+            },
+            
+            getFromStorage: function(key, defaultValue) {
+                try {
+                    const item = localStorage.getItem(key);
+                    return item ? JSON.parse(item) : defaultValue;
+                } catch (e) {
+                    console.warn("LocalStorage not available, using fallback");
+                    return this.fallbackStorage[key] || defaultValue;
+                }
+            }
+        };
+
+        function saveGameData() {
+            GamehubUtils.setToStorage('brainMemoryTotalScore', gameState.totalScore);
+            GamehubUtils.setToStorage('brainMemoryUnlockedLevels', gameState.unlockedLevels);
+            GamehubUtils.setToStorage('brainMemoryLevelScores', gameState.levelScores);
+        }
+
+        function loadGameData() {
+            gameState.totalScore = GamehubUtils.getFromStorage('brainMemoryTotalScore', 0);
+            gameState.unlockedLevels = GamehubUtils.getFromStorage('brainMemoryUnlockedLevels', [1]);
+            gameState.levelScores = GamehubUtils.getFromStorage('brainMemoryLevelScores', {});
+        }
+
+        // ============ INIT ============
+        loadGameData();
+        initHomeAnimation();
+
+        // Close modals on outside click
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+    </script>
+    
+    <!-- External Gamehub Scripts (optional - will work without them) -->
+    <script src="/js/utils.js"></script>
+    <script src="/js/leaderboard.js"></script>
+    <script src="../js/gamehub-score-bridge.js"></script>
+    <script src="../js/coins.js"></script>
+    
+<script src="/js/online-game-utils.js"></script>
+<script>
+window.addEventListener('load', function() {
+  if (typeof OnlineGameUtils === 'undefined') return;
+  OnlineGameUtils.initHowToPlay({
+    title: "How to Play \u2014 Brain Memory",
+    steps: ["A sequence of tiles lights up one by one \u2014 watch closely!", "Repeat the exact sequence by clicking the tiles in the same order.", "Each round adds one more step to the sequence.", "One wrong tap and the game is over \u2014 how long can you remember?"]
+  });
+  var btn = document.querySelector('.ogu-htp-btn');
+  if (btn) {
+    btn.style.cssText = 'position:fixed;top:12px;right:12px;z-index:9000;padding:6px 14px;font-size:0.78rem;border-radius:20px;';
+  }
+});
+</script>
+<script src="../js/game-audio.js"></script>
+
+<script src="/js/game-score-tracker.js"></script><script src="/js/game-score-auto.js"></script>
+<script src="/js/game-leaderboard.js" defer></script>
+</body>
+</html>

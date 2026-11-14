@@ -1,0 +1,2179 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="manifest" href="/manifest.json" />
+    <meta name="theme-color" content="#9B30FF" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <link rel="apple-touch-icon" href="/icon.png?v=10" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Sliding Puzzle - 300 Levels</title>
+    <link rel="stylesheet" href="/css/homePage.css" />
+    <script src="/games/gh-guard.js"></script>
+    <script src="/js/leaderboard.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css"
+    />
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        min-height: 100vh;
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        padding: 20px;
+        color: white;
+        overflow-x: hidden;
+        width: 100%;
+      }
+
+      /* Homepage Styles */
+      .homepage {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        width: 100%;
+        max-width: 800px;
+        text-align: center;
+        padding: 20px;
+      }
+
+      .game-title {
+        font-size: clamp(2.5rem, 8vw, 4rem);
+        margin-bottom: 10px;
+        text-shadow: 3px 3px 6px rgba(0, 0, 0, 0.3);
+        background: linear-gradient(to right, #ff7e5f, #feb47b);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        animation: titleGlow 3s infinite alternate;
+      }
+
+      @keyframes titleGlow {
+        0% {
+          text-shadow: 0 0 10px rgba(255, 126, 95, 0.7);
+        }
+        100% {
+          text-shadow: 0 0 20px rgba(254, 180, 123, 0.9);
+        }
+      }
+
+      .tagline {
+        font-size: clamp(1rem, 3vw, 1.5rem);
+        margin-bottom: 30px;
+        max-width: 600px;
+        line-height: 1.6;
+      }
+
+      .button-container {
+        display: grid;
+        grid-template-columns: repeat(2, 1fr);
+        gap: 15px;
+        margin: 20px 0;
+        width: 100%;
+        max-width: 500px;
+      }
+
+      .home-btn {
+        width: 100%;
+        aspect-ratio: 1/1;
+        border-radius: 20px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(0.9rem, 2.5vw, 1.2rem);
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        position: relative;
+        overflow: hidden;
+        padding: 10px;
+      }
+
+      .home-btn::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.1);
+        opacity: 0;
+        transition: opacity 0.3s;
+      }
+
+      .home-btn:hover::before {
+        opacity: 1;
+      }
+
+      .home-btn:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+      }
+
+      .home-btn:active {
+        transform: translateY(-2px);
+      }
+
+      .home-btn i {
+        font-size: clamp(2rem, 6vw, 3rem);
+        margin-bottom: 10px;
+      }
+
+      .start-btn {
+        background: linear-gradient(145deg, #2ecc71, #27ae60);
+      }
+
+      .how-to-btn {
+        background: linear-gradient(145deg, #3498db, #2980b9);
+      }
+
+      .upload-btn {
+        background: linear-gradient(145deg, #9b59b6, #8e44ad);
+      }
+
+      .score-btn {
+        background: linear-gradient(145deg, #f39c12, #e67e22);
+      }
+
+      /* Level Selection Styles */
+      .level-selection {
+        display: none;
+        flex-direction: column;
+        align-items: center;
+        width: 100%;
+        max-width: 900px;
+        padding: 20px;
+      }
+
+      .level-title {
+        font-size: clamp(1.8rem, 5vw, 2.5rem);
+        margin-bottom: 20px;
+        text-align: center;
+      }
+
+      .level-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 10px;
+        width: 100%;
+        max-height: 60vh;
+        overflow-y: auto;
+        padding: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 15px;
+        margin-bottom: 20px;
+      }
+
+      .level-btn {
+        width: 100%;
+        aspect-ratio: 1/1;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: clamp(1rem, 3vw, 1.5rem);
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        background: rgba(255, 255, 255, 0.2);
+        border: 2px solid rgba(255, 255, 255, 0.3);
+      }
+
+      .level-btn.unlocked {
+        background: linear-gradient(145deg, #2ecc71, #27ae60);
+        border: 2px solid rgba(255, 255, 255, 0.5);
+      }
+
+      .level-btn.unlocked:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+      }
+
+      .level-btn.current {
+        background: linear-gradient(145deg, #3498db, #2980b9);
+        border: 2px solid rgba(255, 255, 255, 0.8);
+        animation: pulse 2s infinite;
+      }
+
+      .level-btn.locked {
+        background: rgba(255, 255, 255, 0.1);
+        color: rgba(255, 255, 255, 0.5);
+        cursor: not-allowed;
+      }
+
+      .level-nav {
+        display: flex;
+        gap: 15px;
+        margin-top: 20px;
+        flex-wrap: wrap;
+        justify-content: center;
+      }
+
+      /* Game Container Styles */
+      .container {
+        background-color: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+        padding: clamp(15px, 3vw, 20px);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        width: 100%;
+        max-width: 95vw;
+        text-align: center;
+        display: none;
+        position: relative;
+        margin: 0 auto;
+      }
+
+      h1 {
+        margin-bottom: 15px;
+        font-size: clamp(1.8rem, 5vw, 2.5rem);
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+      }
+
+      .level-info {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 15px;
+        font-size: clamp(0.9rem, 2.5vw, 1.1rem);
+        background: rgba(255, 255, 255, 0.1);
+        padding: 10px 15px;
+        border-radius: 10px;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      .instructions {
+        margin-bottom: 15px;
+        line-height: 1.6;
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 10px;
+        border-radius: 10px;
+        font-size: clamp(0.8rem, 2.5vw, 0.9rem);
+      }
+
+      .puzzle-frame {
+        background: linear-gradient(145deg, #8b4513, #a0522d);
+        padding: clamp(8px, 2vw, 15px);
+        border-radius: 15px;
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5),
+          0 5px 15px rgba(0, 0, 0, 0.5);
+        display: inline-block;
+        margin: 15px auto;
+        border: 6px solid #5d4037;
+        position: relative;
+        max-width: 100%;
+      }
+
+      .puzzle-frame::before {
+        content: "";
+        position: absolute;
+        top: -4px;
+        left: -4px;
+        right: -4px;
+        bottom: -4px;
+        border: 2px solid rgba(255, 215, 0, 0.3);
+        border-radius: 20px;
+        pointer-events: none;
+      }
+
+      .puzzle-container {
+        display: grid;
+        grid-gap: 3px;
+        background-color: #7a5c34;
+        padding: 6px;
+        border-radius: 5px;
+        box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+        margin: 0 auto;
+        width: 90vmin;
+        height: 90vmin;
+        max-width: 400px;
+        max-height: 400px;
+      }
+
+      .tile {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.8rem;
+        font-weight: bold;
+        border-radius: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        user-select: none;
+        position: relative;
+        box-shadow: 
+          0 4px 12px rgba(0, 0, 0, 0.4),
+          inset 0 1px 0 rgba(255, 255, 255, 0.5),
+          0 0 20px rgba(102, 126, 234, 0.2);
+        background: linear-gradient(145deg, #f5f5f5, #dcdcdc);
+        color: #222;
+        border: 2px solid rgba(102, 126, 234, 0.4);
+        text-shadow: 1px 1px 2px rgba(255, 255, 255, 0.8);
+        overflow: hidden;
+      }
+
+      .tile::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 6px;
+        box-shadow: inset 0 0 8px rgba(0, 0, 0, 0.1);
+        pointer-events: none;
+      }
+
+      .tile:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4),
+          inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      }
+
+      .tile:active {
+        transform: translateY(1px);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3),
+          inset 0 1px 0 rgba(255, 255, 255, 0.4);
+      }
+
+      .empty {
+        background: transparent;
+        box-shadow: none;
+        cursor: default;
+        border: 1px dashed rgba(255, 255, 255, 0.2);
+      }
+
+      .empty:hover {
+        transform: none;
+        box-shadow: none;
+      }
+
+      .tile.moving {
+        transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        z-index: 10;
+      }
+
+      .controls {
+        margin-top: 15px;
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        padding: clamp(8px, 2vw, 10px) clamp(12px, 3vw, 20px);
+        font-size: clamp(0.8rem, 2.5vw, 0.9rem);
+        background: linear-gradient(145deg, #2ecc71, #27ae60);
+        color: white;
+        border: none;
+        border-radius: 50px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        position: relative;
+        overflow: hidden;
+      }
+
+      button::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.2),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      button:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      button:hover::before {
+        left: 100%;
+      }
+
+      button:active {
+        transform: translateY(0);
+      }
+
+      #shuffle-btn {
+        background: linear-gradient(145deg, #e74c3c, #c0392b);
+      }
+
+      #shuffle-btn.disabled {
+        background: linear-gradient(145deg, #95a5a6, #7f8c8d);
+        cursor: not-allowed;
+        opacity: 0.7;
+      }
+
+      #shuffle-btn.disabled:hover {
+        transform: none;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      }
+
+      #shuffle-btn.disabled:hover::before {
+        left: -100%;
+      }
+
+      #next-level-btn {
+        background: linear-gradient(145deg, #9b59b6, #8e44ad);
+        display: none;
+      }
+
+      .message {
+        margin-top: 15px;
+        font-size: clamp(0.9rem, 3vw, 1.1rem);
+        min-height: 25px;
+        font-weight: bold;
+        transition: all 0.3s ease;
+        padding: 0 10px;
+      }
+
+      .win-message {
+        color: #2ecc71;
+        text-shadow: 0 0 10px rgba(46, 204, 113, 0.5);
+        animation: pulse 1s infinite;
+      }
+
+      .replay-message {
+        color: #3498db;
+        font-style: italic;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+        }
+        50% {
+          transform: scale(1.05);
+        }
+        100% {
+          transform: scale(1);
+        }
+      }
+
+      @keyframes smoothSlide {
+        from {
+          transform: translateX(0) translateY(0);
+          opacity: 1;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+
+      .moves-counter,
+      .score-display,
+      .shuffles-counter {
+        margin-top: 8px;
+        font-size: clamp(0.9rem, 3vw, 1rem);
+        background-color: rgba(255, 255, 255, 0.1);
+        padding: 6px 12px;
+        border-radius: 20px;
+        display: inline-block;
+        margin-right: 10px;
+      }
+
+      .shuffles-counter.warning {
+        background-color: rgba(231, 76, 60, 0.2);
+        color: #e74c3c;
+      }
+
+      .shuffles-counter.critical {
+        background-color: rgba(231, 76, 60, 0.3);
+        color: #ffcc00;
+        animation: pulse 1s infinite;
+      }
+
+      .stats-container {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+      }
+
+      .back-btn {
+        position: absolute;
+        top: clamp(8px, 2vw, 15px);
+        left: clamp(8px, 2vw, 15px);
+        background: rgba(255, 255, 255, 0.2);
+        border: none;
+        border-radius: 50%;
+        width: clamp(35px, 8vw, 45px);
+        height: clamp(35px, 8vw, 45px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        z-index: 10;
+      }
+
+      .back-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+      }
+
+      /* Modal Styles */
+      .modal {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.7);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        padding: 15px;
+      }
+
+      .modal-content {
+        background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+        padding: clamp(15px, 4vw, 25px);
+        border-radius: 20px;
+        max-width: 500px;
+        width: 100%;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        position: relative;
+        max-height: 90vh;
+        overflow-y: auto;
+      }
+
+      .close-modal {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        color: white;
+        cursor: pointer;
+      }
+
+      .modal h2 {
+        margin-bottom: 15px;
+        text-align: center;
+        font-size: clamp(1.3rem, 4vw, 1.8rem);
+      }
+
+      .modal p {
+        margin-bottom: 12px;
+        line-height: 1.6;
+        font-size: clamp(0.8rem, 2.5vw, 1rem);
+      }
+
+      .upload-area {
+        border: 2px dashed rgba(255, 255, 255, 0.5);
+        border-radius: 10px;
+        padding: 15px;
+        text-align: center;
+        margin: 15px 0;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .upload-area:hover {
+        border-color: rgba(255, 255, 255, 0.8);
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .upload-area i {
+        font-size: clamp(1.5rem, 6vw, 2.5rem);
+        margin-bottom: 10px;
+        display: block;
+      }
+
+      #image-preview {
+        max-width: 100%;
+        max-height: 150px;
+        margin-top: 10px;
+        display: none;
+        border-radius: 10px;
+      }
+
+      .grid-selection {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        margin: 10px 0;
+        flex-wrap: wrap;
+      }
+
+      .grid-option {
+        padding: 8px 12px;
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        font-size: clamp(0.8rem, 2.5vw, 0.9rem);
+      }
+
+      .grid-option.selected {
+        background: rgba(255, 255, 255, 0.3);
+        box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+      }
+
+      .grid-option:hover {
+        background: rgba(255, 255, 255, 0.2);
+      }
+
+      /* Difficulty indicator */
+      .difficulty-indicator {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 8px 0;
+        gap: 5px;
+      }
+
+      .difficulty-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .difficulty-dot.active {
+        background: #ffcc00;
+      }
+
+      /* Score Modal Styles */
+      .score-stats {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 15px;
+        margin: 15px 0;
+      }
+
+      .score-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        padding-bottom: 5px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .score-item:last-child {
+        margin-bottom: 0;
+        border-bottom: none;
+      }
+
+      .score-value {
+        font-weight: bold;
+        color: #ffcc00;
+      }
+
+      /* Score System Info */
+      .score-system {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+        padding: 15px;
+        margin: 15px 0;
+        text-align: left;
+      }
+
+      .score-system h3 {
+        margin-bottom: 10px;
+        text-align: center;
+      }
+
+      .score-system ul {
+        padding-left: 20px;
+        margin-bottom: 10px;
+      }
+
+      .score-system li {
+        margin-bottom: 8px;
+        line-height: 1.4;
+      }
+
+      /* Template link styles */
+      .template-link {
+        display: inline-block;
+        margin-top: 20px;
+        padding: 10px 20px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 10px;
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s ease;
+      }
+
+      .template-link:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateY(-2px);
+      }
+
+      .template-btn {
+        margin-top: 15px;
+        background: linear-gradient(145deg, #3498db, #2980b9);
+      }
+
+      /* Mobile-specific adjustments */
+      @media (max-width: 768px) {
+        .button-container {
+          grid-template-columns: 1fr;
+          max-width: 300px;
+        }
+
+        .home-btn {
+          aspect-ratio: 2/1;
+          flex-direction: row;
+          justify-content: flex-start;
+          padding: 15px;
+        }
+
+        .home-btn i {
+          margin-bottom: 0;
+          margin-right: 10px;
+          font-size: 1.8rem;
+        }
+
+        .level-grid {
+          grid-template-columns: repeat(auto-fill, minmax(50px, 1fr));
+        }
+
+        .level-nav {
+          gap: 10px;
+        }
+
+        .level-nav button {
+          padding: 8px 15px;
+        }
+
+        .puzzle-frame {
+          padding: 8px;
+        }
+
+        .controls {
+          gap: 8px;
+        }
+
+        .grid-selection {
+          flex-direction: column;
+          align-items: center;
+        }
+
+        .puzzle-container {
+          width: 85vmin;
+          height: 85vmin;
+        }
+      }
+
+      @media (max-width: 480px) {
+        .home-btn {
+          font-size: 0.9rem;
+        }
+
+        .level-grid {
+          grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+        }
+
+        .level-btn {
+          font-size: 0.9rem;
+        }
+
+        .container {
+          padding: 10px;
+        }
+
+        .level-info {
+          flex-direction: column;
+          align-items: center;
+          font-size: 0.8rem;
+        }
+
+        .tile {
+          font-size: 1.4rem;
+        }
+
+        .puzzle-container {
+          width: 90vmin;
+          height: 90vmin;
+        }
+      }
+
+      @media (max-width: 350px) {
+        .home-btn {
+          min-height: 70px;
+        }
+
+        .home-btn i {
+          font-size: 1.5rem;
+        }
+
+        .level-grid {
+          grid-template-columns: repeat(auto-fill, minmax(35px, 1fr));
+        }
+
+        .tile {
+          font-size: 1.2rem;
+        }
+
+        .puzzle-container {
+          width: 95vmin;
+          height: 95vmin;
+        }
+      }
+
+      /* Mobile portrait specific adjustments */
+      @media (max-width: 768px) and (orientation: portrait) {
+        .puzzle-container {
+          width: 80vmin;
+          height: 80vmin;
+        }
+
+        .puzzle-frame {
+          padding: 5px;
+        }
+
+        .container {
+          padding: 10px;
+        }
+
+        .level-info {
+          font-size: 0.8rem;
+          padding: 8px 10px;
+        }
+
+        .instructions {
+          font-size: 0.75rem;
+          padding: 8px;
+        }
+
+        .tile {
+          font-size: 1.2rem;
+        }
+      }
+    </style>
+  <script src="/js/mobile-ux.js?v=20260808" defer></script>
+</head>
+  <body>
+    <!-- Homepage -->
+    <div class="homepage" id="homepage">
+      <h1 class="game-title">Sliding Puzzle</h1>
+      <p class="tagline">
+        Challenge your mind with 300 levels of sliding puzzle fun!
+      </p>
+
+      <div class="button-container">
+        <div class="home-btn start-btn" id="start-btn">
+          <i class="fas fa-play-circle"></i>
+          Start Game
+        </div>
+
+        <div class="home-btn how-to-btn" id="how-to-btn">
+          <i class="fas fa-question-circle"></i>
+          How to Play
+        </div>
+
+        <div class="home-btn upload-btn" id="upload-btn">
+          <i class="fas fa-cloud-upload-alt"></i>
+          Upload Image
+        </div>
+
+        <div class="home-btn score-btn" id="score-btn">
+          <i class="fas fa-trophy"></i>
+          Total Score: <span id="total-score-display">0</span>
+        </div>
+      </div>
+
+      <!-- <button
+        class="template-btn"
+        onclick="try { addScore('slidingPuzzle', Math.floor(Math.random() * 1000) + 100); displayLeaderboard('slidingPuzzle'); } catch(e) { console.error('Error adding score:', e); }"
+      >
+        Add Random Score
+      </button> -->
+      <div id="leaderboard"></div>
+      <a href="/index.html" class="template-link">Back to Homepage</a>
+    </div>
+
+    <!-- Level Selection -->
+    <div class="level-selection" id="level-selection">
+      <h2 class="level-title">Select Level</h2>
+      <div class="level-grid" id="level-grid">
+        <!-- Level buttons will be generated here -->
+      </div>
+      <div class="level-nav">
+        <button id="prev-page-btn">
+          <i class="fas fa-chevron-left"></i> Previous
+        </button>
+        <span id="page-info">Page 1 of 10</span>
+        <button id="next-page-btn">
+          Next <i class="fas fa-chevron-right"></i>
+        </button>
+      </div>
+      <button class="back-btn" id="back-from-levels">
+        <i class="fas fa-arrow-left"></i> Back to Home
+      </button>
+    </div>
+
+    <!-- Game Container -->
+    <div class="container" id="game-container">
+      <button class="back-btn" id="back-btn">
+        <i class="fas fa-arrow-left"></i>
+      </button>
+
+      <h1>Sliding Puzzle</h1>
+
+      <div class="level-info">
+        <span>Level: <span id="current-level">1</span>/<span id="max-level">300</span></span>
+        <span>Grid: <span id="grid-size">3x3</span></span>
+        <span>Difficulty: <span id="difficulty-text">Easy</span></span>
+      </div>
+
+      <div class="difficulty-indicator">
+        <div class="difficulty-dot" id="diff-dot-1"></div>
+        <div class="difficulty-dot" id="diff-dot-2"></div>
+        <div class="difficulty-dot" id="diff-dot-3"></div>
+        <div class="difficulty-dot" id="diff-dot-4"></div>
+        <div class="difficulty-dot" id="diff-dot-5"></div>
+      </div>
+
+      <div class="instructions">
+        <p>
+          Arrange the tiles in numerical order by sliding them into the empty
+          space.
+        </p>
+        <p><strong>You have <span id="shuffles-text">5</span> shuffles per level!</strong> Use them wisely.</p>
+        <p>
+          <strong>Note:</strong> Replaying completed levels won't add to your
+          score.
+        </p>
+      </div>
+
+      <div class="puzzle-frame">
+        <div class="puzzle-container" id="puzzle"></div>
+      </div>
+
+      <div class="stats-container">
+        <div class="moves-counter">Moves: <span id="moves">0</span></div>
+        <div class="score-display">Score: <span id="score">0</span></div>
+        <div class="shuffles-counter" id="shuffles-counter">
+          Shuffles: <span id="shuffles-left">5</span>/<span id="shuffles-max">5</span>
+        </div>
+      </div>
+
+      <div class="message" id="message"></div>
+
+      <div class="controls">
+        <button id="shuffle-btn">Shuffle (5 left)</button>
+        <button id="next-level-btn">Next Level</button>
+      </div>
+    </div>
+
+    <!-- How to Play Modal -->
+    <div class="modal" id="how-to-modal">
+      <div class="modal-content">
+        <button class="close-modal" id="close-how-to">
+          <i class="fas fa-times"></i>
+        </button>
+        <h2>How to Play</h2>
+        <p>
+          1. The goal is to arrange the tiles in numerical order from 1 to N.
+        </p>
+        <p>
+          2. Click on a tile adjacent to the empty space to slide it into that
+          space.
+        </p>
+        <p>3. Continue sliding tiles until all numbers are in order.</p>
+        <p>
+          4. <strong>You have 5 shuffles per level.</strong> Use them wisely!
+        </p>
+        <p>5. Try to complete the puzzle in as few moves as possible!</p>
+        <p>6. The game has 300 levels with increasing difficulty.</p>
+        <p>7. Higher levels have larger grids (up to 8x8).</p>
+        <p>
+          8. For image puzzles, the image is divided into numbered tiles that
+          work just like the number puzzles.
+        </p>
+        <p>
+          9. <strong>Important:</strong> Replaying already completed levels
+          won't add to your total score.
+        </p>
+
+        <div class="score-system">
+          <h3>Score System</h3>
+          <ul>
+            <li>
+              <strong>Regular Levels:</strong> Base score = Grid Rows - 2
+              (minimum 1 point)
+            </li>
+            <li>
+              <strong>Custom Puzzles:</strong> Fixed scores based on grid size
+            </li>
+            <li>
+              <strong>Speed Bonus:</strong> +1 point if completed in less than
+              12 moves
+            </li>
+            <li>
+              <strong>No-Shuffle Bonus:</strong> +1 point if you don't use any
+              shuffle
+            </li>
+            <li>
+              <strong>No replay points:</strong> Replaying completed levels
+              gives no score
+            </li>
+          </ul>
+          <p>
+            <strong>Example:</strong> 4x4 level completed in 10 moves with no
+            shuffle used:
+          </p>
+          <ul>
+            <li>Base: 2 points (4 rows - 2)</li>
+            <li>Speed bonus: +1 (completed in less than 12 moves)</li>
+            <li>No-shuffle bonus: +1 (no shuffle used)</li>
+            <li><strong>Total: 4 points</strong></li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- Upload Image Modal -->
+    <div class="modal" id="upload-modal">
+      <div class="modal-content">
+        <button class="close-modal" id="close-upload">
+          <i class="fas fa-times"></i>
+        </button>
+        <h2>Upload Your Image</h2>
+        <p>
+          Choose an image to create a custom puzzle. The image will be divided
+          into numbered tiles.
+        </p>
+
+        <div class="upload-area" id="upload-area">
+          <i class="fas fa-cloud-upload-alt"></i>
+          <p>Click here or drag and drop an image</p>
+          <input
+            type="file"
+            id="image-upload"
+            accept="image/*"
+            style="display: none"
+          />
+          <img id="image-preview" alt="Image preview" />
+        </div>
+
+        <div class="grid-selection">
+          <div class="grid-option" data-rows="3" data-cols="3" data-score="1">
+            3x3 Grid (Score: 1)
+          </div>
+          <div
+            class="grid-option selected"
+            data-rows="4"
+            data-cols="4"
+            data-score="3"
+          >
+            4x4 Grid (Score: 3)
+          </div>
+          <div class="grid-option" data-rows="4" data-cols="5" data-score="4">
+            4x5 Grid (Score: 4)
+          </div>
+          <div class="grid-option" data-rows="5" data-cols="5" data-score="5">
+            5x5 Grid (Score: 5)
+          </div>
+        </div>
+
+        <div class="score-system">
+          <h3>Custom Puzzle Scoring</h3>
+          <ul>
+            <li>
+              <strong>Speed Bonus:</strong> +1 point if completed in less than
+              12 moves
+            </li>
+            <li>
+              <strong>No-Shuffle Bonus:</strong> +1 point if you don't use any
+              shuffle
+            </li>
+            <li>Custom puzzles can be replayed, but only give score once</li>
+          </ul>
+        </div>
+
+        <button id="use-image-btn" style="width: 100%; margin-top: 15px">
+          Use This Image
+        </button>
+      </div>
+    </div>
+
+    <!-- Total Score Modal -->
+    <div class="modal" id="score-modal">
+      <div class="modal-content">
+        <button class="close-modal" id="close-score">
+          <i class="fas fa-times"></i>
+        </button>
+        <h2>Your Total Score</h2>
+
+        <div class="score-stats">
+          <div class="score-item">
+            <span>Total Score:</span>
+            <span class="score-value" id="modal-total-score">0</span>
+          </div>
+          <div class="score-item">
+            <span>Levels Completed:</span>
+            <span class="score-value" id="levels-completed">0</span>
+          </div>
+          <div class="score-item">
+            <span>Highest Level:</span>
+            <span class="score-value" id="highest-level">1</span>
+          </div>
+        </div>
+
+        <div class="score-system">
+          <h3>Score System Summary</h3>
+          <ul>
+            <li><strong>Base Score:</strong> Grid Rows - 2 (min 1)</li>
+            <li>
+              <strong>Speed Bonus:</strong> +1 point for completing in &lt; 12
+              moves
+            </li>
+            <li>
+              <strong>No-Shuffle Bonus:</strong> +1 point for not using shuffle
+            </li>
+            <li><strong>Max per level:</strong> Base + 2 bonus points</li>
+            <li><strong>No replay points:</strong> Replaying gives no score</li>
+          </ul>
+        </div>
+
+        <p>Keep playing to increase your score and unlock more levels!</p>
+      </div>
+    </div>
+
+    <script>
+      // Display leaderboard on page load
+      try {
+        displayLeaderboard("slidingPuzzle");
+      } catch (e) {
+        console.error("Error displaying leaderboard:", e);
+        document.getElementById("leaderboard").innerHTML =
+          "<p>Error loading leaderboard. Please try refreshing the page.</p>";
+      }
+    </script>
+    <script src="/games/gh-bridge.js"></script>
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        // DOM Elements
+        const homepage = document.getElementById("homepage");
+        const levelSelection = document.getElementById("level-selection");
+        const gameContainer = document.getElementById("game-container");
+        const startBtn = document.getElementById("start-btn");
+        const howToBtn = document.getElementById("how-to-btn");
+        const uploadBtn = document.getElementById("upload-btn");
+        const scoreBtn = document.getElementById("score-btn");
+        const backBtn = document.getElementById("back-btn");
+        const backFromLevelsBtn = document.getElementById("back-from-levels");
+        const levelGrid = document.getElementById("level-grid");
+        const prevPageBtn = document.getElementById("prev-page-btn");
+        const nextPageBtn = document.getElementById("next-page-btn");
+        const pageInfo = document.getElementById("page-info");
+        const totalScoreDisplay = document.getElementById(
+          "total-score-display"
+        );
+
+        const howToModal = document.getElementById("how-to-modal");
+        const uploadModal = document.getElementById("upload-modal");
+        const scoreModal = document.getElementById("score-modal");
+        const closeHowTo = document.getElementById("close-how-to");
+        const closeUpload = document.getElementById("close-upload");
+        const closeScore = document.getElementById("close-score");
+        const uploadArea = document.getElementById("upload-area");
+        const imageUpload = document.getElementById("image-upload");
+        const imagePreview = document.getElementById("image-preview");
+        const useImageBtn = document.getElementById("use-image-btn");
+        const gridOptions = document.querySelectorAll(".grid-option");
+        const modalTotalScore = document.getElementById("modal-total-score");
+        const levelsCompleted = document.getElementById("levels-completed");
+        const highestLevel = document.getElementById("highest-level");
+
+        const puzzleContainer = document.getElementById("puzzle");
+        const shuffleBtn = document.getElementById("shuffle-btn");
+        const nextLevelBtn = document.getElementById("next-level-btn");
+        const messageEl = document.getElementById("message");
+        const movesEl = document.getElementById("moves");
+        const scoreEl = document.getElementById("score");
+        const currentLevelEl = document.getElementById("current-level");
+        const gridSizeEl = document.getElementById("grid-size");
+        const difficultyText = document.getElementById("difficulty-text");
+        const shufflesCounter = document.getElementById("shuffles-counter");
+        const shufflesLeftEl = document.getElementById("shuffles-left");
+        const diffDots = [
+          document.getElementById("diff-dot-1"),
+          document.getElementById("diff-dot-2"),
+          document.getElementById("diff-dot-3"),
+          document.getElementById("diff-dot-4"),
+          document.getElementById("diff-dot-5"),
+        ];
+
+        // Game Variables
+        let currentLevel = 1;
+        let maxLevel = 300;
+        let gridRows = 3;
+        let gridCols = 3;
+        let puzzleState = [];
+        let moves = 0;
+        let totalScore = 0;
+        let gameSolved = false;
+        let customImage = null;
+        let levelsPerPage = 30;
+        let currentPage = 1;
+        let totalPages = Math.ceil(maxLevel / levelsPerPage);
+        let selectedGridRows = 4;
+        let selectedGridCols = 4;
+        let selectedGridScore = 3;
+        let imageTiles = [];
+        let levelScores = {};
+        let levelCompleted = {};
+        let shufflesLeft = 5;
+        let maxShuffles = 5;
+        let isReplay = false;
+        let initialShuffles = 5;
+
+        // Initialize level progression and score from localStorage
+        let unlockedLevels = JSON.parse(
+          localStorage.getItem("slidingPuzzleLevels")
+        ) || [1];
+        let savedScore =
+          JSON.parse(localStorage.getItem("slidingPuzzleLevelScores")) || {};
+        let savedCompleted =
+          JSON.parse(localStorage.getItem("slidingPuzzleCompleted")) || {};
+
+        levelScores = savedScore;
+        levelCompleted = savedCompleted;
+
+        // Calculate total score from level scores
+        totalScore = Object.values(levelScores).reduce(
+          (sum, score) => sum + score,
+          0
+        );
+        scoreEl.textContent = totalScore;
+        totalScoreDisplay.textContent = totalScore;
+        modalTotalScore.textContent = totalScore;
+
+        // Update score modal with latest stats
+        function updateScoreModal() {
+          modalTotalScore.textContent = totalScore;
+          levelsCompleted.textContent = Object.keys(levelCompleted).length;
+          highestLevel.textContent = Math.max(...unlockedLevels, 1);
+        }
+
+        // Grid selection for image puzzles
+        gridOptions.forEach((option) => {
+          option.addEventListener("click", () => {
+            gridOptions.forEach((opt) => opt.classList.remove("selected"));
+            option.classList.add("selected");
+            selectedGridRows = parseInt(option.dataset.rows);
+            selectedGridCols = parseInt(option.dataset.cols);
+            selectedGridScore = parseInt(option.dataset.score);
+          });
+        });
+
+        // Get grid dimensions for a given level
+        function getGridDimensions(level) {
+          const gridPattern = [
+            { rows: 3, cols: 3 },
+            { rows: 3, cols: 4 },
+            { rows: 3, cols: 5 },
+            { rows: 4, cols: 3 },
+            { rows: 4, cols: 4 },
+            { rows: 4, cols: 5 },
+            { rows: 5, cols: 3 },
+            { rows: 5, cols: 4 },
+            { rows: 5, cols: 5 },
+            { rows: 5, cols: 6 },
+            { rows: 6, cols: 5 },
+            { rows: 6, cols: 6 },
+            { rows: 6, cols: 7 },
+            { rows: 7, cols: 6 },
+            { rows: 7, cols: 7 },
+            { rows: 7, cols: 8 },
+            { rows: 8, cols: 7 },
+            { rows: 8, cols: 8 },
+          ];
+
+          if (level <= gridPattern.length) {
+            return gridPattern[level - 1];
+          } else {
+            const baseSize = Math.floor((level - 1) / 50) + 3;
+            const variation = (level - 1) % 4;
+
+            switch (variation) {
+              case 0:
+                return { rows: baseSize, cols: baseSize };
+              case 1:
+                return { rows: baseSize, cols: baseSize + 1 };
+              case 2:
+                return { rows: baseSize + 1, cols: baseSize };
+              case 3:
+                return { rows: baseSize + 1, cols: baseSize + 1 };
+            }
+          }
+        }
+
+        // Calculate score based on level (NEW SCORING: gridRows - 2)
+        function calculateScore(level) {
+          const dimensions = getGridDimensions(level);
+          let baseScore = dimensions.rows - 2;
+          return Math.max(baseScore, 1);
+        }
+
+        // Get image URL for a level
+        function getImageForLevel(level) {
+          const imageUrls = [
+            "https://picsum.photos/400/400?random=1",
+            "https://picsum.photos/400/400?random=2",
+            "https://picsum.photos/400/400?random=3",
+            "https://picsum.photos/400/400?random=4",
+            "https://picsum.photos/400/400?random=5",
+            "https://picsum.photos/400/400?random=6",
+            "https://picsum.photos/400/400?random=7",
+            "https://picsum.photos/400/400?random=8",
+            "https://picsum.photos/400/400?random=9",
+            "https://picsum.photos/400/400?random=10",
+          ];
+
+          const imageIndex = (level - 1) % imageUrls.length;
+          return imageUrls[imageIndex];
+        }
+
+        // Update difficulty indicator
+        function updateDifficultyIndicator() {
+          let difficultyLevel = 1;
+          let difficultyName = "Easy";
+
+          if (currentLevel <= 50) {
+            difficultyLevel = 1;
+            difficultyName = "Easy";
+          } else if (currentLevel <= 100) {
+            difficultyLevel = 2;
+            difficultyName = "Medium";
+          } else if (currentLevel <= 150) {
+            difficultyLevel = 3;
+            difficultyName = "Hard";
+          } else if (currentLevel <= 200) {
+            difficultyLevel = 4;
+            difficultyName = "Expert";
+          } else {
+            difficultyLevel = 5;
+            difficultyName = "Master";
+          }
+
+          difficultyText.textContent = difficultyName;
+
+          diffDots.forEach((dot, index) => {
+            if (index < difficultyLevel) {
+              dot.classList.add("active");
+            } else {
+              dot.classList.remove("active");
+            }
+          });
+        }
+
+        // Update shuffles display
+        function updateShufflesDisplay() {
+          shufflesLeftEl.textContent = Math.min(shufflesLeft, maxShuffles);
+          shuffleBtn.textContent = `Shuffle (${Math.min(shufflesLeft, maxShuffles)} left)`;
+
+          if (shufflesLeft === 0) {
+            shuffleBtn.classList.add("disabled");
+            shufflesCounter.classList.add("critical");
+            messageEl.textContent =
+              "No shuffles left! Solve the puzzle as it is.";
+          } else if (shufflesLeft === 1) {
+            shuffleBtn.classList.remove("disabled");
+            shufflesCounter.classList.remove("critical");
+            shufflesCounter.classList.add("warning");
+            messageEl.textContent = "Last shuffle! Use it wisely!";
+            setTimeout(() => {
+              if (
+                !gameSolved &&
+                messageEl.textContent.includes("Last shuffle")
+              ) {
+                messageEl.textContent = "";
+              }
+            }, 3000);
+          } else {
+            shuffleBtn.classList.remove("disabled");
+            shufflesCounter.classList.remove("warning", "critical");
+            if (!messageEl.classList.contains("replay-message")) {
+              messageEl.textContent = "";
+            }
+          }
+        }
+
+        // Generate level buttons
+        function generateLevelButtons() {
+          levelGrid.innerHTML = "";
+          const startLevel = (currentPage - 1) * levelsPerPage + 1;
+          const endLevel = Math.min(currentPage * levelsPerPage, maxLevel);
+
+          for (let i = startLevel; i <= endLevel; i++) {
+            const levelBtn = document.createElement("div");
+            levelBtn.className = "level-btn";
+            levelBtn.textContent = i;
+            levelBtn.dataset.level = i;
+
+            if (unlockedLevels.includes(i)) {
+              levelBtn.classList.add("unlocked");
+              if (i === currentLevel) {
+                levelBtn.classList.add("current");
+              }
+              levelBtn.addEventListener("click", () => startLevelGame(i));
+            } else {
+              levelBtn.classList.add("locked");
+            }
+
+            levelGrid.appendChild(levelBtn);
+          }
+
+          pageInfo.textContent = `Page ${currentPage} of ${totalPages}`;
+          prevPageBtn.disabled = currentPage === 1;
+          nextPageBtn.disabled = currentPage === totalPages;
+        }
+
+        // Event Listeners for Navigation
+
+        startBtn.addEventListener("click", () => {
+          homepage.style.display = "none";
+          levelSelection.style.display = "flex";
+          generateLevelButtons();
+
+        });
+
+        backFromLevelsBtn.addEventListener("click", () => {
+          levelSelection.style.display = "none";
+          homepage.style.display = "flex";
+        });
+
+        backBtn.addEventListener("click", () => {
+          gameContainer.style.display = "none";
+          levelSelection.style.display = "flex";
+          generateLevelButtons();
+        });
+
+        prevPageBtn.addEventListener("click", () => {
+          if (currentPage > 1) {
+            currentPage--;
+            generateLevelButtons();
+          }
+        });
+
+        nextPageBtn.addEventListener("click", () => {
+          if (currentPage < totalPages) {
+            currentPage++;
+            generateLevelButtons();
+          }
+        });
+
+        howToBtn.addEventListener("click", () => {
+          howToModal.style.display = "flex";
+        });
+
+        closeHowTo.addEventListener("click", () => {
+          howToModal.style.display = "none";
+        });
+
+        uploadBtn.addEventListener("click", () => {
+          uploadModal.style.display = "flex";
+        });
+
+        closeUpload.addEventListener("click", () => {
+          uploadModal.style.display = "none";
+        });
+
+        scoreBtn.addEventListener("click", () => {
+          updateScoreModal();
+          scoreModal.style.display = "flex";
+        });
+
+        closeScore.addEventListener("click", () => {
+          scoreModal.style.display = "none";
+        });
+
+        // Upload Image Functionality
+        uploadArea.addEventListener("click", () => {
+          imageUpload.click();
+        });
+
+        uploadArea.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          uploadArea.style.borderColor = "rgba(255, 255, 255, 0.8)";
+          uploadArea.style.background = "rgba(255, 255, 255, 0.1)";
+        });
+
+        uploadArea.addEventListener("dragleave", () => {
+          uploadArea.style.borderColor = "rgba(255, 255, 255, 0.5)";
+          uploadArea.style.background = "transparent";
+        });
+
+        uploadArea.addEventListener("drop", (e) => {
+          e.preventDefault();
+          uploadArea.style.borderColor = "rgba(255, 255, 255, 0.5)";
+          uploadArea.style.background = "transparent";
+
+          if (e.dataTransfer.files.length) {
+            handleImageUpload(e.dataTransfer.files[0]);
+          }
+        });
+
+        imageUpload.addEventListener("change", (e) => {
+          if (e.target.files.length) {
+            handleImageUpload(e.target.files[0]);
+          }
+        });
+
+        useImageBtn.addEventListener("click", () => {
+          if (customImage) {
+            uploadModal.style.display = "none";
+            homepage.style.display = "none";
+            levelSelection.style.display = "none";
+            gameContainer.style.display = "block";
+            startCustomImageGame();
+          } else {
+            alert("Please upload an image first.");
+          }
+        });
+
+        function handleImageUpload(file) {
+          if (!file.type.match("image.*")) {
+            alert("Please upload an image file.");
+            return;
+          }
+
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            customImage = e.target.result;
+            imagePreview.src = customImage;
+            imagePreview.style.display = "block";
+          };
+          reader.readAsDataURL(file);
+        }
+
+        // Start a specific level game
+        function startLevelGame(level) {
+          currentLevel = level;
+          homepage.style.display = "none";
+          levelSelection.style.display = "none";
+          gameContainer.style.display = "block";
+
+          // Check if level was already completed
+          isReplay = GH.hub ? false : levelCompleted[level] || false;
+          hubLocked = false;
+
+          // Get grid dimensions based on level
+          const dimensions = getGridDimensions(level);
+          gridRows = dimensions.rows;
+          gridCols = dimensions.cols;
+
+          // The opening scramble inside initPuzzle() spends one shuffle, so hub mode adds one
+          // back to leave the player with exactly the configured number of manual shuffles.
+          shufflesLeft = GH.hub ? maxShuffles + 1 : maxShuffles;
+          initialShuffles = maxShuffles;
+
+          gridSizeEl.textContent = `${gridRows}x${gridCols}`;
+          currentLevelEl.textContent = currentLevel;
+          updateDifficultyIndicator();
+          updateShufflesDisplay();
+
+          // Show replay message if level was already completed
+          if (isReplay) {
+            messageEl.textContent =
+              "This level was already completed. Replaying won't add to your score.";
+            messageEl.classList.add("replay-message");
+            setTimeout(() => {
+              if (!gameSolved) {
+                messageEl.textContent = "";
+                messageEl.classList.remove("replay-message");
+              }
+            }, 5000);
+          }
+
+          initPuzzle();
+          if (GH.hub) hubStartTimer();
+        }
+
+        // Start a custom image game
+        function startCustomImageGame() {
+          gridRows = selectedGridRows;
+          gridCols = selectedGridCols;
+          gridSizeEl.textContent = `${gridRows}x${gridCols}`;
+          currentLevelEl.textContent = "Custom";
+          difficultyText.textContent = "Custom";
+          diffDots.forEach((dot) => dot.classList.remove("active"));
+
+          // Custom levels are always considered "replay" for scoring purposes
+          isReplay = true;
+
+          // Reset shuffles for custom game (5 shuffles)
+          shufflesLeft = maxShuffles;
+          initialShuffles = maxShuffles;
+          updateShufflesDisplay();
+
+          initPuzzle();
+        }
+
+        // Initialize the puzzle
+        function initPuzzle() {
+          const totalTiles = gridRows * gridCols;
+          puzzleState = Array.from({ length: totalTiles }, (_, i) => i + 1);
+          puzzleState[totalTiles - 1] = 0;
+
+          puzzleContainer.style.gridTemplateColumns = `repeat(${gridCols}, 1fr)`;
+          puzzleContainer.style.gridTemplateRows = `repeat(${gridRows}, 1fr)`;
+
+          moves = 0;
+          movesEl.textContent = moves;
+          if (!isReplay) {
+            messageEl.textContent = "";
+          }
+          messageEl.classList.remove("win-message");
+          gameSolved = false;
+          nextLevelBtn.style.display = "none";
+
+          if (currentLevelEl.textContent !== "Custom") {
+            customImage = getImageForLevel(currentLevel);
+            createImagePuzzle();
+          } else if (customImage && currentLevelEl.textContent === "Custom") {
+            createImagePuzzle();
+          } else {
+            createNumberPuzzle();
+          }
+
+          shufflePuzzle();
+        }
+
+        function createNumberPuzzle() {
+          puzzleContainer.innerHTML = "";
+
+          puzzleState.forEach((value, index) => {
+            const tile = document.createElement("div");
+            tile.className = value === 0 ? "tile empty" : "tile";
+            tile.textContent = value === 0 ? "" : value;
+            tile.dataset.index = index;
+            tile.dataset.value = value;
+
+            const maxDimension = Math.max(gridRows, gridCols);
+            if (maxDimension <= 4) {
+              tile.style.fontSize = "1.8rem";
+            } else if (maxDimension <= 6) {
+              tile.style.fontSize = "1.5rem";
+            } else {
+              tile.style.fontSize = "1.2rem";
+            }
+
+            if (value !== 0) {
+              tile.addEventListener("click", handleTileClick);
+            }
+
+            puzzleContainer.appendChild(tile);
+          });
+        }
+
+        function createImagePuzzle() {
+          puzzleContainer.innerHTML = "";
+          imageTiles = [];
+
+          puzzleState.forEach((value, index) => {
+            const tile = document.createElement("div");
+            tile.className = value === 0 ? "tile empty" : "tile";
+            tile.dataset.index = index;
+            tile.dataset.value = value;
+
+            tile.textContent = value === 0 ? "" : value;
+
+            if (value !== 0) {
+              tile.style.backgroundImage = `url(${customImage})`;
+              tile.style.backgroundSize = `${gridCols * 100}% ${
+                gridRows * 100
+              }%`;
+
+              const row = Math.floor((value - 1) / gridCols);
+              const col = (value - 1) % gridCols;
+              const xPos = (col * 100) / (gridCols - 1);
+              const yPos = (row * 100) / (gridRows - 1);
+              tile.style.backgroundPosition = `${xPos}% ${yPos}%`;
+
+              tile.style.color = "white";
+              tile.style.textShadow = "2px 2px 4px rgba(0, 0, 0, 0.8)";
+              tile.style.fontWeight = "bold";
+
+              tile.addEventListener("click", handleTileClick);
+            }
+
+            puzzleContainer.appendChild(tile);
+          });
+        }
+
+        // Handle tile click
+        function handleTileClick(e) {
+          if (gameSolved) return;
+
+          const clickedIndex = parseInt(e.target.dataset.index);
+          const emptyIndex = puzzleState.indexOf(0);
+
+          if (isValidMove(clickedIndex, emptyIndex)) {
+            [puzzleState[clickedIndex], puzzleState[emptyIndex]] = [
+              puzzleState[emptyIndex],
+              puzzleState[clickedIndex],
+            ];
+
+            moves++;
+            movesEl.textContent = moves;
+
+            updatePuzzleDisplay();
+            checkWinCondition();
+          }
+        }
+
+        // Check if the move is valid
+        function isValidMove(clickedIndex, emptyIndex) {
+          const clickedRow = Math.floor(clickedIndex / gridCols);
+          const clickedCol = clickedIndex % gridCols;
+          const emptyRow = Math.floor(emptyIndex / gridCols);
+          const emptyCol = emptyIndex % gridCols;
+
+          const isAdjacent =
+            (clickedRow === emptyRow &&
+              Math.abs(clickedCol - emptyCol) === 1) ||
+            (clickedCol === emptyCol && Math.abs(clickedRow - emptyRow) === 1);
+
+          return isAdjacent;
+        }
+
+        // Update the puzzle display
+        function updatePuzzleDisplay() {
+          const tiles = document.querySelectorAll(".tile");
+
+          tiles.forEach((tile, index) => {
+            const value = puzzleState[index];
+            tile.dataset.value = value;
+            tile.dataset.index = index;
+
+            if (value === 0) {
+              tile.className = "tile empty";
+              tile.textContent = "";
+              tile.style.backgroundImage = "";
+              tile.replaceWith(tile.cloneNode(true));
+            } else {
+              tile.className = "tile";
+              if (
+                (customImage && currentLevelEl.textContent === "Custom") ||
+                currentLevel >= 1
+              ) {
+                tile.style.backgroundImage = `url(${customImage})`;
+                tile.style.backgroundSize = `${gridCols * 100}% ${
+                  gridRows * 100
+                }%`;
+
+                const row = Math.floor((value - 1) / gridCols);
+                const col = (value - 1) % gridCols;
+                const xPos = (col * 100) / (gridCols - 1);
+                const yPos = (row * 100) / (gridRows - 1);
+                tile.style.backgroundPosition = `${xPos}% ${yPos}%`;
+
+                tile.textContent = value;
+
+                tile.style.color = "white";
+                tile.style.textShadow = "2px 2px 4px rgba(0, 0, 0, 0.8)";
+                tile.style.fontWeight = "bold";
+              } else {
+                tile.textContent = value;
+                tile.style.color = "";
+                tile.style.textShadow = "";
+                tile.style.fontWeight = "";
+                tile.style.backgroundImage = "";
+
+                const maxDimension = Math.max(gridRows, gridCols);
+                if (maxDimension <= 4) {
+                  tile.style.fontSize = "1.8rem";
+                } else if (maxDimension <= 6) {
+                  tile.style.fontSize = "1.5rem";
+                } else {
+                  tile.style.fontSize = "1.2rem";
+                }
+              }
+
+              tile.addEventListener("click", handleTileClick);
+            }
+          });
+        }
+
+        // Check if the puzzle is solved
+        function checkWinCondition() {
+          const totalTiles = gridRows * gridCols;
+          const solvedState = Array.from(
+            { length: totalTiles },
+            (_, i) => i + 1
+          );
+          solvedState[totalTiles - 1] = 0;
+
+          const isSolved = puzzleState.every(
+            (value, index) => value === solvedState[index]
+          );
+
+          if (isSolved) {
+            gameSolved = true;
+            if (GH.hub) {
+              hubSolved();
+              return;
+            }
+
+
+            // Calculate the score for this level (NEW SCORING SYSTEM)
+            let levelScore;
+            if (currentLevelEl.textContent === "Custom") {
+              levelScore = selectedGridScore;
+            } else {
+              levelScore = calculateScore(currentLevel); // gridRows - 2
+            }
+
+            // UPDATED BONUS SYSTEM:
+            // +1 point if completed in less than 12 moves (changed from 7)
+            if (moves < 12) {
+              levelScore += 1;
+            }
+
+            // UPDATED BONUS SYSTEM:
+            // +1 point only if shuffle is not used at all (changed from +1 per unused shuffle)
+            if (shufflesLeft === initialShuffles) {
+              levelScore += 1;
+            }
+
+            // Check if level was previously completed
+            const oldScore = levelScores[currentLevel] || 0;
+
+            // Only add score if it's NOT a replay (level not completed before)
+            if (!isReplay) {
+              // Update total score by replacing old score with new score
+              totalScore = totalScore - oldScore + levelScore;
+              levelScores[currentLevel] = levelScore;
+              levelCompleted[currentLevel] = true;
+
+              // Save to localStorage
+              localStorage.setItem("slidingPuzzleScore", totalScore.toString());
+              localStorage.setItem(
+                "slidingPuzzleLevelScores",
+                JSON.stringify(levelScores)
+              );
+              localStorage.setItem(
+                "slidingPuzzleCompleted",
+                JSON.stringify(levelCompleted)
+              );
+
+              scoreEl.textContent = totalScore;
+              totalScoreDisplay.textContent = totalScore;
+              if (typeof window.saveGameScore === 'function') window.saveGameScore('sliding-puzzle', totalScore);
+
+              let bonusText = "";
+              if (moves < 12)
+                bonusText += ` +1 speed bonus (completed in less than 12 moves)!`;
+              if (shufflesLeft === initialShuffles)
+                bonusText += ` +1 no-shuffle bonus!`;
+
+              if (bonusText) {
+                messageEl.textContent = `Congratulations! You solved the puzzle in ${moves} moves! You earned ${levelScore} points!${bonusText}`;
+              } else {
+                messageEl.textContent = `Congratulations! You solved the puzzle in ${moves} moves! You earned ${levelScore} points!`;
+              }
+              messageEl.classList.add("win-message");
+
+              // Unlock next level if it's not the last level
+              if (
+                currentLevelEl.textContent !== "Custom" &&
+                currentLevel < maxLevel &&
+                !unlockedLevels.includes(currentLevel + 1)
+              ) {
+                unlockedLevels.push(currentLevel + 1);
+                localStorage.setItem(
+                  "slidingPuzzleLevels",
+                  JSON.stringify(unlockedLevels)
+                );
+              }
+            } else {
+              // This is a replay - don't add score
+              messageEl.textContent = `Level completed! This was a replay. Your score remains unchanged.`;
+              messageEl.classList.add("replay-message");
+            }
+
+            // Show next level button if not on custom level
+            if (currentLevelEl.textContent !== "Custom") {
+              nextLevelBtn.style.display = "block";
+            }
+
+            // If using a custom image, show the complete image
+            if (
+              (customImage && currentLevelEl.textContent === "Custom") ||
+              currentLevel >= 1
+            ) {
+              setTimeout(() => {
+                puzzleContainer.innerHTML = "";
+                const completeImage = document.createElement("div");
+                completeImage.style.width = "100%";
+                completeImage.style.height = "100%";
+                completeImage.style.backgroundImage = `url(${customImage})`;
+                completeImage.style.backgroundSize = "cover";
+                completeImage.style.borderRadius = "8px";
+                puzzleContainer.appendChild(completeImage);
+              }, 1000);
+            }
+          }
+        }
+
+        // Shuffle the puzzle
+        function shufflePuzzle() {
+          if (GH.hub && hubLocked) return;
+          // Check if shuffles are available
+          if (shufflesLeft <= 0) {
+            messageEl.textContent =
+              "No shuffles left! Solve the puzzle as it is.";
+            messageEl.style.color = "#e74c3c";
+            return;
+          }
+
+          if (gameSolved) {
+            messageEl.textContent = "";
+            messageEl.classList.remove("win-message");
+            gameSolved = false;
+            nextLevelBtn.style.display = "none";
+          }
+
+          // Decrement shuffles counter
+          shufflesLeft--;
+          updateShufflesDisplay();
+
+          let shuffleMoves;
+          if (currentLevelEl.textContent === "Custom") {
+            shuffleMoves = 50;
+          } else {
+            shuffleMoves = Math.min(200, 20 + currentLevel * 3);
+          }
+
+          // Reset to solved state first
+          const totalTiles = gridRows * gridCols;
+          puzzleState = Array.from({ length: totalTiles }, (_, i) => i + 1);
+          puzzleState[totalTiles - 1] = 0;
+
+          let emptyIndex = totalTiles - 1;
+
+          for (let i = 0; i < shuffleMoves; i++) {
+            const possibleMoves = [];
+            const emptyRow = Math.floor(emptyIndex / gridCols);
+            const emptyCol = emptyIndex % gridCols;
+
+            if (emptyRow > 0) possibleMoves.push(emptyIndex - gridCols);
+            if (emptyRow < gridRows - 1)
+              possibleMoves.push(emptyIndex + gridCols);
+            if (emptyCol > 0) possibleMoves.push(emptyIndex - 1);
+            if (emptyCol < gridCols - 1) possibleMoves.push(emptyIndex + 1);
+
+            const randomIndex = Math.floor(
+              Math.random() * possibleMoves.length
+            );
+            const moveIndex = possibleMoves[randomIndex];
+
+            [puzzleState[emptyIndex], puzzleState[moveIndex]] = [
+              puzzleState[moveIndex],
+              puzzleState[emptyIndex],
+            ];
+
+            emptyIndex = moveIndex;
+          }
+
+          moves = 0;
+          movesEl.textContent = moves;
+          updatePuzzleDisplay();
+
+          if (shufflesLeft > 0) {
+            messageEl.textContent = `Shuffle used! ${shufflesLeft} shuffle${
+              shufflesLeft !== 1 ? "s" : ""
+            } remaining.`;
+            messageEl.style.color = "#f39c12";
+            setTimeout(() => {
+              if (!gameSolved) {
+                messageEl.textContent = "";
+              }
+            }, 3000);
+          }
+        }
+
+        // Go to next level
+        nextLevelBtn.addEventListener("click", () => {
+          if (currentLevel < maxLevel) {
+            startLevelGame(currentLevel + 1);
+          }
+        });
+
+        // Event listeners for game buttons
+        shuffleBtn.addEventListener("click", shufflePuzzle);
+
+        // Close modals when clicking outside
+        window.addEventListener("click", (e) => {
+          if (e.target === howToModal) {
+            howToModal.style.display = "none";
+          }
+          if (e.target === uploadModal) {
+            uploadModal.style.display = "none";
+          }
+          if (e.target === scoreModal) {
+            scoreModal.style.display = "none";
+          }
+        });
+
+        // Handle window resize for better responsiveness
+        window.addEventListener("resize", () => {
+          if (gameContainer.style.display === "block") {
+            updatePuzzleDisplay();
+          }
+        });
+
+        // ---------- Game Hub reward mode ----------
+        let hubLocked = false;
+        let hubLives = 1;
+        let hubTimerId = null;
+        let hubDeadline = 0;
+        let hubBar = null;
+        let hubBarFill = null;
+        let hubBarLabel = null;
+
+        function hubTimeLimit() {
+          const base = Number(GH.cfg.time_base) || 20;
+          const perTile = Number(GH.cfg.time_per_tile) || 4;
+          return Math.round(base + perTile * gridRows * gridCols);
+        }
+
+        function hubEnsureBar() {
+          if (hubBar) return;
+          hubBar = document.createElement("div");
+          hubBar.style.cssText = "position:relative;height:22px;border-radius:11px;background:#2b2b44;margin:8px auto;max-width:420px;overflow:hidden";
+          hubBarFill = document.createElement("div");
+          hubBarFill.style.cssText = "height:100%;width:100%;background:linear-gradient(90deg,#2ecc71,#f1c40f);transition:width .1s linear";
+          hubBarLabel = document.createElement("div");
+          hubBarLabel.style.cssText = "position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 12px system-ui;color:#fff";
+          hubBar.appendChild(hubBarFill);
+          hubBar.appendChild(hubBarLabel);
+          const frame = document.querySelector(".puzzle-frame");
+          frame.parentNode.insertBefore(hubBar, frame);
+        }
+
+        function hubStartTimer() {
+          hubEnsureBar();
+          clearInterval(hubTimerId);
+          const total = hubTimeLimit() * 1000;
+          hubDeadline = Date.now() + total;
+          hubTimerId = setInterval(() => {
+            const left = hubDeadline - Date.now();
+            const pct = Math.max(0, (left / total) * 100);
+            hubBarFill.style.width = pct + "%";
+            hubBarFill.style.background = pct < 25 ? "#e74c3c" : pct < 50 ? "#f1c40f" : "#2ecc71";
+            hubBarLabel.textContent = Math.max(0, Math.ceil(left / 1000)) + "s";
+            if (left <= 0) {
+              clearInterval(hubTimerId);
+              hubTimeout();
+            }
+          }, 100);
+        }
+
+        function hubTimeout() {
+          if (hubLocked) return;
+          hubLocked = true;
+          gameSolved = true;
+          GH.lifeLost();
+          hubLives = Math.max(0, hubLives - 1);
+          if (hubLives <= 0) {
+            messageEl.textContent = "Time is up!";
+            GH.showOutOfLives("Time ran out before you finished the puzzle.");
+          } else {
+            messageEl.textContent = "Time is up! Starting this level over...";
+            setTimeout(() => startLevelGame(currentLevel), 1500);
+          }
+        }
+
+        function hubSolved() {
+          clearInterval(hubTimerId);
+          hubLocked = true;
+          const done = currentLevel;
+          messageEl.textContent = "Solved! Checking your result...";
+          GH.complete(done).then((res) => {
+            if (!res || res.ok === false) {
+              messageEl.textContent = (res && res.message) || "Could not verify that level. Try it again.";
+              setTimeout(() => startLevelGame(done), 2000);
+              return;
+            }
+            if (res.status === "cleared") {
+              messageEl.textContent = "Level " + done + " cleared! You win free data!";
+              GH.showWin();
+              return;
+            }
+            messageEl.textContent = "Level " + done + " cleared!";
+            setTimeout(() => startLevelGame(res.level || done + 1), 1200);
+          });
+        }
+
+        if (GH.hub) {
+          let hubStarted = false;
+          GH.on("state", () => {
+            if (hubStarted || GH.status !== "active") return;
+            hubStarted = true;
+            maxShuffles = Number(GH.cfg.shuffles) || 2;
+            hubLives = Math.max(GH.lives, 0);
+            document.getElementById("shuffles-max").textContent = maxShuffles;
+            document.getElementById("shuffles-text").textContent = maxShuffles;
+            document.getElementById("max-level").textContent = GH.target;
+            document.getElementById("back-btn").style.display = "none";
+            startLevelGame(GH.level || 1);
+          });
+          GH.on("cont", (d) => {
+            hubLives = Math.max(1, d.lives || 1);
+            startLevelGame(currentLevel);
+          });
+        }
+
+        // Initialize the shuffles display
+        updateShufflesDisplay();
+      });
+    </script>
+    <script src="utils.js"></script>
+      <script src="../js/gamehub-score-bridge.js"></script>
+    <script src="../js/coins.js"></script>
+    
+<script src="/js/online-game-utils.js"></script>
+<script>
+window.addEventListener('load', function() {
+  if (typeof OnlineGameUtils === 'undefined') return;
+  OnlineGameUtils.initHowToPlay({
+    title: "How to Play \u2014 Sliding Puzzle",
+    steps: ["Slide tiles one at a time into the empty space to rearrange the image.", "Only tiles directly next to the empty square can be moved.", "Reconstruct the original image to solve the puzzle.", "Fewer moves and less time = a higher score."]
+  });
+  var btn = document.querySelector('.ogu-htp-btn');
+  if (btn) {
+    btn.style.cssText = 'position:fixed;top:12px;right:12px;z-index:9000;padding:6px 14px;font-size:0.78rem;border-radius:20px;';
+  }
+});
+</script>
+<script src="../js/game-audio.js"></script>
+
+<script src="/js/game-score-tracker.js"></script><script src="/js/game-score-auto.js"></script>
+<script src="/js/game-leaderboard.js" defer></script>
+</body>
+</html>

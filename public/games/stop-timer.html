@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <link rel="manifest" href="/manifest.json?v=10">
+  <meta name="theme-color" content="#9B30FF">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="GameHub">
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=10">
+  <link rel="icon" type="image/png" href="/icon.png?v=10">
+  <meta property="og:image" content="https://www.gamehubgh.com/icon.png?v=10">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:image" content="https://www.gamehubgh.com/icon.png?v=10">
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Stop the Timer - Countdown Challenge</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .game-container {
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+            padding: 30px;
+            text-align: center;
+            position: relative;
+        }
+        
+        .countdown-corner {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            background: linear-gradient(135deg, #1a1a2e, #16213e);
+            color: #ffd700;
+            padding: 8px 16px;
+            border-radius: 40px;
+            font-weight: bold;
+            font-size: 1.3rem;
+            font-family: monospace;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,215,0,0.5);
+        }
+        
+        .countdown-corner.warning {
+            color: #ff6b6b;
+            animation: pulseRed 0.5s infinite;
+        }
+        
+        @keyframes pulseRed {
+            0%, 100% { text-shadow: 0 0 2px #ff0000; }
+            50% { text-shadow: 0 0 12px #ff0000; }
+        }
+        
+        h1 {
+            color: #2575fc;
+            margin-bottom: 10px;
+            font-size: 2.5rem;
+        }
+        
+        .subtitle {
+            color: #6a11cb;
+            margin-bottom: 30px;
+            font-size: 1.2rem;
+        }
+        
+        .game-info {
+            background-color: #f0f8ff;
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        }
+        
+        .game-info p {
+            font-size: 1rem;
+            color: #2575fc;
+            font-weight: 500;
+            margin-bottom: 10px;
+        }
+        
+        .win-range {
+            font-size: 0.9rem;
+            color: #4CAF50;
+            font-weight: bold;
+            margin: 8px 0 12px 0;
+            text-align: center;
+            background: #e8f5e9;
+            padding: 8px 12px;
+            border-radius: 20px;
+            display: inline-block;
+            width: auto;
+        }
+        
+        .win-range-container {
+            text-align: center;
+            margin: 5px 0 0 0;
+        }
+        
+        .target-time {
+            font-size: 2.8rem;
+            font-weight: bold;
+            color: #2575fc;
+            margin: 10px 0 5px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .timer-display {
+            font-size: 4rem;
+            font-weight: bold;
+            color: #6a11cb;
+            margin: 15px 0 20px 0;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
+            transition: color 0.3s ease;
+        }
+        
+        .timer-win {
+            color: #4CAF50 !important;
+            animation: winPulse 0.5s infinite;
+        }
+        
+        .speed-indicator {
+            height: 10px;
+            background: linear-gradient(to right, #4CAF50, #FFC107, #F44336);
+            border-radius: 5px;
+            margin: 15px 0;
+            overflow: hidden;
+        }
+        
+        .speed-fill {
+            height: 100%;
+            width: 0%;
+            background-color: #2575fc;
+            border-radius: 5px;
+            transition: width 0.3s ease;
+        }
+        
+        .speed-labels {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .challenge-features {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 15px 0;
+        }
+        
+        .feature {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 12px 8px;
+            flex: 1;
+            margin: 0;
+            font-size: 0.85rem;
+            font-weight: bold;
+            text-align: center;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+        
+        .feature.active {
+            background-color: #e3f2fd;
+            border: 2px solid #1976d2;
+            transform: scale(1.02);
+        }
+        
+        .controls-horizontal {
+            display: flex;
+            justify-content: space-between;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        
+        .control-btn {
+            flex: 1;
+            padding: 12px 8px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-align: center;
+            white-space: nowrap;
+            box-shadow: 0 3px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        #startBtn {
+            background-color: #4CAF50;
+            color: white;
+        }
+        
+        #stopBtn {
+            background-color: #f44336;
+            color: white;
+        }
+        
+        #resetBtn {
+            background-color: #ff9800;
+            color: white;
+        }
+        
+        #payToPlayBtn {
+            background-color: #9c27b0;
+            color: white;
+            padding: 12px 20px;
+            font-size: 1rem;
+        }
+        
+        .continue-btn {
+            background-color: #9c27b0;
+            color: white;
+            margin: 10px;
+            padding: 12px 20px;
+        }
+        
+        .cashout-btn {
+            background-color: #4CAF50;
+            color: white;
+            margin: 10px;
+            padding: 12px 20px;
+        }
+        
+        .control-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .control-btn:active:not(:disabled) {
+            transform: translateY(1px);
+        }
+        
+        .control-btn:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .result {
+            font-size: 1.3rem;
+            font-weight: bold;
+            margin: 15px 0;
+            min-height: 40px;
+        }
+        
+        .win {
+            color: #4CAF50;
+            animation: pulse 1s infinite;
+        }
+        
+        .lose {
+            color: #f44336;
+        }
+        
+        .prize-container {
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #fff9c4;
+            border-radius: 15px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+        
+        .prize-title {
+            font-size: 1.5rem;
+            color: #ff9800;
+            margin-bottom: 10px;
+        }
+        
+        .prize {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #ff5722;
+        }
+        
+        .instructions {
+            margin-top: 25px;
+            padding: 15px;
+            background-color: #e3f2fd;
+            border-radius: 15px;
+            text-align: left;
+        }
+        
+        .instructions h3 {
+            color: #1976d2;
+            margin-bottom: 10px;
+        }
+        
+        .instructions ul {
+            padding-left: 20px;
+        }
+        
+        .instructions li {
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+        }
+        
+        .attempts-display {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin: 10px 0;
+            color: #2575fc;
+        }
+        
+        .reward-info {
+            background-color: #e8f5e9;
+            border-radius: 10px;
+            padding: 10px;
+            margin: 15px 0;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+        
+        .choice-container {
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .pay-overlay {
+            background-color: #fff3e0;
+            border-radius: 15px;
+            padding: 15px;
+            margin: 15px 0;
+            text-align: center;
+            border: 2px solid #ff9800;
+        }
+        
+        .pay-overlay p {
+            margin: 8px 0;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes winPulse {
+            0% { transform: scale(1); text-shadow: 0 0 10px rgba(76, 175, 80, 0.7); }
+            50% { transform: scale(1.05); text-shadow: 0 0 20px rgba(76, 175, 80, 0.9); }
+            100% { transform: scale(1); text-shadow: 0 0 10px rgba(76, 175, 80, 0.7); }
+        }
+        
+        @keyframes timerRunning {
+            0% { color: #6a11cb; }
+            50% { color: #2575fc; }
+            100% { color: #6a11cb; }
+        }
+        
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+            75% { transform: translateX(-5px); }
+            100% { transform: translateX(0); }
+        }
+        
+        @keyframes flash {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+        
+        .timer-running {
+            animation: timerRunning 1s infinite;
+        }
+        
+        .timer-fast {
+            color: #f44336;
+            animation: timerRunning 0.5s infinite;
+        }
+        
+        .timer-shake {
+            animation: shake 0.1s infinite;
+        }
+        
+        .timer-flash {
+            animation: flash 0.3s infinite;
+        }
+        
+        .timer-glitch {
+            animation: glitch 0.3s infinite;
+        }
+        
+        .hidden-target {
+            opacity: 0.3;
+        }
+        
+        .target-glitch {
+            animation: glitch 0.2s infinite;
+        }
+        
+        @media (max-width: 480px) {
+            .game-container {
+                padding: 20px;
+            }
+            .controls-horizontal {
+                gap: 8px;
+            }
+            .control-btn {
+                padding: 10px 5px;
+                font-size: 0.7rem;
+            }
+            .feature {
+                font-size: 0.65rem;
+                padding: 10px 5px;
+            }
+            .timer-display {
+                font-size: 3rem;
+            }
+            .target-time {
+                font-size: 2.2rem;
+            }
+            .win-range {
+                font-size: 0.75rem;
+                padding: 5px 10px;
+            }
+        }
+        #backToGames {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 9999;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #backToGames:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+        }
+    </style>
+<script src="/games/gh-guard.js"></script>
+<script src="/js/mobile-ux.js?v=20260808" defer></script>
+</head>
+<body>
+        <!-- Back to Games Button -->
+    <a id="backToGames" href="../index.html#all-games" onclick="window.location.href='../index.html#all-games'; return false;">
+        <span>&#8592;</span> Back to Games
+    </a>
+
+    <div class="game-container">
+        <div class="countdown-corner" id="countdownTimer">01:00</div>
+        <h1>Stop the Timer</h1>
+        <p class="subtitle">Stop within range to win credits!</p>
+        
+        <div class="attempts-display">Consecutive Wins: <span id="consecutiveWins">0</span>/<span id="winTarget">5</span><span id="creditsWrap"> | Total Credits: <span id="totalCredits">0</span> GHS</span></div>
+        
+        <div class="reward-info" id="rewardInfo">
+            Win 3 consecutive: 120 GHS (3,000 coins) | Win 5 consecutive: 500 GHS (12,500 coins)
+        </div>
+        
+        <div class="game-info">
+            <p>Stop the timer at the right moment!</p>
+            <div class="win-range-container">
+                <div class="win-range" id="winRange">🎯 Win Range: EXACT match OR ±0.01 / ±0.02 / ±0.03 seconds</div>
+            </div>
+            <div class="target-time" id="targetTime">5.00</div>
+        </div>
+        
+        <div class="timer-display" id="timerDisplay">0.00</div>
+        
+        <div class="speed-indicator">
+            <div class="speed-fill" id="speedFill"></div>
+        </div>
+        <div class="speed-labels">
+            <span>Slow</span>
+            <span>Medium</span>
+            <span>Fast</span>
+        </div>
+        
+        <div class="challenge-features">
+            <div class="feature" id="feature1">⚡ Speed Up</div>
+            <div class="feature" id="feature2">🌊 Shake</div>
+            <div class="feature" id="feature3">👁️ Hide Target</div>
+        </div>
+        
+        <div class="controls-horizontal">
+            <button class="control-btn" id="startBtn" disabled>Start Timer</button>
+            <button class="control-btn" id="stopBtn" disabled>Stop Timer</button>
+            <button class="control-btn" id="resetBtn" disabled>Next Attempt</button>
+        </div>
+        
+        <div class="pay-overlay" id="payOverlay">
+            <p>Time's up!</p>
+            <p>Pay <strong>50 coins (2 GHS)</strong> to continue playing for 2.2 more minutes</p>
+            <button id="payToPlayBtn">Pay 50 Coins &amp; Restart Timer</button>
+        </div>
+        
+        <div class="choice-container" id="choiceContainer">
+            <p class="prize-title" id="choiceTitle">You've won 3 consecutive games!</p>
+            <p id="choiceText">Take 120 GHS (3,000 coins) now or risk for 500 GHS (12,500 coins)?</p>
+            <div>
+                <button class="cashout-btn" id="cashoutBtn">Take 120 GHS (3,000 coins)</button>
+                <button class="continue-btn" id="continueBtn">Risk for 500 GHS (12,500 coins)</button>
+            </div>
+        </div>
+        
+        <div class="result" id="result"></div>
+        
+        <div class="prize-container" id="prizeContainer">
+            <div class="prize-title" id="finalPrizeTitle">Congratulations!</div>
+            <div class="prize" id="prize"></div>
+        </div>
+        
+        <div class="instructions">
+            <h3>How to Play:</h3>
+            <ul id="howList">
+                <li>First session is FREE (1 minute). Each extra session costs 50 coins (2 GHS) for 2.2 more minutes</li>
+                <li>Win Range: EXACT target time OR within ±0.01, ±0.02, or ±0.03 seconds</li>
+                <li>Click "Start Timer" to begin count-up, click "Stop Timer" to check</li>
+                <li>Timer turns green on a win</li>
+                <li>Win 3 consecutively: choose 120 GHS (3,000 coins) or risk for 500 GHS (12,500 coins)</li>
+                <li>Win 5 consecutively: automatically win 500 GHS (12,500 coins)</li>
+            </ul>
+        </div>
+    </div>
+
+    <audio id="backgroundMusic" loop>
+        <source src="https://assets.mixkit.co/music/preview/mixkit-game-show-suspense-waiting-667.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="winSound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" type="audio/mpeg">
+    </audio>
+
+    <script src="/games/gh-bridge.js"></script>
+    <script>
+        // DOM Elements
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const payToPlayBtn = document.getElementById('payToPlayBtn');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const targetTimeDisplay = document.getElementById('targetTime');
+        const resultDisplay = document.getElementById('result');
+        const prizeContainer = document.getElementById('prizeContainer');
+        const prizeDisplay = document.getElementById('prize');
+        const finalPrizeTitle = document.getElementById('finalPrizeTitle');
+        const speedFill = document.getElementById('speedFill');
+        const feature1 = document.getElementById('feature1');
+        const feature2 = document.getElementById('feature2');
+        const feature3 = document.getElementById('feature3');
+        const totalCreditsDisplay = document.getElementById('totalCredits');
+        const consecutiveWinsDisplay = document.getElementById('consecutiveWins');
+        const choiceContainer = document.getElementById('choiceContainer');
+        const cashoutBtn = document.getElementById('cashoutBtn');
+        const continueBtn = document.getElementById('continueBtn');
+        const countdownElement = document.getElementById('countdownTimer');
+        const payOverlay = document.getElementById('payOverlay');
+        
+        // Audio
+        const backgroundMusic = document.getElementById('backgroundMusic');
+        const winSound = document.getElementById('winSound');
+        
+        // Game State
+        let gameTimer = null;
+        let startTime = 0;
+        let elapsedTime = 0;
+        let isRunning = false;
+        let targetTime = 0;
+        let baseSpeed = 10;
+        let currentSpeed = baseSpeed;
+        let totalCredits = 0;
+        let consecutiveWins = 0;
+        let audioInitialized = false;
+        let superDifficultyActive = false;
+        let gameActive = true;
+        let attemptFinalized = false;
+        let currentAttemptResult = null;
+        
+        // First session is FREE: 1 minute (60s). Paid sessions: 2.2 minutes (132s)
+        let isFirstSession = true;
+        let countdownSeconds = 60;
+        let countdownInterval = null;
+        let gameSessionActive = true;
+        
+        // Challenges
+        const challenges = [
+            { id: 'speedUp', active: false, element: feature1 },
+            { id: 'shake', active: false, element: feature2 },
+            { id: 'hideTarget', active: false, element: feature3 }
+        ];
+        
+        // WIN DETECTION - exact match OR ±0.01 / ±0.02 / ±0.03 normally
+        // In super-difficulty (after 3 wins, heading for 5), only exact match wins
+        function isExactWin(currentTime, target) {
+            const roundedCurrent = Math.round(currentTime * 100) / 100;
+            const roundedTarget = parseFloat(target);
+
+            if (roundedCurrent === roundedTarget) return true;
+
+            if (GH.hub && !superDifficultyActive) return Math.abs(roundedCurrent - roundedTarget) < 0.0101;
+
+            // Super-difficulty: exact match only — no tolerance (makes 5-win streak very hard)
+            if (superDifficultyActive) return false;
+
+            const difference = Math.abs(roundedCurrent - roundedTarget);
+            const epsilon = 0.0001;
+            return (Math.abs(difference - 0.01) < epsilon) ||
+                   (Math.abs(difference - 0.02) < epsilon) ||
+                   (Math.abs(difference - 0.03) < epsilon);
+        }
+        
+        // Countdown Functions
+        function updateCountdownDisplay() {
+            const minutes = Math.floor(countdownSeconds / 60);
+            const seconds = countdownSeconds % 60;
+            countdownElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            if (countdownSeconds <= 10) {
+                countdownElement.classList.add('warning');
+            } else {
+                countdownElement.classList.remove('warning');
+            }
+        }
+        
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            countdownInterval = setInterval(() => {
+                if (countdownSeconds > 0 && gameSessionActive) {
+                    countdownSeconds--;
+                    updateCountdownDisplay();
+                    if (countdownSeconds === 0) {
+                        endGameSession();
+                    }
+                }
+            }, 1000);
+        }
+        
+        function endGameSession() { if(typeof window.saveGameScore==='function') window.saveGameScore('timer-challenge', typeof sessionScore!=='undefined'?sessionScore:(typeof score!=='undefined'?score:0));
+            gameSessionActive = false;
+            if (countdownInterval) clearInterval(countdownInterval);
+            if (isRunning) {
+                isRunning = false;
+                clearTimeout(gameTimer);
+            }
+            startBtn.disabled = true;
+            stopBtn.disabled = true;
+            resetBtn.disabled = true;
+            if (backgroundMusic) backgroundMusic.pause();
+            if (GH.hub) {
+                GH.lifeLost();
+                GH.showOutOfLives('Time is up!');
+                return;
+            }
+            payOverlay.style.display = 'block';
+        }
+        
+        async function payToContinue() {
+// Deduct the 50-coin continue cost through the transactional wallet helper.
+            const sbClient = window.supabaseClient;
+            let paid = false;
+            if (sbClient && window.CoinsAPI) {
+                try {
+                    const { data: { session } } = await sbClient.auth.getSession();
+                    const userId = session?.user?.id;
+                    if (userId) {
+                        const result = await CoinsAPI.deduct(userId, 50, 'Timer challenge continuation', session.access_token);
+                        if (!result?.ok) {
+                            resultDisplay.textContent = 'Not enough coins! You need 50 coins (2 GHS) to continue.';
+                            resultDisplay.className = 'result lose';
+                            return;
+                        }
+                        document.dispatchEvent(new CustomEvent('gamehub:balance-updated'));
+                        paid = true;
+                    }
+                } catch (e) { console.log('[v0] payToContinue error:', e); }
+            }
+            if (!paid) {
+                resultDisplay.textContent = 'Please sign in to continue with 50 coins.';
+                resultDisplay.className = 'result lose';
+                return;
+            }
+            updateDisplays();
+            resetGameSession();
+            payOverlay.style.display = 'none';
+            gameSessionActive = true;
+            isFirstSession = false;
+            countdownSeconds = 132; // 2.2 minutes
+            updateCountdownDisplay();
+            startCountdown();
+            resetGameState();
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            resetBtn.disabled = true;
+            resultDisplay.textContent = '';
+            if (backgroundMusic && audioInitialized) backgroundMusic.play().catch(e => console.log);
+        }
+        
+        function resetGameSession() {
+            consecutiveWins = 0;
+            superDifficultyActive = false;
+            attemptFinalized = false;
+            currentAttemptResult = null;
+            elapsedTime = 0;
+            updateTimerDisplay();
+            timerDisplay.classList.remove('timer-win', 'timer-running', 'timer-fast');
+            generateTargetTime();
+            updateDisplays();
+            resetChallenges();
+            choiceContainer.style.display = 'none';
+            prizeContainer.style.display = 'none';
+        }
+        
+        function resetGameState() {
+            consecutiveWins = 0;
+            superDifficultyActive = false;
+            attemptFinalized = false;
+            currentAttemptResult = null;
+            elapsedTime = 0;
+            isRunning = false;
+            if (gameTimer) clearTimeout(gameTimer);
+            updateTimerDisplay();
+            timerDisplay.classList.remove('timer-win', 'timer-running', 'timer-fast');
+            generateTargetTime();
+            updateDisplays();
+            resetChallenges();
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            resetBtn.disabled = true;
+            resultDisplay.textContent = '';
+        }
+        
+        function generateTargetTime() {
+            targetTime = (Math.random() * 7 + 3).toFixed(2);
+            targetTimeDisplay.textContent = targetTime;
+        }
+        
+        function updateTimerDisplay() {
+            const seconds = (elapsedTime / 1000).toFixed(2);
+            timerDisplay.textContent = seconds;
+        }
+        
+        function updateDisplays() {
+            totalCreditsDisplay.textContent = totalCredits;
+            consecutiveWinsDisplay.textContent = consecutiveWins;
+        }
+        
+        function resetChallenges() {
+            challenges.forEach(c => {
+                c.active = false;
+                c.element.classList.remove('active');
+            });
+            timerDisplay.classList.remove('timer-shake', 'timer-flash', 'timer-glitch');
+            targetTimeDisplay.classList.remove('hidden-target', 'target-glitch');
+        }
+        
+        function applyChallenges() {
+            if (challenges[0].active) {
+                if (superDifficultyActive) currentSpeed = Math.max(1, currentSpeed * 0.3);
+                else currentSpeed = Math.max(1, currentSpeed * 0.6);
+            }
+            if (challenges[1].active) {
+                timerDisplay.classList.add('timer-shake');
+                if (superDifficultyActive) timerDisplay.classList.add('timer-glitch', 'timer-flash');
+            } else {
+                timerDisplay.classList.remove('timer-shake', 'timer-glitch', 'timer-flash');
+            }
+            if (challenges[2].active) {
+                targetTimeDisplay.classList.add('hidden-target');
+                if (superDifficultyActive) targetTimeDisplay.classList.add('target-glitch');
+            } else {
+                targetTimeDisplay.classList.remove('hidden-target', 'target-glitch');
+            }
+        }
+        
+        function activateRandomChallenge() {
+            const available = challenges.filter(c => !c.active);
+            if (available.length === 0) return;
+            const random = available[Math.floor(Math.random() * available.length)];
+            random.active = true;
+            random.element.classList.add('active');
+            const duration = superDifficultyActive ? 3000 : 2000;
+            setTimeout(() => {
+                random.active = false;
+                random.element.classList.remove('active');
+            }, duration);
+        }
+        
+        function playWinSound() {
+            if (!audioInitialized) return;
+            winSound.currentTime = 0;
+            winSound.play().catch(e => console.log);
+        }
+        
+        function initializeAudio() {
+            if (audioInitialized) return;
+            backgroundMusic.volume = 0.4;
+            backgroundMusic.loop = true;
+            winSound.volume = 0.6;
+            document.addEventListener('click', function startAudio() {
+                if (audioInitialized) return;
+                backgroundMusic.play().then(() => {
+                    audioInitialized = true;
+                }).catch(e => console.log);
+                document.removeEventListener('click', startAudio);
+            }, { once: true });
+        }
+        
+        // Timer Game Logic
+        function updateTimer() {
+            if (!isRunning) return;
+            elapsedTime = Date.now() - startTime;
+            const currentTime = elapsedTime / 1000;
+            const proximity = Math.min(currentTime / targetTime, 1);
+            let effectiveMultiplier = superDifficultyActive ? 20 : 7;
+            currentSpeed = Math.max(1, baseSpeed - (proximity * baseSpeed * 0.95 * effectiveMultiplier));
+            speedFill.style.width = `${proximity * 100}%`;
+            if (proximity > 0.6) {
+                timerDisplay.classList.add('timer-fast');
+                timerDisplay.classList.remove('timer-running');
+            } else {
+                timerDisplay.classList.remove('timer-fast');
+                timerDisplay.classList.add('timer-running');
+            }
+            if (Math.random() < (0.05 * effectiveMultiplier)) activateRandomChallenge();
+            applyChallenges();
+            updateTimerDisplay();
+            gameTimer = setTimeout(updateTimer, currentSpeed);
+        }
+        
+        function startTimer() {
+            if (!gameSessionActive || attemptFinalized || !gameActive) return;
+
+            isRunning = true;
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            resetBtn.disabled = true;
+            timerDisplay.classList.remove('timer-win');
+            if (elapsedTime > 0) startTime = Date.now() - elapsedTime;
+            else startTime = Date.now();
+            timerDisplay.classList.add('timer-running');
+            resetChallenges();
+            updateTimer();
+        }
+        
+        function stopTimer() {
+            if (!isRunning) return;
+            isRunning = false;
+            clearTimeout(gameTimer);
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            timerDisplay.classList.remove('timer-running', 'timer-fast');
+            speedFill.style.width = '0%';
+            resetChallenges();
+            
+            const currentTime = elapsedTime / 1000;
+            const isWin = isExactWin(currentTime, targetTime);
+            
+            // Calculate difference using rounded values for display
+            const roundedCurrent = Math.round(currentTime * 100) / 100;
+            const roundedTarget = parseFloat(targetTime);
+            const displayDifference = Math.abs(roundedCurrent - roundedTarget).toFixed(3);
+            
+            if (isWin) {
+                timerDisplay.classList.add('timer-win');
+                playWinSound();
+                if (roundedCurrent === roundedTarget) {
+                    resultDisplay.textContent = `✅ PERFECT WIN! Exact ${roundedCurrent.toFixed(2)}s - WIN!`;
+                } else {
+                    resultDisplay.textContent = `✅ WIN! ${roundedCurrent.toFixed(2)}s (${displayDifference}s from target)`;
+                }
+                resultDisplay.className = 'result win';
+                resetBtn.textContent = "Next Attempt";
+                currentAttemptResult = 'win';
+            } else {
+                timerDisplay.classList.remove('timer-win');
+                resultDisplay.textContent = `❌ MISS! ${roundedCurrent.toFixed(2)}s (${displayDifference}s from target)`;
+                resultDisplay.className = 'result lose';
+                resetBtn.textContent = "Try Again";
+                currentAttemptResult = 'lose';
+            }
+            resetBtn.disabled = false;
+            if (GH.hub) hubOnResult(isWin);
+        }
+        
+        function handleResetClick() {
+            if (!gameSessionActive) return;
+            if (GH.hub) {
+                if (hubBusy) return;
+                resetForNextRound();
+                return;
+            }
+            if (!attemptFinalized && currentAttemptResult !== null) {
+                if (currentAttemptResult === 'win') {
+                    consecutiveWins++;
+                    if (consecutiveWins === 3 && !superDifficultyActive) {
+                        showChoice();
+                        return;
+                    }
+                    if (consecutiveWins === 5) {
+                        endGameWin(500);
+                        return;
+                    }
+                } else {
+                    consecutiveWins = 0;
+                }
+                updateDisplays();
+                attemptFinalized = true;
+            }
+            resetForNextRound();
+        }
+        
+        function resetForNextRound() {
+            attemptFinalized = false;
+            currentAttemptResult = null;
+            elapsedTime = 0;
+            updateTimerDisplay();
+            timerDisplay.classList.remove('timer-win');
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            resetBtn.disabled = true;
+            resetBtn.textContent = "Next Attempt";
+            timerDisplay.classList.remove('timer-running', 'timer-fast');
+            speedFill.style.width = '0%';
+            resetChallenges();
+            generateTargetTime();
+            setTimeout(() => {
+                if (consecutiveWins < 3 || superDifficultyActive) {
+                    resultDisplay.textContent = '';
+                }
+            }, 1200);
+            updateDisplays();
+        }
+        
+        function showChoice() {
+            choiceContainer.style.display = 'block';
+            startBtn.disabled = true;
+            stopBtn.disabled = true;
+            resetBtn.disabled = true;
+        }
+        
+        async function cashout() {
+            if (GH.hub) {
+                choiceContainer.style.display = 'none';
+                endGameSessionWin();
+                GH.cashOut();
+                return;
+            }
+            await _awardCoins(3000, 120);
+            finalPrizeTitle.textContent = "Congratulations!";
+            prizeDisplay.textContent = `You won 120 GHS (3,000 coins)!`;
+            prizeContainer.style.display = 'block';
+            endGameSessionWin();
+        }
+        
+        function continueForGrandPrize() {
+            superDifficultyActive = true;
+            choiceContainer.style.display = 'none';
+            attemptFinalized = false;
+            currentAttemptResult = null;
+            elapsedTime = 0;
+            timerDisplay.classList.remove('timer-win');
+            generateTargetTime();
+            updateTimerDisplay();
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            resetBtn.disabled = true;
+            resetBtn.textContent = "Next Attempt";
+            resultDisplay.textContent = '';
+            updateDisplays();
+        }
+        
+        async function endGameWin(amount) {
+            // amount is GHS value; convert to coins (25 coins = 1 GHS)
+            const coins = Math.round(amount * 25);
+            await _awardCoins(coins, amount);
+            updateDisplays();
+            finalPrizeTitle.textContent = amount >= 500 ? "JACKPOT!" : "Congratulations!";
+            prizeDisplay.textContent = amount >= 500 ? `You won ${amount} GHS (${coins} coins)!` : `You won ${amount} GHS (${coins} coins)!`;
+            prizeContainer.style.display = 'block';
+            gameActive = false;
+            startBtn.disabled = true;
+            stopBtn.disabled = true;
+            resetBtn.disabled = true;
+            if (backgroundMusic) backgroundMusic.pause();
+        }
+
+        // Award coins to the player's wallet
+        async function _awardCoins(coins, ghsAmount) {
+            const sbClient = window.supabaseClient;
+            if (!sbClient) return;
+            try {
+                const { data: { session } } = await sbClient.auth.getSession();
+                const userId = session?.user?.id;
+                if (!userId) return;
+                if (!window.CoinsAPI) return;
+                const result = await CoinsAPI.award(userId, coins, `Stop the Timer win: ${ghsAmount} GHS`, session.access_token);
+                if (!result?.ok) return;
+                document.dispatchEvent(new CustomEvent('gamehub:balance-updated'));
+            } catch (e) { console.log('[v0] _awardCoins error:', e); }
+        }
+        
+        function endGameSessionWin() {
+            gameActive = false;
+            startBtn.disabled = true;
+            stopBtn.disabled = true;
+            resetBtn.disabled = true;
+            if (backgroundMusic) backgroundMusic.pause();
+        }
+        
+        // Event Listeners
+        startBtn.addEventListener('click', startTimer);
+        stopBtn.addEventListener('click', stopTimer);
+        resetBtn.addEventListener('click', handleResetClick);
+        payToPlayBtn.addEventListener('click', payToContinue);
+        cashoutBtn.addEventListener('click', cashout);
+        continueBtn.addEventListener('click', continueForGrandPrize);
+        
+        // Initialization — first session is FREE (1 minute)
+        function init() {
+            totalCredits = 0;
+            isFirstSession = true;
+            updateDisplays();
+            generateTargetTime();
+            updateTimerDisplay();
+            gameSessionActive = true;
+            countdownSeconds = 60; // 1 minute free first session
+            updateCountdownDisplay();
+            if (!GH.hub) startCountdown();
+            startBtn.disabled = GH.hub;
+            stopBtn.disabled = true;
+            resetBtn.disabled = true;
+            payOverlay.style.display = 'none';
+            initializeAudio();
+        }
+        
+        // ---------- Game Hub reward mode ----------
+        let hubBusy = false;
+
+        function hubTier() {
+            return GH.tier1Level && GH.tier1RewardGb ? GH.tier1Level : null;
+        }
+
+        function hubOnResult(isWin) {
+            hubBusy = true;
+            resetBtn.disabled = true;
+            if (!isWin) {
+                consecutiveWins = 0;
+                superDifficultyActive = false;
+                updateDisplays();
+                resultDisplay.textContent += ' Your streak starts over.';
+                GH.resetStreak().then(() => {
+                    hubBusy = false;
+                    resetBtn.disabled = false;
+                });
+                return;
+            }
+            GH.complete(consecutiveWins + 1).then((res) => {
+                if (!res || res.ok === false) {
+                    resultDisplay.textContent = (res && res.message) || 'Could not verify that win. Try again.';
+                    resultDisplay.className = 'result lose';
+                    hubBusy = false;
+                    resetBtn.disabled = false;
+                    return;
+                }
+                if (res.status === 'cleared') {
+                    consecutiveWins = GH.target;
+                    updateDisplays();
+                    gameActive = false;
+                    endGameSessionWin();
+                    GH.showWin();
+                    return;
+                }
+                consecutiveWins = Math.max(0, (res.level || consecutiveWins + 2) - 1);
+                updateDisplays();
+                const tier = hubTier();
+                if (tier && consecutiveWins === tier) {
+                    superDifficultyActive = true;
+                    showChoice();
+                } else {
+                    resetBtn.disabled = false;
+                }
+                hubBusy = false;
+            });
+        }
+
+        if (GH.hub) {
+            document.getElementById('backToGames').style.display = 'none';
+            document.getElementById('creditsWrap').style.display = 'none';
+            let hubStarted = false;
+            GH.on('state', () => {
+                if (hubStarted || GH.status !== 'active') return;
+                hubStarted = true;
+                const tier = hubTier();
+                const hi = GH.rewardGb;
+                document.getElementById('winTarget').textContent = GH.target;
+                consecutiveWins = Math.max(0, GH.level - 1);
+                updateDisplays();
+                document.getElementById('rewardInfo').textContent = tier
+                    ? `Win ${tier} in a row: free ${GH.tier1RewardGb}GB | Win ${GH.target} in a row: free ${hi}GB`
+                    : `Win ${GH.target} in a row: free ${hi}GB`;
+                document.getElementById('winRange').textContent = 'Win Range: within 0.01s of the target (exact only after the first prize)';
+                document.getElementById('choiceTitle').textContent = `You've won ${tier} in a row!`;
+                document.getElementById('choiceText').textContent = `Take ${GH.tier1RewardGb}GB free data now, or risk it all for ${hi}GB? One miss resets your streak.`;
+                cashoutBtn.textContent = `Take ${GH.tier1RewardGb}GB now`;
+                continueBtn.textContent = `Risk it for ${hi}GB`;
+                const freeSeconds = Number(GH.cfg.free_seconds) || 60;
+                document.getElementById('howList').innerHTML =
+                    `<li>You get ${freeSeconds} seconds free. When time runs out, pay GHS ${GH.lifePrice} for ${Number(GH.cfg.paid_seconds) || 120} more seconds</li>` +
+                    '<li>Press Start, then Stop as close to the target as you can</li>' +
+                    (tier ? `<li>Win ${tier} in a row to take ${GH.tier1RewardGb}GB, or keep going</li>` : '') +
+                    `<li>Win ${GH.target} in a row for ${hi}GB. A miss sends you back to zero</li>`;
+                countdownSeconds = freeSeconds;
+                gameSessionActive = true;
+                updateCountdownDisplay();
+                startCountdown();
+                startBtn.disabled = false;
+            });
+            GH.on('cont', () => {
+                countdownSeconds = Number(GH.cfg.paid_seconds) || 120;
+                gameSessionActive = true;
+                gameActive = true;
+                hubBusy = false;
+                updateCountdownDisplay();
+                startCountdown();
+                resetForNextRound();
+                startBtn.disabled = false;
+                if (backgroundMusic && audioInitialized) backgroundMusic.play().catch(() => {});
+            });
+        }
+
+        init();
+    </script>
+    <script src="../js/gamehub-score-bridge.js"></script>
+    <script src="../js/coins.js"></script>
+    
+<script src="/js/online-game-utils.js"></script>
+<script>
+window.addEventListener('load', function() {
+  if (typeof OnlineGameUtils === 'undefined') return;
+  OnlineGameUtils.initHowToPlay({
+    title: "How to Play \u2014 Stop the Timer",
+    steps: ["A countdown timer ticks toward zero \u2014 stop it as close to zero as possible.", "Click or tap the Stop button at exactly the right moment.", "The closer to zero you stop it, the higher your score.", "Going past zero scores nothing \u2014 perfect timing wins!"]
+  });
+  var btn = document.querySelector('.ogu-htp-btn');
+  if (btn) {
+    btn.style.cssText = 'position:fixed;top:12px;right:12px;z-index:9000;padding:6px 14px;font-size:0.78rem;border-radius:20px;';
+  }
+});
+</script>
+  <script src="../js/game-audio.js"></script>
+
+<script src="/js/game-score-tracker.js"></script><script src="/js/game-score-auto.js"></script>
+<script src="/js/game-leaderboard.js" defer></script>
+</body>
+</html>

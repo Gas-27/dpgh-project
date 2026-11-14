@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import type { ToastActionElement, ToastProps } from "@/components/ui/toast";
+import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 
 const TOAST_LIMIT = 1;
 const TOAST_REMOVE_DELAY = 1000000;
@@ -134,7 +135,21 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">;
 
-function toast({ ...props }: Toast) {
+function withFriendlyBlockedText(props: Toast): Toast {
+  const friendlyDescription =
+    typeof props.description === "string" ? getFriendlyBlockedMessage(props.description) : null;
+  const friendlyTitle = typeof props.title === "string" ? getFriendlyBlockedMessage(props.title) : null;
+  if (!friendlyDescription && !friendlyTitle) return props;
+  return {
+    ...props,
+    title: friendlyTitle ? "Action not allowed" : props.title,
+    description: friendlyDescription ?? friendlyTitle ?? props.description,
+    variant: "destructive",
+  };
+}
+
+function toast(input: Toast) {
+  const props = withFriendlyBlockedText(input);
   const id = genId();
 
   const update = (props: ToasterToast) =>
