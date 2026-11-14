@@ -28,8 +28,13 @@ export function tournamentGameName(gameId: string): string {
 
 export type TournamentStatus = "draft" | "open" | "live" | "finished" | "cancelled";
 
+export type TournamentMode = "bracket" | "survival";
+
+export const MAX_SURVIVAL_PLAYERS = 200;
+
 export type TournamentSummary = {
   id: string;
+  mode: TournamentMode;
   title: string;
   description: string;
   entry_fee: number;
@@ -78,6 +83,7 @@ export type TournamentMatch = {
 export type TournamentDetail = {
   tournament: {
     id: string;
+    mode: TournamentMode;
     title: string;
     description: string;
     entry_fee: number;
@@ -93,7 +99,7 @@ export type TournamentDetail = {
     me: string | null;
   };
   stages: Array<TournamentStage & { wins_needed: number }>;
-  entries: Array<{ user_id: string; username: string; status: "joined" | "disqualified" }>;
+  entries: Array<{ user_id: string; username: string; status: "joined" | "disqualified"; eliminated_round: number | null }>;
   matches: TournamentMatch[];
 };
 
@@ -107,7 +113,12 @@ export type MyTournamentGame = {
   target: number;
   start_seconds_left: number;
   me: { user_id: string; status: TournamentAttempt["status"]; level: number; wins: number };
-  opponent: { user_id: string; username: string; status: TournamentAttempt["status"]; level: number; wins: number };
+  // Null in last-standing tournaments, where everyone left plays the same game at once.
+  opponent: { user_id: string; username: string; status: TournamentAttempt["status"]; level: number; wins: number } | null;
+  mode?: TournamentMode;
+  round?: number;
+  alive?: number;
+  finished_count?: number;
 };
 
 export type AttemptResult = { ok: boolean; level: number; target: number; lives: number; status: "active" | "cleared" | "over"; reason?: string };
@@ -133,6 +144,7 @@ export type AdminTournament = Omit<TournamentSummary, "joined"> & {
 
 export type TournamentInput = {
   id?: string;
+  mode: TournamentMode;
   title: string;
   description: string;
   entry_fee: number;

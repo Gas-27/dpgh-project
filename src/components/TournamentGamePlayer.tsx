@@ -280,8 +280,10 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
     : info.me.status === "playing" && !started && !starting
       ? ATTEMPT_REASON_MESSAGES.left_game
       : null;
-  const oppFrame = frames[info.opponent.user_id];
-  const oppFresh = isFresh(info.opponent.user_id);
+  const opponent = info.opponent;
+  const survival = opponent === null;
+  const oppFrame = opponent ? frames[opponent.user_id] : undefined;
+  const oppFresh = opponent ? isFresh(opponent.user_id) : false;
 
   return (
     <div className="fixed inset-0 z-[60] flex flex-col bg-[#0d0620] text-white">
@@ -291,10 +293,12 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
         </button>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-bold">
-            Game {info.game_no}: {tournamentGameName(info.game_id)}
+            {survival ? `Round ${info.round ?? info.game_no}` : `Game ${info.game_no}`}: {tournamentGameName(info.game_id)}
           </p>
           <p className="truncate text-xs text-violet-300">
-            You {info.me.wins} - {info.opponent.wins} @{info.opponent.username} - first to {info.wins_needed}
+            {opponent
+              ? `You ${info.me.wins} - ${opponent.wins} @${opponent.username} - first to ${info.wins_needed}`
+              : `${info.alive ?? 0} players still in this round - ${info.finished_count ?? 0} finished`}
           </p>
         </div>
         {attempt?.status === "active" ? (
@@ -321,7 +325,11 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
               <>
                 <div>
                   <p className="text-lg font-bold">{tournamentGameName(info.game_id)}</p>
-                  <p className="mt-1 text-sm text-violet-200">You have one life. Reach level {info.target} or get further than @{info.opponent.username}. The faster finisher wins a tie.</p>
+                  <p className="mt-1 text-sm text-violet-200">
+                    {opponent
+                      ? `You have one life. Reach level ${info.target} or get further than @${opponent.username}. The faster finisher wins a tie.`
+                      : `You have one life. Reach level ${info.target} to stay in. If nobody clears it, the highest levels stay in. Last player standing wins.`}
+                  </p>
                 </div>
                 <p className={`text-sm font-semibold ${secondsLeft <= 30 ? "text-rose-300" : "text-amber-200"}`}>
                   Start within {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")} or you forfeit this game
@@ -347,15 +355,22 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
                         : `You reached level ${attempt?.level ?? info.me.level}`}
                 </p>
                 {endMessage ? <p className="mt-2 text-sm text-rose-200">{endMessage}</p> : null}
-                <p className="mt-2 text-sm text-violet-200">
-                  @{info.opponent.username}: {oppStatusLabel[info.opponent.status] ?? info.opponent.status}, level {info.opponent.level}
+                {opponent ? (
+                  <p className="mt-2 text-sm text-violet-200">
+                    @{opponent.username}: {oppStatusLabel[opponent.status] ?? opponent.status}, level {opponent.level}
+                  </p>
+                ) : (
+                  <p className="mt-2 text-sm text-violet-200">{info.finished_count ?? 0} of {info.alive ?? 0} players have finished this round.</p>
+                )}
+                <p className="mt-3 text-xs text-violet-300/70">
+                  {survival ? "Waiting for everyone to finish. If you stay in, the next round opens automatically." : "Waiting for the result. The next game opens automatically."}
                 </p>
-                <p className="mt-3 text-xs text-violet-300/70">Waiting for the result. The next game opens automatically.</p>
               </div>
             )}
           </div>
         )}
 
+        {opponent ? (
         <div
           className={
             expanded
@@ -370,21 +385,22 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
             aria-expanded={expanded}
             className="flex w-full items-center justify-between gap-1 bg-violet-950/95 px-2 py-1 text-[11px] font-bold text-white"
           >
-            <span className="truncate">@{info.opponent.username}</span>
+            <span className="truncate">@{opponent.username}</span>
             {expanded ? <Minimize2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" /> : <Maximize2 className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />}
           </button>
           <div className={`flex items-center justify-center bg-black ${expanded ? "min-h-0 flex-1" : "h-20"}`}>
             {oppFresh && oppFrame?.image ? (
-              <img src={oppFrame.image || "/placeholder.svg"} alt={`Live view of ${info.opponent.username}`} className="h-full w-full object-contain" />
+              <img src={oppFrame.image || "/placeholder.svg"} alt={`Live view of ${opponent.username}`} className="h-full w-full object-contain" />
             ) : (
               <p className="px-2 text-center text-[11px] text-violet-200/80">
-                {oppStatusLabel[info.opponent.status] ?? info.opponent.status}
+                {oppStatusLabel[opponent.status] ?? opponent.status}
                 <br />
-                Level {info.opponent.level}
+                Level {opponent.level}
               </p>
             )}
           </div>
         </div>
+        ) : null}
       </div>
     </div>
   );

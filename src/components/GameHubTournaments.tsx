@@ -100,8 +100,13 @@ function TournamentDetailView({ id, signedIn, onBack }: { id: string; signedIn: 
   const watchingMatch = detail.matches.find((match) => match.id === watching) ?? null;
   const me = t.me;
   const isMyMatch = (match: TournamentMatch) => Boolean(me) && (match.p1 === me || match.p2 === me);
-  const eliminated =
-    joined && live && detail.matches.some((match) => match.status === "finished" && isMyMatch(match) && match.winner !== null && match.winner !== me);
+  const survival = t.mode === "survival";
+  const myEntry = detail.entries.find((entry) => entry.user_id === me);
+  const alivePlayers = detail.entries.filter((entry) => entry.status === "joined" && !entry.eliminated_round);
+  const currentRound = detail.matches.reduce((max, match) => Math.max(max, match.round), 0);
+  const eliminated = survival
+    ? joined && live && Boolean(myEntry && (myEntry.eliminated_round || myEntry.status === "disqualified"))
+    : joined && live && detail.matches.some((match) => match.status === "finished" && isMyMatch(match) && match.winner !== null && match.winner !== me);
 
   return (
     <div className="space-y-4">
@@ -145,7 +150,7 @@ function TournamentDetailView({ id, signedIn, onBack }: { id: string; signedIn: 
                 {join.isPending ? "Joining..." : t.entry_fee > 0 ? `Join for ${money(t.entry_fee)}` : "Join for free"}
               </button>
             )}
-            <p className="mt-2 text-center text-[11px] text-violet-300/70">The bracket starts automatically when all {t.max_players} places are filled, or when the admin starts it.</p>
+            <p className="mt-2 text-center text-[11px] text-violet-300/70">{survival ? "Round 1 starts" : "The bracket starts"} automatically when all {t.max_players} places are filled, or when the admin starts it.</p>
           </div>
         ) : null}
       </header>
@@ -153,13 +158,15 @@ function TournamentDetailView({ id, signedIn, onBack }: { id: string; signedIn: 
       {myGame && !eliminated ? (
         <button type="button" onClick={() => setPlaying(true)} className="flex w-full items-center justify-between gap-3 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 px-4 py-3 text-left text-black">
           <span>
-            <span className="block text-sm font-extrabold">Your match is ready</span>
-            <span className="block text-xs">vs @{myGame.opponent.username} - {tournamentGameName(myGame.game_id)}</span>
+            <span className="block text-sm font-extrabold">{myGame.opponent ? "Your match is ready" : `Round ${myGame.round ?? currentRound} is ready`}</span>
+            <span className="block text-xs">
+              {myGame.opponent ? `vs @${myGame.opponent.username}` : `${myGame.alive ?? alivePlayers.length} players left`} - {tournamentGameName(myGame.game_id)}
+            </span>
           </span>
           <Swords className="h-6 w-6 shrink-0" aria-hidden="true" />
         </button>
       ) : null}
-      {eliminated ? <p className="rounded-xl bg-violet-950/70 p-3 text-center text-sm text-violet-200">You are out of this tournament. You can still watch every match.</p> : null}
+      {eliminated ? <p className="rounded-xl bg-violet-950/70 p-3 text-center text-sm text-violet-200">{survival ? "You are out of this tournament. You can follow who is left below." : "You are out of this tournament. You can still watch every match."}</p> : null}
 
       {t.status === "finished" && t.winner_name ? (
         <div className="rounded-2xl border border-amber-300/40 bg-amber-400/10 p-4 text-center">
@@ -180,12 +187,30 @@ function TournamentDetailView({ id, signedIn, onBack }: { id: string; signedIn: 
         </div>
       ) : null}
 
-      <section aria-labelledby="tm-bracket-title" className="space-y-2">
-        <h3 id="tm-bracket-title" className="text-sm font-bold">Bracket</h3>
-        <TournamentBracket detail={detail} selectedId={selectedId} onSelect={(match) => setSelectedId(match.id === selectedId ? null : match.id)} />
-      </section>
+      {survival ? (
+        <section aria-labelledby="tm-survival-title" className="space-y-2">
+          <h3 id="tm-survival-title" className="text-sm font-bold">Last person standing</h3>
+          {t.status === "open" ? (
+            <p className="rounded-xl bg-violet-950/60 p-3 text-xs text-violet-200">
+              Everyone plays the same game each round with one life. Clear the target level to stay in. The last player left wins {t.prize_gb}GB.
+            </p>
+          ) : (
+            <div className="rounded-xl bg-violet-950/60 p-3 text-center">
+              <p className="text-2xl font-extrabold text-amber-300">{t.status === "finished" ? 1 : alivePlayers.length}</p>
+              <p className="text-xs text-violet-200">
+                {t.status === "finished" ? "player left - the champion" : `of ${detail.entries.length} players still in${currentRound ? ` - round ${currentRound}` : ""}`}
+              </p>
+            </div>
+          )}
+        </section>
+      ) : (
+        <section aria-labelledby="tm-bracket-title" className="space-y-2">
+          <h3 id="tm-bracket-title" className="text-sm font-bold">Bracket</h3>
+          <TournamentBracket detail={detail} selectedId={selectedId} onSelect={(match) => setSelectedId(match.id === selectedId ? null : match.id)} />
+        </section>
+      )}
 
-      {selected ? (
+      {selected && !survival ? (
         <section className="space-y-2 rounded-2xl border border-violet-400/20 bg-violet-950/60 p-3" aria-label="Selected match">
           <div className="flex items-center justify-between gap-2">
             <p className="text-sm font-bold">@{selected.p1_name ?? "TBD"} vs @{selected.p2_name ?? "TBD"}</p>
@@ -218,11 +243,11 @@ function TournamentDetailView({ id, signedIn, onBack }: { id: string; signedIn: 
       ) : null}
 
       <section aria-labelledby="tm-stages-title" className="space-y-2">
-        <h3 id="tm-stages-title" className="text-sm font-bold">Stages and games</h3>
+        <h3 id="tm-stages-title" className="text-sm font-bold">{survival ? "Game rotation" : "Stages and games"}</h3>
         <ul className="space-y-1.5">
           {detail.stages.map((stage) => (
             <li key={stage.stage_no} className="rounded-xl bg-violet-950/60 px-3 py-2 text-xs">
-              <p className="font-bold text-amber-300">{stage.name} <span className="font-normal text-violet-300">- first to {stage.wins_needed} wins</span></p>
+              {survival ? null : <p className="font-bold text-amber-300">{stage.name} <span className="font-normal text-violet-300">- first to {stage.wins_needed} wins</span></p>}
               <p className="mt-0.5 text-violet-200">{stage.games.map(tournamentGameName).join(" , ")}</p>
             </li>
           ))}
@@ -234,7 +259,12 @@ function TournamentDetailView({ id, signedIn, onBack }: { id: string; signedIn: 
         {detail.entries.length === 0 ? <p className="text-xs text-violet-300/80">Nobody has joined yet.</p> : (
           <ul className="flex flex-wrap gap-1.5">
             {detail.entries.map((entry) => (
-              <li key={entry.user_id} className={`rounded-full px-2.5 py-1 text-xs ${entry.status === "disqualified" ? "bg-rose-500/20 text-rose-300 line-through" : "bg-violet-900/70"}`}>@{entry.username}</li>
+              <li
+                key={entry.user_id}
+                className={`rounded-full px-2.5 py-1 text-xs ${entry.status === "disqualified" ? "bg-rose-500/20 text-rose-300 line-through" : entry.eliminated_round ? "bg-slate-500/20 text-slate-300 line-through" : "bg-violet-900/70"}`}
+              >
+                @{entry.username}{entry.eliminated_round ? ` (out R${entry.eliminated_round})` : ""}
+              </li>
             ))}
           </ul>
         )}
@@ -275,6 +305,7 @@ export default function GameHubTournaments({ signedIn }: { signedIn: boolean }) 
               <span className="flex items-center gap-1 font-bold text-amber-300"><Gift className="h-3.5 w-3.5" aria-hidden="true" /> {t.prize_gb}GB prize</span>
               <span className="flex items-center gap-1"><Wallet className="h-3.5 w-3.5" aria-hidden="true" /> {money(t.entry_fee)}</span>
               <span className="flex items-center gap-1"><Users className="h-3.5 w-3.5" aria-hidden="true" /> {t.entries_count}/{t.max_players}</span>
+              {t.mode === "survival" ? <span className="rounded bg-amber-400/20 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-300">Last standing</span> : null}
               {t.joined ? <span className="rounded bg-violet-500 px-1.5 py-0.5 text-[10px] font-bold uppercase text-white">Joined</span> : null}
             </div>
             {t.status === "finished" && t.winner_name ? <p className="mt-2 text-xs text-violet-300">Champion: @{t.winner_name}</p> : null}

@@ -14,6 +14,7 @@ import {
   disqualifyTournamentPlayer,
   fetchAdminTournaments,
   fetchTournamentDetail,
+  MAX_SURVIVAL_PLAYERS,
   saveAdminTournament,
   stageCountFor,
   startAdminTournament,
@@ -21,6 +22,7 @@ import {
   tournamentGames,
   type AdminTournament,
   type TournamentInput,
+  type TournamentMode,
 } from "@/lib/gameHubTournaments";
 
 const PLAYER_OPTIONS = [2, 4, 8, 16, 32];
@@ -28,7 +30,10 @@ const QUERY_KEY = ["gamehub-admin-tournaments"];
 
 type StageDraft = { name: string; games: string[]; wins_needed: string };
 
-function blankStages(maxPlayers: number): StageDraft[] {
+function blankStages(maxPlayers: number, mode: TournamentMode): StageDraft[] {
+  if (mode === "survival") {
+    return [{ name: "Game rotation", games: tournamentGames.slice(0, 3).map((game) => game.id), wins_needed: "" }];
+  }
   const total = stageCountFor(maxPlayers);
   return Array.from({ length: total }, (_, index) => ({
     name: defaultStageName(index + 1, total),
@@ -50,15 +55,22 @@ function TournamentForm({ editing, onDone }: { editing: AdminTournament | null; 
   const [description, setDescription] = useState(editing?.description ?? "");
   const [entryFee, setEntryFee] = useState(String(editing?.entry_fee ?? 5));
   const [prizeGb, setPrizeGb] = useState(String(editing?.prize_gb ?? 5));
+  const [mode, setMode] = useState<TournamentMode>(editing?.mode ?? "bracket");
   const [maxPlayers, setMaxPlayers] = useState(editing?.max_players ?? 8);
   const [startsAt, setStartsAt] = useState(toLocalInput(editing?.starts_at ?? null));
   const [stages, setStages] = useState<StageDraft[]>(
-    editing ? editing.stages.map((s) => ({ name: s.name, games: s.games, wins_needed: s.wins_needed ? String(s.wins_needed) : "" })) : blankStages(maxPlayers),
+    editing ? editing.stages.map((s) => ({ name: s.name, games: s.games, wins_needed: s.wins_needed ? String(s.wins_needed) : "" })) : blankStages(maxPlayers, mode),
   );
+  const survival = mode === "survival";
 
   useEffect(() => {
-    if (!editing) setStages(blankStages(maxPlayers));
-  }, [maxPlayers, editing]);
+    if (!editing) setStages(blankStages(maxPlayers, mode));
+  }, [maxPlayers, mode, editing]);
+
+  const changeMode = (next: TournamentMode) => {
+    setMode(next);
+    if (next === "bracket" && !PLAYER_OPTIONS.includes(maxPlayers)) setMaxPlayers(8);
+  };
 
   const locked = Boolean(editing && editing.entries_count > 0);
 
@@ -66,6 +78,7 @@ function TournamentForm({ editing, onDone }: { editing: AdminTournament | null; 
     mutationFn: (publish: boolean) => {
       const input: TournamentInput = {
         id: editing?.id,
+        mode,
         title: title.trim(),
         description: description.trim(),
         entry_fee: Number(entryFee) || 0,
@@ -90,15 +103,34 @@ function TournamentForm({ editing, onDone }: { editing: AdminTournament | null; 
     const next = current.includes(gameId) ? current.filter((g) => g !== gameId) : [...current, gameId].slice(0, 7);
     updateStage(index, { games: next });
   };
-  const valid = title.trim().length >= 3 && Number(prizeGb) > 0 && stages.every((s) => s.games.length > 0);
+  const playersValid = survival ? Number.isInteger(maxPlayers) && maxPlayers >= 2 && maxPlayers <= MAX_SURVIVAL_PLAYERS : PLAYER_OPTIONS.includes(maxPlayers);
+  const valid = title.trim().length >= 3 && Number(prizeGb) > 0 && playersValid && stages.every((s) => s.games.length > 0);
 
   return (
     <Card>
       <CardHeader>
         <CardTitle>{editing ? "Edit tournament" : "New tournament"}</CardTitle>
-        <CardDescription>Players pay the entry fee from their wallet. The winner of the final claims the prize as an MTN data bundle.</CardDescription>
+        <CardDescription>Players pay the entry fee from their wallet. The winner claims the prize as an MTN data bundle.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="tm-mode">Tournament type</Label>
+          <select
+            id="tm-mode"
+            value={mode}
+            disabled={Boolean(editing)}
+            onChange={(e) => changeMode(e.target.value as TournamentMode)}
+            className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+          >
+            <option value="bracket">Bracket (players face each other, winners advance)</option>
+            <option value="survival">Last person standing (everyone plays, the last one left wins)</option>
+          </select>
+          {survival ? (
+            <p className="text-xs text-muted-foreground">
+              Each round every remaining player gets the same game with one life. Players who clear the target level stay in. If nobody or everybody clears, the better half stays in (highest level, then fastest). Rounds repeat until one player is left, and that player wins the prize.
+            </p>
+          ) : null}
+        </div>
         <div className="space-y-2">
           <Label htmlFor="tm-title">Title</Label>
           <Input id="tm-title" value={title} maxLength={80} onChange={(e) => setTitle(e.target.value)} placeholder="Weekend Champions Cup" />
@@ -117,18 +149,32 @@ function TournamentForm({ editing, onDone }: { editing: AdminTournament | null; 
             <Input id="tm-prize" type="number" min={1} step="1" disabled={locked} value={prizeGb} onChange={(e) => setPrizeGb(e.target.value)} />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="tm-players">Players needed (pool size)</Label>
-            <select
-              id="tm-players"
-              value={maxPlayers}
-              disabled={locked || Boolean(editing)}
-              onChange={(e) => setMaxPlayers(Number(e.target.value))}
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-            >
-              {PLAYER_OPTIONS.map((n) => (
-                <option key={n} value={n}>{n} players ({stageCountFor(n)} stages)</option>
-              ))}
-            </select>
+            <Label htmlFor="tm-players">Players allowed to join</Label>
+            {survival ? (
+              <Input
+                id="tm-players"
+                type="number"
+                min={2}
+                max={MAX_SURVIVAL_PLAYERS}
+                step="1"
+                disabled={locked || editing?.status === "live"}
+                value={maxPlayers || ""}
+                onChange={(e) => setMaxPlayers(Math.floor(Number(e.target.value)) || 0)}
+              />
+            ) : (
+              <select
+                id="tm-players"
+                value={maxPlayers}
+                disabled={locked || Boolean(editing)}
+                onChange={(e) => setMaxPlayers(Number(e.target.value))}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+              >
+                {PLAYER_OPTIONS.map((n) => (
+                  <option key={n} value={n}>{n} players ({stageCountFor(n)} stages)</option>
+                ))}
+              </select>
+            )}
+            {survival ? <p className="text-xs text-muted-foreground">Any number from 2 to {MAX_SURVIVAL_PLAYERS}. It starts automatically when full, or you can start it early.</p> : null}
           </div>
           <div className="space-y-2">
             <Label htmlFor="tm-start">Planned start (optional)</Label>
@@ -143,20 +189,26 @@ function TournamentForm({ editing, onDone }: { editing: AdminTournament | null; 
         ) : null}
 
         <div className="space-y-3">
-          <h4 className="text-sm font-semibold">Stages</h4>
-          <p className="text-xs text-muted-foreground">Each match in a stage plays these games in order. A player who wins the required number of games moves on; ties replay another game. Leave "wins needed" empty for a simple majority.</p>
+          <h4 className="text-sm font-semibold">{survival ? "Game rotation" : "Stages"}</h4>
+          <p className="text-xs text-muted-foreground">
+            {survival
+              ? "Pick the games to rotate through. Round 1 uses the first game, round 2 the second, and so on, looping back to the start if more rounds are needed."
+              : 'Each match in a stage plays these games in order. A player who wins the required number of games moves on; ties replay another game. Leave "wins needed" empty for a simple majority.'}
+          </p>
           {stages.map((stage, index) => (
             <div key={index} className="space-y-3 rounded-lg border p-3">
-              <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
-                <div className="space-y-1">
-                  <Label htmlFor={`tm-stage-name-${index}`}>Stage {index + 1} name</Label>
-                  <Input id={`tm-stage-name-${index}`} value={stage.name} maxLength={40} onChange={(e) => updateStage(index, { name: e.target.value })} />
+              {survival ? null : (
+                <div className="grid gap-3 sm:grid-cols-[1fr_9rem]">
+                  <div className="space-y-1">
+                    <Label htmlFor={`tm-stage-name-${index}`}>Stage {index + 1} name</Label>
+                    <Input id={`tm-stage-name-${index}`} value={stage.name} maxLength={40} onChange={(e) => updateStage(index, { name: e.target.value })} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor={`tm-stage-wins-${index}`}>Wins needed</Label>
+                    <Input id={`tm-stage-wins-${index}`} type="number" min={1} max={stage.games.length || 1} value={stage.wins_needed} onChange={(e) => updateStage(index, { wins_needed: e.target.value })} placeholder="Majority" />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <Label htmlFor={`tm-stage-wins-${index}`}>Wins needed</Label>
-                  <Input id={`tm-stage-wins-${index}`} type="number" min={1} max={stage.games.length || 1} value={stage.wins_needed} onChange={(e) => updateStage(index, { wins_needed: e.target.value })} placeholder="Majority" />
-                </div>
-              </div>
+              )}
               <fieldset className="flex flex-wrap gap-2">
                 <legend className="sr-only">Games for {stage.name}</legend>
                 {tournamentGames.map((game) => {
@@ -212,8 +264,9 @@ function PlayerManager({ id }: { id: string }) {
     <ul className="flex flex-wrap gap-2">
       {data.entries.map((entry) => (
         <li key={entry.user_id} className="flex items-center gap-2 rounded-full border px-3 py-1 text-xs">
-          <span className={entry.status === "disqualified" ? "line-through" : ""}>@{entry.username}</span>
-          {entry.status === "joined" && data.tournament.status === "live" ? (
+          <span className={entry.status === "disqualified" || entry.eliminated_round ? "line-through" : ""}>@{entry.username}</span>
+          {entry.eliminated_round ? <span className="text-muted-foreground">out R{entry.eliminated_round}</span> : null}
+          {entry.status === "joined" && !entry.eliminated_round && data.tournament.status === "live" ? (
             <button
               type="button"
               className="font-semibold text-destructive"
@@ -294,9 +347,13 @@ export default function AdminGameTournaments() {
               <div>
                 <p className="font-semibold">{t.title}</p>
                 <p className="text-xs text-muted-foreground">
-                  {t.status.toUpperCase()} - {t.entries_count}/{t.max_players} players - entry GH₵{t.entry_fee} - prize {t.prize_gb}GB - collected GH₵{t.fees_collected.toFixed(2)}
+                  {t.mode === "survival" ? "LAST STANDING - " : ""}{t.status.toUpperCase()} - {t.entries_count}/{t.max_players} players - entry GH₵{t.entry_fee} - prize {t.prize_gb}GB - collected GH₵{t.fees_collected.toFixed(2)}
                 </p>
-                <p className="mt-1 text-xs text-muted-foreground">{t.stages.map((s) => `${s.name}: ${s.games.map(tournamentGameName).join(", ")}`).join("  |  ")}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t.mode === "survival"
+                    ? `Game rotation: ${(t.stages[0]?.games ?? []).map(tournamentGameName).join(", ")}`
+                    : t.stages.map((s) => `${s.name}: ${s.games.map(tournamentGameName).join(", ")}`).join("  |  ")}
+                </p>
                 {t.winner_name ? <p className="mt-1 text-xs font-medium">Winner @{t.winner_name} ({t.prize_claimed ? "prize claimed" : "prize not claimed yet"})</p> : null}
               </div>
               <div className="flex flex-wrap gap-2">
@@ -309,7 +366,7 @@ export default function AdminGameTournaments() {
                     disabled={start.isPending || t.entries_count < 2}
                     onClick={() => {
                       const short = t.entries_count < t.max_players;
-                      if (!short || window.confirm(`Only ${t.entries_count} of ${t.max_players} players have joined. Start now? Joining closes and players are paired at random.`)) start.mutate(t.id);
+                      if (!short || window.confirm(`Only ${t.entries_count} of ${t.max_players} players have joined. Start now? Joining closes and the first round begins.`)) start.mutate(t.id);
                     }}
                   >
                     <Play className="mr-1 h-3.5 w-3.5" /> {t.entries_count < t.max_players ? `Start with ${t.entries_count} players` : "Start now"}
