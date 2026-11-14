@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { hubGames } from "@/lib/gameHubGames";
+import { fetchMyPlayer, setUsername } from "@/lib/gameHubSocial";
 
 const db = supabase as unknown as SupabaseClient;
 
@@ -146,6 +147,30 @@ async function rpc<T>(name: string, args?: Record<string, unknown>): Promise<T> 
   const { data, error } = await db.rpc(name, args);
   if (error) throw new Error(error.message);
   return data as T;
+}
+
+function handleFromEmail(email: string | null | undefined): string {
+  const base = (email?.split("@")[0] ?? "").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 4) || "play";
+  const digits = String(Math.floor(1000 + Math.random() * 9000));
+  return `${base.padEnd(3, "x")}_${digits}`;
+}
+
+// The join RPC needs a player row. Players never pick a name: one is made from their email (or a guest handle) the first time they join.
+export async function ensureTournamentPlayer(): Promise<void> {
+  const { data } = await supabase.auth.getUser();
+  const user = data.user;
+  if (!user) throw new Error("Sign in to join a tournament");
+  if (await fetchMyPlayer(user.id)) return;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      await setUsername(handleFromEmail(user.email));
+      return;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String((error as { message?: unknown })?.message ?? "");
+      if (message.trim() !== "username_taken") throw new Error("Could not set up your player profile. Please try again.");
+    }
+  }
+  throw new Error("Could not set up your player profile. Please try again.");
 }
 
 export const fetchTournaments = () => rpc<TournamentSummary[]>("gamehub_tournaments_list");

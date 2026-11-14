@@ -10,6 +10,7 @@ import { useToast } from "@/hooks/use-toast";
 import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import {
   claimTournamentPrize,
+  ensureTournamentPlayer,
   fetchMyTournamentGame,
   fetchTournamentDetail,
   fetchTournaments,
@@ -64,7 +65,10 @@ function TournamentDetailView({ id, signedIn, onBack }: { id: string; signedIn: 
   };
 
   const join = useMutation({
-    mutationFn: () => joinTournament(id, walletHintFromPath(window.location.pathname)),
+    mutationFn: async () => {
+      await ensureTournamentPlayer();
+      return joinTournament(id, walletHintFromPath(window.location.pathname));
+    },
     onSuccess: () => {
       toast({ title: "You are in", description: "Your entry fee was taken from your wallet." });
       refresh();
