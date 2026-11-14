@@ -1646,6 +1646,10 @@ const handleSaveStore = async () => {
         body: JSON.stringify(payload),
       });
       const data = await response.json().catch(() => ({}));
+      if (data?.paused === true) {
+        toast({ title: "Withdrawals paused", description: data.error || "Withdrawals are temporarily unavailable.", variant: "destructive" });
+        return;
+      }
       if (!response.ok || data.success === false) {
         throw new Error(data?.error || data?.message || `Withdrawal failed (${response.status})`);
       }
