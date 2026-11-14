@@ -111,6 +111,18 @@ export type MyTournamentGame = {
 
 export type AttemptResult = { ok: boolean; level: number; target: number; lives: number; status: "active" | "cleared" | "over"; reason?: string };
 
+export type AttemptEndReason = "left_game" | "flagged";
+
+export function isAttemptEndReason(reason: string | undefined): reason is AttemptEndReason {
+  return reason === "left_game" || reason === "flagged";
+}
+
+export const ATTEMPT_REASON_MESSAGES = {
+  left_game: "You left or refreshed the game, so this attempt is over.",
+  flagged: "Your attempt failed the fair-play check and was forfeited.",
+  too_fast: "That level was completed too fast to be real. Play it properly.",
+} as const;
+
 export type AdminTournament = Omit<TournamentSummary, "joined"> & {
   created_at: string;
   prize_claimed: boolean;

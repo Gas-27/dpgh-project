@@ -5,13 +5,16 @@ import { useToast } from "@/hooks/use-toast";
 import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import { hubGames } from "@/lib/gameHubGames";
 import {
+  ATTEMPT_REASON_MESSAGES,
   completeTournamentLevel,
   fetchMyTournamentGame,
+  isAttemptEndReason,
   loseTournamentLife,
   openLiveChannel,
   reportTournamentIntegrity,
   startTournamentAttempt,
   tournamentGameName,
+  type AttemptEndReason,
   type AttemptResult,
 } from "@/lib/gameHubTournaments";
 import { useLiveFrames } from "@/components/TournamentLiveView";
@@ -36,8 +39,11 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
   const queueRef = useRef<Promise<void>>(Promise.resolve());
   const sendRef = useRef<((frame: { user_id: string; image: string | null; level: number; at: number }) => void) | null>(null);
   const scratchRef = useRef<HTMLCanvasElement | null>(null);
+  // gamehub_tm_start must run exactly once per game: a later call counts as leaving the game.
+  const startedGameRef = useRef<string | null>(null);
 
   const [attempt, setAttempt] = useState<AttemptResult | null>(null);
+  const [endedReason, setEndedReason] = useState<AttemptEndReason | null>(null);
   const [started, setStarted] = useState(false);
   const [starting, setStarting] = useState(false);
   const [expanded, setExpanded] = useState(false);
@@ -58,7 +64,9 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
   useEffect(() => {
     attemptRef.current = null;
     frameReadyRef.current = false;
+    startedGameRef.current = null;
     setAttempt(null);
+    setEndedReason(null);
     setStarted(false);
     setExpanded(false);
   }, [matchGameId]);
@@ -105,6 +113,19 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
     setAttempt(next);
   }, []);
 
+  const endAttempt = useCallback(
+    (reason: AttemptEndReason) => {
+      const previous = attemptRef.current;
+      const ended: AttemptResult = { ok: false, level: previous?.level ?? 1, target: previous?.target ?? 0, lives: 0, status: "over", reason };
+      attemptRef.current = ended;
+      setAttempt(ended);
+      setStarted(false);
+      setEndedReason(reason);
+      toast({ title: "Tournament", description: ATTEMPT_REASON_MESSAGES[reason], variant: "destructive" });
+    },
+    [toast],
+  );
+
   // Live picture channel: publish my frames, receive nothing here (opponent frames come from useLiveFrames).
   useEffect(() => {
     if (!matchGameId) return;
@@ -143,9 +164,24 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
     const enqueue = (task: () => Promise<void>) => {
       queueRef.current = queueRef.current.then(task).catch(() => undefined);
     };
-    const reply = (result: AttemptResult, extra?: Record<string, unknown>) => {
-      applyAttempt(result);
-      post({ type: "gh-level-result", ok: result.ok, level: result.level, lives: result.lives, status: result.status, playSeconds: 0, ...extra });
+    const reply = (result: AttemptResult) => {
+      if (!result.ok && isAttemptEndReason(result.reason)) {
+        endAttempt(result.reason);
+        return;
+      }
+      const tooFast = !result.ok && result.reason === "too_fast";
+      const merged: AttemptResult = tooFast ? { ...attemptRef.current, ...result, ok: false } : result;
+      applyAttempt(merged);
+      post({
+        type: "gh-level-result",
+        ok: merged.ok,
+        level: merged.level,
+        lives: merged.lives,
+        status: merged.status,
+        playSeconds: 0,
+        ...(tooFast ? { message: ATTEMPT_REASON_MESSAGES.too_fast } : {}),
+      });
+      if (tooFast) toast({ title: "Tournament", description: ATTEMPT_REASON_MESSAGES.too_fast, variant: "destructive" });
     };
     const fail = (error: unknown) => {
       const message = getFriendlyBlockedMessage(error) ?? (error as Error).message;
@@ -172,8 +208,7 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
         if (!Number.isFinite(level)) return;
         enqueue(async () => {
           try {
-            const result = await completeTournamentLevel(matchGameId, level);
-            reply(result, result.reason === "too_fast" ? { message: "That was too fast to be real. Play it properly." } : undefined);
+            reply(await completeTournamentLevel(matchGameId, level));
           } catch (error) {
             fail(error);
           }
@@ -203,17 +238,28 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
 
     window.addEventListener("message", handleMessage);
     return () => window.removeEventListener("message", handleMessage);
-  }, [matchGameId, applyAttempt, post, pushState, toast]);
+  }, [matchGameId, applyAttempt, endAttempt, post, pushState, toast]);
 
   const handleStart = async () => {
-    if (!matchGameId) return;
+    if (!matchGameId || startedGameRef.current === matchGameId) return;
+    startedGameRef.current = matchGameId;
     setStarting(true);
     try {
       const result = await startTournamentAttempt(matchGameId);
+      if (!result.ok) {
+        if (isAttemptEndReason(result.reason)) {
+          endAttempt(result.reason);
+          return;
+        }
+        startedGameRef.current = null;
+        toast({ title: "Could not start", description: result.reason ?? "The game could not be started. Try again.", variant: "destructive" });
+        return;
+      }
       applyAttempt(result);
       frameReadyRef.current = false;
       setStarted(true);
     } catch (error) {
+      startedGameRef.current = null;
       toast({ title: "Could not start", description: getFriendlyBlockedMessage(error) ?? (error as Error).message, variant: "destructive" });
     } finally {
       setStarting(false);
@@ -228,7 +274,12 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
 
   const secondsLeft = Math.max(0, Math.ceil((deadline - now) / 1000));
   const finishedMine = info.me.status === "cleared" || info.me.status === "over" || info.me.status === "forfeit" || (attempt !== null && attempt.status !== "active");
-  const canPlay = !finishedMine && (info.me.status === "ready" || info.me.status === "playing");
+  const canPlay = !finishedMine && !endedReason && info.me.status === "ready";
+  const endMessage = endedReason
+    ? ATTEMPT_REASON_MESSAGES[endedReason]
+    : info.me.status === "playing" && !started && !starting
+      ? ATTEMPT_REASON_MESSAGES.left_game
+      : null;
   const oppFrame = frames[info.opponent.user_id];
   const oppFresh = isFresh(info.opponent.user_id);
 
@@ -272,27 +323,30 @@ export default function TournamentGamePlayer({ tournamentId, onClose }: Props) {
                   <p className="text-lg font-bold">{tournamentGameName(info.game_id)}</p>
                   <p className="mt-1 text-sm text-violet-200">You have one life. Reach level {info.target} or get further than @{info.opponent.username}. The faster finisher wins a tie.</p>
                 </div>
-                {info.me.status === "ready" ? (
-                  <p className={`text-sm font-semibold ${secondsLeft <= 30 ? "text-rose-300" : "text-amber-200"}`}>
-                    Start within {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")} or you forfeit this game
-                  </p>
-                ) : (
-                  <p className="text-sm text-amber-200">Your attempt is already running. Resume it now.</p>
-                )}
+                <p className={`text-sm font-semibold ${secondsLeft <= 30 ? "text-rose-300" : "text-amber-200"}`}>
+                  Start within {Math.floor(secondsLeft / 60)}:{String(secondsLeft % 60).padStart(2, "0")} or you forfeit this game
+                </p>
                 <button
                   type="button"
                   onClick={() => void handleStart()}
-                  disabled={starting || (info.me.status === "ready" && secondsLeft === 0)}
+                  disabled={starting || secondsLeft === 0}
                   className="rounded-xl bg-violet-600 px-6 py-3 text-sm font-bold text-white disabled:opacity-50"
                 >
-                  {starting ? "Starting..." : info.me.status === "playing" ? "Resume" : "Start game"}
+                  {starting ? "Starting..." : "Start game"}
                 </button>
               </>
             ) : (
               <div>
                 <p className="text-lg font-bold">
-                  {info.me.status === "cleared" ? "You cleared it" : info.me.status === "forfeit" ? "You forfeited this game" : `You reached level ${attempt?.level ?? info.me.level}`}
+                  {endMessage
+                    ? "Your attempt is over"
+                    : info.me.status === "cleared"
+                      ? "You cleared it"
+                      : info.me.status === "forfeit"
+                        ? "You forfeited this game"
+                        : `You reached level ${attempt?.level ?? info.me.level}`}
                 </p>
+                {endMessage ? <p className="mt-2 text-sm text-rose-200">{endMessage}</p> : null}
                 <p className="mt-2 text-sm text-violet-200">
                   @{info.opponent.username}: {oppStatusLabel[info.opponent.status] ?? info.opponent.status}, level {info.opponent.level}
                 </p>
