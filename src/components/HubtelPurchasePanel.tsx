@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 
 type Mode = "instant" | "services";
@@ -524,6 +525,12 @@ const resultRoot = (record.results || record.result || record) as Record<string,
         description: `Your wallet has GHC ${currentWalletBalance.toFixed(2)} available.`,
         variant: "destructive",
       });
+      return;
+    }
+    try {
+      await assertNumbersNotBlocked([customer, phone]);
+    } catch (blockedErr: any) {
+      toast({ title: "Number blocked", description: blockedErr.message, variant: "destructive" });
       return;
     }
     setBusy(true);

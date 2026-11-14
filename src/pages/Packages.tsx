@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, useRef, useCallback, lazy, Suspense } from "react";
 import { useSearchParams, Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { cachedQuery } from "@/lib/cachedQuery";
 import { startVisiblePolling } from "@/lib/visiblePolling";
 import { isFinalOrderStatus, startOrderPolling } from "@/lib/orderPolling";
@@ -832,6 +833,13 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
     setClaimLoading(true);
     const gb = successGb;
     try {
+      await assertNumbersNotBlocked([phone]);
+    } catch (blockedErr: any) {
+      toast({ title: "Number blocked", description: blockedErr.message, variant: "destructive" });
+      setClaimLoading(false);
+      return;
+    }
+    try {
       const { data, error } = await supabase.rpc("create_spin_order", {
         p_phone: phone, p_network: "mtn", p_size_gb: gb, p_package_id: null,
       });
@@ -866,6 +874,7 @@ const eligibilityMessage = config?.eligibility_mode === "order_count" && (config
     
     setPaymentLoading(true);
     try {
+      await assertNumbersNotBlocked([phone]);
       const payloadBody = {
         amount: config.payment_amount,
         email: `player_${phone}@spin.dataplug.store`,
@@ -1804,6 +1813,8 @@ const searchOrders = async (input?: string) => {
                                 });
                                 
                                 const callbackUrl = `${window.location.origin}/packages?bulk_payment=true`;
+
+                                await assertNumbersNotBlocked(recipients.map(r => r.phone));
                                 
                                 const { data, error } = await supabase.functions.invoke("initialize-payment", {
                                   body: {

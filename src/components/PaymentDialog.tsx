@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, ShieldCheck, AlertTriangle, Clock, RefreshCw, UserCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
@@ -385,6 +386,7 @@ const PaymentDialog = ({
     
     try {
       const normalizedPhone = normalizePhone(phone.trim());
+      await assertNumbersNotBlocked([normalizedPhone]);
 
       // Paystack rejects malformed / fake email addresses (e.g. bogus TLDs like
       // "@dhid.vlkcf") with "Invalid Email Address Passed", which surfaces as a

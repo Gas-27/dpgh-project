@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Loader2, Plus, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { uploadGuestProductImage } from "@/lib/productImageUpload";
 import { GHANA_REGIONS } from "@/lib/ghanaRegions";
 import { PROHIBITED_TERMS_LABEL, findProhibitedTerm, prohibitedTermFromError } from "@/lib/marketplaceRules";
@@ -97,6 +98,7 @@ export default function GuestProductListing({ storeId, storeKind }: { storeId: s
     }
     setSubmitting(true);
     try {
+      await assertNumbersNotBlocked([whatsapp]);
       const { data: productId, error } = await (supabase as any).rpc("create_guest_store_product", {
         p_store_kind: storeKind,
         p_store_id: storeId,

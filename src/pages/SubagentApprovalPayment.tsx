@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Loader2, CheckCircle, AlertCircle, Clock, CreditCard } from "lucide-react";
@@ -88,6 +89,13 @@ export default function SubagentApprovalPayment() {
     if (!registration || !agent) return;
 
     setPaymentProcessing(true);
+    try {
+      await assertNumbersNotBlocked([registration.phone_number]);
+    } catch (blockedErr: any) {
+      toast({ title: "Number blocked", description: blockedErr.message, variant: "destructive" });
+      setPaymentProcessing(false);
+      return;
+    }
     try {
       const { data, error } = await supabase.functions.invoke("initialize-payment", {
         body: {

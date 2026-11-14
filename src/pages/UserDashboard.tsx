@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { openGameHubIfAvailable } from "@/lib/tabControls";
 import { debitOwnWallet, refundFailedOrder, newOrderId } from "@/lib/wallet";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
@@ -870,6 +871,7 @@ const UserDashboard = () => {
     if (!buyPkg || !effectiveUserId) return;
     setBuyLoading(true);
     try {
+      await assertNumbersNotBlocked([buyPhone]);
       const price = Number(buyPkg.price);
 
 // Check for rate limit (10 minute window)

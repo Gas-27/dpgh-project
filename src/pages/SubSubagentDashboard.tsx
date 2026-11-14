@@ -4,6 +4,7 @@ import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
   import { getWithdrawalPauseMessage } from "@/lib/withdrawalControls";
 import { debitOwnWallet, refundFailedOrder, creditUpline, newOrderId } from "@/lib/wallet";
    import PromoCodesPanel from "@/components/PromoCodesPanel";
@@ -505,6 +506,7 @@ const SubSubagentDashboard = () => {
     }
     setTopupLoading(true);
     try {
+      await assertNumbersNotBlocked([subagentStore.support_number, subagentStore.whatsapp_number]);
       const res = await supabase.functions.invoke("initialize-payment", {
         body: {
           amount,
@@ -1624,6 +1626,13 @@ const handleSaveStore = async () => {
     
     if (price > getAvailableBalance()) {
       toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
+      return;
+    }
+
+    try {
+      await assertNumbersNotBlocked([buyCustomerNumber]);
+    } catch (blockedErr: any) {
+      toast({ title: "Number blocked", description: blockedErr.message, variant: "destructive" });
       return;
     }
     

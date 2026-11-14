@@ -10,6 +10,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, CreditCard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { useToast } from "@/hooks/use-toast";
 
 interface PaymentModalProps {
@@ -38,6 +39,7 @@ export const PaymentModal = ({
         setLoading(true);
 
         try {
+            await assertNumbersNotBlocked([phone, storeData?.support_number, storeData?.whatsapp_number, storeData?.momo_number]);
             const { data, error } = await supabase.functions.invoke("initialize-registration-payment", {
                 body: {
                     email,

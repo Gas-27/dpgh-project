@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createWorker } from "tesseract.js";
 import { supabase } from "@/integrations/supabase/client";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -453,6 +454,12 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     if (blockedBeforeSend) {
       toast({ title: "Sender ID is already taken", description: "This sender ID is already in use by another person and cannot be assigned to you.", variant: "destructive" });
       await loadSenders();
+      return;
+    }
+    try {
+      await assertNumbersNotBlocked(numbers);
+    } catch (blockedErr: any) {
+      toast({ title: "Number blocked", description: blockedErr.message, variant: "destructive" });
       return;
     }
     setLoading(true);

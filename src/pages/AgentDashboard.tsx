@@ -4,6 +4,7 @@ import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { supabase } from "@/integrations/supabase/client";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
   import { getWithdrawalPauseMessage } from "@/lib/withdrawalControls";
   import { debitOwnWallet, refundFailedOrder, transferToChild, newOrderId } from "@/lib/wallet";
 import SocialBoostApiCatalog from "@/components/SocialBoostApiCatalog";
@@ -1652,6 +1653,13 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
 
   const handleBuyConfirm = async () => {
     if (!store || !buyPkg) return; setBuyLoading(true);
+    try {
+      await assertNumbersNotBlocked([buyPhone, user?.user_metadata?.phone, store.support_number, store.whatsapp_number]);
+    } catch (blockedErr: any) {
+      toast({ title: "Number blocked", description: blockedErr.message, variant: "destructive" });
+      setBuyLoading(false);
+      return;
+    }
     if (buyPaymentMethod === "wallet") {
       const ap = Number(buyPkg.agent_price);
       const balanceAfterBuy = Number(store.wallet_balance) - ap;
@@ -2198,6 +2206,7 @@ const response = await fetch("https://api.dataplug.store/functions/v1/create-pay
     
     setTopupLoading(true);
     try {
+      await assertNumbersNotBlocked([store.support_number, store.whatsapp_number]);
       const res = await supabase.functions.invoke("initialize-payment", {
         body: {
           amount,
@@ -3596,6 +3605,14 @@ return (
                               if (!store) return;
                               setBulkProcessing(true);
                               setBulkResults([]);
+
+                              try {
+                                await assertNumbersNotBlocked(parsed.map(r => r.phone));
+                              } catch (blockedErr: any) {
+                                toast({ title: "Number blocked", description: blockedErr.message, variant: "destructive" });
+                                setBulkProcessing(false);
+                                return;
+                              }
                               
                               const results: typeof bulkResults = [];
                               let totalDeducted: number | null = null;

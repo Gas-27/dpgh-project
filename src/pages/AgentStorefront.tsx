@@ -5,6 +5,7 @@ import { SHOW_USSD } from "@/lib/ussdVisibility";
 import { publicSupabase as supabase } from "@/integrations/supabase/public-client";
 import { cachedQuery } from "@/lib/cachedQuery";
 import { startVisiblePolling } from "@/lib/visiblePolling";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { DOMAINS } from "@/config/domains";
 import { getStoreNameFromSubdomain, findStoreByName, fetchAllStores } from "@/utils/storeUtils";
 import { Button } from "@/components/ui/button";
@@ -1656,6 +1657,8 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                               });
                               
                               const callbackUrl = window.location.href.split("?")[0] + "?bulk_payment=true";
+
+                              await assertNumbersNotBlocked(recipients.map(r => r.phone));
                               
                               const { data, error } = await supabase.functions.invoke("initialize-payment", {
                                 body: {

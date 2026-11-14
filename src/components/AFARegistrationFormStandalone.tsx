@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
+import { assertNumbersNotBlocked } from '@/lib/assertNumbersNotBlocked';
 import { Loader2, AlertCircle, Info, Calendar } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DayPicker } from 'react-day-picker';
@@ -177,6 +178,8 @@ export default function AFARegistrationFormStandalone({
         setLoading(false);
         return;
       }
+
+      await assertNumbersNotBlocked([formData.customer_phone]);
 
       // Initialize AFA registration payment via initialize-payment edge function
       const callbackUrl = typeof window !== 'undefined' ? window.location.href : '';

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { signUpWithoutVerification } from "@/lib/signUpWithoutVerification";
 import {
   getSubagentDashboardPath,
@@ -229,6 +230,7 @@ export default function SubagentRegistrationForm({
   // Paid path: the account is only created by the backend after payment, so
   // nothing is signed up from the browser here.
   const startPaidRegistration = async (): Promise<"redirected" | "no_fee"> => {
+    await assertNumbersNotBlocked([formData.whatsappNumber, formData.supportNumber, formData.momoNumber]);
     const { data, error } = await supabase.functions.invoke("start-subagent-registration", {
       body: {
         email: formData.email,
