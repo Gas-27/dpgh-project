@@ -166,7 +166,8 @@ function readUtilityLookup(response: unknown) {
   const physicalMeter = record.meter_number ?? record.meterNumber ?? data.meter_number ?? data.meterNumber;
   const meterCategory = record.meter_category ?? record.meterCategory ?? data.meter_category ?? data.meterCategory;
   const sessionId = record.session_id ?? record.sessionId ?? data.session_id ?? data.sessionId ?? data.token ?? data.reference;
-  return { name, detail, meterId, physicalMeter, meterCategory, sessionId };
+  const phoneMasked = record.phone_masked ?? data.phone_masked;
+  return { name, detail, meterId, physicalMeter, meterCategory, sessionId, phoneMasked };
 }
 
 // A decoder number only belongs to one TV provider. When it does not verify
@@ -226,6 +227,7 @@ export default function HubtelPurchasePanel({
   const [catalogError, setCatalogError] = useState<string | null>(null);
   const [customAirtimeAmount, setCustomAirtimeAmount] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneMasked, setPhoneMasked] = useState("");
   const [account, setAccount] = useState("");
   const [busy, setBusy] = useState(false);
   const [verifiedName, setVerifiedName] = useState<string | null>(null);
@@ -419,6 +421,7 @@ export default function HubtelPurchasePanel({
     setBillAccountDetail(null);
     setBillSessionId(null);
     setOtherTvProvider(null);
+    setPhoneMasked("");
 const lookupNumber = isEcg ? (isValidEcgMeter ? trimmedAccount : trimmedEcgPhone) : trimmedAccount;
   if (!supportsAccountLookup || (isEcg ? (isValidEcgMeter || trimmedEcgPhone.replace(/\D/g, "").length >= 10) : lookupNumber.replace(/\D/g, "").length >= 5) === false) {
       setBillLookupLoading(false);
@@ -435,8 +438,9 @@ const lookupNumber = isEcg ? (isValidEcgMeter ? trimmedAccount : trimmedEcgPhone
         })
         .then(async (response) => {
           if (cancelled) return;
-          const { name, detail, meterId, physicalMeter, meterCategory: meterCategoryValue, sessionId } = readUtilityLookup(response);
+          const { name, detail, meterId, physicalMeter, meterCategory: meterCategoryValue, sessionId, phoneMasked: maskedFromLookup } = readUtilityLookup(response);
           if (isEcg && physicalMeter) setAccount(String(physicalMeter));
+          if (isEcg && maskedFromLookup) setPhoneMasked(String(maskedFromLookup));
           if (isEcg && (meterCategoryValue === "PREPAID" || meterCategoryValue === "POSTPAID")) setMeterCategory(meterCategoryValue);
           setBillAccountName(name ? String(name) : null);
           setBillAccountDetail(detail ? String(detail) : null);
@@ -1070,16 +1074,19 @@ The registered name could not be confirmed. You can still
           )}
           {isEcg && (
             <div className="grid gap-2">
-              <Label htmlFor="hubtel-ecg-mobile">Registered mobile number (optional)</Label>
+              <Label htmlFor="hubtel-ecg-mobile">Registered mobile number</Label>
               <Input
                 id="hubtel-ecg-mobile"
                 inputMode="tel"
-                value={phone}
-                onChange={(event) => setPhone(event.target.value)}
+                value={phone || phoneMasked}
+                onChange={(event) => {
+                  setPhoneMasked("");
+                  setPhone(event.target.value);
+                }}
                 placeholder="024 000 0000"
               />
               <p className="text-xs text-muted-foreground">
-                Optional. Enter only the meter number below and we will look the meter up. Add the registered mobile number only if payment asks for it.
+                Enter the meter number, meter ID or registered mobile number. We look the meter up and fill in the rest. The phone number is partly hidden for privacy and is used automatically when you pay.
               </p>
             </div>
           )}

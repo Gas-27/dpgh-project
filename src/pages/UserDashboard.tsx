@@ -16,6 +16,7 @@ import Footer from "@/components/Footer";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
 import ApiExplainer from "@/components/ApiExplainer";
+import ApiKeyConsentDialog from "@/components/ApiKeyConsentDialog";
 import { ProgressKeyField } from "@/components/ProgressKeyField";
 import { DeliveryProgressApiDocs } from "@/components/DeliveryProgressApiDocs";
 import { fetchProgressKey } from "@/lib/fetchProgressKey";
@@ -179,6 +180,7 @@ const UserDashboard = () => {
 
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
+  const [showApiConsent, setShowApiConsent] = useState(false);
   const [showDeleteApiKey, setShowDeleteApiKey] = useState(false);
   const [networkFilter, setNetworkFilter] = useState("mtn");
   const [buyDialogOpen, setBuyDialogOpen] = useState(false);
@@ -2205,9 +2207,10 @@ case "api-key":
                 </p>
               </div>
               <ApiExplainer variant="create" />
-              <Button onClick={generateApiKey} disabled={generatingApiKey} className="w-full">
+              <Button onClick={() => setShowApiConsent(true)} disabled={generatingApiKey} className="w-full">
                 {generatingApiKey ? "Generating..." : "Generate API Key"}
               </Button>
+              <ApiKeyConsentDialog open={showApiConsent} onOpenChange={setShowApiConsent} onConfirm={generateApiKey} />
             </>
           )}
           <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-4 space-y-3">

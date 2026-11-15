@@ -306,6 +306,12 @@ async function bundleLookup(body: JsonObject) {
   return json({ success: result.success !== false, network_code: network, bundles: normalizeBundles(result), raw: result });
 }
 
+function extractEcgPhone(meter: JsonObject): string {
+  return [meter.phone_number, meter.phoneNumber, meter.phone, meter.mobile, meter.msisdn, meter.customer_phone, meter.customerPhone, meter.customer_number]
+    .map(compact)
+    .find((value) => /^0[235]\d{8}$/.test(value)) ?? "";
+}
+
 /**
  * Pulls the fields the UI needs out of Korba's different lookup shapes:
  *   ECG   -> results.data[0] = { customerName, id, meterNumber, ... }
@@ -318,7 +324,9 @@ function summarizeLookup(product: string, result: JsonObject) {
 
   if (product === "ecg") {
     const meter = asObject(Array.isArray(data) ? data[0] : data);
+    const registeredPhone = extractEcgPhone(meter);
     return {
+      phone_masked: registeredPhone ? `${registeredPhone.slice(0, 3)} *** ${registeredPhone.slice(-4)}` : undefined,
       customer_name: meter.customerName ?? meter.nameOnMeter,
       detail: [meter.meterCategory, meter.address].filter(Boolean).join(" - ") || undefined,
       meter_id: meter.id,
@@ -374,9 +382,7 @@ async function resolveEcgMeter(meterNumber: string): Promise<{ meterId: string; 
     const root = asObject(result.results ?? result.result ?? result);
     const rawData = root.data ?? result.data ?? root;
     const meter = asObject(Array.isArray(rawData) ? rawData[0] : rawData);
-    const phone = [meter.phone_number, meter.phoneNumber, meter.phone, meter.mobile, meter.msisdn, meter.customer_phone, meter.customerPhone, meter.customer_number]
-      .map(compact)
-      .find((value) => /^0[235]\d{8}$/.test(value));
+    const phone = extractEcgPhone(meter);
     const meterId = meter.meter_id ?? meter.meterId ?? meter.customer_id ?? meter.customerId ?? meter.account_id ?? meter.accountId ?? meter.id;
     return { meterId: meterId ? String(meterId) : "", phone: phone ?? "" };
   } catch (error) {

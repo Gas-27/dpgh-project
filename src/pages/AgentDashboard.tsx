@@ -63,6 +63,7 @@ import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
 import ApiExplainer from "@/components/ApiExplainer";
+import ApiKeyConsentDialog from "@/components/ApiKeyConsentDialog";
 import { ProgressKeyField } from "@/components/ProgressKeyField";
 import { DeliveryProgressApiDocs } from "@/components/DeliveryProgressApiDocs";
 import { fetchProgressKey } from "@/lib/fetchProgressKey";
@@ -524,6 +525,7 @@ const localNumber = number.replace(/\D/g, "");
   const [progressKey, setProgressKey] = useState<string | null>(null);
   const [wallet, setWallet] = useState<number>(0);
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
+  const [showApiConsent, setShowApiConsent] = useState(false);
  const [loadingApiKey, setLoadingApiKey] = useState(true);
  const [smsApiUserIds, setSmsApiUserIds] = useState<string[]>([]);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
@@ -4554,9 +4556,10 @@ handleMobileNumberChange(digits);
                 ) : (
                   <div className="space-y-3">
                   <ApiExplainer variant="create" />
+                  <ApiKeyConsentDialog open={showApiConsent} onOpenChange={setShowApiConsent} onConfirm={handleGenerateApiKey} />
                   <Button 
                     variant="hero" 
-                    onClick={handleGenerateApiKey}
+                    onClick={() => setShowApiConsent(true)}
                     disabled={generatingApiKey}
                     className="w-full gap-2"
                   >
