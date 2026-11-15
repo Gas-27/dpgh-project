@@ -40,3 +40,6 @@ verify_jwt = false
 
 [functions.register-agent-user]
 verify_jwt = false
+
+[functions.tournament-start-sms]
+verify_jwt = true

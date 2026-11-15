@@ -199,6 +199,15 @@ export const claimTournamentPrize = (id: string, phone: string) => rpc<{ ok: boo
 export const fetchAdminTournaments = () => rpc<AdminTournament[]>("gamehub_admin_tournaments");
 export const saveAdminTournament = (input: TournamentInput) => rpc<string>("gamehub_admin_save_tournament", { p: input });
 export const startAdminTournament = (id: string) => rpc<void>("gamehub_admin_start_tournament", { p_t: id });
+export type TournamentSmsResult = { sent: number; failed: number; skipped: number; already_sent: number };
+
+export async function sendTournamentStartSms(id: string): Promise<TournamentSmsResult> {
+  const { data, error } = await supabase.functions.invoke("tournament-start-sms", { body: { tournament_id: id } });
+  if (error) throw new Error(error.message || "Could not send the start SMS");
+  if (data && typeof data === "object" && "error" in data) throw new Error(String((data as { error: unknown }).error));
+  return data as TournamentSmsResult;
+}
+
 export const cancelAdminTournament = (id: string) => rpc<void>("gamehub_admin_cancel_tournament", { p_t: id });
 export const disqualifyTournamentPlayer = (id: string, userId: string) => rpc<void>("gamehub_admin_disqualify", { p_t: id, p_user: userId });
 

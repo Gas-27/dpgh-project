@@ -71,7 +71,7 @@ export default function TournamentStartNotifier() {
         <AlertDialogHeader>
           <AlertDialogTitle className="flex items-center gap-2"><Swords className="h-5 w-5 text-primary" aria-hidden="true" /> Your tournament has started</AlertDialogTitle>
           <AlertDialogDescription>
-            {announced ? `${announced.title} is now live. Open Game Hub and play your match before time runs out.` : ""}
+            {announced ? `${announced.title} is now live. You paid to enter, so open Game Hub and join now. You have 5 minutes to enter before you are marked as not playing.` : ""}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

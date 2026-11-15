@@ -18,6 +18,7 @@ import {
   saveAdminTournament,
   stageCountFor,
   startAdminTournament,
+  sendTournamentStartSms,
   tournamentGameName,
   tournamentGames,
   type AdminTournament,
@@ -299,9 +300,19 @@ export default function AdminGameTournaments() {
   };
 
   const start = useMutation({
-    mutationFn: startAdminTournament,
-    onSuccess: () => {
-      toast({ title: "Tournament started", description: "Players were paired at random." });
+    mutationFn: async (id: string) => {
+      await startAdminTournament(id);
+      try {
+        return { sms: await sendTournamentStartSms(id), smsError: null as string | null };
+      } catch (error) {
+        return { sms: null, smsError: error instanceof Error ? error.message : "Could not send the start SMS" };
+      }
+    },
+    onSuccess: ({ sms, smsError }) => {
+      const smsNote = sms
+        ? `Start SMS sent to ${sms.sent} player${sms.sent === 1 ? "" : "s"}${sms.failed + sms.skipped ? ` (${sms.failed + sms.skipped} could not be reached)` : ""}.`
+        : `The start SMS was not sent: ${smsError}.`;
+      toast({ title: "Tournament started", description: `Paid players have 5 minutes to enter. ${smsNote}`, variant: smsError ? "destructive" : undefined });
       refresh();
     },
     onError: (error: Error) => toast({ title: "Could not start", description: error.message, variant: "destructive" }),
