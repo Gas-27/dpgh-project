@@ -147,6 +147,49 @@ const services = {
   tv: ["DStv", "GOtv", "StarTimes", "Telecel Postpaid"],
 };
 
+const tvProviders = ["dstv", "gotv", "startimes"] as const;
+type TvProvider = (typeof tvProviders)[number];
+const tvProviderLabels: Record<TvProvider, string> = {
+  dstv: "DStv",
+  gotv: "GOtv",
+  startimes: "StarTimes",
+};
+
+function readUtilityLookup(response: unknown) {
+  const record = (response ?? {}) as Record<string, unknown>;
+  const resultRoot = (record.results || record.result || record) as Record<string, unknown>;
+  const dataValue = resultRoot.data || record.data || resultRoot;
+  const data = ((Array.isArray(dataValue) ? dataValue[0] : dataValue) ?? {}) as Record<string, unknown>;
+  const name = record.customer_name ?? record.customerName ?? data.customer_name ?? data.customerName ?? data.nameOnMeter ?? data.account_name ?? data.accountName ?? data.registered_name ?? data.name;
+  const detail = record.detail ?? data.display ?? data.description ?? data.package_name ?? data.bouquet ?? data.account_type ?? data.service_name;
+  const meterId = record.meter_id ?? record.meterId ?? data.meter_id ?? data.meterId ?? data.customer_id ?? data.customerId ?? data.account_id ?? data.accountId ?? data.id;
+  const physicalMeter = record.meter_number ?? record.meterNumber ?? data.meter_number ?? data.meterNumber;
+  const meterCategory = record.meter_category ?? record.meterCategory ?? data.meter_category ?? data.meterCategory;
+  const sessionId = record.session_id ?? record.sessionId ?? data.session_id ?? data.sessionId ?? data.token ?? data.reference;
+  return { name, detail, meterId, physicalMeter, meterCategory, sessionId };
+}
+
+// A decoder number only belongs to one TV provider. When it does not verify
+// against the selected provider, check the others so the customer is told which
+// one to pick instead of buying the wrong package.
+async function detectOtherTvProvider(selected: string, decoderNumber: string): Promise<TvProvider | null> {
+  const matches = await Promise.all(
+    tvProviders
+      .filter((provider) => provider !== selected)
+      .map(async (provider) => {
+        try {
+          const result = readUtilityLookup(
+            await lookupKorbaUtility({ productType: provider, accountNumber: decoderNumber, decoderNumber }),
+          );
+          return result.name ? provider : null;
+        } catch {
+          return null;
+        }
+      }),
+  );
+  return matches.find((provider): provider is TvProvider => provider !== null) ?? null;
+}
+
 export default function HubtelPurchasePanel({
   mode,
   orderId,
@@ -196,6 +239,7 @@ export default function HubtelPurchasePanel({
   );
   const [billSessionId, setBillSessionId] = useState<string | null>(null);
   const [billLookupLoading, setBillLookupLoading] = useState(false);
+  const [otherTvProvider, setOtherTvProvider] = useState<TvProvider | null>(null);
   const [meterName, setMeterName] = useState("");
   const [meterCategory, setMeterCategory] = useState<"PREPAID" | "POSTPAID">("PREPAID");
   const [registeredMeterId, setRegisteredMeterId] = useState("");
@@ -363,6 +407,9 @@ export default function HubtelPurchasePanel({
     ["ecg", "dstv", "gotv", "startimes", "ghana_water"].includes(billService);
   const trimmedAccount = account.trim().replace(/\s+/g, "");
   const isEcg = billService === "ecg";
+  const isTvService = billService === "dstv" || billService === "gotv" || billService === "startimes";
+  const accountLabel =
+    serviceCategory === "electricity" ? "Meter number" : serviceCategory === "tv" ? "Decoder number" : "Account number";
   const trimmedEcgPhone = phone.trim().replace(/\s+/g, "");
   const isValidEcgMeter = /^P?[A-Z0-9]{6,}$/i.test(trimmedAccount) && !/^0\d{9}$/.test(trimmedAccount);
 
@@ -371,6 +418,7 @@ export default function HubtelPurchasePanel({
     setBillAccountName(null);
     setBillAccountDetail(null);
     setBillSessionId(null);
+    setOtherTvProvider(null);
 const lookupNumber = isEcg ? (isValidEcgMeter ? trimmedAccount : trimmedEcgPhone) : trimmedAccount;
   if (!supportsAccountLookup || (isEcg ? (isValidEcgMeter || trimmedEcgPhone.replace(/\D/g, "").length >= 10) : lookupNumber.replace(/\D/g, "").length >= 5) === false) {
       setBillLookupLoading(false);
@@ -385,30 +433,28 @@ const lookupNumber = isEcg ? (isValidEcgMeter ? trimmedAccount : trimmedEcgPhone
           accountNumber: !isEcg ? trimmedAccount : undefined,
           decoderNumber: !isEcg ? trimmedAccount : undefined,
         })
-        .then((response) => {
+        .then(async (response) => {
           if (cancelled) return;
-          const record = response as Record<string, unknown>;
-const resultRoot = (record.results || record.result || record) as Record<string, unknown>;
-  const dataValue = resultRoot.data || record.data || resultRoot;
-  const data = (Array.isArray(dataValue) ? dataValue[0] : dataValue) as Record<string, unknown>;
-  const name = record.customer_name ?? record.customerName ?? data.customer_name ?? data.customerName ?? data.nameOnMeter ?? data.account_name ?? data.accountName ?? data.registered_name ?? data.name;
-          const detail = record.detail ?? data.display ?? data.description ?? data.package_name ?? data.bouquet ?? data.account_type ?? data.service_name;
-  const meterId = record.meter_id ?? record.meterId ?? data.meter_id ?? data.meterId ?? data.customer_id ?? data.customerId ?? data.account_id ?? data.accountId ?? data.id;
-  const physicalMeter = record.meter_number ?? record.meterNumber ?? data.meter_number ?? data.meterNumber;
-  const meterCategoryValue = record.meter_category ?? record.meterCategory ?? data.meter_category ?? data.meterCategory;
-  const sessionId = record.session_id ?? record.sessionId ?? data.session_id ?? data.sessionId ?? data.token ?? data.reference;
-  if (isEcg && physicalMeter) setAccount(String(physicalMeter));
-  if (isEcg && (meterCategoryValue === "PREPAID" || meterCategoryValue === "POSTPAID")) setMeterCategory(meterCategoryValue);
-  setBillAccountName(name ? String(name) : null);
+          const { name, detail, meterId, physicalMeter, meterCategory: meterCategoryValue, sessionId } = readUtilityLookup(response);
+          if (isEcg && physicalMeter) setAccount(String(physicalMeter));
+          if (isEcg && (meterCategoryValue === "PREPAID" || meterCategoryValue === "POSTPAID")) setMeterCategory(meterCategoryValue);
+          setBillAccountName(name ? String(name) : null);
           setBillAccountDetail(detail ? String(detail) : null);
           if (meterId) setRegisteredMeterId(String(meterId));
           setBillSessionId(sessionId ? String(sessionId) : "verified");
+          if (isTvService && !name) {
+            const other = await detectOtherTvProvider(billService, trimmedAccount);
+            if (!cancelled) setOtherTvProvider(other);
+          }
         })
-        .catch(() => {
-          if (!cancelled) {
-            setBillAccountName(null);
-            setBillAccountDetail(null);
-            setBillSessionId(null);
+        .catch(async () => {
+          if (cancelled) return;
+          setBillAccountName(null);
+          setBillAccountDetail(null);
+          setBillSessionId(null);
+          if (isTvService) {
+            const other = await detectOtherTvProvider(billService, trimmedAccount);
+            if (!cancelled) setOtherTvProvider(other);
           }
         })
         .finally(() => {
@@ -424,6 +470,8 @@ const resultRoot = (record.results || record.result || record) as Record<string,
   function chooseServiceCategory(category: ServiceCategory) {
     setServiceCategory(category);
     setService(services[category][0]);
+    setAccount("");
+    setRegisteredMeterId("");
   }
 
   async function registerMeter() {
@@ -487,10 +535,25 @@ const resultRoot = (record.results || record.result || record) as Record<string,
       });
       return;
     }
-    if ((billService === "ecg" || billService === "ghana_water") && !phone.trim()) {
+    if (mode === "services" && isTvService && otherTvProvider) {
+      toast({
+        title: `Select ${tvProviderLabels[otherTvProvider]}`,
+        description: `This decoder number belongs to ${tvProviderLabels[otherTvProvider]}. You can't buy ${service} for it. Select ${tvProviderLabels[otherTvProvider]} to continue.`,
+        variant: "destructive",
+      });
+      return;
+    }
+    if (mode === "services" && (isTvService || isEcg) && billLookupLoading) {
+      toast({
+        title: isEcg ? "Checking meter" : "Checking decoder number",
+        description: "Please wait a moment while we verify the number, then try again.",
+      });
+      return;
+    }
+    if (billService === "ghana_water" && !phone.trim()) {
       toast({
         title: "Registered mobile number required",
-        description: "Enter the mobile number linked to the ECG meter before paying.",
+        description: "Enter the mobile number linked to the account before paying.",
         variant: "destructive",
       });
       return;
@@ -1007,7 +1070,7 @@ The registered name could not be confirmed. You can still
           )}
           {isEcg && (
             <div className="grid gap-2">
-              <Label htmlFor="hubtel-ecg-mobile">Registered mobile number</Label>
+              <Label htmlFor="hubtel-ecg-mobile">Registered mobile number (optional)</Label>
               <Input
                 id="hubtel-ecg-mobile"
                 inputMode="tel"
@@ -1016,21 +1079,19 @@ The registered name could not be confirmed. You can still
                 placeholder="024 000 0000"
               />
               <p className="text-xs text-muted-foreground">
-                Required to send the confirmation to your registered mobile number.
+                Optional. Enter only the meter number below and we will look the meter up. Add the registered mobile number only if payment asks for it.
               </p>
             </div>
           )}
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="grid gap-2">
-              <Label htmlFor="hubtel-service-account">
-                Meter / decoder / account number
-              </Label>
+              <Label htmlFor="hubtel-service-account">{accountLabel}</Label>
               <Input
                 id="hubtel-service-account"
-                inputMode="numeric"
+                inputMode={isEcg ? "text" : "numeric"}
                 value={account}
                 onChange={(event) => setAccount(event.target.value)}
-                placeholder="Account number"
+                placeholder={`Enter ${accountLabel.toLowerCase()}`}
               />
             </div>
             <div className="grid gap-2">
@@ -1046,8 +1107,26 @@ The registered name could not be confirmed. You can still
           </div>
           {supportsAccountLookup && billLookupLoading && (
             <p className="text-xs text-muted-foreground">
-              Verifying account…
+              {isEcg ? "Looking up meter…" : isTvService ? "Verifying decoder number…" : "Verifying account…"}
             </p>
+          )}
+          {isTvService && !billLookupLoading && otherTvProvider && (
+            <div
+              role="alert"
+              className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+            >
+              <p>
+                This decoder number belongs to{" "}
+                <span className="font-semibold">{tvProviderLabels[otherTvProvider]}</span>, not {service}. You can&apos;t buy {service} for it.
+              </p>
+              <button
+                type="button"
+                onClick={() => setService(tvProviderLabels[otherTvProvider])}
+                className="mt-1 font-semibold underline"
+              >
+                Select {tvProviderLabels[otherTvProvider]}
+              </button>
+            </div>
           )}
           {supportsAccountLookup && !billLookupLoading && billAccountName && (
             <div className="rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
@@ -1071,7 +1150,9 @@ The registered name could not be confirmed. You can still
           <Button
             onClick={submit}
             disabled={
-              busy || (walletOnly && Number(amount) > Number(walletBalance))
+              busy ||
+              (isTvService && !!otherTvProvider) ||
+              (walletOnly && Number(amount) > Number(walletBalance))
             }
           >
             {busy ? "Starting payment…" : "Proceed to payment"}
@@ -1087,7 +1168,7 @@ The registered name could not be confirmed. You can still
               <dd className="font-semibold">{service}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Account</dt>
+              <dt className="text-muted-foreground">{accountLabel}</dt>
               <dd className="font-semibold">{account || "—"}</dd>
             </div>
             <div className="flex justify-between gap-4">

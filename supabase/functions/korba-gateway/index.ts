@@ -363,6 +363,28 @@ async function utilityLookup(body: JsonObject) {
   return json({ ...result, ...summarizeLookup(product, result), success: result.success !== false, customer_number: customerNumber });
 }
 
+/**
+ * Looks an ECG meter up by its number alone, so a customer can pay without
+ * knowing the registered phone. The phone stays server-side and is never
+ * returned to the browser.
+ */
+async function resolveEcgMeter(meterNumber: string): Promise<{ meterId: string; phone: string }> {
+  try {
+    const result = await korbaRequest<JsonObject>("/ecg_direct_meter_detail/", { meter_number: meterNumber });
+    const root = asObject(result.results ?? result.result ?? result);
+    const rawData = root.data ?? result.data ?? root;
+    const meter = asObject(Array.isArray(rawData) ? rawData[0] : rawData);
+    const phone = [meter.phone_number, meter.phoneNumber, meter.phone, meter.mobile, meter.msisdn, meter.customer_phone, meter.customerPhone, meter.customer_number]
+      .map(compact)
+      .find((value) => /^0[235]\d{8}$/.test(value));
+    const meterId = meter.meter_id ?? meter.meterId ?? meter.customer_id ?? meter.customerId ?? meter.account_id ?? meter.accountId ?? meter.id;
+    return { meterId: meterId ? String(meterId) : "", phone: phone ?? "" };
+  } catch (error) {
+    console.error("[korba-gateway] ecg meter resolve failed", error);
+    return { meterId: "", phone: "" };
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Operations: payments (collect / data)
 // ---------------------------------------------------------------------------
@@ -451,7 +473,17 @@ async function pay(body: JsonObject, operation: string, state: { debit: Debit | 
   if (!Number.isFinite(amount) || amount <= 0 || amount > MAX_AMOUNT) return json({ success: false, error: "Enter an amount between GHC 0.01 and GHC 5,000" }, 400);
   if (!isUtility && !/^0[235]\d{8}$/.test(customerNumber)) return json({ success: false, error: "Enter a valid Ghana phone number" }, 400);
   if (operation === "data" && !network) return json({ success: false, error: "Network code is required" }, 400);
-  if (product === "ecg" && (!body.meter_id || !body.meter_number)) return json({ success: false, error: "Verify or register the ECG meter before paying" }, 400);
+  if (product === "ecg") {
+    const meterNumber = compact(body.meter_number || body.customer_number);
+    const hasPhone = /^0[235]\d{8}$/.test(compact(body.phone_number));
+    if (meterNumber && (!body.meter_id || !hasPhone)) {
+      const resolved = await resolveEcgMeter(meterNumber);
+      if (!body.meter_id && resolved.meterId) body.meter_id = resolved.meterId;
+      if (!hasPhone && resolved.phone) body.phone_number = resolved.phone;
+      if (!body.meter_number) body.meter_number = meterNumber;
+    }
+  }
+  if (product === "ecg" && (!body.meter_id || !body.meter_number)) return json({ success: false, error: "We couldn't find that ECG meter. Check the meter number and try again." }, 400);
   if (product === "ecg" && !/^0[235]\d{8}$/.test(compact(body.phone_number))) return json({ success: false, error: "Enter the registered mobile number for this meter" }, 400);
 
   const payment = buildPayment({ body, operation, product, network, amount, customerNumber, transactionId });
