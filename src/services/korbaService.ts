@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { notifyWalletChanged } from "@/lib/wallet";
 
 export type KorbaPurchaseRequest = {
   productType: "airtime" | "data" | "ecg" | "water" | "startimes" | "gotv" | "dstv";
@@ -111,6 +112,8 @@ export async function purchaseWithKorba(request: KorbaPurchaseRequest) {
     error: error ? { message: error.message, name: error.name, contextStatus: error.context?.status } : null,
     errorBody,
   });
+
+  notifyWalletChanged();
 
   if (error) {
     await saveKorbaHistory(request, { transaction_id: request.orderId, error: error.message }, "failed");

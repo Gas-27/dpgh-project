@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { useWalletSync } from "@/hooks/useWalletSync";
 import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { openGameHubIfAvailable } from "@/lib/tabControls";
 import { debitOwnWallet, refundFailedOrder, newOrderId } from "@/lib/wallet";
@@ -599,6 +600,16 @@ const UserDashboard = () => {
       cancelled = true;
     };
   }, [user?.id]);
+
+  useWalletSync(async () => {
+    if (!effectiveUserId) return;
+    const { data } = await supabase
+      .from("customers")
+      .select("wallet_balance")
+      .eq("user_id", effectiveUserId)
+      .maybeSingle();
+    if (data && Number.isFinite(Number(data.wallet_balance))) setNormalWallet(Number(data.wallet_balance));
+  }, !!effectiveUserId);
 
   // Subscribe to real-time package changes
   useEffect(() => {

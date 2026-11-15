@@ -4,6 +4,7 @@ import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
   import { supabase } from "@/integrations/supabase/client";
+import { useWalletSync } from "@/hooks/useWalletSync";
 import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
   import { getWithdrawalPauseMessage } from "@/lib/withdrawalControls";
   import { debitOwnWallet, refundFailedOrder, transferToChild, newOrderId } from "@/lib/wallet";
@@ -1230,6 +1231,16 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
     return () => clearInterval(interval);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [withdrawalCooldownEndTime]);
+
+  useWalletSync(async () => {
+    const ownerUserId = impersonatedUserId || user?.id;
+    if (!ownerUserId) return;
+    const { data } = await (supabase as any).rpc("get_agent_stores_private", { p_user_ids: [ownerUserId] }).maybeSingle();
+    const balance = Number(data?.wallet_balance);
+    if (Number.isFinite(balance)) {
+      setStore((prev) => (prev && Number(prev.wallet_balance) !== balance ? { ...prev, wallet_balance: balance } : prev));
+    }
+  }, !!store?.id);
 
   // Subscribe to real-time changes in agent_stores for bundle price and other updates
   useEffect(() => {

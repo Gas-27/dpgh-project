@@ -23,6 +23,13 @@ function fail(error: { message?: string } | null | undefined, fallback: string):
   throw new Error(error?.message || fallback);
 }
 
+export const WALLET_CHANGED_EVENT = "wallet:changed";
+
+// Tells every open dashboard that some wallet balance just moved so it can re-read it.
+export function notifyWalletChanged(): void {
+  if (typeof window !== "undefined") window.dispatchEvent(new Event(WALLET_CHANGED_EVENT));
+}
+
 export function newOrderId(): string {
   return crypto.randomUUID();
 }
@@ -45,6 +52,7 @@ export async function debitOwnWallet(args: {
     p_note: args.note ?? null,
   });
   if (error) fail(error, "Wallet payment failed");
+  notifyWalletChanged();
   return toResult(data);
 }
 
@@ -52,6 +60,7 @@ export async function debitOwnWallet(args: {
 export async function refundFailedOrder(orderId: string): Promise<void> {
   const { error } = await (supabase as any).rpc("wallet_refund_failed_order", { p_order_id: orderId });
   if (error) console.error("[wallet] refund of failed order did not complete:", error.message);
+  notifyWalletChanged();
 }
 
 export async function transferToChild(args: {
@@ -73,6 +82,7 @@ export async function transferToChild(args: {
     p_note: args.note ?? null,
   });
   if (error) fail(error, "Transfer failed");
+  notifyWalletChanged();
   return toResult(data);
 }
 

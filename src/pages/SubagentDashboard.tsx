@@ -4,6 +4,7 @@ import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
+import { useWalletSync } from "@/hooks/useWalletSync";
 import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
   import { getWithdrawalPauseMessage } from "@/lib/withdrawalControls";
  import { debitOwnWallet, refundFailedOrder, transferToChild, creditUpline, newOrderId } from "@/lib/wallet";
@@ -446,6 +447,19 @@ const SubagentDashboard = () => {
       fetchData(effectiveUserId);
     }
   }, [user?.id, isImpersonating, impersonatedUserId, impersonatedStoreId]);
+
+  useWalletSync(async () => {
+    if (!subagentStore?.id) return;
+    const { data } = await supabase
+      .from("subagent_stores")
+      .select("wallet_balance")
+      .eq("id", subagentStore.id)
+      .maybeSingle();
+    const balance = Number(data?.wallet_balance);
+    if (Number.isFinite(balance)) {
+      setSubagentStore((prev) => (prev && Number(prev.wallet_balance) !== balance ? { ...prev, wallet_balance: balance } : prev));
+    }
+  }, !!subagentStore?.id);
 
   // Real-time sync: subagent_stores row (wallet_balance, last_withdrawal_at, approved, etc.)
   // The DB is the single source of truth. The frontend NEVER writes wallet_balance —

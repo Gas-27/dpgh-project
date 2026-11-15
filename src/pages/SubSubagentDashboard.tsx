@@ -4,6 +4,7 @@ import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
+import { useWalletSync } from "@/hooks/useWalletSync";
 import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
   import { getWithdrawalPauseMessage } from "@/lib/withdrawalControls";
 import { debitOwnWallet, refundFailedOrder, creditUpline, newOrderId } from "@/lib/wallet";
@@ -401,6 +402,19 @@ const SubSubagentDashboard = () => {
   // The wallet is maintained exclusively by server-side functions (paystack-webhook and
   // verify-payment) to prevent the frontend from overwriting valid server-set balances
   // (e.g. topups would be wiped if orders have profit=0 due to a pricing issue).
+
+  useWalletSync(async () => {
+    if (!subagentStore?.id) return;
+    const { data } = await supabase
+      .from("sub_subagent_stores")
+      .select("wallet_balance")
+      .eq("id", subagentStore.id)
+      .maybeSingle();
+    const balance = Number(data?.wallet_balance);
+    if (Number.isFinite(balance)) {
+      setSubagentStore((prev) => (prev && Number(prev.wallet_balance) !== balance ? { ...prev, wallet_balance: balance } : prev));
+    }
+  }, !!subagentStore?.id);
 
   // Real-time wallet balance updates
   useEffect(() => {
@@ -3496,7 +3510,7 @@ handleMobileNumberChange(digits);
             <SubSubagentAFAPriceManager />
           </TabsContent>
 
-          {/* ─────────── AFA REGISTRATIONS (all via this sub-subagent) ─────────── */}
+          {/* ─���───────── AFA REGISTRATIONS (all via this sub-subagent) ─────────── */}
           <TabsContent value="afa-registrations" className="mt-0 space-y-6">
             <div>
               <h2 className="text-xl font-bold font-display flex items-center gap-2">
