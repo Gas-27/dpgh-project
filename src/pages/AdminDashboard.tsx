@@ -63,6 +63,7 @@ import AdminAFABundleRegistrations from "@/components/AdminAFABundleRegistration
 import AdminYouTubeUrlManager from "@/components/AdminYouTubeUrlManager";
 import AdminGameHubVideos from "@/components/AdminGameHubVideos";
 import AdminMarketing from "@/components/AdminMarketing";
+import AdminProfit from "@/components/AdminProfit";
 import AdminGameRewards from "@/components/AdminGameRewards";
 import AdminGameLeaderboard from "@/components/AdminGameLeaderboard";
 import AdminGameHubWins from "@/components/AdminGameHubWins";
@@ -2832,6 +2833,7 @@ const AdminDashboard = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} defaultValue="prices">
           <TabsList className="mb-6 flex-wrap gap-1 h-auto p-1 md:p-2 bg-background border border-border rounded-lg overflow-x-auto w-full flex">
             <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>
+            <TabsTrigger value="profit" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><DollarSign className="h-3 w-3 md:h-4 md:w-4" /> Profit</TabsTrigger>
   <TabsTrigger value="social-boost" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Social Boost</TabsTrigger>
   <TabsTrigger value="promo-codes" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Promo Codes</TabsTrigger>
   <TabsTrigger value="marketing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Marketing</TabsTrigger>
@@ -2884,6 +2886,7 @@ const AdminDashboard = () => {
             <TabsTrigger value="api_pricing" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><Zap className="h-3 w-3 md:h-4 md:w-4" /> API Pricing</TabsTrigger>
           </TabsList>
 
+          <TabsContent value="profit" className="space-y-6"><AdminProfit /></TabsContent>
           <TabsContent value="subscriptions" className="space-y-6"><SubscriptionPaymentsPanel admin /></TabsContent>
           <TabsContent value="price_reduction_requests" className="space-y-6"><PriceReductionRequestsAdmin /></TabsContent>
 <TabsContent value="order_approvals" className="space-y-6"><AdminOrderNumberApprovals /><AdminBlockedContacts /><AdminBlockedSenderIds /></TabsContent>
