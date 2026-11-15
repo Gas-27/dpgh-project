@@ -54,6 +54,7 @@ import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import AlreadyReportedButton from "@/components/AlreadyReportedButton";
 import { useReportedOrders } from "@/hooks/useReportedOrders";
 import SmsComposer from "@/components/SmsComposer";
+import ScheduleSms from "@/components/ScheduleSms";
 import MarketingHowToVideos from "@/components/MarketingHowToVideos";
 import SmsHistory from "@/components/SmsHistory";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
@@ -1110,7 +1111,7 @@ case "api-key":
       case "private-subscriptions":
         return <PrivateShareMySubscriptions />;
       case "sms":
-        return <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="customer" ownerId={effectiveUserId} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="customer" ownerId={effectiveUserId} /></TabsContent></Tabs>;
+        return <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-3"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="schedule">Schedule</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="schedule"><ScheduleSms ownerType="customer" ownerId={effectiveUserId} /></TabsContent><TabsContent value="send"><SmsComposer ownerType="customer" ownerId={effectiveUserId} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="customer" ownerId={effectiveUserId} /></TabsContent></Tabs>;
       case "topup":
         return renderTopup();
       case "become-agent":

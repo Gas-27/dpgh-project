@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import GameHubSnakeContests from "@/components/GameHubSnakeContests";
 import GameHubTournaments from "@/components/GameHubTournaments";
 import GameHubAnnouncements from "@/components/GameHubAnnouncements";
 import GameHubJoinCard from "@/components/GameHubJoinCard";
@@ -418,7 +419,10 @@ export default function GameHubDialog() {
           </TabsList>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-4">
             <TabsContent value="games" className="mt-0"><GameHubJoinCard signedIn={Boolean(user)} /><GamesTab videos={videos} rules={rules} wins={wins} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
-            <TabsContent value="tournaments" className="mt-0"><GameHubTournaments signedIn={Boolean(user)} /></TabsContent>
+            <TabsContent value="tournaments" className="mt-0">
+              <GameHubSnakeContests signedIn={Boolean(user)} />
+              <GameHubTournaments signedIn={Boolean(user)} />
+            </TabsContent>
             <TabsContent value="leaderboard" className="mt-0"><GameHubLeaderboard /></TabsContent>
           </div>
         </Tabs>

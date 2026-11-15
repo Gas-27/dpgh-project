@@ -68,6 +68,7 @@ import AdminGameLeaderboard from "@/components/AdminGameLeaderboard";
 import AdminGameHubWins from "@/components/AdminGameHubWins";
 import AdminGameAnnouncements from "@/components/AdminGameAnnouncements";
 import AdminGameTournaments from "@/components/AdminGameTournaments";
+import AdminSnakeContests from "@/components/AdminSnakeContests";
 import AdminWithdrawalControls from "@/components/AdminWithdrawalControls";
 import AdminAFAManager from "@/components/AdminAFAManager";
 import AnnouncementManager from "@/components/AnnouncementManager";
@@ -2899,7 +2900,7 @@ const AdminDashboard = () => {
   <TabsContent value="gamehub-leaderboard" className="space-y-6"><AdminGameLeaderboard /></TabsContent>
               <TabsContent value="gamehub-wins" className="space-y-6"><AdminGameHubWins /></TabsContent>
   <TabsContent value="gamehub-notifications" className="space-y-6"><AdminGameAnnouncements /></TabsContent>
-            <TabsContent value="gamehub-tournaments" className="space-y-6"><AdminGameTournaments /></TabsContent>
+            <TabsContent value="gamehub-tournaments" className="space-y-6"><AdminGameTournaments /><AdminSnakeContests /></TabsContent>
             <TabsContent value="withdrawal-controls" className="space-y-6"><AdminWithdrawalControls /></TabsContent>
 <TabsContent value="social-boost-orders" className="space-y-6"><AdminSocialBoostOrders /></TabsContent>
 

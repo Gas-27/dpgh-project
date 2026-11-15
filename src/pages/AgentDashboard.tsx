@@ -84,6 +84,7 @@ import AFARegistrationTracker from "@/components/AFARegistrationTracker";
 import WalletAFARegistration from "@/components/WalletAFARegistration";
 import AgentYouTubeSection from "@/components/AgentYouTubeSection";
 import SmsComposer from "@/components/SmsComposer";
+import ScheduleSms from "@/components/ScheduleSms";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
@@ -3731,7 +3732,7 @@ return (
 
           {/* ============================= SMS ============================= */}
           <TabsContent value="sms" className="-mx-8 sm:mx-0 space-y-6 mt-0">
-            <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="agent" ownerId={store?.id} storeUrl={storeUrl} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="agent" ownerId={store?.id} apiUserIds={smsApiUserIds} /></TabsContent></Tabs>
+            <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-3"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="schedule">Schedule</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="schedule"><ScheduleSms ownerType="agent" ownerId={store?.id} /></TabsContent><TabsContent value="send"><SmsComposer ownerType="agent" ownerId={store?.id} storeUrl={storeUrl} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="agent" ownerId={store?.id} apiUserIds={smsApiUserIds} /></TabsContent></Tabs>
           </TabsContent>
 
           {/* ============================= TOP UP ============================= */}

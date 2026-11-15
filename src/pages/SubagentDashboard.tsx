@@ -68,6 +68,7 @@ import AlreadyReportedButton from "@/components/AlreadyReportedButton";
 import { useReportedOrders } from "@/hooks/useReportedOrders";
 import ReportNotificationBadge from "@/components/ReportNotificationBadge";
 import SmsComposer from "@/components/SmsComposer";
+import ScheduleSms from "@/components/ScheduleSms";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
@@ -2531,7 +2532,7 @@ return (
           <TabsContent value="store" className="mt-0">{/* Store Prices */}</TabsContent>
 
           <TabsContent value="sms" className="-mx-8 sm:mx-0 mt-0 space-y-6">
-            <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-2"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="send"><SmsComposer ownerType="subagent" ownerId={subagentStore?.id} storeUrl={storeUrl} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="subagent" ownerId={subagentStore?.id} /></TabsContent></Tabs>
+            <Tabs defaultValue="send" className="space-y-4"><TabsList className="grid w-full grid-cols-3"><TabsTrigger value="send">Send SMS</TabsTrigger><TabsTrigger value="schedule">Schedule</TabsTrigger><TabsTrigger value="history">History</TabsTrigger></TabsList><TabsContent value="schedule"><ScheduleSms ownerType="subagent" ownerId={subagentStore?.id} /></TabsContent><TabsContent value="send"><SmsComposer ownerType="subagent" ownerId={subagentStore?.id} storeUrl={storeUrl} hideSenderPhone /></TabsContent><TabsContent value="history"><SmsHistory ownerType="subagent" ownerId={subagentStore?.id} /></TabsContent></Tabs>
           </TabsContent>
 
           {/* OVERVIEW */}
