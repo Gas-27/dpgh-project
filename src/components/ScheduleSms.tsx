@@ -3,7 +3,6 @@ import { CalendarClock, Loader2, Pause, Play, Trash2, Upload, Wallet } from "luc
 import OrderContactPicker from "@/components/OrderContactPicker";
 import SmsNumberGenerator from "@/components/SmsNumberGenerator";
 import { extractNumbers, extractNumbersFromFiles, normalizeGh } from "@/lib/smsRecipients";
-import { calculateSmsTotal, smsCostBreakdown } from "@/lib/smsPricing";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -116,7 +115,7 @@ export default function ScheduleSms({ ownerType, ownerId }: Props) {
   const numbers = useMemo(() => extractNumbers(recipientsText), [recipientsText]);
   const units = useMemo(() => Array.from(message).reduce((total, ch) => total + (ch.codePointAt(0)! > 0xffff ? 2 : 1), 0), [message]);
   const pages = Math.max(1, Math.ceil(units / PAGE_SIZE));
-  const costPerRun = calculateSmsTotal(contactPrice, pagePrice, numbers.length, pages);
+  const costPerRun = contactPrice * numbers.length + pagePrice * pages;
   const lowBalance = balance !== null && numbers.length > 0 && message.trim().length > 0 && balance < costPerRun;
 
   const loadSchedules = useCallback(async () => {
@@ -326,7 +325,6 @@ export default function ScheduleSms({ ownerType, ownerId }: Props) {
             <span className="flex items-center gap-2"><Wallet className="h-4 w-4" aria-hidden />Wallet: GHS {balance === null ? "—" : balance.toFixed(2)}</span>
             <span className="font-semibold">Cost per send: GHS {costPerRun.toFixed(2)}</span>
           </div>
-          {numbers.length > 0 && <p className="text-xs text-muted-foreground">{smsCostBreakdown(contactPrice, pagePrice, numbers.length, pages)}</p>}
           {lowBalance && <p className="text-sm text-destructive" role="alert">Your wallet is below the cost of one send. Top up before the scheduled time or it will not be sent.</p>}
 
           <Button type="button" className="w-full" onClick={save} disabled={saving}>

@@ -376,7 +376,7 @@ function BulkSmsPricing() {
   const { data, isLoading, isError } = useSmsApiPricing();
   const recipient = data?.recipient ?? 0;
   const page = data?.page ?? 0;
-  const example = recipient * 100 * 2 + page * 2;
+  const example = recipient * 100 + page * 1;
   return (
     <Section id="pd-pricing" title="Pricing">
       <p>
@@ -395,7 +395,7 @@ function BulkSmsPricing() {
             </thead>
             <tbody>
               <tr className="border-t border-border">
-                <td className="p-2 font-medium">Per recipient, per page</td>
+                <td className="p-2 font-medium">Per recipient</td>
                 <td className="p-2 font-mono">GHS {recipient.toFixed(2)}</td>
               </tr>
               <tr className="border-t border-border">
@@ -403,7 +403,7 @@ function BulkSmsPricing() {
                 <td className="p-2 font-mono">GHS {page.toFixed(2)}</td>
               </tr>
               <tr className="border-t border-border">
-                <td className="p-2 font-medium">Example: 100 recipients, 2 pages</td>
+                <td className="p-2 font-medium">Example: 100 recipients, 1 page</td>
                 <td className="p-2 font-mono">GHS {example.toFixed(2)}</td>
               </tr>
             </tbody>
@@ -411,7 +411,7 @@ function BulkSmsPricing() {
         </div>
       )}
       <p className="text-xs">
-        Total charge = <Mono>per_recipient_per_page x recipients x pages + per_page x pages</Mono>. The recipient price is charged for every page each recipient receives. Messages that the provider rejects are refunded to your API wallet automatically.
+        Total charge = <Mono>(price per recipient x recipients) + (price per page x pages)</Mono>. Messages that the provider rejects are refunded to your API wallet automatically.
       </p>
     </Section>
   );
@@ -446,7 +446,7 @@ function BulkSmsDocs() {
         </Section>
 
         <Section id="pd-balance" title="3. Check balance, prices and approved sender IDs">
-          <Code>{`GET ${SMS_ENDPOINT}\n\n200 {\n  "success": true,\n  "pricing": {\n    "currency": "GHS",\n    "per_recipient_per_page": 0.0,\n    "per_page": 0.0,\n    "characters_per_page": 160,\n    "formula": "per_recipient_per_page x recipients x pages + per_page x pages"\n  },\n  "balance": 25.5,\n  "sender_ids": [ { "sender_id": "MYSHOP", "status": "approved" } ]\n}`}</Code>
+          <Code>{`GET ${SMS_ENDPOINT}\n\n200 {\n  "success": true,\n  "pricing": { "currency": "GHS", "per_recipient": 0.0, "per_page": 0.0, "characters_per_page": 160 },\n  "balance": 25.5,\n  "sender_ids": [ { "sender_id": "MYSHOP", "status": "approved" } ]\n}`}</Code>
           <p>
             The <Mono>official_sender_ids</Mono> list contains every currently approved global/official sender ID that any API client may use. Use those values directly in your site. You can also post <Mono>{`{ "action": "senders" }`}</Mono> to return both official and account-specific approved sender IDs, or <Mono>{`{ "action": "balance" }`}</Mono> for your API wallet balance.
           </p>
