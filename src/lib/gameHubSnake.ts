@@ -50,7 +50,9 @@ async function rpc<T>(name: string, args?: Record<string, unknown>): Promise<T> 
 
 export const fetchSnakeContests = () => rpc<SnakeContest[]>("gamehub_snake_list");
 export const joinSnakeContest = (id: string, hint: string | null) => rpc<{ ok: boolean; attempt_id: string }>("gamehub_snake_join", { p_c: id, p_hint: hint });
-export const startSnakeAttempt = (attemptId: string) => rpc<{ ok: boolean; match_minutes: number }>("gamehub_snake_start", { p_attempt: attemptId });
+export type SnakeRound = { ok: boolean; match_minutes: number; round_start_ms: number; round_end_ms: number; server_ms: number };
+
+export const startSnakeAttempt = (attemptId: string) => rpc<SnakeRound>("gamehub_snake_start", { p_attempt: attemptId });
 export const submitSnakeAttempt = (attemptId: string, length: number) => rpc<{ ok: boolean; length: number }>("gamehub_snake_submit", { p_attempt: attemptId, p_length: length });
 export const claimSnakePrize = (id: string, phone: string) => rpc<{ ok: boolean; reward_gb: number }>("gamehub_snake_claim_prize", { p_c: id, p_phone: phone });
 

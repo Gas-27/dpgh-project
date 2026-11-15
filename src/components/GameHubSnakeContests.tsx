@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Gift, Loader2, Timer, Trophy, Users, Wallet, X } from "lucide-react";
+import { createPortal } from "react-dom";
+import { Gift, Loader2, Timer, Trophy, Users, Wallet } from "lucide-react";
 import { walletHintFromPath } from "@/components/GameHubRewardPlayer";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import {
   claimSnakePrize,
@@ -12,7 +14,9 @@ import {
   startSnakeAttempt,
   submitSnakeAttempt,
   type SnakeContest,
+  type SnakeRound,
 } from "@/lib/gameHubSnake";
+import { fetchMyPlayer } from "@/lib/gameHubSocial";
 
 const QUERY_KEY = ["snake-contests"];
 
@@ -32,45 +36,91 @@ function timeLeft(closesAt: string, now: number): string {
   return `${minutes}m ${Math.floor((ms % 60000) / 1000)}s left`;
 }
 
-type MatchProps = { attemptId: string; minutes: number; onDone: () => void };
+type ActiveMatch = { attemptId: string; round: SnakeRound; clockSkew: number };
 
-function SnakeMatch({ attemptId, minutes, onDone }: MatchProps) {
+type MatchProps = { match: ActiveMatch; contestId: string; minutes: number; onDone: () => void };
+
+async function fetchPlayerIdentity(): Promise<{ id: string; name: string }> {
+  const { data } = await supabase.auth.getUser();
+  const userId = data.user?.id ?? "";
+  const player = userId ? await fetchMyPlayer(userId).catch(() => null) : null;
+  return { id: userId, name: player?.username ?? "Player" };
+}
+
+function SnakeMatch({ match, contestId, minutes, onDone }: MatchProps) {
   const { toast } = useToast();
+  const containerRef = useRef<HTMLDivElement>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
-  const [saved, setSaved] = useState(false);
+  const { data: identity } = useQuery({ queryKey: ["snake-identity"], queryFn: fetchPlayerIdentity, staleTime: 60_000 });
 
   useEffect(() => {
+    const container = containerRef.current;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    container?.requestFullscreen?.().catch(() => undefined);
+    (screen.orientation as ScreenOrientation & { lock?: (o: string) => Promise<void> })?.lock?.("landscape").catch(() => undefined);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+      screen.orientation?.unlock?.();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!identity) return;
+    const sendToGame = (message: Record<string, unknown>) => frameRef.current?.contentWindow?.postMessage(message, "*");
+    let subscribed = false;
+    const channel = supabase.channel(`snake-room-${contestId}-${match.round.round_start_ms}`, {
+      config: { broadcast: { self: false, ack: false } },
+    });
+    channel
+      .on("broadcast", { event: "*" }, (message) => sendToGame({ type: "snake-net-recv", event: message.event, payload: message.payload }))
+      .subscribe((status) => {
+        subscribed = status === "SUBSCRIBED";
+        if (subscribed) sendToGame({ type: "snake-net-ready" });
+      });
+
     const onMessage = (event: MessageEvent) => {
       if (event.source !== frameRef.current?.contentWindow) return;
-      const data = event.data as { type?: string; attemptId?: string; length?: number } | null;
-      if (data?.type !== "snake-contest-result" || data.attemptId !== attemptId) return;
-      submitSnakeAttempt(attemptId, Number(data.length) || 0)
-        .then(() => {
-          setSaved(true);
-          frameRef.current?.contentWindow?.postMessage({ type: "snake-contest-saved" }, "*");
-        })
-        .catch((error) => toast({ title: "Could not save your result", description: errorText(error), variant: "destructive" }));
+      const data = event.data as { type?: string; attemptId?: string; length?: number; event?: string; payload?: unknown } | null;
+      if (!data) return;
+      if (data.type === "snake-net-send" && subscribed && data.event) {
+        void channel.send({ type: "broadcast", event: data.event, payload: data.payload });
+      } else if (data.type === "snake-net-hello" && subscribed) {
+        sendToGame({ type: "snake-net-ready" });
+      } else if (data.type === "snake-leave") {
+        onDone();
+      } else if (data.type === "snake-contest-result" && data.attemptId === match.attemptId) {
+        submitSnakeAttempt(match.attemptId, Number(data.length) || 0)
+          .then(() => sendToGame({ type: "snake-contest-saved" }))
+          .catch((error) => toast({ title: "Could not save your result", description: errorText(error), variant: "destructive" }));
+      }
     };
     window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, [attemptId, toast]);
+    return () => {
+      window.removeEventListener("message", onMessage);
+      void supabase.removeChannel(channel);
+    };
+  }, [identity, contestId, match, onDone, toast]);
 
-  return (
-    <div className="fixed inset-0 z-[70] flex flex-col bg-[#0d0620] text-white">
-      <header className="flex items-center justify-between gap-2 border-b border-violet-400/20 px-3 py-2">
-        <p className="text-sm font-bold">Snake War contest - {minutes} min</p>
-        <button type="button" onClick={onDone} className="flex items-center gap-1.5 rounded-lg bg-violet-900/70 px-3 py-1.5 text-xs font-semibold">
-          <X className="h-4 w-4" aria-hidden="true" /> {saved ? "Close" : "Leave match"}
-        </button>
-      </header>
-      <iframe
-        ref={frameRef}
-        title="Snake War contest match"
-        src={`/games/snake-war-contest.html?attempt=${encodeURIComponent(attemptId)}&minutes=${minutes}`}
-        className="min-h-0 flex-1 border-0"
-        allow="autoplay"
-      />
-    </div>
+  if (!identity) return null;
+
+  const params = new URLSearchParams({
+    attempt: match.attemptId,
+    contest: contestId,
+    minutes: String(minutes),
+    name: identity.name,
+    uid: identity.id,
+    rs: String(match.round.round_start_ms),
+    re: String(match.round.round_end_ms),
+    skew: String(match.clockSkew),
+  });
+
+  return createPortal(
+    <div ref={containerRef} className="fixed inset-0 z-[9999] bg-[#0d0620]" style={{ height: "100dvh", width: "100vw" }}>
+      <iframe ref={frameRef} title="Snake War live match" src={`/games/snake-war-contest.html?${params.toString()}`} className="block h-full w-full border-0" allow="autoplay; fullscreen" />
+    </div>,
+    document.body,
   );
 }
 
@@ -79,7 +129,7 @@ function ContestCard({ contest, signedIn }: { contest: SnakeContest; signedIn: b
   const queryClient = useQueryClient();
   const [now, setNow] = useState(() => Date.now());
   const [phone, setPhone] = useState("");
-  const [match, setMatch] = useState<string | null>(null);
+  const [match, setMatch] = useState<ActiveMatch | null>(null);
 
   useEffect(() => {
     const timer = setInterval(() => setNow(Date.now()), 1000);
@@ -99,8 +149,8 @@ function ContestCard({ contest, signedIn }: { contest: SnakeContest; signedIn: b
   });
 
   const start = useMutation({
-    mutationFn: (attemptId: string) => startSnakeAttempt(attemptId).then(() => attemptId),
-    onSuccess: (attemptId) => setMatch(attemptId),
+    mutationFn: (attemptId: string) => startSnakeAttempt(attemptId).then((round) => ({ attemptId, round, clockSkew: round.server_ms - Date.now() })),
+    onSuccess: (started) => setMatch(started),
     onError: (error) => {
       toast({ title: "Could not start", description: errorText(error), variant: "destructive" });
       refresh();
@@ -198,7 +248,8 @@ function ContestCard({ contest, signedIn }: { contest: SnakeContest; signedIn: b
 
       {match ? (
         <SnakeMatch
-          attemptId={match}
+          match={match}
+          contestId={contest.id}
           minutes={contest.match_minutes}
           onDone={() => {
             setMatch(null);
