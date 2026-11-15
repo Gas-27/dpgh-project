@@ -689,12 +689,18 @@ const lookupNumber = isEcg ? (isValidEcgMeter ? trimmedAccount : trimmedEcgPhone
           ...wallet,
         });
       }
-      toast({
-        title: response.pending ? "Purchase pending" : "Purchase started",
-        description: response.pending
-          ? `Your transaction ${response.clientReference || "received"} is waiting for confirmation.`
-          : `Transaction ${response.clientReference || "received"} is processing.`,
-      });
+      if (response.pending === true) {
+        toast({
+          title: "Payment being confirmed",
+          description: String(response.message || "Your payment is being confirmed. If it does not go through, your wallet will be refunded automatically."),
+          className: "border-amber-500/40 bg-amber-50 text-amber-900",
+        });
+      } else {
+        toast({
+          title: "Purchase started",
+          description: `Transaction ${response.clientReference || "received"} is processing.`,
+        });
+      }
       setAmount("");
       setCustomAirtimeAmount("");
       setSelectedInstantItem(null);

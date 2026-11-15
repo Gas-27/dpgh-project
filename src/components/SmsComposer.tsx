@@ -23,6 +23,7 @@ import OrderContactPicker from "@/components/OrderContactPicker";
 import SmsNumberGenerator from "@/components/SmsNumberGenerator";
 import BulkSmsHowToVideo from "@/components/BulkSmsHowToVideo";
 import { SHOW_USSD } from "@/lib/ussdVisibility";
+import { calculateSmsTotal, smsCostBreakdown } from "@/lib/smsPricing";
 
 type SmsComposerProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; storeUrl?: string; publicMode?: boolean; hideSenderPhone?: boolean };
 type SmsAudience = "all" | "recent" | "inactive" | "custom";
@@ -190,7 +191,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const pages = useMemo(() => Math.max(1, Math.ceil(messageUnits / PAGE_SIZE)), [messageUnits]);
   const charsOnPage = messageUnits % PAGE_SIZE === 0 && messageUnits > 0 ? PAGE_SIZE : messageUnits % PAGE_SIZE;
   const remaining = PAGE_SIZE - charsOnPage;
-  const totalCost = contactPrice * numbers.length + pagePrice * pages;
+  const totalCost = calculateSmsTotal(contactPrice, pagePrice, numbers.length, pages);
   const ussdMessage = SHOW_USSD && ussdAccessCode ? `USSD: *920*337#\nAccess Code: ${ussdAccessCode}` : "";
   const addUssdToMessage = () => {
     if (!ussdMessage) {
@@ -503,6 +504,8 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       return;
     }
     const campaignId = String(started.data.id);
+    const serverCharge = Number(started.data.charge);
+    const chargeNote = Number.isFinite(serverCharge) ? ` Charged GH₵${serverCharge.toFixed(2)}.` : "";
     const batchSize = Math.max(1, Number(started.data.batch_size) || 25);
     let queue: string[] = Array.isArray(started.data.recipients) ? started.data.recipients : numbers;
     const total = queue.length;
@@ -550,9 +553,9 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
       return;
     }
     if (undelivered > 0) {
-      toast({ title: "SMS partly sent", description: `${delivered} of ${total} delivered. GHS ${Number(finished.data.refunded || 0).toFixed(2)} for the ${undelivered} undelivered was refunded to your wallet.` });
+      toast({ title: "SMS partly sent", description: `${delivered} of ${total} delivered. GHS ${Number(finished.data.refunded || 0).toFixed(2)} for the ${undelivered} undelivered was refunded to your wallet.${chargeNote}` });
     } else {
-      toast({ title: "SMS sent", description: `${delivered} recipient(s) processed - ${pages} page(s) each.` });
+      toast({ title: "SMS sent", description: `${delivered} recipient(s) processed - ${pages} page(s) each.${chargeNote}` });
     }
     setRecipients("");
     setMessage("");
@@ -796,8 +799,10 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
             </div>
             <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 text-xs leading-5 text-muted-foreground">
               <p className="font-semibold text-foreground">How SMS pricing works</p>
-              <p>We charge GHS {contactPrice.toFixed(2)} for each contact, plus GHS {pagePrice.toFixed(2)} for each SMS page. One page contains up to {PAGE_SIZE} character units.</p>
-              <p>Example: 5 contacts and 1 page = GHS {(contactPrice * 5 + pagePrice).toFixed(2)}. Emoji characters count as 2 units and may create an additional page.</p>
+              <p>We charge GHS {contactPrice.toFixed(2)} per recipient for every SMS page, plus GHS {pagePrice.toFixed(2)} for each SMS page. One page contains up to {PAGE_SIZE} character units.</p>
+              <p>Formula: price per recipient × recipients × pages + price per page × pages.</p>
+              <p className="font-medium text-foreground">{smsCostBreakdown(contactPrice, pagePrice, numbers.length, pages)}</p>
+              <p>Emoji characters count as 2 units and may create an additional page.</p>
             </div>
           </div>
 
