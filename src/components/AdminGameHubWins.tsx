@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { adminFetchGameHubAnalytics, type AnalyticsGame, type AnalyticsSpend, type LeaderboardPeriod } from "@/lib/gameHubApi";
 import { hubGames } from "@/lib/gameHubGames";
+import { fetchAdminTournaments } from "@/lib/gameHubTournaments";
 
 const periods: { id: LeaderboardPeriod; label: string }[] = [
   { id: "today", label: "Today" }, { id: "yesterday", label: "Yesterday" },
@@ -28,6 +29,17 @@ export default function AdminGameHubWins() {
     refetchInterval: REFRESH_MS,
     refetchOnWindowFocus: true,
   });
+
+  const { data: tournaments = [], isLoading: tournamentsLoading, error: tournamentsError } = useQuery({
+    queryKey: ["gamehub-admin-tournaments-record"],
+    queryFn: fetchAdminTournaments,
+    refetchInterval: REFRESH_MS,
+    refetchOnWindowFocus: true,
+  });
+  const recordedTournaments = tournaments.filter((row) => row.status === "live" || row.status === "finished");
+  const tournamentWinners = recordedTournaments.filter((row) => row.winner_name);
+  const tournamentGbAwarded = tournamentWinners.reduce((sum, row) => sum + Number(row.prize_gb || 0), 0);
+  const tournamentFees = recordedTournaments.reduce((sum, row) => sum + Number(row.fees_collected || 0), 0);
 
   const totals = data?.totals;
   const gameRows: AnalyticsGame[] = data?.games ?? [];
@@ -163,6 +175,42 @@ export default function AdminGameHubWins() {
             </section>
           </>
         )}
+        <section aria-labelledby="tournament-record-title" className="space-y-3">
+          <div>
+            <h3 id="tournament-record-title" className="flex items-center gap-2 font-semibold"><Trophy className="h-4 w-4 text-amber-500" aria-hidden="true" /> Tournament record ({recordedTournaments.length})</h3>
+            <p className="text-sm text-muted-foreground">Every live and finished tournament with its winner, prize and entry fees. Not affected by the period filter above.</p>
+          </div>
+          {tournamentsError ? <p role="alert" className="text-sm text-destructive">{(tournamentsError as Error).message}</p> : null}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <Metric label="Tournament winners" value={tournamentWinners.length.toLocaleString()} />
+            <Metric label="Tournament GB awarded" value={gb(tournamentGbAwarded)} accent />
+            <Metric label="Entry fees collected" value={money(tournamentFees)} />
+          </div>
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full min-w-[900px] text-left text-sm">
+              <thead className="bg-muted text-xs uppercase tracking-wider text-muted-foreground"><tr><th className="px-3 py-2">Tournament</th><th className="px-3 py-2">Status</th><th className="px-3 py-2">Winner</th><th className="px-3 py-2">Prize</th><th className="px-3 py-2">Prize claimed</th><th className="px-3 py-2">Players</th><th className="px-3 py-2">Entry fee</th><th className="px-3 py-2">Fees collected</th><th className="px-3 py-2">Started</th></tr></thead>
+              <tbody>
+                {tournamentsLoading ? (
+                  <tr><td colSpan={9} className="px-3 py-8 text-center"><Loader2 className="mx-auto h-5 w-5 animate-spin" aria-label="Loading tournaments" /></td></tr>
+                ) : recordedTournaments.length === 0 ? (
+                  <tr><td colSpan={9} className="px-3 py-8 text-center text-muted-foreground">No tournaments have started yet.</td></tr>
+                ) : recordedTournaments.map((row) => (
+                  <tr key={row.id} className="border-t">
+                    <td className="px-3 py-2 font-medium">{row.title}<span className="ml-2 text-xs capitalize text-muted-foreground">{row.mode}</span></td>
+                    <td className="px-3 py-2 capitalize">{row.status}</td>
+                    <td className="px-3 py-2 font-medium">{row.winner_name ? <><Trophy className="mr-2 inline h-4 w-4 text-amber-500" aria-hidden="true" />{row.winner_name}</> : <span className="text-muted-foreground">{row.status === "live" ? "In progress" : "No winner"}</span>}</td>
+                    <td className="px-3 py-2 font-semibold text-cyan-400">{gb(row.prize_gb)}</td>
+                    <td className="px-3 py-2">{row.winner_name ? (row.prize_claimed ? "Claimed" : "Not claimed yet") : "—"}</td>
+                    <td className="px-3 py-2">{row.entries_count.toLocaleString()} / {row.max_players.toLocaleString()}</td>
+                    <td className="px-3 py-2">{money(row.entry_fee)}</td>
+                    <td className="px-3 py-2">{money(row.fees_collected)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap text-xs text-muted-foreground">{row.starts_at ? new Date(row.starts_at).toLocaleString() : "—"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
         <p className="text-xs text-muted-foreground">Winners are players who claimed a reward; GB comes from the actual MTN order. Spend comes from the wallet ledger (lives, items) and paid store chance orders. Days run on UTC. Showing up to 1,000 rows per table.</p>
       </CardContent>
     </Card>

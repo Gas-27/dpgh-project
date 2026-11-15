@@ -1,5 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { CalendarClock, Loader2, Pause, Play, Trash2, Wallet } from "lucide-react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { CalendarClock, Loader2, Pause, Play, Trash2, Upload, Wallet } from "lucide-react";
+import OrderContactPicker from "@/components/OrderContactPicker";
+import SmsNumberGenerator from "@/components/SmsNumberGenerator";
+import { extractNumbers, extractNumbersFromFiles, normalizeGh } from "@/lib/smsRecipients";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -32,19 +35,7 @@ type Schedule = {
 const DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const PAGE_SIZE = 160;
 
-const normalizeGh = (raw: string): string | null => {
-  let d = raw.replace(/\D/g, "");
-  if (!d) return null;
-  if (d.startsWith("00233")) d = "0" + d.slice(5);
-  else if (d.startsWith("233") && d.length >= 12) d = "0" + d.slice(3);
-  if (d.length === 9 && /^[2-5]/.test(d)) d = "0" + d;
-  return /^0[2-5]\d{8}$/.test(d) ? d : null;
-};
-
-const extractNumbers = (text: string): string[] => {
-  const chunks = text.split(/[\s,;]+/);
-  return Array.from(new Set(chunks.map(normalizeGh).filter((n): n is string => Boolean(n))));
-};
+type Audience = "all" | "recent" | "inactive";
 
 const statusLabel: Record<string, string> = { success: "Sent", sending: "Sending", failed: "Failed", partial: "Partly sent" };
 
@@ -64,6 +55,62 @@ export default function ScheduleSms({ ownerType, ownerId }: Props) {
   const [balance, setBalance] = useState<number | null>(null);
   const [schedules, setSchedules] = useState<Schedule[]>([]);
   const [saving, setSaving] = useState(false);
+  const [audience, setAudience] = useState<Audience | null>(null);
+  const [audienceLoading, setAudienceLoading] = useState(false);
+  const [ocrLoading, setOcrLoading] = useState(false);
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const loadAudience = async (next: Audience) => {
+    setAudience(next);
+    setAudienceLoading(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user?.id) throw new Error("Your sign-in session has expired.");
+      const { data, error } = await (supabase as any)
+        .from("orders")
+        .select("customer_number,created_at")
+        .eq("customer_id", auth.user.id)
+        .not("customer_number", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      if (error) throw error;
+      const cutoff = Date.now() - 30 * 24 * 60 * 60 * 1000;
+      const latest = new Map<string, number>();
+      for (const order of (data ?? []) as { customer_number: string | null; created_at: string }[]) {
+        const phone = normalizeGh(String(order.customer_number || ""));
+        if (!phone) continue;
+        latest.set(phone, Math.max(latest.get(phone) ?? 0, new Date(order.created_at).getTime()));
+      }
+      const phones = Array.from(latest.entries())
+        .filter(([, time]) => next === "all" || (next === "recent" ? time >= cutoff : time < cutoff))
+        .map(([phone]) => phone);
+      setRecipientsText(phones.join(","));
+      toast({ title: "Audience loaded", description: `${phones.length} unique customer number${phones.length === 1 ? "" : "s"} selected.` });
+    } catch (error) {
+      toast({ title: "Could not load audience", description: error instanceof Error ? error.message : "Please try again.", variant: "destructive" });
+    } finally {
+      setAudienceLoading(false);
+    }
+  };
+
+  const addFromFiles = async (files: FileList) => {
+    setOcrLoading(true);
+    try {
+      const found = await extractNumbersFromFiles(files);
+      if (!found.length) {
+        toast({ title: "No phone numbers found", description: "Try clearer screenshots with the numbers visible." });
+      } else {
+        const merged = extractNumbers(`${recipientsText},${found.join(",")}`);
+        setRecipientsText(merged.join(","));
+        toast({ title: "Contacts extracted", description: `${merged.length} unique number(s) ready.` });
+      }
+    } catch {
+      toast({ title: "Screenshot extraction failed", description: "Please try another image.", variant: "destructive" });
+    } finally {
+      setOcrLoading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
 
   const numbers = useMemo(() => extractNumbers(recipientsText), [recipientsText]);
   const units = useMemo(() => Array.from(message).reduce((total, ch) => total + (ch.codePointAt(0)! > 0xffff ? 2 : 1), 0), [message]);
@@ -90,7 +137,7 @@ export default function ScheduleSms({ ownerType, ownerId }: Props) {
       const { data: auth } = await supabase.auth.getUser();
       const uid = auth.user?.id;
       if (!uid) return;
-      const { data: senderRows } = await supabase
+      const { data: senderRows } = await (supabase as any)
         .from("sms_sender_ids")
         .select("sender_id,status,is_global,user_id")
         .eq("status", "approved")
@@ -101,10 +148,10 @@ export default function ScheduleSms({ ownerType, ownerId }: Props) {
       const pricingKey = ownerType === "customer"
         ? "sms_dashboard_recipient_price, sms_dashboard_page_price"
         : "sms_storefront_recipient_price, sms_storefront_page_price";
-      const { data: pricing } = await supabase.from("app_settings").select(pricingKey).eq("id", 1).maybeSingle();
+      const { data: pricing } = await (supabase as any).from("app_settings").select(pricingKey).eq("id", 1).maybeSingle();
       const values = pricing as Record<string, number> | null;
       const [contactKey, pageKey] = pricingKey.split(",").map((key) => key.trim());
-      const { data: bal } = await supabase.rpc("get_sms_wallet", { p_user_id: uid, p_owner_type: ownerType });
+      const { data: bal } = await (supabase as any).rpc("get_sms_wallet", { p_user_id: uid, p_owner_type: ownerType });
       if (!alive) return;
       setSenders(names);
       setSenderId((current) => current || names[0] || "");
@@ -182,10 +229,45 @@ export default function ScheduleSms({ ownerType, ownerId }: Props) {
             </Select>
           </div>
 
+          {ownerType !== "customer" && <OrderContactPicker ownerType={ownerType} ownerId={ownerId} onContacts={setRecipientsText} />}
+          {ownerType === "customer" && (
+            <div className="space-y-2 rounded-lg border border-primary/20 bg-primary/5 p-3">
+              <Label>Customer audience</Label>
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Customer audience">
+                {([["all", "All customers"], ["recent", "Bought in 30 days"], ["inactive", "No purchase in 30 days"]] as [Audience, string][]).map(([id, label]) => (
+                  <Button key={id} type="button" size="sm" variant={audience === id ? "default" : "outline"} disabled={audienceLoading} onClick={() => void loadAudience(id)}>{label}</Button>
+                ))}
+              </div>
+            </div>
+          )}
+          <SmsNumberGenerator
+            ownerType={ownerType}
+            ownerId={ownerId}
+            walletBalance={balance}
+            onBalanceChange={setBalance}
+            onGenerated={(generated) => setRecipientsText((current) => Array.from(new Set([...current.split(/[\s,;]+/).filter(Boolean), ...generated])).join(","))}
+          />
+
           <div className="space-y-2">
             <Label htmlFor="sched-recipients">Recipients</Label>
             <Textarea id="sched-recipients" rows={3} placeholder="0241234567, 0551234567 ..." value={recipientsText} onChange={(e) => setRecipientsText(e.target.value)} />
             <p className="text-xs text-muted-foreground">{numbers.length} valid number{numbers.length === 1 ? "" : "s"}</p>
+            <div className="flex flex-col gap-2 rounded-lg border border-dashed p-3">
+              <Button type="button" variant="outline" className="w-full" onClick={() => fileRef.current?.click()} disabled={ocrLoading}>
+                {ocrLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" aria-hidden /> : <Upload className="mr-2 h-4 w-4" aria-hidden />}
+                Upload screenshots or TXT/CSV files
+              </Button>
+              <p className="text-center text-xs text-muted-foreground text-pretty">Upload a WhatsApp group screenshot to extract numbers. You can upload several at once.</p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/*,.txt,.csv,.tsv,text/plain,text/csv"
+                multiple
+                className="hidden"
+                aria-label="Upload screenshots or contact files"
+                onChange={(event) => { if (event.target.files?.length) void addFromFiles(event.target.files); }}
+              />
+            </div>
           </div>
 
           <div className="space-y-2">
