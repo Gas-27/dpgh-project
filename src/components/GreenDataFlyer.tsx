@@ -41,7 +41,7 @@ function NetworkPanel({ left, width, background, border, header, textColor, line
   );
 }
 
-const USSD_CODE = "*920*337#";
+const USSD_CODE = "*365*778#";
 
 export function GreenDataFlyer({ storeName, storeUrl, supportNumber, packages, afaPrice, accessCode }: GreenDataFlyerProps) {
   const name = (storeName || "Your Store").toUpperCase();

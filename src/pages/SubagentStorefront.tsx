@@ -1360,14 +1360,14 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
           <>
           {/* USSD Info Banner */}
           {SHOW_USSD && store?.show_ussd_on_storefront !== false && store?.topup_reference && (
-            <a href="tel:*920*337#" className="block mb-4 rounded-xl border border-[#064e5f] bg-[#071316] p-4 text-foreground shadow-sm hover:bg-[#071316] transition-colors">
+            <a href="tel:*365*778%23" className="block mb-4 rounded-xl border border-[#064e5f] bg-[#071316] p-4 text-foreground shadow-sm hover:bg-[#071316] transition-colors">
               <div className="flex items-center justify-center gap-3 text-center">
                 <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
                   <Phone className="h-5 w-5 text-primary" />
                 </div>
                 <div>
                   <p className="text-xs text-muted-foreground">Buy data via USSD - No internet needed!</p>
-                  <p className="text-xl font-bold font-mono text-primary">*920*337#</p>
+                  <p className="text-xl font-bold font-mono text-primary">*365*778#</p>
                   <p className="text-xs text-muted-foreground">Access Code: <span className="font-mono font-bold text-foreground">{store.topup_reference}</span></p>
                 </div>
               </div>

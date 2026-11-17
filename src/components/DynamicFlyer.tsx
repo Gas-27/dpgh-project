@@ -58,7 +58,7 @@ function drawStoreName(ctx: CanvasRenderingContext2D, value: string, region: Reg
 }
 
 // The template artwork has the old USSD code baked in, so it is covered and redrawn with the current code.
-const USSD_CODE = "*920*337#";
+const USSD_CODE = "*365*778#";
 const USSD_COVER: Region = { x: 266, y: 574, width: 228, height: 36 };
 
 function drawUssdCode(ctx: CanvasRenderingContext2D) {
@@ -98,7 +98,7 @@ function drawRows(ctx: CanvasRenderingContext2D, list: FlyerPackage[], region: R
 export function DynamicFlyer({ storeName, bannerText = "DATA PLUG", accessCode, storeUrl, contactNumber = "", packages }: { storeName: string; bannerText?: string; accessCode: string; storeUrl: string; contactNumber?: string; packages: FlyerPackages }) {
   const shareMessage = `Get the BEST data deals from ${storeName || "our store"}! 🔥
 MTN • AirtelTigo • Telecel ⚡ Instant Delivery • 24/7 Support
-${SHOW_USSD ? `📲 USSD: *920*337# 🔑 Access Code: ${accessCode || "—"}\n` : ""}🛒 Shop: ${storeUrl || "—"}
+${SHOW_USSD ? `📲 USSD: *365*778# 🔑 Access Code: ${accessCode || "—"}\n` : ""}🛒 Shop: ${storeUrl || "—"}
 🔥 More services available: 📶 Data Bundles • Airtime ⚡ ECG Prepaid • AFA Registration 📺 DSTV • GOtv • StarTimes 💧 Water Bill Payments 📱 Social Media Boosting 🎬 Netflix • Canva • Spotify • ChatGPT & more 🎮 Game Hub • Bulk SMS • Marketplace
 💰 Buy • Sell • Earn — All in One Place!
 📞 Contact: ${contactNumber || "—"}`;

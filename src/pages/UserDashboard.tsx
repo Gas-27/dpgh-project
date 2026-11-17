@@ -1438,7 +1438,7 @@ case "api-key":
   <p className="text-xs text-muted-foreground max-w-2xl">Orders made through USSD are guest orders and will not appear in this dashboard. Track them through USSD or the Track Order Status section on the main site.</p>
               <div className="flex items-center justify-center md:justify-start gap-3">
                 <div className="p-3 bg-primary/20 rounded-lg">
-                  <p className="text-2xl font-bold font-mono text-primary">*920*337*1#</p>
+                  <p className="text-2xl font-bold font-mono text-primary">*365*778#</p>
                 </div>
 
               </div>
@@ -1447,7 +1447,7 @@ case "api-key":
               variant="default"
               size="sm"
               onClick={() => {
-                window.location.href = "tel:*920*337%23";
+                window.location.href = "tel:*365*778%23";
               }}
               className="bg-green-600 hover:bg-green-700"
             >

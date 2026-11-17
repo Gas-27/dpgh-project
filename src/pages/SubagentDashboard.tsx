@@ -2685,7 +2685,7 @@ return (
                     <div className="text-center space-y-3">
                       <p className="text-xs text-muted-foreground">Your customers can buy data via USSD</p>
                       <div className="p-4 bg-primary/10 rounded-lg border border-primary/30">
-                        <p className="text-2xl font-bold font-mono text-primary">*920*337#</p>
+                        <p className="text-2xl font-bold font-mono text-primary">*365*778#</p>
                         <p className="text-sm text-muted-foreground mt-2">Access Code:</p>
                         <p className="text-3xl font-bold font-mono text-foreground">{subagentStore.topup_reference}</p>
                       </div>
@@ -2694,7 +2694,7 @@ return (
                         size="sm"
                         className="w-full"
                         onClick={() => {
-                          navigator.clipboard.writeText("*920*337#");
+                          navigator.clipboard.writeText("*365*778#");
                           toast({ title: "Copied!", description: "USSD code copied to clipboard" });
                         }}
                       >
@@ -4602,7 +4602,7 @@ handleMobileNumberChange(digits);
                         </div>
                       </div>
                       <p className="text-xs text-muted-foreground">
-                        {storeForm.show_ussd_on_storefront !== false ? "The USSD code (*920*337#) and your access code will be displayed on your storefront." : "USSD information will be hidden from your storefront."}
+                        {storeForm.show_ussd_on_storefront !== false ? "The USSD code (*365*778#) and your access code will be displayed on your storefront." : "USSD information will be hidden from your storefront."}
                       </p>
                     </div>
                     <div className="border-t border-border pt-4 mt-4">

@@ -16,7 +16,7 @@ import { SHOW_USSD } from "@/lib/ussdVisibility";
 
 export type StoreInfo = { storeName: string; storeUrl: string; supportNumber: string; storeId?: string; accessCode?: string };
 
-export const USSD_CODE = "*920*337#";
+export const USSD_CODE = "*365*778#";
 
 export const ussdMessageLines = (accessCode?: string) => SHOW_USSD ? [`USSD: ${USSD_CODE}`, ...(accessCode ? [`Access Code: ${accessCode}`] : [])] : [];
 

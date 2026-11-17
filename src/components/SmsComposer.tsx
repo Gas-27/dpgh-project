@@ -191,7 +191,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
   const charsOnPage = messageUnits % PAGE_SIZE === 0 && messageUnits > 0 ? PAGE_SIZE : messageUnits % PAGE_SIZE;
   const remaining = PAGE_SIZE - charsOnPage;
   const totalCost = contactPrice * numbers.length + pagePrice * pages;
-  const ussdMessage = SHOW_USSD && ussdAccessCode ? `USSD: *920*337#\nAccess Code: ${ussdAccessCode}` : "";
+  const ussdMessage = SHOW_USSD && ussdAccessCode ? `USSD: *365*778#\nAccess Code: ${ussdAccessCode}` : "";
   const addUssdToMessage = () => {
     if (!ussdMessage) {
       toast({ title: "Access code unavailable", description: "Your store access code could not be loaded.", variant: "destructive" });
@@ -761,7 +761,7 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
             </div>
             <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-2"><Switch checked={includeStoreLink} onCheckedChange={setIncludeStoreLink} id="include-store-link" /><label htmlFor="include-store-link">Include my store link by default</label></div>
-              {SHOW_USSD && ownerType !== "customer" && <span className="text-xs">Adds *920*337# and this store&apos;s access code.</span>}
+              {SHOW_USSD && ownerType !== "customer" && <span className="text-xs">Adds *365*778# and this store&apos;s access code.</span>}
             </div>
             <div className="space-y-1">
               <Label htmlFor="ai-brief" className="text-xs text-muted-foreground">Describe what the AI should write (optional)</Label>

@@ -65,7 +65,7 @@ const FlyerGenerator = ({
     const [shareText, setShareText] = useState("");
 
     useEffect(() => {
-        const ussdText = !SHOW_USSD ? "" : `\n\n📲 USSD: *920*337#${topupReference ? `\n🔑 Access Code: ${topupReference}` : ""}`;
+        const ussdText = !SHOW_USSD ? "" : `\n\n📲 USSD: *365*778#${topupReference ? `\n🔑 Access Code: ${topupReference}` : ""}`;
         setShareText(`🎉 Get the best data deals from ${storeName}!\n\n📱 MTN • AirtelTigo • Telecel\n💨 Instant delivery • 24/7 Support${ussdText}\n\nVisit: ${storeUrl}\nWhatsApp: ${whatsappNumber}`);
     }, [storeName, storeUrl, whatsappNumber, topupReference]);
 
@@ -438,7 +438,7 @@ const FlyerGenerator = ({
                             </div>
                             <div>
                                 <div style={{ fontSize: 11, color: flyerColors.buttonBg, fontWeight: 700, textTransform: "uppercase", letterSpacing: 1 }}>USSD CODE</div>
-                                <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", marginTop: 2, fontFamily: "monospace" }}>*920*337#</div>
+                                <div style={{ fontSize: 28, fontWeight: 900, color: "#fff", marginTop: 2, fontFamily: "monospace" }}>*365*778#</div>
                                 <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>Dial to purchase instantly.</div>
                             </div>
                         </div>

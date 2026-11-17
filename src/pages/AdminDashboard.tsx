@@ -1777,6 +1777,62 @@ const AdminDashboard = () => {
     }
   };
 
+  const [confirmRetryAll, setConfirmRetryAll] = useState(false);
+  const [retryAllProgress, setRetryAllProgress] = useState({ done: 0, total: 0 });
+  const stopRetryAllRef = useRef(false);
+
+  const isRetryableFailedOrder = (o: Order) =>
+    o.fulfillment_status === "failed" &&
+    !["UNCERTAIN_PROVIDER_RESULT", "CONFIRMED_RECEIVED"].includes(getProviderMarker(o.api_response) ?? "");
+
+  // Manual only: runs once per admin click, one order at a time. Orders already sent to the provider are skipped by the server.
+  const retryAllFailed = async () => {
+    if (retryingAllOrders) return;
+    const targets = orders.filter(isRetryableFailedOrder);
+    if (targets.length === 0) return;
+    stopRetryAllRef.current = false;
+    setRetryingAllOrders(true);
+    setRetryAllProgress({ done: 0, total: targets.length });
+    let sent = 0;
+    let alreadySent = 0;
+    let failed = 0;
+    let processed = 0;
+    for (const order of targets) {
+      if (stopRetryAllRef.current) break;
+      if (retryingOrderIdsRef.current.has(order.id)) continue;
+      retryingOrderIdsRef.current.add(order.id);
+      setRetryingOrders((prev) => new Set(prev).add(order.id));
+      try {
+        const { data, error } = await supabase.functions.invoke("fulfill-order", { body: { order_id: order.id } });
+        if (error) throw error;
+        if (data?.already_sent) {
+          alreadySent++;
+        } else if (data?.success) {
+          sent++;
+          setOrders((prev) => prev.map((o) => o.id === order.id ? { ...o, fulfillment_status: "completed" } : o));
+          setFilteredOrdersFromDB((prev) => prev.map((o) => o.id === order.id ? { ...o, fulfillment_status: "completed" } : o));
+        } else {
+          failed++;
+        }
+      } catch {
+        failed++;
+      } finally {
+        retryingOrderIdsRef.current.delete(order.id);
+        setRetryingOrders((prev) => { const next = new Set(prev); next.delete(order.id); return next; });
+      }
+      processed++;
+      setRetryAllProgress({ done: processed, total: targets.length });
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+    setRetryingAllOrders(false);
+    const stopped = stopRetryAllRef.current;
+    toast({
+      title: stopped ? "Retry stopped" : "Retry all finished",
+      description: `${sent} sent, ${alreadySent} already sent, ${failed} still failed${stopped ? ` (${targets.length - processed} not attempted)` : ""}.`,
+      variant: failed > 0 && sent === 0 ? "destructive" : undefined,
+    });
+  };
+
   const updateOrderProvider = async (order: Order, provider: string) => {
     const attempts = Array.isArray((order as any).provider_attempts) ? (order as any).provider_attempts : [];
     const nextAttempts = provider && provider !== (order as any).fulfillment_provider
@@ -2964,8 +3020,34 @@ const AdminDashboard = () => {
           {canSee("orders") && (
             <TabsContent value="orders" className="space-y-4">
               {failedCount > 0 && (
-                <div className="flex items-center justify-between p-4 rounded-lg border border-destructive/30 bg-destructive/5">
-                  <p className="text-sm text-foreground"><span className="font-bold text-destructive">{failedCount} failed</span> order(s) — payment received but data not fulfilled. Use the Retry button on each failed order.</p>
+                <div className="flex flex-col gap-3 p-4 rounded-lg border border-destructive/30 bg-destructive/5 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-sm text-foreground"><span className="font-bold text-destructive">{failedCount} failed</span> order(s) — payment received but data not fulfilled. Retry them one by one, or retry all at once.</p>
+                  <div className="flex gap-2 shrink-0">
+                    <Button size="sm" variant="destructive" onClick={() => setConfirmRetryAll(true)} disabled={retryingAllOrders || orders.filter(isRetryableFailedOrder).length === 0}>
+                      {retryingAllOrders ? (
+                        <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> {retryAllProgress.done}/{retryAllProgress.total}</>
+                      ) : (
+                        <><RefreshCw className="h-4 w-4 mr-1" /> Retry all ({orders.filter(isRetryableFailedOrder).length})</>
+                      )}
+                    </Button>
+                    {retryingAllOrders && (
+                      <Button size="sm" variant="outline" onClick={() => { stopRetryAllRef.current = true; }}>Stop</Button>
+                    )}
+                  </div>
+                  <AlertDialog open={confirmRetryAll} onOpenChange={setConfirmRetryAll}>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Retry all failed orders?</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This resends {orders.filter(isRetryableFailedOrder).length} failed order(s) to the provider one at a time. Orders the provider already received are skipped, and orders with an uncertain provider result are left out so they are not sent twice.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction onClick={() => { setConfirmRetryAll(false); retryAllFailed(); }}>Retry all</AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
                 </div>
               )}
               {refundedCount > 0 && (
