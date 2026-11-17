@@ -18,6 +18,7 @@ import PaymentDialog from "@/components/PaymentDialog";
 import DigitalServicesCatalog, { type Service } from "@/components/DigitalServicesCatalog";
 import ServicePurchaseDialog from "@/components/ServicePurchaseDialog";
 import StorefrontSectionCards, { type SectionId } from "@/components/StorefrontSectionCards";
+import { readSectionFromUrl, writeSectionToUrl } from "@/lib/storefrontSectionRoutes";
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 import HubtelPurchasePanel from "@/components/HubtelPurchasePanel";
@@ -643,10 +644,16 @@ const AgentStorefront = () => {
   const [showAgentPrice, setShowAgentPrice] = useState(false);
   
   // ── Category ──
+  const [initialUrlSection] = useState(() => readSectionFromUrl({ reserved: [storeName] }));
   const [activeCategory, setActiveCategory] = useState<
     "data" | "afa" | "vouchers" | "services" | "bulk" | "sms" | "products" | "social-boost" | "subscription"
-  >("data");
+  >(() => (initialUrlSection ? (initialUrlSection === "instant" ? "vouchers" : initialUrlSection) : "data") as "data");
+  const selectCategory = (id: string) => {
+    setActiveCategory((id === "instant" ? "vouchers" : id) as "data");
+    writeSectionToUrl(id, { reserved: [storeName] });
+  };
   useEffect(() => {
+    if (initialUrlSection) return;
     const configured = (store?.theme_config as any)?.default_section;
     const next = configured === "instant" ? "vouchers" : configured;
     if (["data", "afa", "vouchers", "services", "bulk", "sms", "products"].includes(next)) setActiveCategory(next as typeof activeCategory);
@@ -1226,10 +1233,10 @@ const searchOrders = useCallback(async (input?: string) => {
         </>
       )}
 
-      <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={(id) => setActiveCategory(id === "instant" ? "vouchers" : id as SectionId & typeof activeCategory)} onBecomeAgent={() => { window.location.assign(`${DOMAINS.getAgentStoreUrl(store?.store_name || "")}/become-agent`); }} />
+      <StorefrontSectionCards active={activeCategory === "vouchers" ? "instant" : activeCategory} onSelect={(id: SectionId) => selectCategory(id)} onBecomeAgent={() => { window.location.assign(`${DOMAINS.getAgentStoreUrl(store?.store_name || "")}/become-agent`); }} />
 
       <div id="storefront-section-content" className="scroll-mt-6" />
-  <ActiveTabMaintenance active={activeCategory === "vouchers" ? "instant" : activeCategory} label={activeCategory === "data" ? "Cheap Data" : activeCategory === "vouchers" ? "Airtime & Data" : activeCategory} onReturn={() => setActiveCategory("data")} />
+  <ActiveTabMaintenance active={activeCategory === "vouchers" ? "instant" : activeCategory} label={activeCategory === "data" ? "Cheap Data" : activeCategory === "vouchers" ? "Airtime & Data" : activeCategory} onReturn={() => selectCategory("data")} />
   {activeCategory === "products" ? (
     <PublicProductsSection allowGuestListing storeId={store?.id} storeKind="agent" supportPhone={store?.support_number || store?.whatsapp_number} />
   ) : activeCategory === "social-boost" ? (

@@ -21,6 +21,11 @@ import { ThemeProvider, ThemeToggle } from "@/components/ThemeProvider";
 import SocialBoost from "./pages/SocialBoost";
 import PaymentVerifier from "@/components/PaymentVerifier";
 import { isChunkLoadError, recoverFromStaleBundle } from "@/lib/chunkRecovery";
+import {
+  readCustomDomainSlug,
+  STOREFRONT_SECTION_PATHS,
+  SUBAGENT_SECTION_PATHS,
+} from "@/lib/storefrontSectionRoutes";
 
 // Wraps React.lazy so that a stale-deploy chunk failure (old bundle requesting
 // chunk filenames that no longer exist -> server returns index.html with a
@@ -240,11 +245,13 @@ const CustomDomainResolver = () => {
         setStatus("missing");
         return;
       }
+      const sectionSlug = readCustomDomainSlug();
+      const sectionSuffix = sectionSlug ? `/${sectionSlug}` : "";
       if (resolved.store_kind === "subsubagent" && resolved.parent_store_name) {
-        navigate(`/__custom/subsubagent/${encodeURIComponent(resolved.parent_store_name)}/${encodeURIComponent(resolved.store_name)}`, { replace: true });
+        navigate(`/__custom/subsubagent/${encodeURIComponent(resolved.parent_store_name)}/${encodeURIComponent(resolved.store_name)}${sectionSuffix}`, { replace: true });
         return;
       }
-      navigate(`/__custom/${resolved.store_kind === "subagent" ? "subagent" : "agent"}/${encodeURIComponent(resolved.store_name)}`, { replace: true });
+      navigate(`/__custom/${resolved.store_kind === "subagent" ? "subagent" : "agent"}/${encodeURIComponent(resolved.store_name)}${sectionSuffix}`, { replace: true });
     };
     void resolve();
     return () => { cancelled = true; };
@@ -317,6 +324,15 @@ return (
                   <Route path="/__custom/agent/:storeName" element={<AgentStorefront />} />
                   <Route path="/__custom/agent/:storeName/gamehub" element={<AgentStorefront />} />
                   <Route path="/__custom/agent/:storeName/gamehub/:gameId" element={<AgentStorefront />} />
+                  {STOREFRONT_SECTION_PATHS.map((section) => (
+                    <Route key={`custom-agent-${section}`} path={`/__custom/agent/:storeName/${section}`} element={<AgentStorefront />} />
+                  ))}
+                  {STOREFRONT_SECTION_PATHS.map((section) => (
+                    <Route key={`custom-subagent-${section}`} path={`/__custom/subagent/:storeName/${section}`} element={<SubagentStorefront />} />
+                  ))}
+                  {STOREFRONT_SECTION_PATHS.map((section) => (
+                    <Route key={`custom-subsubagent-${section}`} path={`/__custom/subsubagent/:subagentStoreName/:subSubagentStoreName/${section}`} element={<SubSubagentStorefront />} />
+                  ))}
                   <Route path="/__custom/subagent/:storeName" element={<SubagentStorefront />} />
                   <Route path="/__custom/subagent/:storeName/gamehub" element={<SubagentStorefront />} />
                   <Route path="/__custom/subagent/:storeName/gamehub/:gameId" element={<SubagentStorefront />} />
@@ -375,6 +391,12 @@ return (
                   <Route path="/:subagentStoreName/store/:subSubagentStoreName/gamehub/:gameId" element={<SubSubagentStorefront />} />
                   <Route path="/:storeName/gamehub" element={<SubagentStorefront />} />
                   <Route path="/:storeName/gamehub/:gameId" element={<SubagentStorefront />} />
+                  {STOREFRONT_SECTION_PATHS.map((section) => (
+                    <Route key={`subsubagent-${section}`} path={`/:subagentStoreName/store/:subSubagentStoreName/${section}`} element={<SubSubagentStorefront />} />
+                  ))}
+                  {SUBAGENT_SECTION_PATHS.map((section) => (
+                    <Route key={`subagent-${section}`} path={`/:storeName/${section}`} element={<SubagentStorefront />} />
+                  ))}
                   <Route path="/:subagentStoreName/store/:subSubagentStoreName" element={<SubSubagentStorefront />} />
                   <Route path="/:storeName" element={<SubagentStorefront />} />
                   <Route path="*" element={<NotFound />} />

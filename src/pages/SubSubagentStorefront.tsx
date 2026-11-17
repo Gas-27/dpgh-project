@@ -36,6 +36,7 @@ import RoleServicesPanel from "@/components/RoleServicesPanel";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
+import { readSectionFromUrl, writeSectionToUrl } from "@/lib/storefrontSectionRoutes";
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 import HubtelPurchasePanel from "@/components/HubtelPurchasePanel";
@@ -510,9 +511,18 @@ export function SubSubagentStorefront() {
 
   // Sub-Subagent Registration
   // ── AFA Packages ──
-  const [activeSection, setActiveSection] = useState<"data" | "vouchers" | "afa" | "sms" | "services" | "products" | "social-boost" | "subscription">("data");
+  const sectionUrlOptions = { reserved: [urlStoreName, subagentStoreName] };
+  const [initialUrlSection] = useState(() => readSectionFromUrl(sectionUrlOptions));
+  const [activeSection, setActiveSection] = useState<"data" | "vouchers" | "afa" | "sms" | "services" | "products" | "social-boost" | "subscription">(
+    () => (initialUrlSection ? (initialUrlSection === "instant" ? "vouchers" : initialUrlSection) : "data") as "data",
+  );
+  const selectSection = (id: string) => {
+    setActiveSection((id === "instant" ? "vouchers" : id) as "data");
+    writeSectionToUrl(id, sectionUrlOptions);
+  };
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   useEffect(() => {
+    if (initialUrlSection) return;
     const configured = (store?.theme_config as any)?.default_section;
     if (["data", "afa", "sms", "services", "products"].includes(configured)) setActiveSection(configured as typeof activeSection);
   }, [store?.theme_config]);
@@ -1080,9 +1090,9 @@ const searchOrders = useCallback(async (input?: string) => {
       )}
 
 <main className="w-full px-0 py-6 space-y-6 sm:px-4">
-  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "vouchers" : id as typeof activeSection)} onBecomeAgent={() => toast({ title: "Coming soon", description: "Become an Agent will be available soon." })} />
+  <StorefrontSectionCards active={activeSection} onSelect={(id) => selectSection(id)} onBecomeAgent={() => toast({ title: "Coming soon", description: "Become an Agent will be available soon." })} />
   <div id="storefront-section-content" className="scroll-mt-6" />
-  <ActiveTabMaintenance active={activeSection === "vouchers" ? "instant" : activeSection} label={activeSection === "vouchers" ? "Instant Data" : activeSection} onReturn={() => setActiveSection("data")} />
+  <ActiveTabMaintenance active={activeSection === "vouchers" ? "instant" : activeSection} label={activeSection === "vouchers" ? "Instant Data" : activeSection} onReturn={() => selectSection("data")} />
   {activeSection === "social-boost" && <SocialBoostPurchasePanel walletBalance={0} ownerType="subsubagent" storeId={store?.id} checkoutMode="paystack" showHistory={false} purchaseSource="Storefront" />}
   {activeSection === "products" && <PublicProductsSection allowGuestListing storeId={store?.id} storeKind="subsubagent" />}
   {activeSection === "services" && <HubtelPurchasePanel mode="services" ownerType="subsubagent" ownerId={store?.id} purchaseSource="storefront" />}
@@ -1106,7 +1116,7 @@ const searchOrders = useCallback(async (input?: string) => {
               key={net}
               variant={activeSection === "data" && networkFilter === net ? "default" : "outline"}
               size="sm"
-              onClick={() => { setNetworkFilter(net); setActiveSection("data"); }}
+              onClick={() => { setNetworkFilter(net); selectSection("data"); }}
               style={activeSection === "data" && networkFilter === net ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
               className="whitespace-nowrap flex-shrink-0 border-foreground/40 bg-background text-foreground hover:bg-muted hover:text-foreground text-xs sm:text-sm"
             >

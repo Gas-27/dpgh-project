@@ -38,6 +38,7 @@ import RoleServicesPanel from "@/components/RoleServicesPanel";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import StorefrontSectionCards from "@/components/StorefrontSectionCards";
+import { readSectionFromUrl, writeSectionToUrl } from "@/lib/storefrontSectionRoutes";
 import SocialBoostPurchasePanel from "@/components/SocialBoostPurchasePanel";
 import ActiveTabMaintenance from "@/components/ActiveTabMaintenance";
 import HubtelPurchasePanel from "@/components/HubtelPurchasePanel";
@@ -523,9 +524,18 @@ export function SubagentStorefront() {
   const [freeDataEnabled, setFreeDataEnabled] = useState(false);
   
   // Bulk Orders
-  const [activeSection, setActiveSection] = useState<"data" | "afa" | "bulk" | "sms" | "services" | "products" | "social-boost" | "subscription">("data");
+  const sectionUrlOptions = { reserved: [urlStoreName], allowAgent: true };
+  const [initialUrlSection] = useState(() => readSectionFromUrl(sectionUrlOptions));
+  const [activeSection, setActiveSection] = useState<"data" | "vouchers" | "afa" | "bulk" | "sms" | "services" | "products" | "social-boost" | "subscription">(
+    () => (initialUrlSection && initialUrlSection !== "agent" ? (initialUrlSection === "instant" ? "vouchers" : initialUrlSection) : "data") as "data",
+  );
+  const selectSection = (id: string) => {
+    setActiveSection((id === "instant" ? "vouchers" : id) as "data");
+    writeSectionToUrl(id, sectionUrlOptions);
+  };
   const [selectedService, setSelectedService] = useState<Service | null>(null);
   useEffect(() => {
+    if (initialUrlSection) return;
     const configured = (store?.theme_config as any)?.default_section;
     if (["data", "afa", "bulk", "sms", "services", "products"].includes(configured)) setActiveSection(configured as typeof activeSection);
   }, [store?.theme_config]);
@@ -536,7 +546,12 @@ export function SubagentStorefront() {
   const bulkFileInputRef = useRef<HTMLInputElement>(null);
 
   // Sub-Subagent Registration
-  const [showSubSubagentForm, setShowSubSubagentForm] = useState(false);
+  const [showSubSubagentForm, setShowSubSubagentForm] = useState(initialUrlSection === "agent");
+  const changeSubSubagentForm = (open: boolean) => {
+    setShowSubSubagentForm(open);
+    if (open) writeSectionToUrl("agent", sectionUrlOptions);
+    else writeSectionToUrl(activeSection === "vouchers" ? "instant" : activeSection, sectionUrlOptions);
+  };
 
   // ── AFA Packages ──
   const [afaPaymentPkg, setAfaPaymentPkg] = useState<{ id: string; size_gb: number; price: number; network: string } | null>(null);
@@ -1087,9 +1102,9 @@ const searchOrders = useCallback(async (input?: string) => {
       )}
 
 <main className="w-full px-0 py-6 space-y-6 sm:px-4">
-  <StorefrontSectionCards active={activeSection} onSelect={(id) => setActiveSection(id === "instant" ? "vouchers" : id as typeof activeSection)} onBecomeAgent={() => setShowSubSubagentForm(true)} />
+  <StorefrontSectionCards active={activeSection} onSelect={(id) => selectSection(id)} onBecomeAgent={() => changeSubSubagentForm(true)} />
   <div id="storefront-section-content" className="scroll-mt-6" />
-  <ActiveTabMaintenance active={activeSection === "vouchers" ? "instant" : activeSection} label={activeSection === "data" ? "Cheap Data" : activeSection === "vouchers" ? "Airtime & Data" : activeSection} onReturn={() => setActiveSection("data")} />
+  <ActiveTabMaintenance active={activeSection === "vouchers" ? "instant" : activeSection} label={activeSection === "data" ? "Cheap Data" : activeSection === "vouchers" ? "Airtime & Data" : activeSection} onReturn={() => selectSection("data")} />
   {activeSection === "social-boost" && <SocialBoostPurchasePanel walletBalance={0} ownerType="subagent" storeId={store?.id} checkoutMode="paystack" showHistory={false} purchaseSource="Storefront" />}
   {activeSection === "products" && <PublicProductsSection allowGuestListing storeId={store?.id} storeKind="subagent" />}
   {activeSection === "services" && <HubtelPurchasePanel mode="services" ownerType="subagent" ownerId={store?.id} purchaseSource="storefront" />}
@@ -1113,7 +1128,7 @@ const searchOrders = useCallback(async (input?: string) => {
               key={net}
               variant={activeSection === "data" && networkFilter === net ? "default" : "outline"}
               size="sm"
-              onClick={() => { setNetworkFilter(net); setActiveSection("data"); }}
+              onClick={() => { setNetworkFilter(net); selectSection("data"); }}
               style={activeSection === "data" && networkFilter === net ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
 className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-background px-1 text-foreground hover:bg-muted hover:text-foreground text-[10px] sm:flex-none sm:px-2 sm:text-xs"
             >
@@ -1435,7 +1450,7 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
         ) : null}
 
         {/* SUB-SUBAGENT REGISTRATION DIALOG */}
-        <Dialog open={showSubSubagentForm} onOpenChange={setShowSubSubagentForm}>
+        <Dialog open={showSubSubagentForm} onOpenChange={changeSubSubagentForm}>
           <DialogContent className="max-w-md max-h-[95vh] flex flex-col">
             <div className="overflow-y-auto flex-1">
               <DialogHeader>
@@ -1451,7 +1466,7 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
                     subagentStoreName={store.store_name}
                     primaryColor={primaryColor}
                     primaryForeground={primaryForeground}
-                    onClose={() => setShowSubSubagentForm(false)}
+                    onClose={() => changeSubSubagentForm(false)}
                   />
                 </div>
               )}
