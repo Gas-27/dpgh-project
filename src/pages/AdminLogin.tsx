@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getFriendlyAuthMessage } from "@/lib/blockedMessages";
+import { useSecureSignIn } from "@/hooks/useSecureSignIn";
+import { LoginNotice } from "@/components/LoginNotice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -26,15 +28,18 @@ const AdminLogin = () => {
   const [resetDialogOpen, setResetDialogOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [sendingReset, setSendingReset] = useState(false);
+  const secureLogin = useSecureSignIn(email);
 
   const handleAdminLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    const outcome = await secureLogin.submit(email, password);
+    if (outcome.status !== "ok") {
+      setLoading(false);
+      return;
+    }
+    const { data, error } = outcome.result;
 
     if (error) {
       toast({
@@ -167,7 +172,7 @@ const AdminLogin = () => {
               </div>
             </div>
 
-            <Button type="submit" variant="hero" className="w-full" disabled={loading}>
+            <Button type="submit" variant="hero" className="w-full" disabled={loading || secureLogin.isLocked}>
               {loading ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
@@ -177,6 +182,7 @@ const AdminLogin = () => {
                 "Admin Login"
               )}
             </Button>
+            <LoginNotice notice={secureLogin.notice} />
           </form>
 
           <div className="mt-4 pt-4 border-t border-border">

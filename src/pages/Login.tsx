@@ -2,6 +2,8 @@ import { useState, useEffect } from "react";
 import { useLocation, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { getFriendlyAuthMessage, BANNED_ACCOUNT_MESSAGE } from "@/lib/blockedMessages";
+import { useSecureSignIn } from "@/hooks/useSecureSignIn";
+import { LoginNotice } from "@/components/LoginNotice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -38,6 +40,7 @@ const Login = () => {
   const [resetEmail, setResetEmail] = useState("");
   const [sendingReset, setSendingReset] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const secureLogin = useSecureSignIn(email);
 
   useEffect(() => {
     const authError = (location.state as { authError?: string } | null)?.authError;
@@ -72,10 +75,12 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email: email.trim(),
-      password,
-    });
+    const outcome = await secureLogin.submit(email, password);
+    if (outcome.status !== "ok") {
+      setLoading(false);
+      return;
+    }
+    const { data, error } = outcome.result;
 
     if (error) {
       if (/email not confirmed/i.test(error.message)) {
@@ -265,10 +270,11 @@ const Login = () => {
                 </div>
               </div>
 
-              <Button type="submit" variant="hero" className="w-full" disabled={loading}>
+              <Button type="submit" variant="hero" className="w-full" disabled={loading || secureLogin.isLocked}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
                 Sign In
               </Button>
+              <LoginNotice notice={secureLogin.notice} />
             </form>
 
             <div className="relative my-6">
