@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Eye, EyeOff, Loader2, LockKeyhole } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { formatCountdown, secureSignIn } from "@/lib/secureSignIn";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -30,8 +31,12 @@ export default function ChangePasswordForm() {
       const { data: session } = await supabase.auth.getSession();
       const email = session.session?.user.email;
       if (!email) throw new Error("Your session has expired. Please sign in again.");
-      const { error: verifyError } = await supabase.auth.signInWithPassword({ email, password: currentPassword });
-      if (verifyError) throw new Error("Current password is incorrect.");
+      const verification = await secureSignIn(email, currentPassword);
+      if (verification.status === "locked") {
+        throw new Error(`${verification.message} Try again in ${formatCountdown(verification.retryAfterSeconds)}.`);
+      }
+      if (verification.status !== "ok") throw new Error(verification.message);
+      if (verification.result.error) throw new Error("Current password is incorrect.");
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) throw error;
       setCurrentPassword("");
