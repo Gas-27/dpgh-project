@@ -2965,11 +2965,15 @@ const AdminDashboard = () => {
             <TabsContent value="withdrawal-controls" className="space-y-6"><AdminWithdrawalControls /></TabsContent>
 <TabsContent value="social-boost-orders" className="space-y-6"><AdminSocialBoostOrders /></TabsContent>
 
+  {/* STORE PRICES TAB */}
+  {canSee("prices") && (
+    <TabsContent value="store-prices" className="space-y-6">
+      <AdminStorePricesManager />
+    </TabsContent>
+  )}
+
   {/* PRICES TAB */}
   {canSee("prices") && (
-            <TabsContent value="store-prices" className="space-y-6">
-  <AdminStorePricesManager />
-</TabsContent>
 <TabsContent value="prices" className="space-y-6">
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
                 <p className="font-semibold text-foreground">How package pricing works</p>
