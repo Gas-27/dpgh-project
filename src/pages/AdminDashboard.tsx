@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminSocialBoostPricing from "@/components/AdminSocialBoostPricing";
+import AdminStorePricesManager from "@/components/AdminStorePricesManager";
 import AdminSocialBoostProviders from "@/components/AdminSocialBoostProviders";
 import PromoCodesPanel from "@/components/PromoCodesPanel";
 import AdminSocialBoostOrders from "@/components/AdminSocialBoostOrders";
@@ -2889,6 +2890,7 @@ const AdminDashboard = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} defaultValue="prices">
           <TabsList className="mb-6 flex-wrap gap-1 h-auto p-1 md:p-2 bg-background border border-border rounded-lg overflow-x-auto w-full flex">
             <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>
+<TabsTrigger value="store-prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Store Prices</TabsTrigger>
             <TabsTrigger value="profit" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><DollarSign className="h-3 w-3 md:h-4 md:w-4" /> Profit</TabsTrigger>
   <TabsTrigger value="social-boost" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Social Boost</TabsTrigger>
   <TabsTrigger value="promo-codes" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Promo Codes</TabsTrigger>
@@ -2965,7 +2967,10 @@ const AdminDashboard = () => {
 
   {/* PRICES TAB */}
   {canSee("prices") && (
-            <TabsContent value="prices" className="space-y-6">
+            <TabsContent value="store-prices" className="space-y-6">
+  <AdminStorePricesManager />
+</TabsContent>
+<TabsContent value="prices" className="space-y-6">
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
                 <p className="font-semibold text-foreground">How package pricing works</p>
                 <p className="mt-1">User Price is used on the main site. Agent Price is used through an agent storefront. API Price is used for API purchases. Payment collects the money; the provider selected for the order fulfills the data after payment.</p>
