@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { Navigate, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/useAuth";
@@ -11,13 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Store, AlertCircle, CheckCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { isValidStoreName, sanitizeStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
-
-// Helper: convert store name to a URL‑safe slug (subdomain)
-const slugify = (name: string) =>
-  name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "");
+import { isStoreUrlAvailable, suggestAvailableStoreNames, storeNameToSlug } from "@/utils/storeNameAvailability";
 
 const AgentOnboarding = () => {
   const { user, loading: authLoading } = useAuth();
@@ -35,53 +29,49 @@ const AgentOnboarding = () => {
   const [momoName, setMomoName] = useState("");
   const [momoNetwork, setMomoNetwork] = useState("");
 
-  // Check if store name (or its slug) is already taken – direct query (no RPC needed)
-  const checkStoreNameExists = useCallback(async (name: string) => {
-    if (!name.trim()) {
+  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isLoadingSuggestions, setIsLoadingSuggestions] = useState(false);
+  const latestCheckId = useRef(0);
+
+  // Asks the database whether this exact store URL is free. Returns true/false, or null if the check failed.
+  const checkStoreNameExists = useCallback(async (name: string): Promise<boolean | null> => {
+    const trimmedName = name.trim();
+    if (!trimmedName) {
       setNameAvailable(null);
-      return;
+      setSuggestions([]);
+      return null;
     }
 
+    const checkId = ++latestCheckId.current;
     setIsCheckingName(true);
-    const trimmedName = name.trim();
-    const slug = slugify(trimmedName);
 
     try {
-      // Fetch ALL store names (including pending) – requires a policy that allows this
-      // If RLS blocks, we'll need to adjust. For now we rely on the default policy that allows reading store names.
-      const { data, error } = await supabase
-        .from("agent_stores")
-        .select("store_name")
-        .limit(1000); // get up to 1000 stores – enough for uniqueness check
+      const available = await isStoreUrlAvailable(trimmedName);
+      if (checkId !== latestCheckId.current) return null; // a newer name was typed meanwhile
 
-      if (error) {
-        console.error("Error fetching stores:", error);
+      setNameAvailable(available);
+      if (available) {
+        setSuggestions([]);
+      } else {
+        setIsLoadingSuggestions(true);
+        const names = await suggestAvailableStoreNames(trimmedName).catch(() => []);
+        if (checkId === latestCheckId.current) setSuggestions(names);
+        setIsLoadingSuggestions(false);
+      }
+      return available;
+    } catch (err) {
+      console.error("Store name check failed:", err);
+      if (checkId === latestCheckId.current) {
+        setNameAvailable(null);
         toast({
-          title: "Error",
-          description: "Could not verify store name. Please try again.",
+          title: "Could not check the store link",
+          description: "Please check your connection and try again.",
           variant: "destructive",
         });
-        setNameAvailable(null);
-        return;
       }
-
-      // Check for exact match (case-insensitive) OR slug match
-      const exists = data?.some(store => {
-        const existingSlug = slugify(store.store_name);
-        return store.store_name.toLowerCase() === trimmedName.toLowerCase() || existingSlug === slug;
-      });
-
-      setNameAvailable(!exists);
-    } catch (err) {
-      console.error("Unexpected error during name check:", err);
-      toast({
-        title: "Error",
-        description: "Network error. Please check your connection and try again.",
-        variant: "destructive",
-      });
-      setNameAvailable(null);
+      return null;
     } finally {
-      setIsCheckingName(false);
+      if (checkId === latestCheckId.current) setIsCheckingName(false);
     }
   }, [toast]);
 
@@ -104,6 +94,13 @@ const AgentOnboarding = () => {
       toast({ title: "Invalid store name", description: STORE_NAME_RULE, variant: "destructive" });
     }
     if (nameAvailable !== null) setNameAvailable(null);
+    if (suggestions.length > 0) setSuggestions([]);
+  };
+
+  const applySuggestedName = (name: string) => {
+    setStoreName(name);
+    setSuggestions([]);
+    setNameAvailable(null);
   };
 
   if (authLoading) {
@@ -128,33 +125,24 @@ const AgentOnboarding = () => {
       return;
     }
 
-    // Final verification before insert
-    if (nameAvailable !== true) {
-      if (nameAvailable === null) {
-        await checkStoreNameExists(storeName);
-        if (nameAvailable !== true) {
-          toast({
-            title: "Store name unavailable",
-            description: "This store name (or a very similar one) is already taken. Please choose a different name.",
-            variant: "destructive",
-          });
-          return;
-        }
-      } else {
+    // Always re-check the exact store URL right before inserting
+    const available = await checkStoreNameExists(normalizedStoreName);
+    if (available !== true) {
+      if (available === false) {
         toast({
-          title: "Store name taken",
-          description: "This store name cannot be used. Please choose another.",
+          title: "Store link already taken",
+          description: "Pick one of the suggested names below the store name, or type a different one.",
           variant: "destructive",
         });
-        return;
       }
+      return;
     }
 
     setLoading(true);
 
     const { error } = await supabase.from("agent_stores").insert({
       user_id: user.id,
-      store_name: storeName.trim(),
+      store_name: normalizedStoreName,
       whatsapp_number: whatsappNumber.trim(),
       support_number: supportNumber.trim(),
       whatsapp_group: whatsappGroup.trim() || null,
@@ -168,11 +156,11 @@ const AgentOnboarding = () => {
     if (error) {
       if (error.code === "23505") {
         toast({
-          title: "Store name already exists",
-          description: "This store name (or a similar slug) is already taken. Please choose a different name.",
+          title: "Store link already taken",
+          description: "Someone just took this store link. Pick one of the suggested names below.",
           variant: "destructive",
         });
-        checkStoreNameExists(storeName);
+        checkStoreNameExists(normalizedStoreName);
       } else {
         toast({ title: "Error", description: error.message, variant: "destructive" });
       }
@@ -183,7 +171,7 @@ const AgentOnboarding = () => {
   };
 
   // Compute the proposed subdomain for display
-  const proposedSlug = storeName.trim() ? slugify(storeName) : "";
+  const proposedSlug = storeName.trim() ? storeNameToSlug(storeName) : "";
   const storeLink = proposedSlug ? DOMAINS.getAgentStoreUrl(storeName) : "";
 
   return (
@@ -221,10 +209,35 @@ const AgentOnboarding = () => {
                 </div>
               </div>
               {nameAvailable === false && (
-                <p className="text-xs text-red-500">
-                  This store name (or a very similar one) is already taken (even by pending stores).
-                  Your store link would be <span className="font-mono">{storeLink}</span> – please choose a different name.
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs text-red-500">
+                    This store link is already in use: <span className="font-mono">{storeLink}</span>. Choose another name.
+                  </p>
+                  <div aria-live="polite">
+                    {isLoadingSuggestions && (
+                      <p className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Loader2 className="h-3 w-3 animate-spin" /> Finding available names...
+                      </p>
+                    )}
+                    {!isLoadingSuggestions && suggestions.length > 0 && (
+                      <div className="space-y-1.5">
+                        <p className="text-xs font-medium text-foreground">Available names you can use:</p>
+                        <div className="flex flex-wrap gap-2">
+                          {suggestions.map((name) => (
+                            <button
+                              key={name}
+                              type="button"
+                              onClick={() => applySuggestedName(name)}
+                              className="rounded-full border border-green-500/40 bg-green-500/10 px-3 py-1 text-xs font-medium text-green-600 transition-colors hover:bg-green-500/20 dark:text-green-400"
+                            >
+                              {name}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
               )}
               {nameAvailable === true && storeName.trim() && (
                 <p className="text-xs text-green-500">

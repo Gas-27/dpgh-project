@@ -1,4 +1,5 @@
 import DashboardTutorial, { USER_TUTORIAL } from "@/components/DashboardTutorial";
+import ApiKnowledgeGate from "@/components/ApiKnowledgeGate";
 import { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
@@ -304,6 +305,11 @@ const UserDashboard = () => {
 
   // Menu navigation
   const [activeMenu, setActiveMenu] = useState("overview");
+  const [apiAccessConfirmed, setApiAccessConfirmed] = useState(false);
+  const isApiMenu = activeMenu === "api-info" || activeMenu === "api-key" || activeMenu === "api-docs";
+  useEffect(() => {
+    if (!isApiMenu) setApiAccessConfirmed(false);
+  }, [isApiMenu]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const menuItems = [
@@ -1073,14 +1079,16 @@ const UserDashboard = () => {
           })}
         </div>
         {activeMenu === "api-info" ? (
-          <Tabs defaultValue="api-key" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="api-key">API Key</TabsTrigger>
-                          <TabsTrigger value="api-docs">API Docs</TabsTrigger>
-            </TabsList>
-            <TabsContent value="api-key">{renderApiKey()}</TabsContent>
-                      <TabsContent value="api-docs">{renderApiDocs()}</TabsContent>
-          </Tabs>
+          <ApiKnowledgeGate confirmed={apiAccessConfirmed} onConfirm={() => setApiAccessConfirmed(true)} onBack={() => setActiveMenu("overview")}>
+            <Tabs defaultValue="api-key" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="api-key">API Key</TabsTrigger>
+                <TabsTrigger value="api-docs">API Docs</TabsTrigger>
+              </TabsList>
+              <TabsContent value="api-key">{renderApiKey()}</TabsContent>
+              <TabsContent value="api-docs">{renderApiDocs()}</TabsContent>
+            </Tabs>
+          </ApiKnowledgeGate>
         ) : (
           <>{(() => {
             switch (activeMenu) {
@@ -1107,11 +1115,11 @@ const UserDashboard = () => {
       case "rewards":
         return renderFlyerGenerator();
 case "api-key":
-  return renderApiKey();
+  return <ApiKnowledgeGate confirmed={apiAccessConfirmed} onConfirm={() => setApiAccessConfirmed(true)} onBack={() => setActiveMenu("overview")}>{renderApiKey()}</ApiKnowledgeGate>;
   case "promo-codes":
   return <PromoCodesPanel walletBalance={normalWallet} ownerType="agent" ownerId={effectiveUserId} />;
       case "api-docs":
-        return renderApiDocs();
+        return <ApiKnowledgeGate confirmed={apiAccessConfirmed} onConfirm={() => setApiAccessConfirmed(true)} onBack={() => setActiveMenu("overview")}>{renderApiDocs()}</ApiKnowledgeGate>;
 
       case "afa-registration":
         return renderAfaRegistration();

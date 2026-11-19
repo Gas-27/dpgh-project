@@ -1,4 +1,5 @@
 import DashboardTutorial, { AGENT_TUTORIAL } from "@/components/DashboardTutorial";
+import ApiKnowledgeGate from "@/components/ApiKnowledgeGate";
 import FlyerTabs from "@/components/FlyerExtras";
 import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
@@ -637,6 +638,9 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
 
   // Tabs and menu state
   const [activeTab, setActiveTab] = useState("overview");
+  const [apiAccessConfirmed, setApiAccessConfirmed] = useState(false);
+  const isApiTab = activeTab === "api-key" || activeTab === "api-docs";
+  useEffect(() => { if (!isApiTab) setApiAccessConfirmed(false); }, [isApiTab]);
   const [afaTabActive, setAfaTabActive] = useState("register");
   useEffect(() => { if (activeTab !== "afa") setAfaTabActive("register"); }, [activeTab]);
   const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities" | "bulk-sms" | "afa">("cheap-data");
@@ -4174,6 +4178,7 @@ handleMobileNumberChange(digits);
 
           {/* ============================= API DOCS ============================= */}
           <TabsContent value="api-docs" className="mt-0 space-y-6">
+<ApiKnowledgeGate confirmed={apiAccessConfirmed} onConfirm={() => setApiAccessConfirmed(true)} onBack={() => setActiveTab("overview")}>
   <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1 sm:grid-cols-4 lg:grid-cols-7">
   <Button type="button" variant="ghost" onClick={() => setActiveTab("api-key")}>API Key</Button>
   <Button type="button" variant={apiDocTab === "cheap-data" ? "secondary" : "ghost"} className={apiDocTab === "cheap-data" ? "bg-background" : ""} onClick={() => setApiDocTab("cheap-data")}>Cheap Data</Button>
@@ -4360,6 +4365,7 @@ handleMobileNumberChange(digits);
               </Card>
             </div>
             </>}
+</ApiKnowledgeGate>
           </TabsContent>
 
           {/* ============================= API ORDERS ============================= */}
@@ -4473,6 +4479,7 @@ handleMobileNumberChange(digits);
 
           {/* ============================= API KEY ============================= */}
           <TabsContent value="api-key" className="mt-0 space-y-4">
+<ApiKnowledgeGate confirmed={apiAccessConfirmed} onConfirm={() => setApiAccessConfirmed(true)} onBack={() => setActiveTab("overview")}>
   <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
     <Button type="button" variant="secondary" className="bg-background" onClick={() => setActiveTab("api-key")}>API Key</Button>
     
@@ -4765,9 +4772,10 @@ handleMobileNumberChange(digits);
               identityId={user?.id}
               userEmail={user?.email}
             />
+</ApiKnowledgeGate>
           </TabsContent>
 
-  <TabsContent value="products" className="mt-0">
+          <TabsContent value="products" className="mt-0">
   {store && <AgentProductStorePanel storeId={store.id} storeKind="agent" supportPhone={supportNum} walletBalance={Number(store.wallet_balance ?? 0)} onWalletBalanceChange={(wallet_balance) => setStore((current) => current ? { ...current, wallet_balance } : current)} />}
   </TabsContent>
 
