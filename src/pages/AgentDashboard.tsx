@@ -2838,7 +2838,14 @@ return (
             {/* Refunds Received card — total from DB, not just visible page */}
             {allRefundedOrders.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-colors">
+                <Card
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Open refunds"
+                  className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-colors"
+                  onClick={() => { setActiveTab("refunds"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActiveTab("refunds"); window.scrollTo({ top: 0, behavior: "smooth" }); } }}
+                >
                   <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
                     <Wallet className="h-8 w-8 text-amber-400" />
                     <div>
