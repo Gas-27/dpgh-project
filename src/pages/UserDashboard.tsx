@@ -1,6 +1,6 @@
 import DashboardTutorial, { USER_TUTORIAL } from "@/components/DashboardTutorial";
 import ApiKnowledgeGate from "@/components/ApiKnowledgeGate";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -202,6 +202,7 @@ const UserDashboard = () => {
   const [topupHistory, setTopupHistory] = useState<any[]>([]);
   const [showNormalWalletTopup, setShowNormalWalletTopup] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const hasLoadedOnce = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -304,7 +305,20 @@ const UserDashboard = () => {
   const [registrationFeeLoading, setRegistrationFeeLoading] = useState(false);
 
   // Menu navigation
-  const [activeMenu, setActiveMenu] = useState("overview");
+  const [activeMenu, setActiveMenu] = useState(() => {
+    try {
+      return sessionStorage.getItem("user-dashboard-menu") || "overview";
+    } catch {
+      return "overview";
+    }
+  });
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("user-dashboard-menu", activeMenu);
+    } catch {
+      // Storage can be blocked; the menu simply starts on Overview after a reload.
+    }
+  }, [activeMenu]);
   const [apiAccessConfirmed, setApiAccessConfirmed] = useState(false);
   const isApiMenu = activeMenu === "api-info" || activeMenu === "api-key" || activeMenu === "api-docs";
   useEffect(() => {
@@ -539,6 +553,7 @@ const UserDashboard = () => {
         console.error("[v0] Error loading user data:", err);
         toast({ title: "Error", description: "Failed to load your data", variant: "destructive" });
       } finally {
+        hasLoadedOnce.current = true;
         setLoading(false);
       }
     };
@@ -1031,7 +1046,7 @@ const UserDashboard = () => {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || (loading && !hasLoadedOnce.current)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
