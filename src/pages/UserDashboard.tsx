@@ -1463,7 +1463,10 @@ case "api-key":
                 <div className="p-3 bg-primary/20 rounded-lg">
                   <p className="text-2xl font-bold font-mono text-primary">*365*778#</p>
                 </div>
-
+                <div className="text-left">
+                  <p className="text-xs text-muted-foreground">Access Code</p>
+                  <p className="text-3xl font-bold font-mono text-foreground">1</p>
+                </div>
               </div>
             </div>
             <Button 
@@ -2620,19 +2623,27 @@ const renderApiDocs = () => (
   );
 
   const renderAfaRegistration = () => (
-    <div className="space-y-6">
-      <AFARegistrationTracker />
-      <AFAPackagesDisplay
-        onRegisterClick={(packageId, packageName, price) => {
-          toast({ 
-            title: "Ready to register", 
-            description: `Selected: ${packageName} - GHC ${price.toFixed(2)}` 
-          });
-          setActiveMenu("buy-data");
-        }}
-      />
-      <AFAHistory title="AFA History" />
-    </div>
+    <Tabs defaultValue="register" className="space-y-6">
+      <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsTrigger value="register">Registration</TabsTrigger>
+        <TabsTrigger value="history">AFA History</TabsTrigger>
+      </TabsList>
+      <TabsContent value="register" className="mt-0 space-y-6">
+        <AFARegistrationTracker />
+        <AFAPackagesDisplay
+          onRegisterClick={(packageId, packageName, price) => {
+            toast({ 
+              title: "Ready to register", 
+              description: `Selected: ${packageName} - GHC ${price.toFixed(2)}` 
+            });
+            setActiveMenu("buy-data");
+          }}
+        />
+      </TabsContent>
+      <TabsContent value="history" className="mt-0">
+        <AFAHistory title="AFA History" />
+      </TabsContent>
+    </Tabs>
   );
 
   const renderRefunds = () => {
