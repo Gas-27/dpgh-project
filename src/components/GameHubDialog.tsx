@@ -214,7 +214,7 @@ function RewardGamesSection({ rules, wins, onPlay, onShare }: GameActions) {
     <section aria-labelledby="gamehub-rewards" className="space-y-3">
       <SectionHeader id="gamehub-rewards" icon={Trophy} title="Play & Win Free Data" count={rewardGames.length} />
       <div className="grid grid-cols-2 gap-3">
-        {rewardGames.map((game) => <GameCard key={game.id} game={game} rules={rules} wins={wins?.[game.id] ?? 0} showWins onPlay={onPlay} onShare={onShare} />)}
+        {rewardGames.map((game) => <GameCard key={game.id} game={game} rules={rules} wins={wins?.[game.id] ?? 0} showWins={rules[game.id]?.enabled !== false} onPlay={onPlay} onShare={onShare} />)}
       </div>
     </section>
   );

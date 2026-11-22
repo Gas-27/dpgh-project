@@ -283,18 +283,20 @@ export default function AdminProfitCosts() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Size</TableHead>
-                      <TableHead className="text-right">My price</TableHead>
+                      <TableHead className="text-right">User price</TableHead>
                       <TableHead className="text-right">Agent price</TableHead>
                       <TableHead className="text-right">API price</TableHead>
                       <TableHead>Provider cost (all providers)</TableHead>
                       <TableHead>Per provider</TableHead>
-                      <TableHead className="text-right">Margin</TableHead>
+                      <TableHead className="text-right">Profit per sale (user)</TableHead>
+                      <TableHead className="text-right">Profit per sale (agent)</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {packages.map((pkg) => {
                       const cost = baseCost(pkg);
                       const margin = cost === null || pkg.agent_price === null ? null : num(pkg.agent_price) - cost;
+                      const userMargin = cost === null || pkg.price === null ? null : num(pkg.price) - cost;
                       const allKey = costKey(pkg.package_id, ALL_PROVIDERS);
                       return (
                         <TableRow key={pkg.package_id} className={pkg.active ? "" : "opacity-60"}>
@@ -350,6 +352,13 @@ export default function AdminProfitCosts() {
                                 );
                               })}
                             </div>
+                          </TableCell>
+                          <TableCell
+                            className={`whitespace-nowrap text-right font-medium ${
+                              userMargin !== null && userMargin < 0 ? "text-destructive" : ""
+                            }`}
+                          >
+                            {userMargin === null ? "-" : formatMoney(userMargin)}
                           </TableCell>
                           <TableCell
                             className={`whitespace-nowrap text-right font-medium ${

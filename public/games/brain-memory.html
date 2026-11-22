@@ -1443,6 +1443,10 @@
                 if (i >= gameState.gameSequence.length) {
                     setTimeout(() => {
                         if (gameState.gameActive && !gameState.isPaused) {
+                            clearInterval(gameState.timerInterval);
+                            gameState.timerStarted = false;
+                            gameState.timer = gameState.maxTimer;
+                            updateTimerDisplay(gameState.timer);
                             gameState.isPlayerTurn = true;
                             document.getElementById('game-message').innerHTML = "👆 Your turn! Repeat the sequence!";
                         }
@@ -1571,6 +1575,7 @@
                 messageEl.className = 'game-message game-over';
                 messageEl.innerHTML = `💔 Wrong! ${gameState.lives} ${gameState.lives === 1 ? 'life' : 'lives'} remaining. Watch again...`;
                 
+                gameState.isPlayerTurn = false;
                 gameState.playerSequence = [];
                 gameState.timerStarted = false;
                 gameState.timer = gameState.maxTimer;

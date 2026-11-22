@@ -318,8 +318,8 @@ export default function GameHubRewardPlayer({ game, signedIn, rule, onClose }: R
           applyRun(next);
           post({ type: "gh-level-result", ok: true, level: next.level, lives: next.lives, status: next.status, playSeconds: next.play_seconds });
         } else if (data.type === "gh-open-buy") {
-          if (current.status === "active" && current.lives <= 0) openContinueOptions();
-        } else if (data.type === "gh-open-claim") {
+if (current.status === "active" && (current.lives <= 0 || (current.required_seconds != null && current.play_seconds >= current.required_seconds))) openContinueOptions();
+  } else if (data.type === "gh-open-claim") {
           if (current.status === "cleared") setClaimOpen(true);
         } else if (data.type === "gh-reset-streak") {
           applyRun({ ...current, level: 1 });
