@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ArrowLeft, Gift, Heart, Share2, Wallet, X } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import GameHubProductAd from "@/components/GameHubProductAd";
+import GameHubBecomeAgentButton from "@/components/GameHubBecomeAgentButton";
 import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import PaymentDialog from "@/components/PaymentDialog";
 import { fetchStoreChancePackage, savePendingChance, type ChancePackage } from "@/lib/gameHubChances";
@@ -599,7 +600,7 @@ if (current.status === "active" && (current.lives <= 0 || (current.required_seco
         : `Play for ${requiredMinutes} minute${requiredMinutes === 1 ? "" : "s"} without missing a single shot.`
       : `Reach level ${target} to complete the challenge.`,
     "Playing is free and needs no account. There are no lives to buy, so if you miss you simply start again.",
-    `Sign in from your dashboard to have your win verified and claim free MTN ${rewardGb}GB.`,
+    `Sign up as an agent to get extra lives and to claim free MTN ${rewardGb}GB. Only agents can claim rewards.`,
   ];
   const rulesList = guest ? guestRules : [
     isTimed
@@ -721,7 +722,11 @@ if (current.status === "active" && (current.lives <= 0 || (current.required_seco
                   : `You reached level ${run.level} of ${target}. `}
                 Have another go, it&apos;s free.
               </p>
+              <p className="mt-3 rounded-xl bg-emerald-950/60 px-3 py-2 text-xs text-emerald-100">
+                Sign up as an agent to get extra lives and play directly from your dashboard.
+              </p>
               <div className="mt-4 flex flex-col gap-2">
+                <GameHubBecomeAgentButton />
                 <button type="button" onClick={() => void handleGameOver()} disabled={busy} className="rounded-xl bg-gradient-to-r from-fuchsia-500 to-violet-500 px-4 py-3 text-sm font-bold text-white disabled:opacity-50">
                   Play again
                 </button>
@@ -825,8 +830,9 @@ if (current.status === "active" && (current.lives <= 0 || (current.required_seco
               </div>
               {guest ? (
                 <>
-                  <p className="text-sm text-emerald-100">Free MTN {rewardGb}GB rewards are verified and sent to signed-in accounts. Log in from your dashboard and beat this game again to claim it.</p>
+                  <p className="text-sm text-emerald-100">You have to be an agent to claim your free MTN {rewardGb}GB. Sign up as an agent, then beat this game again from your dashboard to claim it.</p>
                   <div className="mt-4 flex flex-col gap-2">
+                    <GameHubBecomeAgentButton />
                     <button type="button" onClick={() => void handleGameOver()} disabled={busy} className="rounded-xl bg-emerald-500 px-4 py-3 text-sm font-bold text-emerald-950">
                       Play again
                     </button>

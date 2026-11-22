@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, Gift, Heart, Share2, Wallet, X } from "lucide-react";
 import ShareScoreButtons from "@/components/ShareScoreButtons";
 import GameHubProductAd from "@/components/GameHubProductAd";
+import GameHubBecomeAgentButton from "@/components/GameHubBecomeAgentButton";
 import type { GameHubAd } from "@/lib/gameHubAds";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
 import { walletHintFromPath } from "@/components/GameHubRewardPlayer";
@@ -330,7 +331,7 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
     `An extra arrow or an extra heart costs GH\u20B5${price} from your wallet.`,
     `Finish the challenge to win free MTN ${rewardGb}GB, sent to the MTN number you enter.`,
     "Everything is checked by our servers, so cheating or speeding up the game disables your reward.",
-    "Each account can claim the reward once per game. You must be signed in to play for data.",
+    "Each account can claim the reward once per game. You must be an agent to claim rewards and to get extra lives.",
   ];
   const shareMessage = `I reached stage ${run?.level ?? 1} on ${game.name} on JustBuy and I'm playing to win free MTN ${rewardGb}GB. Can you beat me?`;
 
@@ -427,7 +428,20 @@ export default function GameHubArcheryPlayer({ game, signedIn, rule, onClose }: 
                 <Gift className="h-6 w-6 text-emerald-300" aria-hidden="true" />
                 <h3 id="archery-claim-title" className="text-lg font-bold">{claimedPhone ? "Reward claimed" : `You cleared all ${target} stages`}</h3>
               </div>
-              {claimedPhone ? (
+              {!signedIn ? (
+                <>
+                  <p className="text-sm text-emerald-100">You have to be an agent to claim your free MTN {rewardGb}GB. Sign up as an agent, then beat this game again from your dashboard to claim it.</p>
+                  <div className="mt-4 flex flex-col gap-2">
+                    <GameHubBecomeAgentButton />
+                    <button type="button" onClick={() => finishClaim()} className="rounded-xl bg-emerald-500/20 px-4 py-3 text-sm font-semibold text-emerald-100">
+                      Continue playing
+                    </button>
+                    <button type="button" onClick={onClose} className="rounded-xl bg-emerald-900/70 px-4 py-3 text-sm font-semibold text-white">
+                      Back to Game Hub
+                    </button>
+                  </div>
+                </>
+              ) : claimedPhone ? (
                 <>
                   <p className="text-sm text-emerald-100">Your free MTN {rewardGb}GB is being delivered to {claimedPhone}. You can check it under your orders.</p>
                   <div className="mt-4 flex flex-col gap-2">
