@@ -2,6 +2,7 @@ import DashboardTutorial, { SUBAGENT_TUTORIAL } from "@/components/DashboardTuto
 import FlyerTabs from "@/components/FlyerExtras";
 import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
+import TabIntroDialog from "@/components/TabIntroDialog";
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
 import { useWalletSync } from "@/hooks/useWalletSync";

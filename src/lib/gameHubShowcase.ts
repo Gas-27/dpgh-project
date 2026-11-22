@@ -93,10 +93,10 @@ const PERIOD_SIZE: Record<LeaderboardPeriod, [number, number]> = {
 // [startHour, endHour, min, max] in Ghana time (UTC all year). 9am-10am is not in the brief, so it follows the morning range.
 const LIVE_PLAYER_RANGES: [number, number, number, number][] = [
   [0, 6, 8, 29],
-  [6, 10, 100, 200],
-  [10, 17, 200, 629],
+  [6, 10, 300, 400],
+  [10, 17, 600, 1200],
   [17, 22, 300, 789],
-  [22, 24, 40, 99],
+  [22, 24, 40, 200],
 ];
 
 function livePlayersAt(bucketStart: number): number {
