@@ -1910,7 +1910,32 @@ const AdminDashboard = () => {
     // Refunds are executed atomically by the database. The dashboard must never
     // credit a wallet directly because the order update can invoke refund logic too.
     for (const orderId of refundableIds) {
-      const { data, error } = await supabase.rpc("admin_refund_order_wallet", { p_order_id: orderId });
+      const target = orders.find((candidate) => candidate.id === orderId) as any;
+      const isStorefrontPaystackOrder = !!target
+        && !!(target.agent_store_id || target.subagent_store_id || target.sub_subagent_store_id)
+        && !!target.paystack_reference
+        && !target.api_user;
+
+      let data: any;
+      let error: { message?: string } | null = null;
+      if (isStorefrontPaystackOrder) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const direct = await supabase.functions.invoke("admin-refund-order", {
+          headers: { Authorization: `Bearer ${sessionData.session?.access_token ?? ""}` },
+          body: { order_id: orderId },
+        });
+        data = direct.data;
+        error = direct.error;
+        if (error) {
+          const context = (direct.error as any)?.context;
+          const details = context ? await context.json().catch(() => null) : null;
+          error = { message: details?.error || details?.message || direct.error?.message };
+        }
+      } else {
+        const wallet = await supabase.rpc("admin_refund_order_wallet", { p_order_id: orderId });
+        data = wallet.data;
+        error = wallet.error;
+      }
       if (error) {
         console.error("[v0] Database refund failed:", orderId, error);
         const failureMessage = error.message || "The database refund could not be completed.";
@@ -1934,7 +1959,7 @@ const AdminDashboard = () => {
     setRefundAction("");
     toast({
       title: "Refund actions complete",
-      description: `${successCount} completed, ${errorCount} failed${skippedCount ? `, ${skippedCount} already refunded (skipped)` : ""}.${refundErrors.length ? ` ${refundErrors[0]}` : ""} The base price at purchase is credited to the user, agent, parent agent (subagent orders), parent subagent (subsubagent orders), or API wallet.`,
+      description: `${successCount} completed, ${errorCount} failed${skippedCount ? `, ${skippedCount} already refunded (skipped)` : ""}.${refundErrors.length ? ` ${refundErrors[0]}` : ""} Storefront Paystack orders are refunded directly to the customer through Paystack and the seller's profit is deducted from their wallet. Other orders credit the base price to the user, agent, or API wallet.`,
       variant: errorCount > 0 ? "destructive" : "default",
     });
     return;
