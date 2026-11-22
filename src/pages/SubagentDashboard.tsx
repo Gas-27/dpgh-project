@@ -2115,6 +2115,7 @@ const handleSaveStore = async () => {
       const packageName = buyingPkg.size_gb_text || buyingPkg.size_gb?.toString() || "";
       const sizeMatch = packageName.toString().match(/(\d+(?:\.\d+)?)/);
       const extractedSize = sizeMatch ? parseFloat(sizeMatch[1]) : buyingPkg.size_gb;
+      let dataPackageId: number | undefined = undefined;
       
     // COMMENTED OUT: mashup packages deactivated
     // For mashup packages, get datahubnet ID from the hardcoded mapping

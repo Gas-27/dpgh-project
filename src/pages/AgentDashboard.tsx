@@ -3688,7 +3688,7 @@ return (
                               setBulkResults(results);
                               setBulkProcessing(false);
                               toast({ title: "Bulk Order Complete", description: `${results.filter(r => r.status === "success").length}/${results.length} orders created successfully.` });
-                              fetchData();
+                              fetchAllData();
                             }}
                           >
                             {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <><Wallet className="h-4 w-4 mr-2" /> Pay with Wallet (GHC {totalCost.toFixed(2)})</>}

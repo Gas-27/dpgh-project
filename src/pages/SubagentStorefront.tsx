@@ -207,14 +207,6 @@ const SubagentOrderTrackingCard = ({
   const [pendingNotes, setPendingNotes] = useState(0);
   const [totalNotes, setTotalNotes] = useState(0);
 
-  // ── WhatsApp text auto-hide after 4 seconds ──
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowGroupTooltip(false);
-    }, 4000);
-    return () => clearTimeout(timer);
-  }, []);
-
   // Fetch complaint status + ID for this order
   useEffect(() => {
     const fetchComplaintStatus = async () => {

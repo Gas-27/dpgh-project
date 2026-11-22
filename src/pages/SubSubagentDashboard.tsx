@@ -1461,143 +1461,6 @@ const handleSaveStore = async () => {
     }
   };
 
-  const handleSubSubagentPriceChange = (packageId: string, value: string) => {
-    setSubSubagentEditedPrices(prev => ({
-      ...prev,
-      [packageId]: value === "" ? "" : (parseFloat(value) || value)
-    }));
-  };
-
-  const applySubSubagentMarkup = () => {
-    if (!subSubagentMarkupPercent) {
-      toast({ title: "Error", description: "Enter a markup percentage", variant: "destructive" });
-      return;
-    }
-
-    const markupVal = parseFloat(subSubagentMarkupPercent);
-    if (isNaN(markupVal)) {
-      toast({ title: "Error", description: "Invalid markup percentage", variant: "destructive" });
-      return;
-    }
-
-    filteredSubSubagentPackages.forEach(pkg => {
-      const yourPrice = subagentPrices[pkg.id] || basePrices[pkg.id] || pkg.price || 0;
-      const newPrice = yourPrice * (1 + markupVal / 100);
-      setSubSubagentEditedPrices(prev => ({
-        ...prev,
-        [pkg.id]: parseFloat(newPrice.toFixed(2))
-      }));
-    });
-  };
-
-  const saveSubSubagentPrices = async () => {
-    if (!subagentStore?.id) {
-      toast({ title: "Error", description: "Store not found", variant: "destructive" });
-      return;
-    }
-
-    try {
-      setSavingSubSubagentPrices(true);
-
-      for (const [packageId, priceVal] of Object.entries(subSubagentEditedPrices)) {
-        const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-        const yourPrice = subagentPrices[packageId] || basePrices[packageId] || 0;
-
-        if (isNaN(price) || price <= 0) {
-          toast({
-            title: "Invalid Price",
-            description: "Please enter a valid price",
-            variant: "destructive"
-          });
-          setSavingSubSubagentPrices(false);
-          return;
-        }
-
-        if (price < yourPrice) {
-          toast({
-            title: "Invalid Price",
-            description: `Sub-subagent price cannot be below your selling price (GHC ${yourPrice.toFixed(2)})`,
-            variant: "destructive"
-          });
-          setSavingSubSubagentPrices(false);
-          return;
-        }
-      }
-
-      for (const [packageId, priceVal] of Object.entries(subSubagentEditedPrices)) {
-        const price = typeof priceVal === "string" ? parseFloat(priceVal) : priceVal;
-        
-        // Validate all required fields
-        if (!subagentStore.id || !subagentStore.subagent_store_id || !packageId) {
-          console.error("[v0] Missing required fields for price insert:", { 
-            storeId: subagentStore.id, 
-            parentStoreId: subagentStore.subagent_store_id, 
-            packageId 
-          });
-          throw new Error("Missing required store or package information");
-        }
-        
-        // NOTE: there is no DELETE RLS policy allowing a sub-subagent to delete their
-        // OWN price row (only the parent subagent can delete rows here), so a
-        // delete-then-insert here silently fails to delete and leaves the old row
-        // behind — the price then appears to "revert" on refresh because the stale
-        // row is read back. Instead, update the existing row if one exists, otherwise
-        // insert. Only sell_price is touched — base_price is the cost FROM the
-        // subagent, set by the subagent's template row, and must NOT be overwritten
-        // by the sub-subagent's save.
-        const { data: existingRows, error: fetchExistingError } = await supabase
-          .from("sub_subagent_package_prices")
-          .select("id")
-          .eq("sub_subagent_store_id", subagentStore.id)
-          .eq("package_id", packageId)
-          .order("created_at", { ascending: false });
-
-        if (fetchExistingError) {
-          console.error("[v0] Error checking existing price:", fetchExistingError);
-          throw fetchExistingError;
-        }
-
-        if (existingRows && existingRows.length > 0) {
-          // Update the most recent row (if duplicates exist from before this fix,
-          // they'll be cleaned up separately; updating the newest keeps reads correct).
-          const { error } = await supabase
-            .from("sub_subagent_package_prices")
-            .update({ sell_price: price })
-            .eq("id", existingRows[0].id);
-
-          if (error) {
-            console.error("[v0] Error updating price:", error);
-            throw error;
-          }
-        } else {
-          const { error } = await supabase
-            .from("sub_subagent_package_prices")
-            .insert({
-              sub_subagent_store_id: subagentStore.id,
-              subagent_store_id: subagentStore.subagent_store_id,
-              package_id: packageId,
-              sell_price: price
-            });
-
-          if (error) {
-            console.error("[v0] Error inserting price:", error);
-            throw error;
-          }
-        }
-      }
-
-      setSubSubagentEditedPrices({});
-      setSubSubagentMarkupPercent("");
-      toast({ title: "Success", description: "Sub-subagent prices saved successfully" });
-      fetchData();
-    } catch (error) {
-      console.error("Error saving sub-subagent prices:", error);
-      toast({ title: "Error", description: "Failed to save prices", variant: "destructive" });
-    } finally {
-      setSavingSubSubagentPrices(false);
-    }
-  };
-
   const handleBuyContinue = () => {
     if (!buyingPkg || !isValidPhoneLength(buyCustomerNumber)) {
       toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" });
@@ -1691,6 +1554,7 @@ const handleSaveStore = async () => {
       const packageName = buyingPkg.size_gb_text || buyingPkg.size_gb?.toString() || "";
       const sizeMatch = packageName.toString().match(/(\d+(?:\.\d+)?)/);
       const extractedSize = sizeMatch ? parseFloat(sizeMatch[1]) : buyingPkg.size_gb;
+      let dataPackageId: number | undefined = undefined;
       
     // COMMENTED OUT: mashup packages deactivated
     // For mashup packages, get datahubnet ID from the hardcoded mapping
@@ -2021,7 +1885,7 @@ return (
               <p className="text-red-500 font-semibold">Your store has been suspended.</p>
             </div>
             <p className="text-red-400 text-sm">
-              Contact your admin {agentInfo?.whatsapp_number ? `(${agentInfo.whatsapp_number})` : ""} for more information.
+              Contact your admin for more information.
             </p>
           </div>
         </div>

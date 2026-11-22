@@ -843,7 +843,7 @@ const UserDashboard = () => {
       setApiKey(result.data.api_key);
       setApiWallet(Number(result.data.wallet || 0));
       setShowApiKey(true);
-      const ownerId = impersonatedUserId || user?.id;
+      const ownerId = impersonatedCustomerId || user?.id;
       if (ownerId) setProgressKey(await fetchProgressKey(ownerId));
       toast({
         title: "Success",
