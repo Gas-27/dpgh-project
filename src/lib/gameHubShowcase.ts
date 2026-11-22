@@ -80,15 +80,45 @@ function periodKey(period: LeaderboardPeriod, now: number): string {
 }
 
 // Every board, including a single game's, always lists at least this many players.
-const MIN_BOARD_SIZE = 5000;
+const MIN_BOARD_SIZE = 9000;
 
 const PERIOD_SIZE: Record<LeaderboardPeriod, [number, number]> = {
-  today: [5100, 5500],
-  yesterday: [5200, 5600],
-  week: [5600, 6100],
-  month: [6200, 6800],
-  all: [7000, 7800],
+  today: [9050, 9400],
+  yesterday: [9150, 9500],
+  week: [9400, 9900],
+  month: [9900, 10600],
+  all: [10500, 11500],
 };
+
+// [startHour, endHour, min, max] in Ghana time (UTC all year). 9am-10am is not in the brief, so it follows the morning range.
+const LIVE_PLAYER_RANGES: [number, number, number, number][] = [
+  [0, 6, 8, 29],
+  [6, 10, 100, 200],
+  [10, 17, 200, 629],
+  [17, 22, 300, 789],
+  [22, 24, 40, 99],
+];
+
+function livePlayersAt(bucketStart: number): number {
+  const hour = ((bucketStart % DAY_MS) / DAY_MS) * 24;
+  const range = LIVE_PLAYER_RANGES.find(([from, to]) => hour >= from && hour < to) ?? LIVE_PLAYER_RANGES[0];
+  const [, , min, max] = range;
+  const random = seededRandom(hashSeed(`live|${bucketStart}`))();
+  return min + Math.floor(random * (max - min + 1));
+}
+
+/** "Players playing now" for the Game Hub, driven by the time of day and eased between 5-minute steps. */
+export function livePlayerCount(now = Date.now()): number {
+  const step = 5 * 60_000;
+  const bucket = Math.floor(now / step) * step;
+  const blend = (now - bucket) / step;
+  const current = livePlayersAt(bucket);
+  const next = livePlayersAt(bucket + step);
+  const hour = ((now % DAY_MS) / DAY_MS) * 24;
+  const range = LIVE_PLAYER_RANGES.find(([from, to]) => hour >= from && hour < to) ?? LIVE_PLAYER_RANGES[0];
+  const value = Math.round(current + (next - current) * blend);
+  return Math.min(range[3], Math.max(range[2], value));
+}
 
 function showcaseRows(gameId: string | null, period: LeaderboardPeriod, now: number): LeaderboardRow[] {
   const key = `${gameId ?? "all"}|${period}|${periodKey(period, now)}`;

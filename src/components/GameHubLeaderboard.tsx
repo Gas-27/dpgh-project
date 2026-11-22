@@ -5,6 +5,7 @@ import ShareScoreButtons from "@/components/ShareScoreButtons";
 import { buildGameHubShareUrl } from "@/lib/gameHubRoute";
 import { buildGameShareUrl, fetchLeaderboard, fetchPublicRewards, type LeaderboardPeriod } from "@/lib/gameHubApi";
 import { hubGames } from "@/lib/gameHubGames";
+import { livePlayerCount } from "@/lib/gameHubShowcase";
 
 const periods: { id: LeaderboardPeriod; label: string }[] = [
   { id: "today", label: "Today" },
@@ -16,13 +17,7 @@ const periods: { id: LeaderboardPeriod; label: string }[] = [
 
 const justBuyGames = hubGames.filter((game) => game.native);
 
-const MIN_LIVE_PLAYERS = 9000;
-
-function livePlayerCount(now: number): number {
-  const minute = Math.floor(now / 60_000);
-  const drift = Math.abs(Math.sin(minute * 12.9898) * 43758.5453) % 1;
-  return MIN_LIVE_PLAYERS + 120 + Math.floor(drift * 880);
-}
+const INITIAL_VISIBLE_ROWS = 200;
 
 function LivePlayers() {
   const [count, setCount] = useState(() => livePlayerCount(Date.now()));
@@ -64,6 +59,12 @@ export default function GameHubLeaderboard() {
   const listRef = useRef<HTMLDivElement>(null);
   const [showPositions, setShowPositions] = useState(false);
   const [pendingScroll, setPendingScroll] = useState(false);
+  const [visibleRows, setVisibleRows] = useState(INITIAL_VISIBLE_ROWS);
+  const shownRows = rows.filter((row, index) => index < visibleRows || row.is_you);
+
+  useEffect(() => {
+    setVisibleRows(INITIAL_VISIBLE_ROWS);
+  }, [gameId, period]);
 
   const positionScopes = [{ id: null as string | null, name: "All games" }, ...justBuyGames.map((game) => ({ id: game.id as string | null, name: game.name }))];
   const positionQueries = useQueries({
@@ -204,7 +205,7 @@ export default function GameHubLeaderboard() {
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
+              shownRows.map((row) => (
                 <tr key={`${row.rank}-${row.player}`} data-me={row.is_you ? "true" : undefined} className={row.is_you ? "bg-violet-600/30" : "border-t border-violet-400/10"}>
                   <td className="px-4 py-3 font-bold text-amber-300">#{row.rank}</td>
                   <td className="px-4 py-3 text-white">
@@ -218,6 +219,11 @@ export default function GameHubLeaderboard() {
             )}
           </tbody>
         </table>
+        {rows.length > visibleRows ? (
+          <button type="button" onClick={() => setVisibleRows((current) => current + 300)} className="w-full border-t border-violet-400/10 px-4 py-3 text-sm font-semibold text-violet-200 hover:bg-violet-900/60">
+            Show more players
+          </button>
+        ) : null}
       </div>
       ) : (
       <div className="rounded-3xl border border-amber-300/25 bg-violet-950/60 p-5">
