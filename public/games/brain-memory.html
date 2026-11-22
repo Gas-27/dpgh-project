@@ -1362,11 +1362,6 @@
             const tileId = parseInt(event.target.dataset.tileId);
             gameState.playerSequence.push(tileId);
             
-            if (!gameState.timerStarted) {
-                startTimer();
-                gameState.timerStarted = true;
-            }
-            
             activateTile(tileId);
             checkPlayerMove(tileId);
         }
@@ -1449,6 +1444,8 @@
                             updateTimerDisplay(gameState.timer);
                             gameState.isPlayerTurn = true;
                             document.getElementById('game-message').innerHTML = "👆 Your turn! Repeat the sequence!";
+                            gameState.timerStarted = true;
+                            startTimer();
                         }
                     }, 300);
                     return;
@@ -1470,6 +1467,7 @@
                 if (gameState.isPaused) return;
                 
                 timeLeft -= 0.1;
+                gameState.timer = timeLeft;
                 
                 if (timeLeft <= 0) {
                     clearInterval(gameState.timerInterval);
@@ -1663,10 +1661,8 @@
                 gameState.isPaused = false;
                 pauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
                 
-                if (gameState.isPlayerTurn && gameState.timerStarted) {
+                if (gameState.isPlayerTurn) {
                     startTimer();
-                    messageEl.innerHTML = "👆 Your turn! Repeat the sequence!";
-                } else if (gameState.isPlayerTurn) {
                     messageEl.innerHTML = "👆 Your turn! Repeat the sequence!";
                 } else {
                     showSequence();
