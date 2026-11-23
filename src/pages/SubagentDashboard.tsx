@@ -64,6 +64,7 @@ import WalletAFARegistration from "@/components/WalletAFARegistration";
 import { DOMAINS } from "@/config/domains";
 import { openGameHubIfAvailable } from "@/lib/tabControls";
 import ChatBot from "@/components/ChatBot";
+import SenderIdApprovedPopup from "@/components/SenderIdApprovedPopup";
 import ReportCenter from "@/components/ReportCenter";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import AlreadyReportedButton from "@/components/AlreadyReportedButton";
@@ -4752,6 +4753,7 @@ handleMobileNumberChange(digits);
         onClose={() => setSourceDialogOpen(false)}
         info={sourceDialogInfo}
       />
+      <SenderIdApprovedPopup />
       <ChatBot page="subagent-dashboard" />
 
       {/* New MTN beneficiary number warning */}

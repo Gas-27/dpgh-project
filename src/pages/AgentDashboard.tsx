@@ -59,6 +59,7 @@ import { useToast } from "@/hooks/use-toast";
 import ChatBot from "@/components/ChatBot";
   import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
   import WhatsAppChannelPopup from "@/components/WhatsAppChannelPopup";
+import SenderIdApprovedPopup from "@/components/SenderIdApprovedPopup";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
@@ -3309,24 +3310,6 @@ return (
           {/* ============================= STORE PRICES ============================= */}
 <TabsContent value="store" className="space-y-6 mt-0">
   <div className="flex flex-wrap items-center justify-between gap-3">
-  <div className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 px-3 py-2">
-    <Switch
-      id="show-agent-price"
-      checked={Boolean(store?.theme_config?.show_agent_price)}
-      onCheckedChange={async (checked) => {
-        if (!store) return;
-        const nextTheme = { ...store.theme_config, show_agent_price: checked };
-        const { error } = await supabase.from("agent_stores").update({ theme_config: nextTheme }).eq("id", store.id);
-        if (error) {
-          toast({ title: "Could not update price visibility", description: error.message, variant: "destructive" });
-          return;
-        }
-        setStore({ ...store, theme_config: nextTheme });
-        toast({ title: checked ? "Agent price shown" : "Agent price hidden", description: "This controls the package cards on your storefront." });
-      }}
-    />
-    <Label htmlFor="show-agent-price" className="cursor-pointer text-sm">Show agent price on storefront</Label>
-  </div>
   {/* Network filter buttons */}
               <div className="flex gap-2 flex-wrap">
                 {[
@@ -5011,6 +4994,28 @@ handleMobileNumberChange(digits);
             {/* AFA Bundle Price for Subagents — shown first, no extra wrapper */}
             <AgentAFAPriceManager onPriceSaved={refetchStoreData} />
 
+            <div className="flex items-start gap-3 rounded-lg border border-border bg-secondary/30 px-3 py-3">
+              <Switch
+                id="show-agent-price"
+                className="mt-0.5 shrink-0"
+                checked={Boolean(store?.theme_config?.show_agent_price)}
+                onCheckedChange={async (checked) => {
+                  if (!store) return;
+                  const nextTheme = { ...store.theme_config, show_agent_price: checked };
+                  const { error } = await supabase.from("agent_stores").update({ theme_config: nextTheme }).eq("id", store.id);
+                  if (error) {
+                    toast({ title: "Could not update price visibility", description: error.message, variant: "destructive" });
+                    return;
+                  }
+                  setStore({ ...store, theme_config: nextTheme });
+                  toast({ title: checked ? "Subagent price shown" : "Subagent price hidden", description: "This controls the subagent price shown on your storefront package cards." });
+                }}
+              />
+              <Label htmlFor="show-agent-price" className="cursor-pointer text-sm leading-snug">
+                Let the price you set for subagents show on your store so customers can see the price they will get as a subagent under you
+              </Label>
+            </div>
+
             <Card className="border-border">
               <CardHeader>
                 <CardTitle className="font-display flex items-center gap-2">
@@ -5330,6 +5335,7 @@ handleMobileNumberChange(digits);
       
       <WhatsAppFloatingButton />
       <WhatsAppChannelPopup />
+      <SenderIdApprovedPopup />
       <ChatBot page="agent-dashboard" />
 
       <SourceInfoDialog

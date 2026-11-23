@@ -28,6 +28,8 @@ import ApiWeeklyTargetMeter from "@/components/ApiWeeklyTargetMeter";
 import PaymentVerifier from "@/components/PaymentVerifier";
   import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
   import WhatsAppChannelPopup from "@/components/WhatsAppChannelPopup";
+import SenderIdApprovedPopup from "@/components/SenderIdApprovedPopup";
+import BecomeAgentLoginPopup from "@/components/BecomeAgentLoginPopup";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
@@ -303,6 +305,33 @@ const UserDashboard = () => {
   const [showUpgradeConfirmation, setShowUpgradeConfirmation] = useState(false);
   const [registrationFee, setRegistrationFee] = useState<number>(0);
   const [registrationFeeLoading, setRegistrationFeeLoading] = useState(false);
+  const [showAgentLoginPopup, setShowAgentLoginPopup] = useState(false);
+  const lastSignInAt = (user as { last_sign_in_at?: string } | null)?.last_sign_in_at ?? "";
+  useEffect(() => {
+    if (!user?.id || isImpersonating) return;
+    const storageKey = `jb_agent_login_popup_${user.id}_${lastSignInAt}`;
+    try {
+      if (sessionStorage.getItem(storageKey)) return;
+    } catch {
+      // Storage can be blocked; the popup then shows once per page load.
+    }
+    let cancelled = false;
+    supabase
+      .from("agent_stores")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .then(({ data }) => {
+        if (cancelled || (data && data.length > 0)) return;
+        try {
+          sessionStorage.setItem(storageKey, "1");
+        } catch {
+          // Ignore blocked storage.
+        }
+        setShowAgentLoginPopup(true);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, lastSignInAt, isImpersonating]);
 
   // Menu navigation
   const [activeMenu, setActiveMenu] = useState(() => {
@@ -1278,7 +1307,7 @@ case "api-key":
         {agentCtaOpen && (
           <button
             type="button"
-            onClick={() => setActiveMenu("become-agent")}
+            onClick={() => void handleUpgradeToAgent()}
             className="mt-4 w-full rounded-full bg-purple-600 px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-purple-500"
           >
             Become an Agent
@@ -3382,6 +3411,15 @@ return (
 
       <WhatsAppFloatingButton />
       <WhatsAppChannelPopup />
+      <SenderIdApprovedPopup disabled={isImpersonating} />
+      <BecomeAgentLoginPopup
+        open={showAgentLoginPopup}
+        onClose={() => setShowAgentLoginPopup(false)}
+        onBecomeAgent={() => {
+          setShowAgentLoginPopup(false);
+          void handleUpgradeToAgent();
+        }}
+      />
 
       <Footer />
       {/* Agent Upgrade Confirmation Modal */}
