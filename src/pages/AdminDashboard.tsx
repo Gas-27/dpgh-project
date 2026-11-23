@@ -88,6 +88,7 @@ import WeeklyOrderTargetAdmin from "@/components/WeeklyOrderTargetAdmin";
 import PriceReductionRequestsAdmin from "@/components/PriceReductionRequestsAdmin";
 import SmsAdmin from "@/components/SmsAdmin";
 import { DOMAINS } from "@/config/domains";
+import { openStoreAsAdmin, type ImpersonateKind } from "@/lib/adminImpersonate";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
@@ -142,6 +143,13 @@ type Section = "prices" | "orders" | "agents" | "subagents" | "sub_subagents" | 
 const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
   const { toast } = useToast();
+
+  const loginAsStore = async (storeKind: ImpersonateKind, storeId: string) => {
+    const result = await openStoreAsAdmin(storeKind, storeId);
+    if (!result.ok) {
+      toast({ title: "Could not sign in as store", description: result.error, variant: "destructive" });
+    }
+  };
 
   // ======================== State ========================
   const [packages, setPackages] = useState<DataPackage[]>([]);
@@ -3410,11 +3418,11 @@ const AdminDashboard = () => {
                                             type: "Sub-Subagent Store",
                                             storeName: subSubagentStore.store_name || "Unknown",
                                             contact: subSubagentStore.support_number || subSubagentStore.whatsapp_number || "N/A",
-                                            storeUrl: subSubagentStore.user_id ? `#impersonate:sub_subagent:${subSubagentStore.user_id}` : subSubagentStore.store_url || undefined,
+                                            storeUrl: subSubagentStore.user_id ? `#impersonate:sub_subagent:${subSubagentStore.id}` : subSubagentStore.store_url || undefined,
                                             parentSubagentName: parentSubagent?.store_name || undefined,
-                                            parentSubagentUrl: parentSubagent?.user_id ? `#impersonate:subagent:${parentSubagent.user_id}` : parentSubagent?.store_url || undefined,
+                                            parentSubagentUrl: parentSubagent?.user_id ? `#impersonate:subagent:${parentSubagent.id}` : parentSubagent?.store_url || undefined,
                                             parentAgentName: parentAgent?.store_name || undefined,
-                                            parentAgentUrl: parentAgent?.user_id ? `#impersonate:agent:${parentAgent.user_id}` : parentAgent?.store_url || undefined,
+                                            parentAgentUrl: parentAgent?.user_id ? `#impersonate:agent:${parentAgent.id}` : parentAgent?.store_url || undefined,
                                           });
                                           setSourceDialogOpen(true);
                                         } else if (subagentStore) {
@@ -3425,9 +3433,9 @@ const AdminDashboard = () => {
                                             type: "Subagent Store",
                                             storeName: subagentStore.store_name || "Unknown",
                                             contact: subagentStore.support_number || subagentStore.whatsapp_number || "N/A",
-                                            storeUrl: subagentStore.user_id ? `#impersonate:subagent:${subagentStore.user_id}` : subagentStore.store_url || undefined,
+                                            storeUrl: subagentStore.user_id ? `#impersonate:subagent:${subagentStore.id}` : subagentStore.store_url || undefined,
                                             parentAgentName: parentAgent?.store_name || undefined,
-                                            parentAgentUrl: parentAgent?.user_id ? `#impersonate:agent:${parentAgent.user_id}` : parentAgent?.store_url || undefined,
+                                            parentAgentUrl: parentAgent?.user_id ? `#impersonate:agent:${parentAgent.id}` : parentAgent?.store_url || undefined,
                                           });
                                           setSourceDialogOpen(true);
                                         } else if (agentStore) {
@@ -3435,7 +3443,7 @@ const AdminDashboard = () => {
                                             type: "Agent Store",
                                             storeName: agentStore.store_name || "Unknown",
                                             contact: agentStore.whatsapp_number || agentStore.support_number || "N/A",
-                                            storeUrl: agentStore.user_id ? `#impersonate:agent:${agentStore.user_id}` : agentStore.store_url || undefined,
+                                            storeUrl: agentStore.user_id ? `#impersonate:agent:${agentStore.id}` : agentStore.store_url || undefined,
                                           });
                                           setSourceDialogOpen(true);
                                         } else if (isAPIOrder) {
@@ -3696,10 +3704,7 @@ const AdminDashboard = () => {
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                onClick={() => {
-                                  localStorage.setItem("admin_impersonate_agent", agent.user_id);
-                                  window.location.href = "/agent";
-                                }}
+                                onClick={() => loginAsStore("agent", agent.id)}
                                 className="bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30"
                               >
                                 <LogIn className="h-4 w-4 mr-1" /> Login
@@ -3842,18 +3847,7 @@ const AdminDashboard = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                // Navigate to subagent domain with impersonation token in URL
-                                // Pass store ID so we can query directly
-                                const tokenData = JSON.stringify({ 
-                                  storeId: subagent.id,
-                                  storeName: subagent.store_name,
-                                  userId: subagent.user_id,
-                                  timestamp: Date.now() 
-                                });
-                                const token = btoa(encodeURIComponent(tokenData));
-                                window.location.href = `https://${DOMAINS.SUBAGENT_STORE}/dashboard?admin_token=${token}`;
-                              }}
+                              onClick={() => loginAsStore("subagent", subagent.id)}
                               className="text-xs bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30"
                             >
                               <LogIn className="h-3 w-3 mr-1" />
@@ -3996,17 +3990,7 @@ const AdminDashboard = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                const tokenData = JSON.stringify({ 
-                                  storeId: subSubagent.id,
-                                  storeName: subSubagent.store_name,
-                                  userId: subSubagent.user_id,
-                                  isSubSubagent: true,
-                                  timestamp: Date.now() 
-                                });
-                                const token = btoa(encodeURIComponent(tokenData));
-                                window.location.href = `https://${DOMAINS.SUBAGENT_STORE}/sub-subagent-dashboard?admin_token=${token}`;
-                              }}
+                              onClick={() => loginAsStore("sub_subagent", subSubagent.id)}
                               className="text-xs bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30"
                             >
                               <LogIn className="h-3 w-3 mr-1" />
@@ -4295,10 +4279,10 @@ const AdminDashboard = () => {
                                       {/* Login as the withdrawing store owner */}
                                       {(() => {
                                         const loginUserId = isSubsubagentWithdrawal
-                                          ? w.subagent_store?.user_id
+                                          ? w.sub_subagent_store_id
                                           : isSubagentWithdrawal
-                                          ? w.subagent_store?.user_id
-                                          : w.agent_store?.user_id;
+                                          ? w.subagent_store_id
+                                          : w.agent_store_id;
                                         const loginRole = isSubsubagentWithdrawal ? "sub_subagent" : isSubagentWithdrawal ? "subagent" : "agent";
                                         const loginLabel = isSubsubagentWithdrawal ? "Sub-Subagent" : isSubagentWithdrawal ? "Subagent" : "Agent";
                                         if (!loginUserId) return null;
@@ -4306,18 +4290,7 @@ const AdminDashboard = () => {
                                           <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => {
-                                              if (loginRole === "agent") {
-                                                localStorage.setItem("admin_impersonate_agent", loginUserId);
-                                                window.open("/agent", "_blank");
-                                              } else if (loginRole === "subagent") {
-                                                localStorage.setItem("admin_impersonate_subagent", loginUserId);
-                                                window.open("/subagent-dashboard", "_blank");
-                                              } else {
-                                                localStorage.setItem("admin_impersonate_sub_subagent", loginUserId);
-                                                window.open("/sub-subagent-dashboard", "_blank");
-                                              }
-                                            }}
+                                            onClick={() => loginAsStore(loginRole, loginUserId)}
                                           >
                                             <LogIn className="h-4 w-4 mr-1" /> Login as {loginLabel}
                                           </Button>
@@ -5530,18 +5503,7 @@ const AdminDashboard = () => {
                         const url = sourceInfo!.storeUrl!;
                         if (url.startsWith("#impersonate:")) {
                           const parts = url.split(":");
-                          const role = parts[1];
-                          const userId = parts[2];
-                          if (role === "agent") {
-                            localStorage.setItem("admin_impersonate_agent", userId);
-                            window.open("/agent", "_blank");
-                          } else if (role === "subagent") {
-                            localStorage.setItem("admin_impersonate_subagent", userId);
-                            window.open("/subagent-dashboard", "_blank");
-                          } else if (role === "sub_subagent") {
-                            localStorage.setItem("admin_impersonate_sub_subagent", userId);
-                            window.open("/sub-subagent-dashboard", "_blank");
-                          }
+                          loginAsStore(parts[1] as ImpersonateKind, parts[2]);
                         } else {
                           window.open(url, "_blank");
                         }
@@ -5567,8 +5529,7 @@ const AdminDashboard = () => {
                         <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => {
                           const url = sourceInfo!.parentSubagentUrl!;
                           if (url.startsWith("#impersonate:subagent:")) {
-                            localStorage.setItem("admin_impersonate_subagent", url.split(":")[2]);
-                            window.open("/subagent-dashboard", "_blank");
+                            loginAsStore("subagent", url.split(":")[2]);
                           } else { window.open(url, "_blank"); }
                         }}>
                           Login
@@ -5586,8 +5547,7 @@ const AdminDashboard = () => {
                         <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => {
                           const url = sourceInfo!.parentAgentUrl!;
                           if (url.startsWith("#impersonate:agent:")) {
-                            localStorage.setItem("admin_impersonate_agent", url.split(":")[2]);
-                            window.open("/agent", "_blank");
+                            loginAsStore("agent", url.split(":")[2]);
                           } else { window.open(url, "_blank"); }
                         }}>
                           Login

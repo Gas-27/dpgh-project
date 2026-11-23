@@ -20,6 +20,7 @@ import RouteErrorBoundary from "@/components/RouteErrorBoundary";
 import { ThemeProvider, ThemeToggle } from "@/components/ThemeProvider";
 import SocialBoost from "./pages/SocialBoost";
 import PaymentVerifier from "@/components/PaymentVerifier";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
 import { isChunkLoadError, recoverFromStaleBundle } from "@/lib/chunkRecovery";
 import {
   readCustomDomainSlug,
@@ -67,6 +68,7 @@ const AgentRegistrationCallback = lazyWithReload(() => import("./pages/AgentRegi
 const SubagentDashboard = lazyWithReload(() => import("./pages/SubagentDashboard"));
 const SubagentLogin = lazyWithReload(() => import("./pages/SubagentLogin"));
 const SubSubagentLogin = lazyWithReload(() => import("./pages/SubSubagentLogin"));
+const Impersonate = lazyWithReload(() => import("./pages/Impersonate"));
 const SubagentStorefront = lazyWithReload(() => import("./pages/SubagentStorefront"));
 const SubSubagentStorefront = lazyWithReload(() => import("./pages/SubSubagentStorefront"));
 const SubagentRegistration = lazyWithReload(() => import("./pages/SubagentRegistration"));
@@ -304,6 +306,7 @@ return (
           <PaymentVerifier />
           <AuthProvider>
             <PasswordRecoveryRedirect />
+            <ImpersonationBanner />
             <RouteErrorBoundary>
             <Suspense fallback={<RouteLoader />}>
               {isCustomDomain ? (
@@ -355,6 +358,7 @@ return (
                   <Route path="/subagent-payment-complete" element={<SubagentPaymentComplete />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/impersonate" element={<Impersonate />} />
                   <Route
                     path="/dashboard"
                     element={
