@@ -147,7 +147,7 @@ interface ProfitStats { totalRevenue: number; totalCost: number; totalProfit: nu
 interface Notification { id: string; message: string; is_active: boolean; created_at: string; expires_at: string | null; }
 
 // ==================== CONSTANTS ====================
-const DEFAULT_THEME = { primary: "#0f9f9a", primary_foreground: "#ffffff", background: "#f6f3ee", card_background: "#fffaf2", gridColumns: 1, default_section: "data", cardRadius: 12, cardShadow: true, showShareStore: true, layout: ["header", "delivery", "categories", "tracking", "products"], sectionWidths: { header: 12, delivery: 12, categories: 12, tracking: 12, products: 12 }, visibleSections: { data: true, afa: true, instant: true, services: true, bulk: true, sms: true } };
+const DEFAULT_THEME = { primary: "#06b6d4", primary_foreground: "#ffffff", background: "#09090b", card_background: "#18181b", gb_text_color: "#ffffff", price_text_color: "#ffffff", button_text_color: "#ffffff", button_bg_color: "#2a2a2e", button_border_color: "#3f3f46", gridColumns: 1, default_section: "data", cardRadius: 12, cardShadow: true, showShareStore: true, layout: ["header", "delivery", "categories", "tracking", "products"], sectionWidths: { header: 12, delivery: 12, categories: 12, tracking: 12, products: 12 }, visibleSections: { data: true, afa: true, instant: true, services: true, bulk: true, sms: true } };
 const DEFAULT_FLYER_COLORS = { mtnColor: "#f5b81b", airtelColor: "#3b82f6", telecelColor: "#cc0000", buttonBg: "#0066ff" };
 
 const FLYER_W = 1080;

@@ -686,16 +686,16 @@ const AgentStorefront = () => {
 
   // ── Default theme ──
   const defaultTheme = {
-    primary: "#a78bfa",
+    primary: "#06b6d4",
     primary_foreground: "#ffffff",
-    background: "#0f0f0f",
-    card_background: "linear-gradient(135deg, #2d1b69 0%, #1a0a3e 100%)",
+    background: "#09090b",
+    card_background: "#18181b",
     gridColumns: 1,
     gb_text_color: "#ffffff",
     price_text_color: "#ffffff",
     button_text_color: "#ffffff",
-    button_bg_color: "rgba(255,255,255,0.1)",
-    button_border_color: "rgba(255,255,255,0.2)",
+    button_bg_color: "#2a2a2e",
+    button_border_color: "#3f3f46",
   };
 
   const theme = store?.theme_config || defaultTheme;
