@@ -124,6 +124,7 @@ interface DataPackage {
   size_gb_text?: string;
   active?: boolean;
   is_online?: boolean;
+  inactive_note?: string | null;
 }
 
 interface Order {
@@ -1408,7 +1409,7 @@ className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-backgrou
                   >
                     <CardContent className="p-6 text-center space-y-4">
                       {(isInactive || isOffline) && (
-                        <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />
+                        <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} note={pkg.inactive_note} />
                       )}
                       {isMTNMashup ? (
                         <>

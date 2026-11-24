@@ -77,6 +77,7 @@ interface DataPackage {
   active?: boolean;
   is_online?: boolean;
   offline_reason?: string;
+  inactive_note?: string | null;
 }
 
 interface Order {
@@ -1327,7 +1328,7 @@ const Packages = () => {
   });
 
   // Fetch packages with caching - include size_gb_text for mtn_mashup packages
-  cachedQuery("data_packages:storefront", () => supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count").order("size_gb", { ascending: true }))
+  cachedQuery("data_packages:storefront", () => supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count,inactive_note").order("size_gb", { ascending: true }))
       .then(({ data, error }) => {
         if (error) console.error("[v0] Failed to fetch data packages:", error);
         setPackages(data ?? []);
@@ -1341,7 +1342,7 @@ const Packages = () => {
     async () => {
       const { data, error } = await cachedQuery("data_packages:storefront", () => supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count")
+        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count,inactive_note")
         .order("size_gb", { ascending: true }));
       if (error) throw error;
       return data ?? [];
@@ -1364,7 +1365,7 @@ const Packages = () => {
     const refreshPackages = async () => {
       const { data } = await cachedQuery("data_packages:storefront", () => supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count")
+        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count,inactive_note")
         .order("size_gb", { ascending: true }));
       if (data) setPackages(data);
     };
@@ -1607,6 +1608,7 @@ const searchOrders = async (input?: string) => {
                     return (
                       <Card key={pkg.id} style={{ backgroundColor: "#2f176d", color: "#ffffff" }} className={`package-reference-card border-0 shadow-none ${available ? "" : "opacity-45"}`}>
                         <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
+  {!available && <PackageStatusIndicator status="not_available" note={pkg.inactive_note} />}
   <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p>
   <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
   {(pkg.bundle_name || pkg.package_name || pkg.name || pkg.title) && <p className="text-sm font-semibold text-white">{pkg.bundle_name || pkg.package_name || pkg.name || pkg.title}</p>}

@@ -157,6 +157,7 @@ interface DataPackage {
   details?: string | null;
   active?: boolean;
   is_online?: boolean;
+  inactive_note?: string | null;
 }
 
 interface Order {
@@ -1481,7 +1482,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                       ) : (
                         <>
                           <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-2 px-5 py-6 text-center w-full">
-                            {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />}
+                            {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} note={pkg.inactive_note} />}
                             <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
                             <p className="text-sm font-bold uppercase" style={{ color: getNetworkLabelColor(networkFilter) }}>{formatNetworkName(networkFilter)}</p>
                             <p className="text-sm font-semibold text-white/80">User price: <strong className="text-cyan-300">GHC {Number(price).toFixed(2)}</strong></p>

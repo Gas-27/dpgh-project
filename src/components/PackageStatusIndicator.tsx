@@ -1,12 +1,14 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown, Info } from 'lucide-react';
 
 export type PackageStatus = 'available' | 'not_available' | 'offline';
 
 interface PackageStatusIndicatorProps {
   status: PackageStatus;
+  /** Text written by the admin when the package was turned off. */
+  note?: string | null;
 }
 
 const OFFLINE_REASONS = [
@@ -17,13 +19,41 @@ const OFFLINE_REASONS = [
   'Service temporarily unavailable'
 ];
 
+const DEFAULT_UNAVAILABLE_NOTE = 'This package is currently unavailable. Please check back later.';
+
 export default function PackageStatusIndicator({
-  status
+  status,
+  note
 }: PackageStatusIndicatorProps) {
   const [showDropdown, setShowDropdown] = useState(false);
 
   if (status === 'available') {
     return null;
+  }
+
+  if (status === 'not_available') {
+    const message = note?.trim() || DEFAULT_UNAVAILABLE_NOTE;
+    return (
+      <div className="relative w-full" onClick={(e) => e.stopPropagation()}>
+        <div className="mb-1.5 flex items-center justify-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5">
+          <p className="text-xs font-semibold text-red-700">Currently unavailable</p>
+          <button
+            type="button"
+            onClick={() => setShowDropdown((v) => !v)}
+            aria-label="Why is this package unavailable?"
+            aria-expanded={showDropdown}
+            className="flex h-5 w-5 items-center justify-center rounded-full text-red-600 hover:bg-red-100 hover:text-red-700"
+          >
+            <Info className="h-4 w-4" />
+          </button>
+        </div>
+        {showDropdown && (
+          <div role="status" className="mb-2 w-full rounded-lg bg-red-600 p-3 text-left text-white shadow-lg">
+            <p className="whitespace-pre-wrap break-words text-[11px] leading-snug">{message}</p>
+          </div>
+        )}
+      </div>
+    );
   }
 
   return (

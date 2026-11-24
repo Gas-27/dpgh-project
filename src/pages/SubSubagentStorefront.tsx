@@ -121,6 +121,7 @@ interface DataPackage {
   size_gb_text?: string;
   active?: boolean;
   is_online?: boolean;
+  inactive_note?: string | null;
 }
 
 interface Order {
@@ -1192,7 +1193,7 @@ const searchOrders = useCallback(async (input?: string) => {
                   >
                     <CardContent className="p-6 text-center space-y-4">
                       {(isInactive || isOffline) && (
-                        <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />
+                        <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} note={pkg.inactive_note} />
                       )}
                       {isMTNMashup ? (
                         <>

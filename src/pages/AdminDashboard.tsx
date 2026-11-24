@@ -55,7 +55,7 @@ import SubscriptionPaymentsPanel from "@/components/SubscriptionPaymentsPanel";
 import AdminPublicProductsManager from "@/components/AdminPublicProductsManager";
 import AdminProductsBoostManager from "@/components/AdminProductsBoostManager";
 import AdminReportedProducts from "@/components/AdminReportedProducts";
-import { Flag, Trophy } from "lucide-react";
+import { Flag, Trophy, Info } from "lucide-react";
 import AdminDomainPurchasesPanel from "@/components/AdminDomainPurchasesPanel";
 import AdminDomainRenewalsPanel from "@/components/AdminDomainRenewalsPanel";
 import PushNotificationManager from "@/components/PushNotificationManager";
@@ -91,7 +91,7 @@ import { DOMAINS } from "@/config/domains";
 import { openStoreAsAdmin, type ImpersonateKind } from "@/lib/adminImpersonate";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
@@ -102,7 +102,7 @@ import {
 // Interfaces
 // ============================================================
 interface DataPackage {
-  id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean;
+  id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean; inactive_note?: string | null;
 }
 interface AgentStore {
     id: string; user_id: string; store_name: string; whatsapp_number: string; support_number: string;
@@ -179,6 +179,8 @@ const AdminDashboard = () => {
   const [saving, setSaving] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [noteDialog, setNoteDialog] = useState<{ pkgId: string; label: string; note: string; turnOff: boolean } | null>(null);
+  const [savingNote, setSavingNote] = useState(false);
   const [newPkg, setNewPkg] = useState({ network: "mtn", size_gb: "", price: "", agent_price: "", api_price: "" });
   const [retryingOrders, setRetryingOrders] = useState<Set<string>>(new Set());
   const [retryingAllOrders, setRetryingAllOrders] = useState(false);
@@ -767,7 +769,7 @@ const AdminDashboard = () => {
     try {
       // Load packages and app settings only — withdrawals/agents/etc load lazily via handleTabChange
       const [pkgResult, appSettingsResult] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
+        supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active, inactive_note").order("size_gb").limit(100),
         supabase
           .from("app_settings")
           .select("agent_registration_fee, chatbot_enabled, show_price_breakdown, show_api_price, show_agent_price, tab_controls")
@@ -1543,9 +1545,28 @@ const AdminDashboard = () => {
   };
 
   const toggleActive = async (pkgId: string, active: boolean) => {
-    await supabase.from("data_packages").update({ active }).eq("id", pkgId);
-    setPackages((prev) => prev.map((p) => (p.id === pkgId ? { ...p, active } : p)));
-    toast({ title: active ? "Package activated" : "Package deactivated" });
+    const pkg = packages.find((p) => p.id === pkgId);
+    if (!active) {
+      setNoteDialog({ pkgId, label: `${pkg?.size_gb ?? ""}GB`, note: pkg?.inactive_note ?? "", turnOff: true });
+      return;
+    }
+    const { error } = await supabase.from("data_packages").update({ active: true, inactive_note: null }).eq("id", pkgId);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    setPackages((prev) => prev.map((p) => (p.id === pkgId ? { ...p, active: true, inactive_note: null } : p)));
+    toast({ title: "Package activated" });
+  };
+
+  const saveInactiveNote = async () => {
+    if (!noteDialog) return;
+    setSavingNote(true);
+    const note = noteDialog.note.trim() || null;
+    const update = noteDialog.turnOff ? { active: false, inactive_note: note } : { inactive_note: note };
+    const { error } = await supabase.from("data_packages").update(update).eq("id", noteDialog.pkgId);
+    setSavingNote(false);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    setPackages((prev) => prev.map((p) => (p.id === noteDialog.pkgId ? { ...p, ...update } : p)));
+    toast({ title: noteDialog.turnOff ? "Package deactivated" : "Note saved" });
+    setNoteDialog(null);
   };
 
   const deletePackage = async (pkgId: string) => {
@@ -3040,7 +3061,7 @@ const AdminDashboard = () => {
               </div>
               <Card className="border-border">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Size</TableHead><TableHead>User Price (GHC)</TableHead><TableHead>Agent Price (GHC)</TableHead><TableHead>API Price (GHC)</TableHead><TableHead>Active</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Size</TableHead><TableHead>User Price (GHC)</TableHead><TableHead>Agent Price (GHC)</TableHead><TableHead>API Price (GHC)</TableHead><TableHead>Active</TableHead><TableHead>Offline note</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {filteredPackages.map((pkg) => (
                       <TableRow key={pkg.id}>
@@ -3049,6 +3070,16 @@ const AdminDashboard = () => {
                         <TableCell><Input type="number" step="0.01" defaultValue={pkg.agent_price} onChange={(e) => handlePriceChange(pkg.id, "agent_price", e.target.value)} className="w-24 h-8" /></TableCell>
                         <TableCell><Input type="number" step="0.01" defaultValue={pkg.api_price} onChange={(e) => handlePriceChange(pkg.id, "api_price", e.target.value)} className="w-24 h-8" /></TableCell>
                         <TableCell><Switch checked={pkg.active} onCheckedChange={(checked) => toggleActive(pkg.id, checked)} /></TableCell>
+                        <TableCell>
+                          {pkg.active ? (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          ) : (
+                            <Button variant="outline" size="sm" className="h-8 max-w-[180px] gap-1" onClick={() => setNoteDialog({ pkgId: pkg.id, label: `${pkg.size_gb}GB`, note: pkg.inactive_note ?? "", turnOff: false })}>
+                              <Info className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate text-xs">{pkg.inactive_note ? pkg.inactive_note : "Add note"}</span>
+                            </Button>
+                          )}
+                        </TableCell>
                         <TableCell><Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => deletePackage(pkg.id)}><Trash2 className="h-4 w-4" /></Button></TableCell>
                       </TableRow>
                     ))}
@@ -5297,6 +5328,31 @@ const AdminDashboard = () => {
             </TabsContent>
         </Tabs>
       </div>
+
+      <Dialog open={!!noteDialog} onOpenChange={(open) => { if (!open) setNoteDialog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{noteDialog?.turnOff ? `Turn off ${noteDialog.label} package` : `Offline note for ${noteDialog?.label ?? ""} package`}</DialogTitle>
+            <DialogDescription>
+              The package stays visible on every storefront as unavailable. Customers see this text when they tap the info icon.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={noteDialog?.note ?? ""}
+            onChange={(e) => setNoteDialog((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
+            placeholder="e.g. This bundle is paused while the network provider fixes delivery delays."
+            rows={4}
+            maxLength={500}
+            aria-label="Offline note"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoteDialog(null)}>Cancel</Button>
+            <Button onClick={saveInactiveNote} disabled={savingNote}>
+              {savingNote ? "Saving..." : noteDialog?.turnOff ? "Turn off package" : "Save note"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Dialogs (unchanged) */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>

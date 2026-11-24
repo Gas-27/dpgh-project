@@ -38,6 +38,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import PackageStatusIndicator from "@/components/PackageStatusIndicator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Sparkles, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck, ChevronDown, ChevronUp, Video, Gamepad2, RadioTower, Receipt, CalendarDays, MessageSquare, IdCard, Code } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
@@ -92,6 +93,7 @@ interface DataPackage {
   api_price?: number;
   active: boolean;
   is_online?: boolean;
+  inactive_note?: string | null;
 }
 
 interface Order {
@@ -1650,7 +1652,7 @@ case "api-key":
               .map(pkg => (
                 <Card key={pkg.id} className={`border-0 bg-[#2f176d] text-white shadow-none ${pkg.active ? "" : "opacity-50"}`}>
                   <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
-                    {!pkg.active && <Badge variant="secondary">Offline</Badge>}
+                    {!pkg.active && <PackageStatusIndicator status="not_available" note={pkg.inactive_note} />}
                     <p className="font-display text-4xl font-extrabold leading-none">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
                     <p className="text-sm font-bold uppercase text-yellow-300">{pkg.network}</p>
   <div className="flex items-center justify-center text-sm font-semibold text-white/75">
