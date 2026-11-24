@@ -96,6 +96,6 @@ Deno.serve(async (req) => {
     owner_type: reserved.owner_type,
     owner_id: reserved.owner_id,
     refund_id: refundId,
-    message: `Refunded ${amount.toFixed(2)} to the customer through Paystack and deducted ${Number(reserved.profit).toFixed(2)} profit from the seller wallet.`,
+    message: `Credited ${Number(reserved.base_credit).toFixed(2)} base price to the store wallet, took ${amount.toFixed(2)} (the amount the customer paid) from it, and refunded ${amount.toFixed(2)} to the customer through Paystack.`,
   });
 });
