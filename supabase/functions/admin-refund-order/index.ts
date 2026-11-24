@@ -48,19 +48,12 @@ Deno.serve(async (req) => {
     });
   };
 
-  const { data: record, error: recordError } = await admin.from("paystack_refunds").insert({
-    order_id: orderId,
-    amount,
-    paystack_reference: reference,
-    status: "processing",
-    reason: "Admin-initiated Paystack refund",
-    wallet_deduction_status: "deducted",
-  }).select("id").single();
-  if (recordError) {
+  const refundId = String(reserved.refund_id ?? "");
+  if (!refundId) {
     await revert();
-    return json({ error: recordError.message }, 409);
+    return json({ error: "Could not record the refund. Nothing was changed." }, 409);
   }
-  const refundId = record.id as string;
+  await admin.from("paystack_refunds").update({ status: "processing", updated_at: new Date().toISOString() }).eq("id", refundId);
 
   const paystack = await fetch("https://api.paystack.co/refund", {
     method: "POST",
