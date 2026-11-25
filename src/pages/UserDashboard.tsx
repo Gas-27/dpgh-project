@@ -83,7 +83,7 @@ import NotificationPopup from "@/components/NotificationPopup";
 import PrivateShareMySubscriptions from "@/components/PrivateShareMySubscriptions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SHOW_USSD } from "@/lib/ussdVisibility";
-import { getNetworkLabel, getPackageDisplayName, getOrderPackageName, isSpecialNetwork } from "@/lib/networkConfig";
+import { getNetworkLabel, getPackageDisplayName, getOrderPackageName, isSpecialNetwork, packageMatchesNetwork } from "@/lib/networkConfig";
 
 interface DataPackage {
   id: string;
@@ -1642,18 +1642,14 @@ case "api-key":
         <CardContent className="space-y-4">
           <DeliveryProgressCard selectedNetwork={networkFilter} />
 
-          <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
+          <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} packages={packages} />
 
           <ScheduleDataPurchase ownerType="customer" ownerId={effectiveUserId} variant="bar" />
 
           {/* Packages Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {packages
-              .filter(pkg => {
-                const packageNetwork = String(pkg.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-                const selectedNetwork = networkFilter.replace(/[^a-z0-9]/g, "");
-                return packageNetwork === selectedNetwork;
-              })
+              .filter((pkg) => packageMatchesNetwork(pkg.network, networkFilter))
               .map(pkg => (
                 <Card key={pkg.id} className={`border-0 bg-[#2f176d] text-white shadow-none ${pkg.active ? "" : "opacity-50"}`}>
                   <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
@@ -2329,12 +2325,7 @@ case "api-key":
                 </CardContent>
               </Card>
             ) : (
-              packages.filter(p => {
-                if (networkFilter === "airteltigo") {
-                  return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
-                }
-                return p.network === networkFilter;
-              }).map((pkg) => {
+              packages.filter((pkg) => packageMatchesNetwork(pkg.network, networkFilter)).map((pkg) => {
                 const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
                 return (
                   <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
@@ -2347,12 +2338,7 @@ case "api-key":
                 );
               })
             )}
-            {networkFilter !== "afa" && packages.filter(p => {
-              if (networkFilter === "airteltigo") {
-                return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
-              }
-              return p.network === networkFilter;
-            }).length === 0 && (
+            {networkFilter !== "afa" && packages.filter((pkg) => packageMatchesNetwork(pkg.network, networkFilter)).length === 0 && (
               <div className="col-span-full text-center py-8 text-muted-foreground">
                 No packages available for {networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "mtn" ? "MTN" : "Telecel"}.
               </div>

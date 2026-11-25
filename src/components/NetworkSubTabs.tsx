@@ -27,7 +27,10 @@ const SUB_TABS: Record<string, SubTabOption[]> = {
   mtn: [
     { key: "mtn", label: "MTN Bundles", active: YELLOW },
     { key: "mtn_special", label: "MTN Special", requires: "mtn_special", active: YELLOW },
-    { key: "mashup", label: "MTN MashUp", requires: "mashup", active: ORANGE },
+  ],
+  mtn_express: [
+    { key: "mtn_express", label: "MTN Express Bundles", active: YELLOW },
+    { key: "mtn_express_special", label: "MTN Special", requires: "mtn_special", active: YELLOW },
   ],
   telecel: [
     { key: "telecel", label: "Telecel Bundles", active: RED },

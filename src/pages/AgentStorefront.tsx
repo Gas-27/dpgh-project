@@ -43,7 +43,7 @@ import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkSubTabs from "@/components/NetworkSubTabs";
-import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
+import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, packageMatchesNetwork, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -1049,16 +1049,7 @@ const searchOrders = useCallback(async (input?: string) => {
   };
 
   // ── Render helpers ──
-  const filteredPackages = packages.filter((p) => {
-    if (networkFilter === "airteltigo") {
-      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
-    }
-    if (networkFilter === "telecel") {
-      const packageNetwork = String(p.network || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-      return packageNetwork === "telecel";
-    }
-    return p.network === networkFilter;
-  });
+  const filteredPackages = packages.filter((p) => packageMatchesNetwork(p.network, networkFilter));
   const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? agentSubagentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
@@ -1405,8 +1396,8 @@ const searchOrders = useCallback(async (input?: string) => {
 
           {/* ── Network filter ── */}
           <div className="container pb-6">
-<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-4">
-  {["mtn", "mtn_express", "telecel", "airteltigo"].map((net) => {
+<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-3 lg:grid-cols-5">
+  {["mtn", "mtn_express", "mashup", "telecel", "airteltigo"].map((net) => {
     const isSelected = getNetworkFamily(networkFilter) === net;
     return (
                 <Button

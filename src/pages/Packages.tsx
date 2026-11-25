@@ -55,10 +55,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
-import { filterVisiblePackages, getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
+import { filterVisiblePackages, getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, packageMatchesNetwork } from "@/lib/networkConfig";
 
 // ──────────────────────────────────────────────────────────── Types ─────
-type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel" | "mtn_special" | "telecel_special" | "mashup";
+type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel" | "mtn_special" | "telecel_special" | "mashup" | "mtn_express_special";
 
 interface DataPackage {
   id: string;
@@ -117,7 +117,8 @@ const networkConfig: Record<Network, { label: string; color: string }> = {
   telecel: { label: "Telecel", color: "text-red-400" },
   mtn_special: { label: "MTN Special", color: "text-yellow-400" },
   telecel_special: { label: "Telecel Special", color: "text-red-400" },
-  mashup: { label: "MTN MashUp", color: "text-yellow-400" },
+  mashup: { label: "MTN MashUp", color: "text-orange-400" },
+  mtn_express_special: { label: "MTN Special", color: "text-yellow-400" },
 };
 
 const SPIN_COOLDOWN_MS = 8 * 60 * 60 * 1000;
@@ -1222,7 +1223,7 @@ const Packages = () => {
   const [showAgentPrice, setShowAgentPrice] = useState(true);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(() => {
     const n = searchParams.get("network");
-    return n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special" || n === "mashup" ? n : "mtn";
+    return n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special" || n === "mashup" || n === "mtn_express_special" ? n : "mtn";
   });
   const [loading, setLoading] = useState(true);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
@@ -1432,19 +1433,10 @@ const Packages = () => {
   // Fetch Special MTN Mashup pricing
   useEffect(() => {
     const n = searchParams.get("network");
-    if (n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special" || n === "mashup") setSelectedNetwork(n as Network);
+    if (n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special" || n === "mashup" || n === "mtn_express_special") setSelectedNetwork(n as Network);
   }, [searchParams]);
 
-  const filtered = useMemo(() => packages.filter(p => {
-    const packageNetwork = String(p.network || "").trim().toLowerCase();
-    if (selectedNetwork === "telecel") {
-      return packageNetwork === "telecel";
-    }
-    if (selectedNetwork === "airteltigo") {
-      return packageNetwork === "airteltigo" || packageNetwork === "atbigtime" || packageNetwork === "atbigshare";
-    }
-    return packageNetwork === selectedNetwork;
-  }), [packages, selectedNetwork]);
+  const filtered = useMemo(() => packages.filter((pkg) => packageMatchesNetwork(pkg.network, selectedNetwork)), [packages, selectedNetwork]);
 
 const searchOrders = async (input?: string) => {
   const searchTerm = input ?? searchQuery;

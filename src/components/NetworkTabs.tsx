@@ -5,11 +5,12 @@ import { getNetworkFamily, type SpecialNetworkKey } from "@/lib/networkConfig";
 export const NETWORK_TAB_OPTIONS = [
   { key: "mtn", label: "MTN" },
   { key: "mtn_express", label: "MTN Express" },
+  { key: "mashup", label: "MTN MashUp" },
   { key: "airteltigo", label: "AirtelTigo" },
   { key: "telecel", label: "Telecel" },
 ] as const;
 
-export type NetworkTabKey = (typeof NETWORK_TAB_OPTIONS)[number]["key"] | SpecialNetworkKey;
+export type NetworkTabKey = (typeof NETWORK_TAB_OPTIONS)[number]["key"] | SpecialNetworkKey | "mtn_express_special";
 
 type PackageLike = { network?: string | null; active?: boolean | null };
 type Props = {
@@ -21,7 +22,7 @@ type Props = {
 };
 
 const isYellow = (key: string) => key === "mtn" || key === "mtn_express";
-const tabColor = (key: string) => (isYellow(key) ? "#fbbf24" : key === "airteltigo" ? "#3b82f6" : "#ef4444");
+const tabColor = (key: string) => (isYellow(key) ? "#fbbf24" : key === "mashup" ? "#f97316" : key === "airteltigo" ? "#3b82f6" : "#ef4444");
 const activeColors = (key: string) => ({
   backgroundColor: tabColor(key),
   borderColor: tabColor(key),

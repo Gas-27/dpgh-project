@@ -57,9 +57,20 @@ export const getNetworkLabel = (value?: string | null): string => {
 /** The main tab a network key belongs to (special networks live inside MTN / Telecel). */
 export const getNetworkFamily = (value?: string | null): string => {
   const key = normalizeKey(value);
-  if (key === "mtn_special" || key === MASHUP_NETWORK_KEY || key === "mtn_mashup") return "mtn";
+  if (key === "mtn_special") return "mtn";
+  if (key === "mtn_express_special") return "mtn_express";
+  if (key === "mtn_mashup") return MASHUP_NETWORK_KEY;
   if (key === "telecel_special") return "telecel";
   return key;
+};
+
+export const packageMatchesNetwork = (pkgNetwork?: string | null, selectedNetwork?: string | null): boolean => {
+  const pkg = normalizeKey(pkgNetwork);
+  const selected = normalizeKey(selectedNetwork);
+  if (selected === "mtn_express_special") return pkg === "mtn_special";
+  if (selected === "mashup" || selected === "mtn_mashup") return pkg === "mashup" || pkg === "mtn_mashup";
+  if (selected === "airteltigo") return ["airteltigo", "atbigtime", "atbigshare"].includes(pkg);
+  return pkg === selected;
 };
 
 /** Package name shown to people. Always prefers size_gb_text (size_gb is a number such as 0.1 for 200MINS). */
