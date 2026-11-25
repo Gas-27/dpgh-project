@@ -2,8 +2,6 @@ import { ImageResponse } from "@vercel/og";
 import { PAGES } from "../src/data/seo/pages.mjs";
 import { GUIDES, getGuide } from "../src/data/seo/guides.mjs";
 
-export const config = { runtime: "edge" };
-
 const FALLBACK_TITLE = "Cheap Data, Airtime, Subscriptions & Bills in Ghana";
 
 function resolveContent(page: string, slug: string | null) {
@@ -17,7 +15,7 @@ function resolveContent(page: string, slug: string | null) {
   return { eyebrow: "Ghana", title: FALLBACK_TITLE };
 }
 
-export default function handler(request: Request) {
+export function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const { eyebrow, title } = resolveContent(searchParams.get("page") ?? "home", searchParams.get("slug"));
   void GUIDES;
