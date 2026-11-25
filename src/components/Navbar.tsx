@@ -42,6 +42,7 @@ const Navbar = () => {
         <div className="hidden items-center gap-6 md:flex">
           <Link to="/packages" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Packages</Link>
           <Link to="/#services" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Services</Link>
+          <Link to="/guides" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Guides</Link>
           <Link to="/#agent" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Become an Agent</Link>
         </div>
 

@@ -1,5 +1,25 @@
 export const SITE_ORIGIN = "https://dataplug.store";
-export const JUSTBUYGH_ORIGIN = "https://justbuygh.com";
+export const JUSTBUYGH_ORIGIN = "https://www.justbuygh.com";
+
+const INDEXABLE_HOSTS = new Set([
+  "justbuygh.com", "www.justbuygh.com", "dataplug.store", "www.dataplug.store",
+  "datastores.shop", "www.datastores.shop", "localhost", "127.0.0.1",
+]);
+
+/**
+ * Agent, sub-agent, sub-sub-agent and custom-domain storefronts are near-identical copies of the
+ * main site. They are marked noindex,follow so they never compete with justbuygh.com.
+ */
+export function isStoreHost(hostname = typeof window !== "undefined" ? window.location.hostname : "") {
+  const host = hostname.toLowerCase().split(":")[0];
+  if (!host) return false;
+  return !(INDEXABLE_HOSTS.has(host) || host.endsWith(".vercel.app") || host.endsWith(".v0.app") || host.endsWith(".vusercontent.net"));
+}
+
+export function isJustBuyHost(hostname = typeof window !== "undefined" ? window.location.hostname : "") {
+  const host = hostname.toLowerCase().split(":")[0];
+  return host === "justbuygh.com" || host === "www.justbuygh.com";
+}
 
 export type SeoBrand = "dataplug" | "justbuygh" | "datastores" | "agentsstore";
 
@@ -14,6 +34,7 @@ export function getSeoBrand(hostname = typeof window !== "undefined" ? window.lo
 export function getSeoOrigin(hostname = typeof window !== "undefined" ? window.location.hostname : "") {
   if (!hostname) return SITE_ORIGIN;
   const host = hostname.toLowerCase().split(":")[0];
+  if (host === "justbuygh.com" || host === "www.justbuygh.com") return JUSTBUYGH_ORIGIN;
   return host === "localhost" || host === "127.0.0.1" ? SITE_ORIGIN : `https://${host}`;
 }
 
@@ -33,6 +54,7 @@ export const PUBLIC_SEO_PATHS = [
   "/bece-results-checker", "/wassce-results-checker", "/buy-data-online-ghana", "/wholesale-data-bundles-ghana",
   "/internet-bundles-ghana", "/become-sub-agent", "/afa-bundle-ghana", "/data-bundle-prices-ghana",
   "/games", "/privacy-policy", "/terms", "/refund-policy", "/cookie-policy",
+  "/subscription", "/services", "/social-boost", "/bulk-sms", "/afa-bundles", "/products", "/gamehub", "/guides",
 ] as const;
 
 const PRIVATE_PREFIXES = [
@@ -48,7 +70,7 @@ export function isPrivatePath(pathname: string) {
 
 export function isKnownPublicPath(pathname: string) {
   return PUBLIC_SEO_PATHS.includes(pathname as (typeof PUBLIC_SEO_PATHS)[number]) ||
-    pathname.startsWith("/blog/") || pathname.startsWith("/agent/");
+    pathname.startsWith("/blog/") || pathname.startsWith("/guides/") || pathname.startsWith("/agent/");
 }
 
 export function shouldNoIndex(pathname: string, search = "") {

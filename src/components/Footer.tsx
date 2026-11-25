@@ -41,6 +41,7 @@ const Footer = () => {
             <li><Link to="/streaming-data-bundles-ghana" className="hover:text-foreground transition-colors">Streaming Data Bundles</Link></li>
             <li><Link to="/student-data-bundles-ghana" className="hover:text-foreground transition-colors">Student Data Bundles</Link></li>
             <li><Link to="/premium-subscription" className="hover:text-primary transition-colors font-medium text-primary/80">Premium Subscription</Link></li>
+            <li><Link to="/guides" className="hover:text-foreground transition-colors">Guides for Ghana</Link></li>
             <li><Link to="/blog" className="hover:text-foreground transition-colors">DataPlug Blog</Link></li>
           </ul>
         </nav>
