@@ -76,7 +76,7 @@ import ScheduleSms from "@/components/ScheduleSms";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
-import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE, getMashupDownstreamMarkups, getMashupDefaultStorePrice, getMashupMaxStorePrice, roundMoney, MASHUP_LOCKED_MESSAGE } from "@/lib/networkConfig";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE, getLockedDownstreamMarkups, getMashupDefaultStorePrice, getMashupMaxStorePrice, roundMoney, getLockedPriceMessage, getLockedProfitDescription, isLockedPricingNetwork, getLockedMaxProfit } from "@/lib/networkConfig";
 import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import NotificationPopup from "@/components/NotificationPopup";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
@@ -1755,15 +1755,17 @@ const handleSaveStore = async () => {
     return p.network === subSubagentNetworkFilter;
   });
 
-  const mashupMarkups = getMashupDownstreamMarkups(packages);
+  const mashupMarkups = getLockedDownstreamMarkups(packages);
   const isMashupPackageId = (packageId: string) => mashupMarkups[packageId] !== undefined;
   const getMashupCost = (packageId: string) => Number(basePrices[packageId] || packages.find(p => p.id === packageId)?.price || 0);
+  const getLockedNetwork = (packageId: string) => packages.find(p => p.id === packageId)?.network;
+  const getLockedMax = (packageId: string) => getMashupMaxStorePrice(getMashupCost(packageId), getLockedNetwork(packageId));
 
   const handlePriceChange = (packageId: string, value: string) => {
     if (isMashupPackageId(packageId) && value !== "") {
-      const maxPrice = getMashupMaxStorePrice(getMashupCost(packageId));
+      const maxPrice = getLockedMax(packageId);
       if (parseFloat(value) > maxPrice) {
-        toast({ title: "Maximum price reached", description: `The most you can charge for this MashUp bundle is GHC ${maxPrice.toFixed(2)} (GHC 2.00 profit).`, variant: "destructive" });
+        toast({ title: "Maximum price reached", description: `The most you can charge for this ${getNetworkLabel(getLockedNetwork(packageId))} bundle is GHC ${maxPrice.toFixed(2)} (GHC ${getLockedMaxProfit(getLockedNetwork(packageId)).toFixed(2)} profit).`, variant: "destructive" });
         setEditedPrices(prev => ({ ...prev, [packageId]: maxPrice }));
         return;
       }
@@ -1787,7 +1789,7 @@ const handleSaveStore = async () => {
     filteredPackages.forEach(pkg => {
       const basePrice = basePrices[pkg.id] || pkg.price || 0;
       let newPrice = basePrice * (1 + markup);
-      if (isMashupPackageId(pkg.id)) newPrice = Math.min(newPrice, getMashupMaxStorePrice(basePrice));
+      if (isMashupPackageId(pkg.id)) newPrice = Math.min(newPrice, getMashupMaxStorePrice(basePrice, pkg.network));
       setEditedPrices(prev => ({
         ...prev,
         [pkg.id]: parseFloat(newPrice.toFixed(2))
@@ -1831,10 +1833,10 @@ const handleSaveStore = async () => {
           setSavingPrices(false);
           return;
         }
-        if (isMashupPackageId(packageId) && price > getMashupMaxStorePrice(getMashupCost(packageId)) + 0.001) {
+        if (isMashupPackageId(packageId) && price > getLockedMax(packageId) + 0.001) {
           toast({
             title: "Invalid Price",
-            description: `MashUp price cannot exceed GHC ${getMashupMaxStorePrice(getMashupCost(packageId)).toFixed(2)} (GHC 2.00 maximum profit)`,
+            description: `${getNetworkLabel(getLockedNetwork(packageId))} price cannot exceed GHC ${getLockedMax(packageId).toFixed(2)} (GHC ${getLockedMaxProfit(getLockedNetwork(packageId)).toFixed(2)} maximum profit)`,
             variant: "destructive"
           });
           setSavingPrices(false);
@@ -1923,7 +1925,7 @@ const handleSaveStore = async () => {
 
   const handleSubSubagentPriceChange = (packageId: string, value: string) => {
     if (isMashupPackageId(packageId)) {
-      toast({ title: "Price locked", description: MASHUP_LOCKED_MESSAGE });
+      toast({ title: "Price locked", description: getLockedPriceMessage(getLockedNetwork(packageId)) });
       return;
     }
     setSubSubagentEditedSubSubPrices(prev => ({
@@ -4041,9 +4043,9 @@ handleMobileNumberChange(digits);
                           filteredPackages.map(pkg => {
                             const costFromAgent = basePrices[pkg.id] || pkg.price || 0;
                             const isMashupRow = isMashupPackageId(pkg.id);
-                            const mashupMax = isMashupRow ? getMashupMaxStorePrice(costFromAgent) : undefined;
+                            const mashupMax = isMashupRow ? getMashupMaxStorePrice(costFromAgent, pkg.network) : undefined;
                             const savedPrice = subagentPrices[pkg.id];
-                            const cur = editedPrices[pkg.id] ?? savedPrice ?? (isMashupRow ? getMashupDefaultStorePrice(costFromAgent) : costFromAgent);
+                            const cur = editedPrices[pkg.id] ?? savedPrice ?? (isMashupRow ? getMashupDefaultStorePrice(costFromAgent, pkg.network) : costFromAgent);
                             const profit = Number(cur) - costFromAgent;
                             const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < costFromAgent;
                             const hasSavedPrice = savedPrice !== undefined;
@@ -4537,9 +4539,9 @@ handleMobileNumberChange(digits);
                   <p className="text-xs text-muted-foreground mt-2">Markup changes all your prices to subagents for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (your cost price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{getNetworkLabel(subSubagentNetworkFilterForSubsub)}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Subagent Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
-                {subSubagentNetworkFilterForSubsub === "mashup" && (
+                {isLockedPricingNetwork(subSubagentNetworkFilterForSubsub) && (
                   <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-                    {MASHUP_LOCKED_MESSAGE} Your profit is GHC 0.30 on the first 4 MashUp bundles and GHC 0.60 on the rest.
+                    {getLockedPriceMessage(subSubagentNetworkFilterForSubsub)} {getLockedProfitDescription(subSubagentNetworkFilterForSubsub)}
                   </div>
                 )}
                 <Card className="border-border">
@@ -4580,8 +4582,8 @@ handleMobileNumberChange(digits);
                                       value={cur} 
                                       readOnly={isLocked}
                                       aria-readonly={isLocked}
-                                      title={isLocked ? MASHUP_LOCKED_MESSAGE : undefined}
-                                      onFocus={isLocked ? () => toast({ title: "Price locked", description: MASHUP_LOCKED_MESSAGE }) : undefined}
+                                      title={isLocked ? getLockedPriceMessage(pkg.network) : undefined}
+                                      onFocus={isLocked ? () => toast({ title: "Price locked", description: getLockedPriceMessage(pkg.network) }) : undefined}
                                       onChange={e => handleSubSubagentPriceChange(pkg.id, e.target.value)} 
                                       className={`w-24 h-8 ${isLocked ? "cursor-not-allowed bg-muted" : isInvalid ? "border-red-500" : hasSavedPrice && !subSubagentEditedSubSubPrices[pkg.id] ? "border-green-500" : ""}`}
                                     />

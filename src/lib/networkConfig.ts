@@ -88,11 +88,58 @@ export const getMashupDownstreamMarkups = <T extends { id: string; network?: str
   return result;
 };
 
-/** Default store selling price for a MashUp package: cost plus 1 cedi. */
-export const getMashupDefaultStorePrice = (cost: number): number => roundMoney(Number(cost) + MASHUP_STORE_DEFAULT_PROFIT);
+/** Fixed pricing rules for MTN Special and Telecel Special down the agent chain. */
+export const SPECIAL_DOWNSTREAM_MARKUP = 0.5;
+export const SPECIAL_STORE_DEFAULT_PROFIT = 0.8;
+export const SPECIAL_STORE_MAX_PROFIT = 2.5;
 
-/** Highest store selling price allowed for a MashUp package: cost plus 2 cedis. */
-export const getMashupMaxStorePrice = (cost: number): number => roundMoney(Number(cost) + MASHUP_STORE_MAX_PROFIT);
+/** MTN Special and Telecel Special have locked downstream prices (MashUp has its own tiered rule). */
+export const isPriceLockedSpecialNetwork = (value?: string | null): boolean => {
+  const key = normalizeKey(value);
+  return key === "mtn_special" || key === "telecel_special";
+};
+
+/** True for every network whose subagent / sub-subagent base prices are fixed by default. */
+export const isLockedPricingNetwork = (value?: string | null): boolean => isMashupNetwork(value) || isPriceLockedSpecialNetwork(value);
+
+export const getLockedPriceMessage = (network?: string | null): string =>
+  isPriceLockedSpecialNetwork(network)
+    ? `${getNetworkLabelInternal(network)} prices are set by default and cannot be changed. The price shown here is what you get with every ${getNetworkLabelInternal(network)} purchase.`
+    : MASHUP_LOCKED_MESSAGE;
+
+const getNetworkLabelInternal = (value?: string | null): string => NETWORK_LABELS[normalizeKey(value)] ?? String(value ?? "");
+
+/** Fixed profit label for the locked-price notice, e.g. "GHC 0.50 on every MTN Special bundle". */
+export const getLockedProfitDescription = (network?: string | null): string =>
+  isPriceLockedSpecialNetwork(network)
+    ? `Your profit is GHC ${SPECIAL_DOWNSTREAM_MARKUP.toFixed(2)} on every ${getNetworkLabelInternal(network)} bundle.`
+    : `Your profit is GHC ${MASHUP_DOWNSTREAM_MARKUP_FIRST.toFixed(2)} on the first 4 MashUp bundles and GHC ${MASHUP_DOWNSTREAM_MARKUP_REST.toFixed(2)} on the rest.`;
+
+/**
+ * Fixed profit added on top of the parent's cost for every locked package:
+ * MashUp uses its tiered markup, MTN Special and Telecel Special use a flat 0.50.
+ */
+export const getLockedDownstreamMarkups = <T extends { id: string; network?: string | null; active?: boolean | null; bundle_id?: number | string | null; size_gb_text?: string | null; size_gb?: number | string | null }>(
+  packages: T[] | null | undefined,
+): Record<string, number> => {
+  const result = getMashupDownstreamMarkups(packages);
+  (packages ?? []).forEach((p) => {
+    if (isPriceLockedSpecialNetwork(p.network) && p.active !== false) result[p.id] = SPECIAL_DOWNSTREAM_MARKUP;
+  });
+  return result;
+};
+
+/** Default store selling price: cost plus 1 cedi for MashUp, plus 0.80 for MTN / Telecel Special. */
+export const getMashupDefaultStorePrice = (cost: number, network?: string | null): number =>
+  roundMoney(Number(cost) + (isPriceLockedSpecialNetwork(network) ? SPECIAL_STORE_DEFAULT_PROFIT : MASHUP_STORE_DEFAULT_PROFIT));
+
+/** Highest store selling price allowed: cost plus 2 cedis for MashUp, plus 2.50 for MTN / Telecel Special. */
+export const getMashupMaxStorePrice = (cost: number, network?: string | null): number =>
+  roundMoney(Number(cost) + (isPriceLockedSpecialNetwork(network) ? SPECIAL_STORE_MAX_PROFIT : MASHUP_STORE_MAX_PROFIT));
+
+/** Maximum store profit in cedis for a locked network. */
+export const getLockedMaxProfit = (network?: string | null): number =>
+  isPriceLockedSpecialNetwork(network) ? SPECIAL_STORE_MAX_PROFIT : MASHUP_STORE_MAX_PROFIT;
 
 export const isSpecialNetwork = (value?: string | null): value is SpecialNetworkKey =>
   SPECIAL_NETWORK_KEYS.includes(normalizeKey(value) as SpecialNetworkKey);

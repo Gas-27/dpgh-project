@@ -6,7 +6,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Percent, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, getMashupDownstreamMarkups, roundMoney, MASHUP_LOCKED_MESSAGE } from "@/lib/networkConfig";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, getLockedDownstreamMarkups, roundMoney, getLockedPriceMessage, getLockedProfitDescription, isLockedPricingNetwork } from "@/lib/networkConfig";
 
 interface SubagentPricesManagerProps {
   agentStoreId: string;
@@ -66,8 +66,9 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     return networkMatch && p.active !== false;
   });
 
-  // MashUp subagent base prices are fixed: agent cost + 0.30 (first 4) or + 0.60 (the rest).
-  const mashupMarkups = React.useMemo(() => getMashupDownstreamMarkups(packages), [packages]);
+  // Subagent base prices are fixed for MashUp (agent cost + 0.30 first 4 / + 0.60 rest)
+  // and for MTN Special / Telecel Special (agent cost + 0.50).
+  const mashupMarkups = React.useMemo(() => getLockedDownstreamMarkups(packages), [packages]);
   const getMashupBase = (pkg: any): number | undefined => {
     const markup = mashupMarkups[pkg.id];
     if (markup === undefined) return undefined;
@@ -111,7 +112,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
 
   const handlePriceChange = (packageId: string, value: string) => {
     if (mashupMarkups[packageId] !== undefined) {
-      toast({ title: "Price locked", description: MASHUP_LOCKED_MESSAGE });
+      toast({ title: "Price locked", description: getLockedPriceMessage(packages.find(p => p.id === packageId)?.network) });
       return;
     }
     // Allow empty string for clearing the box - store as string for display
@@ -300,9 +301,9 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       </div>
 
       <p className="text-sm text-muted-foreground">Subagent profit = Their Selling Price - Your Cost Price. Use markup to increase all subagent prices by a % (based on your cost price).</p>
-      {networkFilter === "mashup" && (
+      {isLockedPricingNetwork(networkFilter) && (
         <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
-          {MASHUP_LOCKED_MESSAGE} Your profit is GHC 0.30 on the first 4 MashUp bundles and GHC 0.60 on the rest.
+          {getLockedPriceMessage(networkFilter)} {getLockedProfitDescription(networkFilter)}
         </div>
       )}
 
@@ -344,8 +345,8 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                           value={displayPrice}
                           readOnly={isLocked}
                           aria-readonly={isLocked}
-                          title={isLocked ? MASHUP_LOCKED_MESSAGE : undefined}
-                          onFocus={isLocked ? () => toast({ title: "Price locked", description: MASHUP_LOCKED_MESSAGE }) : undefined}
+                          title={isLocked ? getLockedPriceMessage(pkg.network) : undefined}
+                          onFocus={isLocked ? () => toast({ title: "Price locked", description: getLockedPriceMessage(pkg.network) }) : undefined}
                           onChange={e => handlePriceChange(pkg.id, e.target.value)}
                           className={`w-24 h-8 ${isLocked ? "cursor-not-allowed bg-muted" : ""}`}
                         />
