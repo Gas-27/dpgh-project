@@ -5047,7 +5047,7 @@ handleMobileNumberChange(digits);
                                 <TableCell className="uppercase text-sm">{o.network || "—"}</TableCell>
                                 <TableCell className="font-bold">{o.size_gb != null ? o.size_gb + "GB" : "—"}</TableCell>
                                 <TableCell>GHC {Number(o.selling_price || o.amount || 0).toFixed(2)}</TableCell>
-                                <TableCell><OrderStatusBadge status={o.order_status || o.fulfillment_status || o.status} network={o.network} /></TableCell>
+                                <TableCell><OrderStatusBadge status={normalizeOrderStatus(o)} network={o.network} /></TableCell>
                               </TableRow>
                             ))}
                           </TableBody>

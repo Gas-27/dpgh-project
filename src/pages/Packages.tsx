@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { cachedQuery } from "@/lib/cachedQuery";
 import { startVisiblePolling } from "@/lib/visiblePolling";
-import { isFinalOrderStatus, startOrderPolling } from "@/lib/orderPolling";
+import { isFinalOrder, startOrderPolling } from "@/lib/orderPolling";
 import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -1387,7 +1387,7 @@ const Packages = () => {
   const [orderPollRun, setOrderPollRun] = useState(0);
   const pendingOrderKey = useMemo(
     () => orders
-      .filter((o) => o.id && !isFinalOrderStatus(o.order_status, o.status, o.fulfillment_status))
+      .filter((o) => o.id && !isFinalOrder(o))
       .map((o) => o.id)
       .sort()
       .join(","),
@@ -1411,11 +1411,12 @@ const Packages = () => {
     if (!pendingOrderKey) return;
     const ids = pendingOrderKey.split(",").filter(Boolean);
     if (ids.length === 0) return;
+    const networkById = new Map(orders.map((o) => [o.id, o.network]));
     return startOrderPolling({
       task: async () => {
         const data = await fetchOrderStatuses(ids);
         if (!data) return true;
-        return data.some((row) => !isFinalOrderStatus(row.order_status, row.status, row.fulfillment_status));
+        return data.some((row) => !isFinalOrder({ ...row, network: row.network ?? networkById.get(row.id) }));
       },
       onExhausted: () => setOrderPollingStopped(true),
     });

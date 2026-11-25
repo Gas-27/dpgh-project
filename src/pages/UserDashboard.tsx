@@ -2581,7 +2581,7 @@ const renderApiDocs = () => (
                               )}
                             </td>
 <td className="px-3 py-2 text-xs">
-  <OrderStatusBadge status={fs} />
+  <OrderStatusBadge status={fs} network={order.network} />
   </td>
   <td className="px-3 py-2 text-xs">
   {fs === "delivered" ? (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>) : <span className="text-muted-foreground">—</span>}

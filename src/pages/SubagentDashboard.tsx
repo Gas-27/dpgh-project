@@ -3024,7 +3024,7 @@ onClick={handleBuyContinue}
                                 GHC {Number(profit).toFixed(2)}
                               </TableCell>
                               <TableCell>
-                                <Badge variant={order.fulfillment_status === "delivered" ? "default" : "secondary"}>
+                                <Badge variant={normalizeOrderStatus(order) === "delivered" ? "default" : "secondary"}>
                                   {getOrderStage(order)}
                                 </Badge>
                               </TableCell>
@@ -3032,7 +3032,7 @@ onClick={handleBuyContinue}
                                 {new Date(order.created_at).toLocaleString()}
                               </TableCell>
                               <TableCell>
-                                {(order.fulfillment_status === "delivered" || order.status === "delivered") ? (
+                                {normalizeOrderStatus(order) === "delivered" ? (
                                   (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setReportOrder(order)}>Report not received</Button>)
                                 ) : <span className="text-xs text-muted-foreground">—</span>}
                               </TableCell>

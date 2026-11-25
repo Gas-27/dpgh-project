@@ -114,7 +114,14 @@ export function OrderStatusBadge({ status, network }: OrderStatusBadgeProps) {
   const normalizedNetwork = network?.toLowerCase().replace(/[\s_-]+/g, "") ?? "";
   const isTelecelOrAirtelTigoWaiting = key === "waiting" &&
     (normalizedNetwork === "telecel" || normalizedNetwork === "airteltigo");
-  const config = isTelecelOrAirtelTigoWaiting
+  const isSpecialPlaced = key === "pending" && (normalizedNetwork === "mtnspecial" || normalizedNetwork === "telecelspecial");
+  const config = isSpecialPlaced
+    ? {
+        label: "Processing",
+        className: "bg-blue-600/20 text-blue-400 border border-blue-600/30",
+        description: "Your order has been received and is queued.\nIt will be sent to the network shortly. The status will update automatically once it is delivered.",
+      }
+    : isTelecelOrAirtelTigoWaiting
     ? {
         label: "Waiting",
         className: "bg-yellow-600/20 text-yellow-400 border border-yellow-600/30",
