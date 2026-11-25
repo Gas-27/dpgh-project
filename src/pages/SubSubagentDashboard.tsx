@@ -71,7 +71,7 @@ import ScheduleSms from "@/components/ScheduleSms";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
-import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE, getMashupDownstreamMarkups, getMashupDefaultStorePrice, getMashupMaxStorePrice } from "@/lib/networkConfig";
 import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import NotificationPopup from "@/components/NotificationPopup";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
@@ -1315,7 +1315,19 @@ const handleSaveStore = async () => {
 
 
 
+  const mashupMarkups = getMashupDownstreamMarkups(packages);
+  const isMashupPackageId = (packageId: string) => mashupMarkups[packageId] !== undefined;
+  const getMashupCost = (packageId: string) => Number(basePrices[packageId] || packages.find(p => p.id === packageId)?.price || 0);
+
   const handlePriceChange = (packageId: string, value: string) => {
+    if (isMashupPackageId(packageId) && value !== "") {
+      const maxPrice = getMashupMaxStorePrice(getMashupCost(packageId));
+      if (parseFloat(value) > maxPrice) {
+        toast({ title: "Maximum price reached", description: `The most you can charge for this MashUp bundle is GHC ${maxPrice.toFixed(2)} (GHC 2.00 profit).`, variant: "destructive" });
+        setEditedPrices(prev => ({ ...prev, [packageId]: maxPrice }));
+        return;
+      }
+    }
     // Allow empty string for clearing the box - store as string for display
     setEditedPrices(prev => ({
       ...prev,
@@ -1334,7 +1346,8 @@ const handleSaveStore = async () => {
     
     filteredPackages.forEach(pkg => {
       const basePrice = basePrices[pkg.id] || pkg.price || 0;
-      const newPrice = basePrice * (1 + markup);
+      let newPrice = basePrice * (1 + markup);
+      if (isMashupPackageId(pkg.id)) newPrice = Math.min(newPrice, getMashupMaxStorePrice(basePrice));
       setEditedPrices(prev => ({
         ...prev,
         [pkg.id]: parseFloat(newPrice.toFixed(2))
@@ -1373,6 +1386,15 @@ const handleSaveStore = async () => {
           toast({
             title: "Invalid Price",
             description: `Your price cannot be below agent's base price (GHC ${basePrice.toFixed(2)})`,
+            variant: "destructive"
+          });
+          setSavingPrices(false);
+          return;
+        }
+        if (isMashupPackageId(packageId) && price > getMashupMaxStorePrice(getMashupCost(packageId)) + 0.001) {
+          toast({
+            title: "Invalid Price",
+            description: `MashUp price cannot exceed GHC ${getMashupMaxStorePrice(getMashupCost(packageId)).toFixed(2)} (GHC 2.00 maximum profit)`,
             variant: "destructive"
           });
           setSavingPrices(false);
@@ -2801,9 +2823,10 @@ handleMobileNumberChange(digits);
                         {filteredPackages.length > 0 ? (
                           filteredPackages.map(pkg => {
                             const costFromAgent = basePrices[pkg.id] || pkg.price || 0;
+                            const mashupMax = isMashupPackageId(pkg.id) ? getMashupMaxStorePrice(costFromAgent) : undefined;
                             const savedPrice = subagentPrices[pkg.id];
-                            const cur = editedPrices[pkg.id] ?? savedPrice ?? costFromAgent;
-                            const profit = cur - costFromAgent;
+                            const cur = editedPrices[pkg.id] ?? savedPrice ?? (mashupMax !== undefined ? getMashupDefaultStorePrice(costFromAgent) : costFromAgent);
+                            const profit = Number(cur) - costFromAgent;
                             const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < costFromAgent;
                             const hasSavedPrice = savedPrice !== undefined;
                             const isInactive = pkg.active === false;
@@ -2819,12 +2842,16 @@ handleMobileNumberChange(digits);
                                       type="number" 
                                       step="0.01" 
                                       min={costFromAgent}
+                                      max={mashupMax}
                                       value={cur} 
                                       onChange={e => handlePriceChange(pkg.id, e.target.value)} 
                                       className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !editedPrices[pkg.id] ? "border-green-500" : ""}`}
                                     />
                                     {isInvalid && (
                                       <p className="text-xs text-red-500">Min: GHC {costFromAgent.toFixed(2)}</p>
+                                    )}
+                                    {mashupMax !== undefined && (
+                                      <p className="text-xs text-muted-foreground">Max: GHC {mashupMax.toFixed(2)}</p>
                                     )}
                                     {hasSavedPrice && !editedPrices[pkg.id] && (
                                       <p className="text-xs text-green-500">Saved</p>

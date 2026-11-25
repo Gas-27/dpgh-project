@@ -96,7 +96,7 @@ import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
-import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE, getMashupDefaultStorePrice, getMashupMaxStorePrice } from "@/lib/networkConfig";
 import { isMtnNumber } from "@/lib/phoneUtils";
 import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import ComplaintsManager from "@/components/ComplaintsManager";
@@ -1591,7 +1591,17 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
   };
 
   // Price handling with markup
+  const isMashupPkg = (pkg?: { network?: string | null }) => isMashupNetwork(pkg?.network);
   const handlePriceChange = (id: string, v: string) => {
+    const pkg = packages.find(p => p.id === id);
+    if (pkg && isMashupPkg(pkg) && v !== "") {
+      const maxPrice = getMashupMaxStorePrice(pkg.agent_price);
+      if (parseFloat(v) > maxPrice) {
+        toast({ title: "Maximum price reached", description: `The most you can charge for this MashUp bundle is GHC ${maxPrice.toFixed(2)} (GHC 2.00 profit).`, variant: "destructive" });
+        setEditedPrices(p => ({ ...p, [id]: maxPrice }));
+        return;
+      }
+    }
     // Allow empty string for clearing the box - store as string for display
     setEditedPrices(p => ({ ...p, [id]: v === "" ? "" : (parseFloat(v) || v) }));
   };
@@ -1603,6 +1613,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         const numPrice = typeof sp === "string" ? parseFloat(sp) : sp;
         if (isNaN(numPrice) || numPrice <= 0) { toast({ title: "Invalid price", variant: "destructive" }); setSavingPrices(false); return; }
         if (numPrice < pkg.agent_price) { toast({ title: "Price below cost", variant: "destructive" }); setSavingPrices(false); return; }
+        if (isMashupPkg(pkg) && numPrice > getMashupMaxStorePrice(pkg.agent_price) + 0.001) { toast({ title: "Price too high", description: `MashUp price cannot exceed GHC ${getMashupMaxStorePrice(pkg.agent_price).toFixed(2)} (GHC 2.00 maximum profit)`, variant: "destructive" }); setSavingPrices(false); return; }
       }
       for (const [id, sp] of Object.entries(editedPrices)) {
         const { error: priceError } = agentPrices[id] !== undefined
@@ -1641,6 +1652,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       let newPrice = basePrice * multiplier;
       newPrice = Math.round(newPrice * 100) / 100;
       if (newPrice < basePrice) newPrice = basePrice;
+      if (isMashupPkg(pkg)) newPrice = Math.min(newPrice, getMashupMaxStorePrice(basePrice));
       newEdited[pkg.id] = newPrice;
       appliedCount++;
     }
@@ -3330,7 +3342,7 @@ return (
             </div>
             <p className="text-sm text-muted-foreground">Your profit = Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
             <Card className="border-border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Base Price</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Profit</TableHead></TableRow></TableHeader>
-              <TableBody>{filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price; const profit = cur - pkg.agent_price; const isInactive = pkg.active === false; return (<TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}><TableCell className="font-display font-bold">{getPackageDisplayName(pkg)}{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell><TableCell className="text-muted-foreground">GHC {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GHC {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
+              <TableBody>{filteredPackages.map(pkg => { const mashupMax = isMashupPkg(pkg) ? getMashupMaxStorePrice(pkg.agent_price) : undefined; const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? (mashupMax !== undefined ? getMashupDefaultStorePrice(pkg.agent_price) : pkg.price); const profit = Number(cur) - pkg.agent_price; const isInactive = pkg.active === false; return (<TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}><TableCell className="font-display font-bold">{getPackageDisplayName(pkg)}{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell><TableCell className="text-muted-foreground">GHC {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" max={mashupMax} value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" />{mashupMax !== undefined && <p className="text-xs text-muted-foreground mt-1">Max: GHC {mashupMax.toFixed(2)}</p>}</TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GHC {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
           </TabsContent>
 
           {/* ============================= FLYER GENERATOR ============================= */}

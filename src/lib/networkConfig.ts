@@ -45,6 +45,55 @@ export const filterVisiblePackages = <T extends { network?: string | null; activ
 export const filterAdminPackages = <T extends { network?: string | null; bundle_id?: number | string | null }>(packages: T[] | null | undefined): T[] =>
   (packages ?? []).filter((p) => !isMashupNetwork(p.network) || MASHUP_BUNDLE_IDS.includes(Number(p.bundle_id)));
 
+/** Fixed MashUp pricing rules for the agent chain (agent -> subagent -> sub-subagent). */
+export const MASHUP_FIRST_TIER_COUNT = 4;
+export const MASHUP_DOWNSTREAM_MARKUP_FIRST = 0.3;
+export const MASHUP_DOWNSTREAM_MARKUP_REST = 0.6;
+export const MASHUP_STORE_DEFAULT_PROFIT = 1;
+export const MASHUP_STORE_MAX_PROFIT = 2;
+export const MASHUP_LOCKED_MESSAGE =
+  "MTN MashUp prices are set by default and cannot be changed. The price shown here is what you get with every MashUp purchase.";
+
+export const roundMoney = (value: number): number => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+/** Data amount in MB parsed from a MashUp package name such as "198 mins + 512MB" or "2.6GB". */
+const getMashupDataMb = (pkg: { size_gb_text?: string | null; size_gb?: number | string | null }): number => {
+  const text = String(pkg.size_gb_text ?? "");
+  const match = text.match(/([\d.,]+)\s*(GB|MB)/i);
+  if (match) {
+    const amount = parseFloat(match[1].replace(/,/g, ""));
+    if (!isNaN(amount)) return match[2].toUpperCase() === "GB" ? amount * 1024 : amount;
+  }
+  const gb = Number(pkg.size_gb);
+  return isNaN(gb) ? Number.MAX_SAFE_INTEGER : gb * 1024;
+};
+
+/**
+ * Fixed profit added on top of the parent's cost for each visible MashUp package.
+ * The 4 smallest packages get 0.30 and every other package gets 0.60.
+ */
+export const getMashupDownstreamMarkups = <T extends { id: string; network?: string | null; active?: boolean | null; bundle_id?: number | string | null; size_gb_text?: string | null; size_gb?: number | string | null }>(
+  packages: T[] | null | undefined,
+): Record<string, number> => {
+  const mashups = (packages ?? []).filter((p) => isMashupNetwork(p.network) && p.active !== false && MASHUP_BUNDLE_IDS.includes(Number(p.bundle_id)));
+  const sorted = [...mashups].sort((a, b) => {
+    const diff = getMashupDataMb(a) - getMashupDataMb(b);
+    if (diff !== 0) return diff;
+    return MASHUP_BUNDLE_IDS.indexOf(Number(a.bundle_id)) - MASHUP_BUNDLE_IDS.indexOf(Number(b.bundle_id));
+  });
+  const result: Record<string, number> = {};
+  sorted.forEach((pkg, index) => {
+    result[pkg.id] = index < MASHUP_FIRST_TIER_COUNT ? MASHUP_DOWNSTREAM_MARKUP_FIRST : MASHUP_DOWNSTREAM_MARKUP_REST;
+  });
+  return result;
+};
+
+/** Default store selling price for a MashUp package: cost plus 1 cedi. */
+export const getMashupDefaultStorePrice = (cost: number): number => roundMoney(Number(cost) + MASHUP_STORE_DEFAULT_PROFIT);
+
+/** Highest store selling price allowed for a MashUp package: cost plus 2 cedis. */
+export const getMashupMaxStorePrice = (cost: number): number => roundMoney(Number(cost) + MASHUP_STORE_MAX_PROFIT);
+
 export const isSpecialNetwork = (value?: string | null): value is SpecialNetworkKey =>
   SPECIAL_NETWORK_KEYS.includes(normalizeKey(value) as SpecialNetworkKey);
 

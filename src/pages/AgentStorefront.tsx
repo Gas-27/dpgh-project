@@ -43,7 +43,7 @@ import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkSubTabs from "@/components/NetworkSubTabs";
-import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, packageMatchesNetwork, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
+import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, packageMatchesNetwork, MASHUP_MTN_ONLY_MESSAGE, getMashupDefaultStorePrice, getMashupMaxStorePrice } from "@/lib/networkConfig";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -1050,7 +1050,14 @@ const searchOrders = useCallback(async (input?: string) => {
 
   // ── Render helpers ──
   const filteredPackages = packages.filter((p) => packageMatchesNetwork(p.network, networkFilter));
-  const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? agentSubagentPrices[pkg.id] ?? pkg.price;
+  const getPrice = (pkg: DataPackage) => {
+    if (isMashupNetwork(pkg.network)) {
+      const cost = Number((pkg as any).agent_price ?? pkg.price);
+      const own = agentPrices[pkg.id];
+      return own != null ? Math.min(Number(own), getMashupMaxStorePrice(cost)) : getMashupDefaultStorePrice(cost);
+    }
+    return agentPrices[pkg.id] ?? agentSubagentPrices[pkg.id] ?? pkg.price;
+  };
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
   const displayWhatsApp = store ? formatDisplayPhone(store.whatsapp_number) : "";
@@ -1599,7 +1606,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                 >
                   <option value="none">None (use per-line sizes)</option>
                   {packages.filter(p => p.network.toLowerCase() === bulkNetwork).map(p => {
-                    const price = agentPrices[p.id] ?? p.price;
+                    const price = getPrice(p);
                     return <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GHC {price.toFixed(2)}</option>;
                   })}
                 </select>
@@ -1619,7 +1626,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                   const totalGb = parsed.reduce((sum, r) => sum + (r.size || 0), 0);
                   const totalCost = parsed.reduce((sum, r) => {
                     const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
-                    const price = pkg ? (agentPrices[pkg.id] ?? pkg.price) : 0;
+                    const price = pkg ? getPrice(pkg) : 0;
                     return sum + price;
                   }, 0);
                   const paystackFee = Math.ceil(totalCost * 0.0198 * 100) / 100;
@@ -1662,7 +1669,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                             try {
                               const recipients = parsed.map(r => {
                                 const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
-                                const price = pkg ? (agentPrices[pkg.id] ?? pkg.price) : 0;
+                                const price = pkg ? getPrice(pkg) : 0;
                                 return {
                                   phone: r.phone,
                                   size_gb: r.size,
@@ -1813,7 +1820,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
       <PaymentVerifier />
       <AFARegistrationSuccess />
 
-      {/* Report Complaint Dialog — lazy-loaded to break circular dep */}
+      {/* Report Complaint Dialog �� lazy-loaded to break circular dep */}
       <Suspense fallback={null}>
         {reportOrder && (
           <ReportComplaintDialog

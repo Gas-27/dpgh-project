@@ -31,7 +31,7 @@ import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
   import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkSubTabs from "@/components/NetworkSubTabs";
-import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, packageMatchesNetwork, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
+import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, packageMatchesNetwork, MASHUP_MTN_ONLY_MESSAGE, getMashupDefaultStorePrice, getMashupMaxStorePrice } from "@/lib/networkConfig";
   import NotificationPopup from "@/components/NotificationPopup";
 import SmsComposer from "@/components/SmsComposer";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
@@ -649,6 +649,13 @@ export function SubSubagentStorefront() {
           seenOwnSell.add(p.package_id);
         }
       });
+      (pkgRes.data || []).forEach((p: any) => {
+        if (!isMashupNetwork(p.network)) return;
+        const cost = baseCostMap[p.id];
+        priceMap[p.id] = seenOwnSell.has(p.id)
+          ? Math.min(priceMap[p.id], getMashupMaxStorePrice(cost))
+          : getMashupDefaultStorePrice(cost);
+      });
       
   setSubagentPrices(priceMap);
   const { data: promoSetting } = await supabase
@@ -703,6 +710,13 @@ export function SubSubagentStorefront() {
           priceMap[p.package_id] = Number(p.customer_sell_price);
           seenOwnSell.add(p.package_id);
         }
+      });
+      (pkgs.data || []).forEach((p: any) => {
+        if (!isMashupNetwork(p.network)) return;
+        const cost = baseCostMap[p.id];
+        priceMap[p.id] = seenOwnSell.has(p.id)
+          ? Math.min(priceMap[p.id], getMashupMaxStorePrice(cost))
+          : getMashupDefaultStorePrice(cost);
       });
       
       setSubagentPrices(priceMap);

@@ -6,7 +6,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Percent, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, getMashupDownstreamMarkups, roundMoney, MASHUP_LOCKED_MESSAGE } from "@/lib/networkConfig";
 
 interface SubagentPricesManagerProps {
   agentStoreId: string;
@@ -66,7 +66,54 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     return networkMatch && p.active !== false;
   });
 
+  // MashUp subagent base prices are fixed: agent cost + 0.30 (first 4) or + 0.60 (the rest).
+  const mashupMarkups = React.useMemo(() => getMashupDownstreamMarkups(packages), [packages]);
+  const getMashupBase = (pkg: any): number | undefined => {
+    const markup = mashupMarkups[pkg.id];
+    if (markup === undefined) return undefined;
+    return roundMoney(Number(pkg.agent_price || pkg.price) + markup);
+  };
+
+  // Persist the fixed MashUp prices so storefronts and purchase flows read the same value.
+  React.useEffect(() => {
+    if (loadingPrices || !agentStoreId) return;
+    const pending = packages
+      .map(pkg => ({ pkg, price: getMashupBase(pkg) }))
+      .filter((item): item is { pkg: any; price: number } =>
+        item.price !== undefined && Math.abs((savedBasePrices[item.pkg.id] ?? -1) - item.price) > 0.001);
+    if (pending.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const synced: Record<string, number> = {};
+      for (const { pkg, price } of pending) {
+        const { data: existingRows, error: fetchError } = await supabase
+          .from("subagent_package_prices")
+          .select("id")
+          .eq("agent_store_id", agentStoreId)
+          .is("subagent_store_id", null)
+          .eq("package_id", pkg.id)
+          .order("created_at", { ascending: false });
+        if (fetchError) continue;
+        const { error } = existingRows && existingRows.length > 0
+          ? await supabase.from("subagent_package_prices").update({ base_price: price }).eq("id", existingRows[0].id)
+          : await supabase.from("subagent_package_prices").insert({ agent_store_id: agentStoreId, subagent_store_id: null, package_id: pkg.id, base_price: price });
+        if (!error) synced[pkg.id] = price;
+      }
+      if (!cancelled && Object.keys(synced).length > 0) {
+        setSavedBasePrices(prev => ({ ...prev, ...synced }));
+        if (onPricesSaved) onPricesSaved();
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingPrices, agentStoreId, packages, savedBasePrices]);
+
   const handlePriceChange = (packageId: string, value: string) => {
+    if (mashupMarkups[packageId] !== undefined) {
+      toast({ title: "Price locked", description: MASHUP_LOCKED_MESSAGE });
+      return;
+    }
     // Allow empty string for clearing the box - store as string for display
     setEditedPrices(prev => ({
       ...prev,
@@ -84,6 +131,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     const networkName = getNetworkLabel(networkFilter);
     
     filteredPackages.forEach(pkg => {
+      if (mashupMarkups[pkg.id] !== undefined) return;
       // Use agent_price as the base (this already has admin's custom price if set)
       const basePrice = pkg.agent_price || pkg.price;
       const newPrice = basePrice * (1 + markup);
@@ -252,6 +300,11 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       </div>
 
       <p className="text-sm text-muted-foreground">Subagent profit = Their Selling Price - Your Cost Price. Use markup to increase all subagent prices by a % (based on your cost price).</p>
+      {networkFilter === "mashup" && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+          {MASHUP_LOCKED_MESSAGE} Your profit is GHC 0.30 on the first 4 MashUp bundles and GHC 0.60 on the rest.
+        </div>
+      )}
 
       <Card className="border-border">
         <div className="overflow-x-auto">
@@ -274,7 +327,9 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
               ) : (
                 filteredPackages.map(pkg => {
                   const basePrice = pkg.agent_price || pkg.price;
-                  const displayPrice = editedPrices[pkg.id] ?? savedBasePrices[pkg.id] ?? basePrice;
+                  const lockedPrice = getMashupBase(pkg);
+                  const isLocked = lockedPrice !== undefined;
+                  const displayPrice = isLocked ? lockedPrice : (editedPrices[pkg.id] ?? savedBasePrices[pkg.id] ?? basePrice);
                   const profit = Number(displayPrice) - basePrice;
                   
                   return (
@@ -287,8 +342,12 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                           step="0.01"
                           min={basePrice}
                           value={displayPrice}
+                          readOnly={isLocked}
+                          aria-readonly={isLocked}
+                          title={isLocked ? MASHUP_LOCKED_MESSAGE : undefined}
+                          onFocus={isLocked ? () => toast({ title: "Price locked", description: MASHUP_LOCKED_MESSAGE }) : undefined}
                           onChange={e => handlePriceChange(pkg.id, e.target.value)}
-                          className="w-24 h-8"
+                          className={`w-24 h-8 ${isLocked ? "cursor-not-allowed bg-muted" : ""}`}
                         />
                       </TableCell>
                       <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
