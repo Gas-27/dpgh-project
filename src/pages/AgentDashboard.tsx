@@ -96,7 +96,8 @@ import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
-import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
+import { isMtnNumber } from "@/lib/phoneUtils";
 import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import DomainDashboardPanel from "@/components/DomainDashboardPanel";
@@ -1033,7 +1034,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         ...pkg,
         agent_price: customPriceMap[pkg.id] ?? pkg.agent_price, // Use custom base price if set by admin
       }));
-      setPackages(pkgs);
+      setPackages(filterVisiblePackages(pkgs));
       const pm: Record<string, number> = {};
       (priceR.data ?? []).forEach((p: any) => { pm[p.package_id] = p.sell_price; });
       setAgentPrices(pm);
@@ -1157,7 +1158,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       await fetchTotalProfit();
     } else {
           const { data: pkgData } = await supabase.from("data_packages").select("*, view_count").order("size_gb");
-      setPackages(pkgData ?? []);
+      setPackages(filterVisiblePackages(pkgData ?? []));
     }
     setLoading(false);
   };
@@ -1675,7 +1676,12 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
   };
 
   const handleBuyConfirm = async () => {
-    if (!store || !buyPkg) return; setBuyLoading(true);
+    if (!store || !buyPkg) return;
+    if (isMashupNetwork(buyPkg.network) && !isMtnNumber(buyPhone)) {
+      toast({ title: "MTN numbers only", description: MASHUP_MTN_ONLY_MESSAGE, variant: "destructive" });
+      return;
+    }
+    setBuyLoading(true);
     try {
       await assertNumbersNotBlocked([buyPhone, user?.user_metadata?.phone, store.support_number, store.whatsapp_number]);
     } catch (blockedErr: any) {
@@ -1705,28 +1711,8 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       // Extract size_gb the same way verify-payment does: match first numeric value
       const packageName = buyPkg.size_gb_text || buyPkg.size_gb?.toString() || "";
       const sizeMatch = packageName.toString().match(/(\d+(?:\.\d+)?)/);
-      const extractedSize = sizeMatch ? parseFloat(sizeMatch[1]) : buyPkg.size_gb;
-      
-      // For mashup packages, get datahubnet ID from the hardcoded mapping
-      let dataPackageId = undefined;
-      console.log("[v0] Wallet purchase - buyPkg details:", { network: buyPkg.network, size_gb_text: buyPkg.size_gb_text, size_gb: buyPkg.size_gb, allKeys: Object.keys(buyPkg) });
-      if (buyPkg.network === "mashup" && buyPkg.size_gb_text) {
-        // Map size_gb_text to datahubnet ID
-        const mashupMapping: Record<string, number> = {
-          "1.7GB": 14,
-          "5.1GB": 3,
-          "2.6 GB + 1,077 mins": 16,
-          "8.2GB": 17,
-          "11.9GB": 18,
-          "3.61GB + 1485Mins": 20,
-          "15.3GB": 19,
-        };
-        dataPackageId = mashupMapping[buyPkg.size_gb_text];
-        console.log("[v0] Mashup mapping lookup - size_gb_text:", buyPkg.size_gb_text, "result:", dataPackageId);
-      } else {
-        console.log("[v0] Not a mashup or missing size_gb_text - network:", buyPkg.network);
-      }
-      
+      const extractedSize = isMashupNetwork(buyPkg.network) ? buyPkg.size_gb : (sizeMatch ? parseFloat(sizeMatch[1]) : buyPkg.size_gb);
+
       const { data: od, error: oe } = await supabase.from("orders").insert({ 
         id: walletOrderId,
         customer_number: buyPhone.trim(), 
@@ -1740,9 +1726,8 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         payment_method: "wallet"
       }).select("id").single();
       if (oe) { await refundFailedOrder(walletOrderId); toast({ title: "Order error", description: oe.message, variant: "destructive" }); setBuyLoading(false); return; }
-      console.log("[v0] Wallet order created, invoking fulfill-order for order:", od.id, "network:", buyPkg.network, "dataPackageId:", dataPackageId);
-      const { data: fulfillData, error: fulfillError } = await supabase.functions.invoke("fulfill-order", { body: { order_id: od.id, data_package_id: dataPackageId } });
-      if (fulfillError) { console.log("[v0] Fulfill-order error:", fulfillError); toast({ title: "Fulfillment error", description: fulfillError.message || "Order created but fulfillment failed", variant: "destructive" }); }
+      const { data: fulfillData, error: fulfillError } = await supabase.functions.invoke("fulfill-order", { body: { order_id: od.id } });
+      if (fulfillError) { toast({ title: "Fulfillment error", description: fulfillError.message || "Order created but fulfillment failed", variant: "destructive" }); }
       setStore({ ...store, wallet_balance: debit.balanceAfter });
       toast({ title: "Order placed!" }); setBuyDialogOpen(false);
       fetchAllData();
@@ -2984,7 +2969,7 @@ return (
                           setSourceDialogOpen(true);
                         };
 
-                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}{isMergedFromUser && <div className="mt-1"><Badge variant="outline" className="text-xs">From user account</Badge></div>}</TableCell><TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell><TableCell className="uppercase text-sm">{order.network || "—"}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer">{subSubagentName}</Badge></button> : isSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subagentName}</Badge></button> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={normalizeOrderStatus(order)} /></TableCell><TableCell>{(order.status === "refunded" || order.fulfillment_status === "refunded") ? <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">Refunded</Badge> : <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>}</TableCell><TableCell>{normalizeOrderStatus(order) === "delivered" ? (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>) : <span className="text-muted-foreground">—</span>}</TableCell></TableRow>); })}</TableBody></Table></div>
+                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}{isMergedFromUser && <div className="mt-1"><Badge variant="outline" className="text-xs">From user account</Badge></div>}</TableCell><TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell><TableCell className={isSpecialNetwork(order.network) ? "text-sm" : "uppercase text-sm"}>{order.network ? (isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network) : "—"}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer">{subSubagentName}</Badge></button> : isSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subagentName}</Badge></button> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={normalizeOrderStatus(order)} /></TableCell><TableCell>{(order.status === "refunded" || order.fulfillment_status === "refunded") ? <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">Refunded</Badge> : <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>}</TableCell><TableCell>{normalizeOrderStatus(order) === "delivered" ? (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>) : <span className="text-muted-foreground">—</span>}</TableCell></TableRow>); })}</TableBody></Table></div>
                     {apiReportOrder && (<ReportComplaintDialog open={Boolean(apiReportOrder)} onOpenChange={(open) => { if (!open) setApiReportOrder(null); }} order={{ id: apiReportOrder.id, customer_number: apiReportOrder.customer_number, network: apiReportOrder.network, size_gb: Number(apiReportOrder.size_gb || 0), amount: Number(apiReportOrder.selling_price || apiReportOrder.amount || 0), created_at: apiReportOrder.created_at, fulfillment_status: apiReportOrder.fulfillment_status || "delivered", status: apiReportOrder.status || "delivered" }} complaintType="api_order" agentStoreId={store?.id} />)}
                     {/* Pagination */}
                     {filteredOrders.length > ordersPerPage && (() => {
@@ -3320,6 +3305,7 @@ return (
                   { key: "telecel", label: "Telecel" },
                   { key: "mtn_special", label: "MTN Special" },
                   { key: "telecel_special", label: "Telecel Special" },
+                  { key: "mashup", label: "MTN MashUp" },
                 ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key)).map(({ key, label }) => (
                   <Button 
                     key={key} 
@@ -4542,6 +4528,7 @@ handleMobileNumberChange(digits);
                     { key: "telecel", label: "Telecel" },
                     { key: "mtn_special", label: "MTN Special" },
                     { key: "telecel_special", label: "Telecel Special" },
+                    { key: "mashup", label: "MTN MashUp" },
                     { key: "afa", label: "AFA Registration" },
                   ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key && p.active !== false)).map(({ key, label }) => (
                     <Button 

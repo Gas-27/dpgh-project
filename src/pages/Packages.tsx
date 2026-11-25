@@ -55,10 +55,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
-import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
+import { filterVisiblePackages, getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
 
 // ──────────────────────────────────────────────────────────── Types ─────
-type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel" | "mtn_special" | "telecel_special";
+type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel" | "mtn_special" | "telecel_special" | "mashup";
 
 interface DataPackage {
   id: string;
@@ -117,6 +117,7 @@ const networkConfig: Record<Network, { label: string; color: string }> = {
   telecel: { label: "Telecel", color: "text-red-400" },
   mtn_special: { label: "MTN Special", color: "text-yellow-400" },
   telecel_special: { label: "Telecel Special", color: "text-red-400" },
+  mashup: { label: "MTN MashUp", color: "text-yellow-400" },
 };
 
 const SPIN_COOLDOWN_MS = 8 * 60 * 60 * 1000;
@@ -1221,7 +1222,7 @@ const Packages = () => {
   const [showAgentPrice, setShowAgentPrice] = useState(true);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(() => {
     const n = searchParams.get("network");
-    return n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special" ? n : "mtn";
+    return n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special" || n === "mashup" ? n : "mtn";
   });
   const [loading, setLoading] = useState(true);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
@@ -1335,7 +1336,7 @@ const Packages = () => {
   cachedQuery("data_packages:storefront", () => supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count,inactive_note").order("size_gb", { ascending: true }))
       .then(({ data, error }) => {
         if (error) console.error("[v0] Failed to fetch data packages:", error);
-        setPackages(data ?? []);
+        setPackages(filterVisiblePackages(data ?? []));
         setLoading(false);
       });
   }, []);
@@ -1349,7 +1350,7 @@ const Packages = () => {
         .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count,inactive_note")
         .order("size_gb", { ascending: true }));
       if (error) throw error;
-      return data ?? [];
+      return filterVisiblePackages(data ?? []);
     },
     { revalidateInterval: 30000, fallbackData: packages }
   );
@@ -1371,7 +1372,7 @@ const Packages = () => {
         .from("data_packages")
         .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count,inactive_note")
         .order("size_gb", { ascending: true }));
-      if (data) setPackages(data);
+      if (data) setPackages(filterVisiblePackages(data));
     };
 
     // TODO: the `site_config` table does not exist in the database, so the periodic
@@ -1430,7 +1431,7 @@ const Packages = () => {
   // Fetch Special MTN Mashup pricing
   useEffect(() => {
     const n = searchParams.get("network");
-    if (n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special") setSelectedNetwork(n as Network);
+    if (n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special" || n === "mashup") setSelectedNetwork(n as Network);
   }, [searchParams]);
 
   const filtered = useMemo(() => packages.filter(p => {

@@ -43,7 +43,7 @@ import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkSubTabs from "@/components/NetworkSubTabs";
-import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
+import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -205,7 +205,7 @@ const copyToClipboard = async (text: string, toast: any) => {
 // Note: getStoreNameFromSubdomain and slugify are now imported from @/utils/storeUtils
 
 const getNetworkLabelColor = (network: string) => {
-  const colors: Record<string, string> = { mtn: "#fbbf24", mtn_express: "#f59e0b", airteltigo: "#60a5fa", telecel: "#f87171", mtn_special: "#fbbf24", telecel_special: "#f87171" };
+  const colors: Record<string, string> = { mtn: "#fbbf24", mtn_express: "#f59e0b", airteltigo: "#60a5fa", telecel: "#f87171", mtn_special: "#fbbf24", telecel_special: "#f87171", mashup: "#fb923c" };
   return colors[network] || "#ffffff";
 };
 
@@ -812,7 +812,7 @@ const AgentStorefront = () => {
               .select("package_id, sell_price")
               .eq("agent_store_id", matched.agent_store_id),
           ]);
-          setPackages(pkgRes.data ?? []);
+          setPackages(filterVisiblePackages(pkgRes.data ?? []));
 
           // Use subagent prices if available, otherwise fall back to agent prices
           const priceMap: Record<string, number> = {};
@@ -846,7 +846,7 @@ const AgentStorefront = () => {
         supabase.from("subagent_package_prices").select("package_id, base_price, created_at").eq("agent_store_id", matched.id).is("subagent_store_id", null).order("created_at", { ascending: false }),
         supabase.from("app_settings").select("show_price_breakdown").eq("id", 1).single(),
       ]);
-      setPackages(pkgRes.data ?? []);
+      setPackages(filterVisiblePackages(pkgRes.data ?? []));
       const priceMap: Record<string, number> = {};
       (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = Number(p.sell_price); });
       const agentPriceMap: Record<string, number> = {};
@@ -1405,8 +1405,8 @@ const searchOrders = useCallback(async (input?: string) => {
 
           {/* ── Network filter ── */}
           <div className="container pb-6">
-<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-4">
-  {["mtn", "mtn_express", "telecel", "airteltigo"].map((net) => {
+<div className={`grid w-full grid-cols-2 gap-2 pb-2 ${packages.some((p) => isMashupNetwork(p.network)) ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
+  {["mtn", "mtn_express", "telecel", "airteltigo", ...(packages.some((p) => isMashupNetwork(p.network)) ? ["mashup"] : [])].map((net) => {
     const isSelected = getNetworkFamily(networkFilter) === net;
     return (
                 <Button
@@ -1417,10 +1417,11 @@ const searchOrders = useCallback(async (input?: string) => {
                   style={isSelected && net === "mtn" ? { background: "#fbbf24", color: "#000" } :
                          isSelected && net === "mtn_express" ? { background: "#f59e0b", color: "#000" } :
                          isSelected && net === "telecel" ? { background: "#ef4444", color: "#fff" } :
-                         isSelected && net === "airteltigo" ? { background: "#3b82f6", color: "#fff" } : {}}
+                         isSelected && net === "airteltigo" ? { background: "#3b82f6", color: "#fff" } :
+                         isSelected && net === "mashup" ? { background: "#f97316", color: "#fff" } : {}}
                   onClick={() => setNetworkFilter(net)}
                 >
-                  {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                  {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "airteltigo" ? "AirtelTigo" : net === "mashup" ? "MTN MashUp" : "Telecel"}
                 </Button>
     );
   })}

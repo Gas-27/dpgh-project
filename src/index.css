@@ -80,6 +80,7 @@
   .network-tabs .network-tab-active.network-tab-mtn_express { background: #fbbf24 !important; color: #111827 !important; border-color: #fbbf24 !important; }
   .network-tabs .network-tab-active.network-tab-airteltigo { background: #3b82f6 !important; color: #ffffff !important; border-color: #3b82f6 !important; }
   .network-tabs .network-tab-active.network-tab-telecel { background: #ef4444 !important; color: #ffffff !important; border-color: #ef4444 !important; }
+.network-tabs .network-tab-active.network-tab-mashup { background: #f97316 !important; color: #ffffff !important; border-color: #f97316 !important; }
   .delivery-progress-card,
   .delivery-progress-card [data-slot="card-header"],
   .delivery-progress-card [data-slot="card-content"] { color: #fff !important; background: #321274 !important; }

@@ -211,6 +211,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
             { key: "telecel", label: "Telecel" },
             { key: "mtn_special", label: "MTN Special" },
             { key: "telecel_special", label: "Telecel Special" },
+            { key: "mashup", label: "MTN MashUp" },
           ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key && p.active !== false)).map(({ key, label }) => (
             <Button
               key={key}

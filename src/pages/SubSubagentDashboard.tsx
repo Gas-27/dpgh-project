@@ -46,7 +46,7 @@ import DomainDashboardPanel from "@/components/DomainDashboardPanel";
 import { isValidStoreName, sanitizeStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import NetworkIndicator from "@/components/NetworkIndicator";
-import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
+import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength, isMtnNumber } from "@/lib/phoneUtils";
 import { isNumberSubmittedForApproval } from "@/lib/numberApprovalCheck";
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
@@ -71,7 +71,7 @@ import ScheduleSms from "@/components/ScheduleSms";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
-import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
 import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import NotificationPopup from "@/components/NotificationPopup";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
@@ -675,7 +675,7 @@ const SubSubagentDashboard = () => {
         setRefundedOrdersTotal(refAll.reduce((s: number, o: any) => s + (Number(o.refunded_amount ?? o.base_price ?? o.amount) || 0), 0));
         setWithdrawals(payoutData);
         setTransferRecipients(recipientsResult.data ?? []);
-        setPackages(packagesResult.data || []);
+        setPackages(filterVisiblePackages(packagesResult.data || []));
         
         // Set parent subagent store name if available
         if (parentSubagentResult.data?.store_name) {
@@ -804,7 +804,7 @@ const SubSubagentDashboard = () => {
         setTotalOrderCount(ordersResult.count ?? (ordersResult.data?.length || 0));
         setWithdrawals(payoutData2);
         setTransferRecipients(recipientsResult2.data ?? []);
-        setPackages(packagesResult.data || []);
+        setPackages(filterVisiblePackages(packagesResult.data || []));
         
         // Set parent subagent store name if available
         if (parentSubagentResult.data?.store_name) {
@@ -1469,6 +1469,10 @@ const handleSaveStore = async () => {
       toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" });
       return;
     }
+    if (isMashupNetwork(buyingPkg.network) && !isMtnNumber(buyCustomerNumber)) {
+      toast({ title: "Network mismatch", description: MASHUP_MTN_ONLY_MESSAGE, variant: "destructive" });
+      return;
+    }
     const detected = detectNetwork(buyCustomerNumber);
     const validMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detected === "mtn";
     if (!validMashup && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
@@ -1487,6 +1491,11 @@ const handleSaveStore = async () => {
       return;
     }
     
+    if (isMashupNetwork(buyingPkg.network) && !isMtnNumber(buyCustomerNumber)) {
+      toast({ title: "Network mismatch", description: MASHUP_MTN_ONLY_MESSAGE, variant: "destructive" });
+      return;
+    }
+
     // Validate phone matches selected network (allow mtn to buy mtn_mashup and mashup)
     const isValidForMTNMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detectNetwork(buyCustomerNumber) === "mtn";
     if (!isValidForMTNMashup && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
@@ -2740,6 +2749,7 @@ handleMobileNumberChange(digits);
                       { key: "telecel", label: "Telecel" },
                       { key: "mtn_special", label: "MTN Special" },
                       { key: "telecel_special", label: "Telecel Special" },
+                      { key: "mashup", label: "MTN MashUp" },
                     ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key && p.active !== false)).map(({ key, label }) => (
                       <Button 
                         key={key} 

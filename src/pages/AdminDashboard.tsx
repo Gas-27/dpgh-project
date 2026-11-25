@@ -56,7 +56,7 @@ import AdminPublicProductsManager from "@/components/AdminPublicProductsManager"
 import AdminProductsBoostManager from "@/components/AdminProductsBoostManager";
 import AdminReportedProducts from "@/components/AdminReportedProducts";
 import { Flag, Trophy, Info } from "lucide-react";
-import { isSpecialNetwork, getNetworkLabel, getPackageDisplayName } from "@/lib/networkConfig";
+import { isSpecialNetwork, getNetworkLabel, getPackageDisplayName, filterAdminPackages, isMashupNetwork, MASHUP_BUNDLE_IDS } from "@/lib/networkConfig";
 import AdminDomainPurchasesPanel from "@/components/AdminDomainPurchasesPanel";
 import AdminDomainRenewalsPanel from "@/components/AdminDomainRenewalsPanel";
 import PushNotificationManager from "@/components/PushNotificationManager";
@@ -103,9 +103,9 @@ import {
 // Interfaces
 // ============================================================
 interface DataPackage {
-  id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean; inactive_note?: string | null;
-}
-interface AgentStore {
+  id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean; inactive_note?: string | null; bundle_id?: number | string | null; size_gb_text?: string | null;
+  }
+  interface AgentStore {
     id: string; user_id: string; store_name: string; whatsapp_number: string; support_number: string;
     whatsapp_group: string | null; momo_number: string; momo_name: string; momo_network: string;
     approved: boolean; created_at: string; wallet_balance: number; topup_reference: string;
@@ -770,7 +770,7 @@ const AdminDashboard = () => {
     try {
       // Load packages and app settings only — withdrawals/agents/etc load lazily via handleTabChange
       const [pkgResult, appSettingsResult] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, size_gb_text, price, agent_price, api_price, active, inactive_note").order("size_gb").limit(300),
+        supabase.from("data_packages").select("id, network, size_gb, size_gb_text, bundle_id, price, agent_price, api_price, active, inactive_note").order("size_gb").limit(500),
         supabase
           .from("app_settings")
           .select("agent_registration_fee, chatbot_enabled, show_price_breakdown, show_api_price, show_agent_price, tab_controls")
@@ -778,7 +778,7 @@ const AdminDashboard = () => {
           .single(),
       ]);
 
-      setPackages(pkgResult.data ?? []);
+      setPackages(filterAdminPackages((pkgResult.data ?? []) as DataPackage[]));
 
       const appSettings = appSettingsResult.data;
       setTabControls((appSettings?.tab_controls as TabControls) ?? {});
@@ -1319,7 +1319,9 @@ const AdminDashboard = () => {
         if (payload.eventType === 'UPDATE') {
           setPackages(prev => prev.map(pkg => pkg.id === payload.new.id ? { ...pkg, ...payload.new } : pkg).sort((a, b) => a.size_gb - b.size_gb));
         } else if (payload.eventType === 'INSERT') {
-          setPackages(prev => [...prev, payload.new as DataPackage].sort((a, b) => a.size_gb - b.size_gb));
+          const inserted = payload.new as DataPackage;
+          if (isMashupNetwork(inserted.network) && !MASHUP_BUNDLE_IDS.includes(Number(inserted.bundle_id))) return;
+          setPackages(prev => [...prev, inserted].sort((a, b) => a.size_gb - b.size_gb));
         } else if (payload.eventType === 'DELETE') {
           setPackages(prev => prev.filter(pkg => pkg.id !== payload.old.id));
         }
@@ -3043,6 +3045,7 @@ const AdminDashboard = () => {
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
                     { key: "telecel_special", label: "Telecel Special" },
+                    { key: "mashup", label: "MTN MashUp" },
                                     ].map(({ key, label }) => (
                     <Button
                       key={key}
@@ -3261,6 +3264,7 @@ const AdminDashboard = () => {
                     <SelectItem value="telecel">Telecel</SelectItem>
                     <SelectItem value="mtn_special">MTN Special</SelectItem>
                     <SelectItem value="telecel_special">Telecel Special</SelectItem>
+                    <SelectItem value="mashup">MTN MashUp</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -5399,6 +5403,7 @@ const AdminDashboard = () => {
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
                     { key: "telecel_special", label: "Telecel Special" },
+                    { key: "mashup", label: "MTN MashUp" },
                                     ].map(({ key, label }) => (
                     <Button
                     key={key}

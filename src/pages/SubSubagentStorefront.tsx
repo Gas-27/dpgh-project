@@ -31,7 +31,7 @@ import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
   import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkSubTabs from "@/components/NetworkSubTabs";
-import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
+import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
   import NotificationPopup from "@/components/NotificationPopup";
 import SmsComposer from "@/components/SmsComposer";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
@@ -157,7 +157,7 @@ const formatNetworkName = (network: string) => {
 // Note: slugify is now imported from @/utils/storeUtils
 
 const getNetworkColor = (network: string) => {
-  const colors: Record<string, string> = { mtn: "#fbbf24", mtn_express: "#f59e0b", airteltigo: "#3b82f6", telecel: "#ef4444", mtn_special: "#fbbf24", telecel_special: "#ef4444" };
+  const colors: Record<string, string> = { mtn: "#fbbf24", mtn_express: "#f59e0b", airteltigo: "#3b82f6", telecel: "#ef4444", mtn_special: "#fbbf24", telecel_special: "#ef4444", mashup: "#f97316" };
   return colors[network] || "#22c55e";
 };
 
@@ -614,7 +614,7 @@ export function SubSubagentStorefront() {
         supabase.from("subagent_stores").select("whatsapp_number, support_number").eq("id", matched.subagent_store_id).single(),
       ]);
 
-      setPackages(pkgRes.data || []);
+      setPackages(filterVisiblePackages(pkgRes.data || []));
       if (parentSubagentInfoRes.data) setAgentInfo(parentSubagentInfoRes.data);
 
       // Build "Cost from Agent" map (levels 1-3)
@@ -1118,8 +1118,8 @@ const searchOrders = useCallback(async (input?: string) => {
 
         {activeSection === "data" && <>
         {/* Network Tabs */}
-<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-4">
-  {["mtn", "mtn_express", "telecel", "airteltigo"].map((net) => {
+<div className={`grid w-full grid-cols-2 gap-2 pb-2 ${packages.some((p) => isMashupNetwork(p.network)) ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
+  {["mtn", "mtn_express", "telecel", "airteltigo", ...(packages.some((p) => isMashupNetwork(p.network)) ? ["mashup"] : [])].map((net) => {
     const isSelected = activeSection === "data" && getNetworkFamily(networkFilter) === net;
     return (
             <Button

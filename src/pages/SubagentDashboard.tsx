@@ -48,7 +48,7 @@ import DomainDashboardPanel from "@/components/DomainDashboardPanel";
 import { isValidStoreName, sanitizeStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import NetworkIndicator from "@/components/NetworkIndicator";
-import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
+import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength, isMtnNumber } from "@/lib/phoneUtils";
 import { isNumberSubmittedForApproval } from "@/lib/numberApprovalCheck";
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
@@ -76,7 +76,7 @@ import ScheduleSms from "@/components/ScheduleSms";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
-import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
 import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import NotificationPopup from "@/components/NotificationPopup";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
@@ -552,7 +552,7 @@ const SubagentDashboard = () => {
         .from("data_packages")
         .select("*")
         .order("size_gb", { ascending: true }));
-      if (data) setPackages(data);
+      if (data) setPackages(filterVisiblePackages(data));
     };
     return startVisiblePolling(pollPackages, 5 * 60 * 1000);
   }, []);
@@ -720,7 +720,7 @@ const SubagentDashboard = () => {
         });
         setWithdrawals(payoutData);
         setTransferRecipients(recipientsResult.data || []);
-        setPackages(packagesResult.data || []);
+        setPackages(filterVisiblePackages(packagesResult.data || []));
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
         
@@ -904,7 +904,7 @@ const SubagentDashboard = () => {
         });
         setWithdrawals(payoutData2);
         setTransferRecipients(recipientsResult.data || []);
-        setPackages(packagesResult.data || []);
+        setPackages(filterVisiblePackages(packagesResult.data || []));
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
         
@@ -2030,6 +2030,10 @@ const handleSaveStore = async () => {
       toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" });
       return;
     }
+    if (isMashupNetwork(buyingPkg.network) && !isMtnNumber(buyCustomerNumber)) {
+      toast({ title: "Network mismatch", description: MASHUP_MTN_ONLY_MESSAGE, variant: "destructive" });
+      return;
+    }
     const detected = detectNetwork(buyCustomerNumber);
     const validMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detected === "mtn";
     if (!validMashup && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
@@ -2048,6 +2052,11 @@ const handleSaveStore = async () => {
       return;
     }
     
+    if (isMashupNetwork(buyingPkg.network) && !isMtnNumber(buyCustomerNumber)) {
+      toast({ title: "Network mismatch", description: MASHUP_MTN_ONLY_MESSAGE, variant: "destructive" });
+      return;
+    }
+
     // Validate phone matches selected network (allow mtn to buy mtn_mashup and mashup)
     const isValidForMTNMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detectNetwork(buyCustomerNumber) === "mtn";
     if (!isValidForMTNMashup && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
@@ -3912,6 +3921,7 @@ handleMobileNumberChange(digits);
                       { key: "telecel", label: "Telecel" },
                       { key: "mtn_special", label: "MTN Special" },
                       { key: "telecel_special", label: "Telecel Special" },
+                      { key: "mashup", label: "MTN MashUp" },
                     ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key && p.active !== false)).map(({ key, label }) => (
                       <Button 
                         key={key} 
@@ -4417,6 +4427,7 @@ handleMobileNumberChange(digits);
                       { key: "telecel", label: "Telecel" },
                       { key: "mtn_special", label: "MTN Special" },
                       { key: "telecel_special", label: "Telecel Special" },
+                      { key: "mashup", label: "MTN MashUp" },
                     ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key && p.active !== false)).map(({ key, label }) => (
                       <Button 
                         key={key} 

@@ -1,4 +1,11 @@
-export const SPECIAL_NETWORK_KEYS = ["mtn_special", "telecel_special"] as const;
+export const MASHUP_NETWORK_KEY = "mashup" as const;
+export const MASHUP_MTN_ONLY_MESSAGE = "MashUp bundles are for MTN numbers only";
+
+/** Only these data_packages.bundle_id values are the current MashUp packages. Older mashup rows must never show. */
+export const MASHUP_BUNDLE_IDS: readonly number[] = [42, 43, 44, 45, 46, 48, 49, 50, 51, 52, 53];
+
+/** Networks that have their own packages named by size_gb_text (special bundles and MashUp). */
+export const SPECIAL_NETWORK_KEYS = ["mtn_special", "telecel_special", MASHUP_NETWORK_KEY] as const;
 export type SpecialNetworkKey = (typeof SPECIAL_NETWORK_KEYS)[number];
 
 export const NETWORK_LABELS: Record<string, string> = {
@@ -8,9 +15,35 @@ export const NETWORK_LABELS: Record<string, string> = {
   telecel: "Telecel",
   mtn_special: "MTN Special",
   telecel_special: "Telecel Special",
+  mashup: "MTN MashUp",
+  mtn_mashup: "MTN MashUp",
 };
 
 const normalizeKey = (value?: string | null) => String(value ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+
+export const isMashupNetwork = (value?: string | null): boolean => normalizeKey(value) === MASHUP_NETWORK_KEY;
+
+/**
+ * True for every package that may be shown to people. Non-MashUp packages are untouched;
+ * MashUp packages must be active and belong to the current MashUp bundle ids.
+ */
+export const isVisiblePackage = (pkg?: { network?: string | null; active?: boolean | null; bundle_id?: number | string | null } | null): boolean => {
+  if (!pkg) return false;
+  if (!isMashupNetwork(pkg.network)) return true;
+  if (pkg.active === false) return false;
+  return MASHUP_BUNDLE_IDS.includes(Number(pkg.bundle_id));
+};
+
+/** Drops old/inactive MashUp rows from a package list. */
+export const filterVisiblePackages = <T extends { network?: string | null; active?: boolean | null; bundle_id?: number | string | null }>(packages: T[] | null | undefined): T[] =>
+  (packages ?? []).filter(isVisiblePackage);
+
+/**
+ * Admin lists show every package, but MashUp rows are limited to the current bundle ids
+ * (inactive ones stay so the admin can switch them back on).
+ */
+export const filterAdminPackages = <T extends { network?: string | null; bundle_id?: number | string | null }>(packages: T[] | null | undefined): T[] =>
+  (packages ?? []).filter((p) => !isMashupNetwork(p.network) || MASHUP_BUNDLE_IDS.includes(Number(p.bundle_id)));
 
 export const isSpecialNetwork = (value?: string | null): value is SpecialNetworkKey =>
   SPECIAL_NETWORK_KEYS.includes(normalizeKey(value) as SpecialNetworkKey);
@@ -52,5 +85,5 @@ export const getOrderPackageName = (
 };
 
 /** Network keys of special packages that have at least one active package. */
-export const getActiveSpecialNetworks = (packages: Array<{ network?: string | null; active?: boolean | null }>): SpecialNetworkKey[] =>
-  SPECIAL_NETWORK_KEYS.filter((key) => packages.some((p) => normalizeKey(p.network) === key && p.active !== false));
+export const getActiveSpecialNetworks = (packages: Array<{ network?: string | null; active?: boolean | null; bundle_id?: number | string | null }>): SpecialNetworkKey[] =>
+  SPECIAL_NETWORK_KEYS.filter((key) => packages.some((p) => normalizeKey(p.network) === key && p.active !== false && isVisiblePackage(p)));
