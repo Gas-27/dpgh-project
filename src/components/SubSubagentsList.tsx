@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Search, ChevronRight, AlertCircle, Ban, CheckCircle, ExternalLink, Wallet, ShoppingCart, TrendingUp } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { DOMAINS } from "@/config/domains";
+import { getNetworkLabel, getOrderPackageName, isSpecialNetwork } from "@/lib/networkConfig";
 
 interface SubSubagentStore {
   id: string;
@@ -252,7 +253,7 @@ export default function SubSubagentsList({ subagentStoreId, subagentStoreName, s
                     {selectedSubSubagent.orders.map((order: any) => (
                       <div key={order.id} className="text-sm p-3 rounded border border-border flex items-center justify-between">
                         <div>
-                          <p className="font-medium">{order.network.toUpperCase()} - {order.size_gb}GB</p>
+                          <p className="font-medium">{isSpecialNetwork(order.network) ? `${getNetworkLabel(order.network)} - ${getOrderPackageName(order)}` : `${order.network.toUpperCase()} - ${order.size_gb}GB`}</p>
                           <p className="text-xs text-muted-foreground">{order.customer_number}</p>
                         </div>
                         <div className="text-right">

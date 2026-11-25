@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import NetworkIndicator from "@/components/NetworkIndicator";
 import { detectNetwork, phoneMatchesNetwork } from "@/lib/phoneUtils";
+import { getNetworkLabel, isSpecialNetwork } from "@/lib/networkConfig";
 import { isNumberSubmittedForApproval } from "@/lib/numberApprovalCheck";
 import { verifyHubtelMsisdn } from "@/services/hubtelService";
 
@@ -218,7 +219,7 @@ const PaymentDialog = ({
     if (selectedNetwork && selectedNetwork !== "mtn_mashup" && selectedNetwork !== "mashup" && selectedNetwork !== "mtn_express" && !isValidForMTNVariant && !phoneMatchesNetwork(phone, selectedNetwork)) {
       toast({
         title: "Network mismatch",
-        description: `This phone number appears to be ${detectedNetwork.toUpperCase()}, but you selected ${selectedNetwork === "mtn_express" ? "MTN Express" : selectedNetwork.toUpperCase()} package`,
+        description: `This phone number appears to be ${detectedNetwork.toUpperCase()}, but you selected ${selectedNetwork === "mtn_express" ? "MTN Express" : isSpecialNetwork(selectedNetwork) ? getNetworkLabel(selectedNetwork) : selectedNetwork.toUpperCase()} package`,
         variant: "destructive",
       });
       return;

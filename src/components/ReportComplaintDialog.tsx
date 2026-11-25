@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { announceOrderReported } from "@/hooks/useReportedOrders";
+import { getNetworkLabel, getOrderPackageName, isSpecialNetwork } from "@/lib/networkConfig";
 
 interface ReportComplaintDialogProps {
   open: boolean;
@@ -16,6 +17,8 @@ interface ReportComplaintDialogProps {
     customer_number: string;
     network: string;
     size_gb: number;
+    size_gb_text?: string | null;
+    package_id?: string | null;
     amount: number;
     created_at: string;
     fulfillment_status: string;
@@ -28,7 +31,7 @@ interface ReportComplaintDialogProps {
 }
 
 const formatNetworkName = (n: string) =>
-  n === "mtn" ? "MTN" : n === "mtn_express" ? "MTN Express" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : n;
+  isSpecialNetwork(n) ? getNetworkLabel(n) : n === "mtn" ? "MTN" : n === "mtn_express" ? "MTN Express" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : n;
 
 const isMTN = (n: string) => n === "mtn" || n === "mtn_express";
 
@@ -58,6 +61,9 @@ export default function ReportComplaintDialog({
   // network must be declared before requiresTwoScreenshots which references it
   const network = order.network;
   const networkLabel = formatNetworkName(network);
+  const packageLabel = isSpecialNetwork(network)
+    ? getOrderPackageName(order) || "Special bundle"
+    : `${order.size_gb}GB`;
 
   // Screenshot 2: MTN SMS confirmation message thread (required for MTN orders)
   const smsFileInputRef = useRef<HTMLInputElement>(null);
@@ -215,8 +221,8 @@ ${smsScreenshotUrl ? `\nSMS Confirmation Screenshot: ${smsScreenshotUrl}` : ""}`
 ━━━━━━━━━━━━━━━━━━━━━━━━
 Order Date: ${new Date(order.created_at).toLocaleString()}
 Network: ${networkLabel}
-Package Size: ${order.size_gb}GB
-Data: ${order.size_gb}GB
+Package Size: ${packageLabel}
+Data: ${packageLabel}
 Amount: GHC ${Number(order.amount).toFixed(2)}
 Customer: ${order.customer_number}
 Status: Delivered (Not Received)
@@ -396,7 +402,7 @@ Please investigate and assist. Thank You.`;
                     <span className="text-muted-foreground">Network</span>
                     <span className="font-medium">{networkLabel}</span>
                     <span className="text-muted-foreground">Package</span>
-                    <span className="font-medium">{order.size_gb}GB</span>
+                    <span className="font-medium">{packageLabel}</span>
                   </div>
                 </CardContent>
               </Card>
@@ -426,7 +432,7 @@ Please investigate and assist. Thank You.`;
                   <span className="text-muted-foreground">Network</span>
                   <span className="font-medium">{networkLabel}</span>
                   <span className="text-muted-foreground">Package</span>
-                  <span className="font-medium">{order.size_gb}GB</span>
+                  <span className="font-medium">{packageLabel}</span>
                   <span className="text-muted-foreground">Number</span>
                   <span className="font-medium">{order.customer_number}</span>
                   <span className="text-muted-foreground">Amount</span>

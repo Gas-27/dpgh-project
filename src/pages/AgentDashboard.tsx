@@ -95,6 +95,7 @@ import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
 import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import DomainDashboardPanel from "@/components/DomainDashboardPanel";
@@ -1642,7 +1643,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       appliedCount++;
     }
     setEditedPrices(newEdited);
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = getNetworkLabel(networkFilter);
     toast({
       title: `Markup applied to ${networkName} packages`,
       description: `${percent}% markup applied to the base price of ${appliedCount} packages. Remember to click "Save Prices" to keep these changes.`,
@@ -3025,7 +3026,7 @@ return (
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GHC {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
             </Card>)}
             <DeliveryProgressCard selectedNetwork={networkFilter} />
-  <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
+  <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} packages={packages} />
   <ScheduleDataPurchase ownerType="agent" ownerId={store?.id} variant="bar" />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {packages.filter(p => {
@@ -3245,8 +3246,8 @@ return (
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}</TableCell>
                               <TableCell className="font-medium text-xs">{order.customer_number}</TableCell>
-                              <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                              <TableCell className="text-sm">{order.size_gb}GB</TableCell>
+                              <TableCell className={isSpecialNetwork(order.network) ? "text-sm" : "uppercase text-sm"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
+                              <TableCell className="text-sm">{(order as any).size_gb_text || `${order.size_gb}GB`}</TableCell>
                               <TableCell className="font-semibold text-amber-400 text-sm">
                                 {basePrice > 0 ? `GHC ${basePrice.toFixed(2)}` : <span className="text-muted-foreground text-xs">—</span>}
                               </TableCell>
@@ -3316,7 +3317,9 @@ return (
                   { key: "mtn_express", label: "MTN Express" },
                   { key: "airteltigo", label: "AirtelTigo" },
                   { key: "telecel", label: "Telecel" },
-                                ].map(({ key, label }) => (
+                  { key: "mtn_special", label: "MTN Special" },
+                  { key: "telecel_special", label: "Telecel Special" },
+                ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key)).map(({ key, label }) => (
                   <Button 
                     key={key} 
                     variant={networkFilter === key ? "hero" : "outline"} 
@@ -3336,11 +3339,11 @@ return (
             </div>
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
               <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>������ Markup Explanation(Remember to click save after applying markup</p>
-              <p className="text-xs text-muted-foreground">Markup changes all your selling price for the selected network base on the percentage you want all the prices to be increase by  .Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
+              <p className="text-xs text-muted-foreground">Markup changes all your selling price for the selected network base on the percentage you want all the prices to be increase by  .Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{getNetworkLabel(networkFilter)}</strong>).</p>
             </div>
             <p className="text-sm text-muted-foreground">Your profit = Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
             <Card className="border-border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Base Price</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Profit</TableHead></TableRow></TableHeader>
-              <TableBody>{filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price; const profit = cur - pkg.agent_price; const isInactive = pkg.active === false; return (<TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}><TableCell className="font-display font-bold">{pkg.size_gb_text || pkg.size_gb + "GB"}{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell><TableCell className="text-muted-foreground">GHC {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GHC {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
+              <TableBody>{filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price; const profit = cur - pkg.agent_price; const isInactive = pkg.active === false; return (<TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}><TableCell className="font-display font-bold">{getPackageDisplayName(pkg)}{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell><TableCell className="text-muted-foreground">GHC {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GHC {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
           </TabsContent>
 
           {/* ============================= FLYER GENERATOR ============================= */}
@@ -4434,7 +4437,7 @@ handleMobileNumberChange(digits);
                             </TableCell>
                             <TableCell className="text-xs font-mono">{order.customer_number}</TableCell>
                             <TableCell className="text-xs">
-                              <span className="px-2 py-1 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
+                              <span className="px-2 py-1 rounded bg-muted text-foreground">{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network?.toUpperCase()}</span>
                             </TableCell>
                             <TableCell className="text-xs font-semibold text-cyan-400">{order.size_gb_text || `${order.size_gb}GB`}</TableCell>
                             <TableCell className="text-xs text-muted-foreground">API Wallet</TableCell>
@@ -4594,8 +4597,10 @@ handleMobileNumberChange(digits);
                     { key: "mtn_express", label: "MTN Express" },
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
+                    { key: "mtn_special", label: "MTN Special" },
+                    { key: "telecel_special", label: "Telecel Special" },
                     { key: "afa", label: "AFA Registration" },
-                  ].map(({ key, label }) => (
+                  ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key && p.active !== false)).map(({ key, label }) => (
                     <Button 
                       key={key} 
                       variant={networkFilter === key ? "hero" : "outline"} 
@@ -4645,7 +4650,7 @@ handleMobileNumberChange(digits);
     return packageNetwork === selectedNetwork;
                   }).length === 0 && (
                     <div className="col-span-full text-center py-8 text-muted-foreground">
-                      No packages available for {networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "mtn" ? "MTN" : "Telecel"}.
+                      No packages available for {getNetworkLabel(networkFilter)}.
                     </div>
                   )}
                 </div>
@@ -5281,13 +5286,13 @@ handleMobileNumberChange(digits);
 
       <Dialog open={buyDialogOpen} onOpenChange={v => !v && setBuyDialogOpen(false)}>
         <DialogContent className="sm:max-w-md border-border bg-card">
-          <DialogHeader><DialogTitle className="font-display text-xl">{buyPkg?.network === "special-mtn" ? `Buy ${(buyPkg as any).mins || 0} mins + ${buyPkg?.size_gb}GB` : `Buy ${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</DialogTitle><DialogDescription>Purchase {buyPkg?.network === "special-mtn" ? "minutes + data" : "data"} at agent price</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display text-xl">{buyPkg?.network === "special-mtn" ? `Buy ${(buyPkg as any).mins || 0} mins + ${buyPkg?.size_gb}GB` : isSpecialNetwork(buyPkg?.network) ? `Buy ${getPackageDisplayName(buyPkg)} ${getNetworkLabel(buyPkg?.network)}` : `Buy ${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</DialogTitle><DialogDescription>Purchase {buyPkg?.network === "special-mtn" ? "minutes + data" : "data"} at agent price</DialogDescription></DialogHeader>
           {buyStep === "phone" ? (
             <div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number (exactly 10 digits)</Label><div><Input type="tel" placeholder="0XX XXX XXXX" maxLength={10} value={buyPhone} onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} className={`${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoFocus />{buySimLookupLoading && <p className="mt-1 text-xs text-muted-foreground">Checking who this SIM is registered to…</p>}{buySimName && <p className="mt-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">SIM registered to <span className="font-semibold">{buySimName}</span></p>}{buySimLookupError && <p className="mt-1 text-xs text-muted-foreground">SIM registration lookup unavailable. You can still continue.</p>}</div>{buyPhone.length > 0 && buyPhone.length < 10 && (<p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>)}<NetworkIndicator phone={buyPhone} /></div><Button variant="hero" className="w-full" onClick={async () => { if (!isValidPhoneLength(buyPhone)) { toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" }); return; } const detected = detectNetwork(buyPhone); if ((buyPkg?.network === "mtn_mashup" || buyPkg?.network === "mashup") && detected !== "mtn") { toast({ title: "MTN Only", description: `This package is only available for MTN numbers. This appears to be ${detected.toUpperCase()}.`, variant: "destructive" }); return; } if (buyPkg?.network && buyPkg.network !== "mtn_mashup" && buyPkg.network !== "mashup" && !phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) { toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyPkg?.network.toUpperCase()} package`, variant: "destructive" }); return; } const isMTNPackage = buyPkg?.network === "mtn" || buyPkg?.network === "mtn_express"; if (isMTNPackage) { const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("customer_number", buyPhone.trim()); if ((count ?? 0) === 0 && !(await isNumberSubmittedForApproval(buyPhone))) { setShowNewNumberWarning(true); return; } } setBuyStep("confirm"); }}>Continue</Button></div>
           ) : (
             <div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
               <>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{isSpecialNetwork(buyPkg?.network) ? `${getPackageDisplayName(buyPkg)} ${getNetworkLabel(buyPkg?.network)}` : `${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div>{buySimName && <div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">SIM registered to</span><span className="text-right font-semibold">{buySimName}</span></div>}
               </>
             <div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GHC {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">��������� You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-xs text-red-400 leading-relaxed"><span className="font-semibold block mb-1">Important Notice</span>Make sure the recipient number has no outstanding airtime, MoMo, or bundle debt. Network providers will not deliver data to numbers with unpaid balances — this is a network rule we cannot override.</div><div className="space-y-2"><Label>Payment Method</Label><div className="grid grid-cols-1 gap-2"><div className="flex gap-2 items-stretch">

@@ -18,6 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
+import { getNetworkLabel, getOrderPackageName, isSpecialNetwork } from "@/lib/networkConfig";
 
 interface Complaint {
   id: string;
@@ -38,6 +39,8 @@ interface Complaint {
   orders?: {
     network: string;
     size_gb: number;
+    size_gb_text?: string | null;
+    package_id?: string | null;
     amount: number;
     fulfillment_status: string;
     created_at: string;
@@ -58,8 +61,16 @@ interface Complaint {
   };
 }
 
+const orderPackageLabel = (order?: Complaint["orders"]) => {
+  if (!order) return "—";
+  if (isSpecialNetwork(order.network)) return getOrderPackageName(order) || "—";
+  return order.size_gb != null ? `${order.size_gb}GB` : "—";
+};
+
 const networkName = (network?: string) => {
   switch ((network || "").toLowerCase()) {
+    case "mtn_special": return getNetworkLabel("mtn_special");
+    case "telecel_special": return getNetworkLabel("telecel_special");
     case "mtn": return "MTN";
     case "mtn_express": return "MTN Express";
     case "telecel": return "Telecel";
@@ -73,7 +84,7 @@ const buildShareReport = (c: Complaint, screenshotUrl?: string) => {
   const reportedAt = c.created_at ? new Date(c.created_at).toLocaleDateString("en-GB") : "—";
   return [
     `Network: ${c.orders ? networkName(c.orders.network) : "—"}`,
-    `Data Package: ${c.orders?.size_gb != null ? `${c.orders.size_gb}GB` : "—"}`,
+    `Data Package: ${orderPackageLabel(c.orders)}`,
     `Order Date: ${orderDate}`,
     `Reported at: ${reportedAt}`,
     `Customer Number: ${c.customer_number}`,
@@ -161,7 +172,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
       // Orders are protected by RLS, so the admin complaint view loads the
       // minimal order fields through the server-side admin endpoint.
       const ordersPromise = orderIds.length
-        ? supabase.from("orders").select("id, network, size_gb, amount, status, order_status, fulfillment_status, created_at, updated_at, agent_store_id, subagent_store_id, customer_id, customer_number").in("id", orderIds.slice(0, 500)).then(({ data }) => ({ orders: data ?? [] }))
+        ? supabase.from("orders").select("id, network, size_gb, package_id, amount, status, order_status, fulfillment_status, created_at, updated_at, agent_store_id, subagent_store_id, customer_id, customer_number").in("id", orderIds.slice(0, 500)).then(({ data }) => ({ orders: data ?? [] }))
         : Promise.resolve({ orders: [] });
 
       const [ordersResult, agentsResult, subagentsResult] = await Promise.all([
@@ -169,6 +180,21 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
         agentIds.length ? supabase.from("agent_stores").select("id, user_id, store_name, phone_number, whatsapp_number, support_number, approved, created_at").in("id", agentIds) : Promise.resolve({ data: [], error: null }),
         subagentIds.length ? supabase.from("subagent_stores").select("*").in("id", subagentIds) : Promise.resolve({ data: [], error: null }),
       ]);
+
+      const specialPackageIds = [
+        ...new Set(
+          (ordersResult.orders || [])
+            .filter((row: any) => isSpecialNetwork(row.network) && row.package_id)
+            .map((row: any) => row.package_id as string),
+        ),
+      ];
+      if (specialPackageIds.length > 0) {
+        const { data: pkgs } = await supabase.from("data_packages").select("id, size_gb_text").in("id", specialPackageIds);
+        const pkgNames = new Map((pkgs || []).map((p: any) => [String(p.id), p.size_gb_text]));
+        (ordersResult.orders || []).forEach((row: any) => {
+          if (row.package_id && pkgNames.has(String(row.package_id))) row.size_gb_text = pkgNames.get(String(row.package_id));
+        });
+      }
 
       const orderById = new Map((ordersResult.orders || []).map((row: any) => [row.id, row]));
       const agentById = new Map((agentsResult.data || []).map((row: any) => [row.id, row]));
@@ -478,7 +504,7 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
   if (!complaint) return null;
 
   const networkName = (n: string) =>
-    n === "mtn" ? "MTN" : n === "mtn_express" ? "MTN Express" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : (n || "").toUpperCase();
+    isSpecialNetwork(n) ? getNetworkLabel(n) : n === "mtn" ? "MTN" : n === "mtn_express" ? "MTN Express" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : (n || "").toUpperCase();
 
   const boolLabel = (v: boolean | null | undefined) =>
     v == null ? "—" : v ? <span className="text-red-400 font-semibold">Yes</span> : <span className="text-green-400">No</span>;
@@ -498,7 +524,7 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
       "",
       "ORDER DETAILS",
       complaint.orders ? `Network: ${networkName(complaint.orders.network)}` : "",
-      complaint.orders ? `Package: ${complaint.orders.size_gb}GB` : "",
+      complaint.orders ? `Package: ${orderPackageLabel(complaint.orders)}` : "",
       complaint.orders ? `Delivery Status: ${complaint.orders.fulfillment_status}` : "",
       "",
       "CHECKLIST",
@@ -575,7 +601,7 @@ function ComplaintDetailDialog({ complaint, onClose, onPreviewImage, updateCompl
                 <span className="text-muted-foreground">Order Date</span>
                 <span className="font-medium">{complaint.orders.created_at ? new Date(complaint.orders.created_at).toLocaleString() : "—"}</span>
                 <span className="text-muted-foreground">Network</span><span className="font-medium">{networkName(complaint.orders.network)}</span>
-                <span className="text-muted-foreground">Package</span><span className="font-medium">{complaint.orders.size_gb}GB</span>
+                <span className="text-muted-foreground">Package</span><span className="font-medium">{orderPackageLabel(complaint.orders)}</span>
                 <span className="text-muted-foreground">Delivery</span><span className="font-medium">{complaint.orders.fulfillment_status}</span>
                 <span className="text-muted-foreground">Order Source</span>
                 <span className="font-medium">
@@ -838,6 +864,8 @@ function ComplaintsTable({
             <option value="telecel">Telecel</option>
             <option value="airteltigo">AirtelTigo</option>
             <option value="atbigtime">AT BigTime</option>
+            <option value="mtn_special">MTN Special</option>
+            <option value="telecel_special">Telecel Special</option>
           </select>
         </div>
         {!readOnly && selectedComplaints.size > 0 && (
@@ -858,7 +886,7 @@ function ComplaintsTable({
                     `ID: ${c.id}`,
                     `Status: ${c.status}`,
                     `Customer: ${c.customer_number}`,
-                    `Order: ${c.orders ? `${c.orders.network?.toUpperCase()} ${c.orders.size_gb}GB` : c.order_id}`,
+                    `Order: ${c.orders ? `${networkName(c.orders.network)} ${orderPackageLabel(c.orders)}` : c.order_id}`,
                     `Title: ${c.complaint_title}`,
                     `Details: ${c.complaint_details}`,
                     `Date: ${new Date(c.created_at).toLocaleString()}`,
@@ -964,7 +992,7 @@ function ComplaintsTable({
                     <TableCell className="text-xs">
                       {c.orders ? (
                         <div className="space-y-0.5">
-                          <p className="font-medium">{networkName(c.orders.network)} {c.orders.size_gb}GB</p>
+                          <p className="font-medium">{networkName(c.orders.network)} {orderPackageLabel(c.orders)}</p>
                           <p className="text-muted-foreground">{c.orders.fulfillment_status || "—"}</p>
                         </div>
                       ) : <span className="text-muted-foreground text-xs">{c.order_id?.slice(0,8)}…</span>}

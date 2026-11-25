@@ -97,8 +97,12 @@ export const phoneMatchesNetwork = (phone: string, expectedNetwork: string): boo
   }
   
   // MTN numbers work for both MTN and MTN Express
-  if (normalizedExpected === "mtn_express") {
-    return detectedNetwork === "mtn";
+  if (normalizedExpected === "mtn_express" || normalizedExpected === "mtn_special") {
+  return detectedNetwork === "mtn";
+  }
+
+  if (normalizedExpected === "telecel_special") {
+  return detectedNetwork === "telecel";
   }
   
   return detectedNetwork === normalizedExpected;

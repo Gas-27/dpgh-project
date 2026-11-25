@@ -56,6 +56,7 @@ import AdminPublicProductsManager from "@/components/AdminPublicProductsManager"
 import AdminProductsBoostManager from "@/components/AdminProductsBoostManager";
 import AdminReportedProducts from "@/components/AdminReportedProducts";
 import { Flag, Trophy, Info } from "lucide-react";
+import { isSpecialNetwork, getNetworkLabel, getPackageDisplayName } from "@/lib/networkConfig";
 import AdminDomainPurchasesPanel from "@/components/AdminDomainPurchasesPanel";
 import AdminDomainRenewalsPanel from "@/components/AdminDomainRenewalsPanel";
 import PushNotificationManager from "@/components/PushNotificationManager";
@@ -769,7 +770,7 @@ const AdminDashboard = () => {
     try {
       // Load packages and app settings only — withdrawals/agents/etc load lazily via handleTabChange
       const [pkgResult, appSettingsResult] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active, inactive_note").order("size_gb").limit(100),
+        supabase.from("data_packages").select("id, network, size_gb, size_gb_text, price, agent_price, api_price, active, inactive_note").order("size_gb").limit(300),
         supabase
           .from("app_settings")
           .select("agent_registration_fee, chatbot_enabled, show_price_breakdown, show_api_price, show_agent_price, tab_controls")
@@ -3037,9 +3038,11 @@ const AdminDashboard = () => {
                 <div className="flex gap-2">
                   {[
                     { key: "mtn", label: "MTN" },
+                    { key: "mtn_special", label: "MTN Special" },
                     { key: "mtn_express", label: "MTN Express" },
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
+                    { key: "telecel_special", label: "Telecel Special" },
                                     ].map(({ key, label }) => (
                     <Button
                       key={key}
@@ -3065,7 +3068,7 @@ const AdminDashboard = () => {
                   <TableBody>
                     {filteredPackages.map((pkg) => (
                       <TableRow key={pkg.id}>
-                        <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
+                        <TableCell className="font-display font-bold">{isSpecialNetwork(pkg.network) ? getPackageDisplayName(pkg) : `${pkg.size_gb}GB`}</TableCell>
                         <TableCell><Input type="number" step="0.01" defaultValue={pkg.price} onChange={(e) => handlePriceChange(pkg.id, "price", e.target.value)} className="w-24 h-8" /></TableCell>
                         <TableCell><Input type="number" step="0.01" defaultValue={pkg.agent_price} onChange={(e) => handlePriceChange(pkg.id, "agent_price", e.target.value)} className="w-24 h-8" /></TableCell>
                         <TableCell><Input type="number" step="0.01" defaultValue={pkg.api_price} onChange={(e) => handlePriceChange(pkg.id, "api_price", e.target.value)} className="w-24 h-8" /></TableCell>
@@ -3074,7 +3077,7 @@ const AdminDashboard = () => {
                           {pkg.active ? (
                             <span className="text-xs text-muted-foreground">-</span>
                           ) : (
-                            <Button variant="outline" size="sm" className="h-8 max-w-[180px] gap-1" onClick={() => setNoteDialog({ pkgId: pkg.id, label: `${pkg.size_gb}GB`, note: pkg.inactive_note ?? "", turnOff: false })}>
+                            <Button variant="outline" size="sm" className="h-8 max-w-[180px] gap-1" onClick={() => setNoteDialog({ pkgId: pkg.id, label: isSpecialNetwork(pkg.network) ? getPackageDisplayName(pkg) : `${pkg.size_gb}GB`, note: pkg.inactive_note ?? "", turnOff: false })}>
                               <Info className="h-3.5 w-3.5 shrink-0" />
                               <span className="truncate text-xs">{pkg.inactive_note ? pkg.inactive_note : "Add note"}</span>
                             </Button>
@@ -3256,7 +3259,8 @@ const AdminDashboard = () => {
                     <SelectItem value="mtn_express">MTN Express</SelectItem>
                     <SelectItem value="airtel">AirtelTigo</SelectItem>
                     <SelectItem value="telecel">Telecel</SelectItem>
-                    
+                    <SelectItem value="mtn_special">MTN Special</SelectItem>
+                    <SelectItem value="telecel_special">Telecel Special</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -3418,7 +3422,7 @@ const AdminDashboard = () => {
                                 <TableCell style={{ width: "40px" }} className="text-center"><input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set([...selectedOrderIds, order.id])); } else { const newSet = new Set(selectedOrderIds); newSet.delete(order.id); setSelectedOrderIds(newSet); } }} className="rounded border-border" /></TableCell>
                                 <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell>
                                 <TableCell className="font-medium">{order.customer_number}</TableCell>
-                                <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                                <TableCell className={isSpecialNetwork(order.network) ? "text-sm" : "uppercase text-sm"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
                                 <TableCell>
                                   <Badge variant="outline" className="text-xs">
                                     {((order as any).purchase_provider || (order as any).fulfillment_provider || (Array.isArray((order as any).provider_attempts) ? (order as any).provider_attempts.at(-1)?.provider : null) || "Provider pending")}
@@ -3427,7 +3431,7 @@ const AdminDashboard = () => {
                                     <p className="mt-1 text-[10px] text-muted-foreground">{(order as any).provider_attempts.length} attempt{(order as any).provider_attempts.length === 1 ? "" : "s"}</p>
                                   )}
                                 </TableCell>
-                                <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
+                                <TableCell className="font-display font-bold">{isSpecialNetwork(order.network) ? ((order as any).size_gb_text || `${order.size_gb}GB`) : `${order.size_gb}GB`}</TableCell>
                                 <TableCell>GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
                                 <TableCell>
                                   {order.refunded_amount ? (
@@ -5390,9 +5394,11 @@ const AdminDashboard = () => {
               <div className="flex gap-2 flex-wrap">
                 {[
                   { key: "mtn", label: "MTN" },
+                  { key: "mtn_special", label: "MTN Special" },
                   { key: "mtn_express", label: "MTN Express" },
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
+                    { key: "telecel_special", label: "Telecel Special" },
                                     ].map(({ key, label }) => (
                     <Button
                     key={key}

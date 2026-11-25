@@ -82,6 +82,7 @@ import NotificationPopup from "@/components/NotificationPopup";
 import PrivateShareMySubscriptions from "@/components/PrivateShareMySubscriptions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SHOW_USSD } from "@/lib/ussdVisibility";
+import { getNetworkLabel, getPackageDisplayName, getOrderPackageName, isSpecialNetwork } from "@/lib/networkConfig";
 
 interface DataPackage {
   id: string;
@@ -184,6 +185,7 @@ const UserDashboard = () => {
   const [customTopupAmount, setCustomTopupAmount] = useState("");
 
   const [packages, setPackages] = useState<DataPackage[]>([]);
+  const packagesById = new Map(packages.map((p) => [String(p.id), p]));
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [showApiConsent, setShowApiConsent] = useState(false);
   const [showDeleteApiKey, setShowDeleteApiKey] = useState(false);
@@ -974,7 +976,9 @@ const UserDashboard = () => {
             amount: price,
             kind: "data_purchase",
             reference: walletOrderId,
-            note: `${buyPkg.network} ${buyPkg.size_gb}GB for ${buyPhone.trim()}`,
+            note: isSpecialNetwork(buyPkg.network)
+              ? `${getNetworkLabel(buyPkg.network)} ${getPackageDisplayName(buyPkg)} for ${buyPhone.trim()}`
+              : `${buyPkg.network} ${buyPkg.size_gb}GB for ${buyPhone.trim()}`,
           });
         } catch (walletError: any) {
           toast({ title: "Error", description: walletError.message, variant: "destructive" });
@@ -1036,7 +1040,7 @@ const UserDashboard = () => {
             phone: buyPhone.trim(),
             network: buyPkg.network,
             package_id: buyPkg.id,
-            package_name: `${buyPkg.size_gb}GB`,
+            package_name: isSpecialNetwork(buyPkg.network) ? getPackageDisplayName(buyPkg) : `${buyPkg.size_gb}GB`,
             size_gb: buyPkg.size_gb,
   customer_id: effectiveUserId,
   user_id: user?.id || null,
@@ -1573,8 +1577,8 @@ case "api-key":
                     <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
                       <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
                       <TableCell className="text-sm font-mono">{order.customer_number}</TableCell>
-                      <TableCell className="text-sm uppercase font-semibold">{order.network}</TableCell>
-                      <TableCell className="text-sm font-display font-bold text-cyan-400">{order.size_gb || 0}GB</TableCell>
+                      <TableCell className={isSpecialNetwork(order.network) ? "text-sm font-semibold" : "text-sm uppercase font-semibold"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
+                      <TableCell className="text-sm font-display font-bold text-cyan-400">{isSpecialNetwork(order.network) ? getOrderPackageName(order, packagesById) : `${order.size_gb || 0}GB`}</TableCell>
                       <TableCell className="text-sm font-semibold">
                         {order.payment_method === "free_data_claim" ? (
                           <div className="space-y-0.5 text-xs font-normal whitespace-nowrap">
@@ -1779,8 +1783,8 @@ case "api-key":
                       <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
                         <TableCell className="text-sm font-mono">{order.customer_number}</TableCell>
-                        <TableCell className="text-sm uppercase font-semibold">{order.network}</TableCell>
-                        <TableCell className="text-sm font-display font-bold text-cyan-400">{order.size_gb || 0}GB</TableCell>
+                        <TableCell className={isSpecialNetwork(order.network) ? "text-sm font-semibold" : "text-sm uppercase font-semibold"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
+                        <TableCell className="text-sm font-display font-bold text-cyan-400">{isSpecialNetwork(order.network) ? getOrderPackageName(order, packagesById) : `${order.size_gb || 0}GB`}</TableCell>
                         <TableCell className="text-sm font-semibold">
                           {order.payment_method === "free_data_claim" ? (
                             <div className="space-y-0.5 text-xs font-normal whitespace-nowrap">
@@ -2619,10 +2623,10 @@ const renderApiDocs = () => (
                             </td>
                             <td className="px-3 py-2 text-xs font-mono">{order.customer_number}</td>
                             <td className="px-3 py-2 text-xs">
-                              <span className="px-2 py-0.5 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
+                              <span className="px-2 py-0.5 rounded bg-muted text-foreground">{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network?.toUpperCase()}</span>
                             </td>
                             <td className="px-3 py-2 text-xs font-semibold text-cyan-400">
-                              {order.size_gb_text || `${order.size_gb}GB`}
+                              {isSpecialNetwork(order.network) ? getOrderPackageName(order, packagesById) : (order.size_gb_text || `${order.size_gb}GB`)}
                             </td>
                             <td className="px-3 py-2 text-xs text-muted-foreground">
                               {order.payment_method === "api_wallet" || order.payment_method === "wallet" ? "API Wallet" : (order.payment_method || "API Wallet")}
@@ -2762,7 +2766,7 @@ const renderApiDocs = () => (
                   <TableRow key={order.id}>
                     <TableCell className="text-sm text-muted-foreground">{order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}</TableCell>
                     <TableCell className="font-medium">{order.customer_number}</TableCell>
-                    <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                    <TableCell className={isSpecialNetwork(order.network) ? "text-sm" : "uppercase text-sm"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
                     <TableCell>GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
@@ -3219,7 +3223,7 @@ return (
       <Dialog open={buyDialogOpen} onOpenChange={setBuyDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Buy {buyPkg?.size_gb}GB Package</DialogTitle>
+            <DialogTitle>{isSpecialNetwork(buyPkg?.network) ? `Buy ${getPackageDisplayName(buyPkg)} ${getNetworkLabel(buyPkg?.network)}` : `Buy ${buyPkg?.size_gb}GB Package`}</DialogTitle>
           </DialogHeader>
 
           {buyStep === "phone" ? (
@@ -3322,8 +3326,8 @@ return (
             <div className="space-y-4">
               <div className="bg-muted p-4 rounded-lg space-y-2">
                 <p className="text-sm"><span className="text-muted-foreground">Phone:</span> {buyPhone}</p>
-                <p className="text-sm"><span className="text-muted-foreground">Network:</span> {buyPkg?.network.toUpperCase()}</p>
-                <p className="text-sm"><span className="text-muted-foreground">Package:</span> {buyPkg?.size_gb}GB</p>
+                <p className="text-sm"><span className="text-muted-foreground">Network:</span> {isSpecialNetwork(buyPkg?.network) ? getNetworkLabel(buyPkg?.network) : buyPkg?.network.toUpperCase()}</p>
+                <p className="text-sm"><span className="text-muted-foreground">Package:</span> {isSpecialNetwork(buyPkg?.network) ? getPackageDisplayName(buyPkg) : `${buyPkg?.size_gb}GB`}</p>
                 <p className="text-sm"><span className="text-muted-foreground">Amount:</span> GHC {Number(buyPkg?.price || 0).toFixed(2)}</p>
                 {buyPaymentMethod === "paystack" && (
                   <>

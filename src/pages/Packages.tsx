@@ -55,9 +55,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
+import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
 
 // ──────────────────────────────────────────────────────────── Types ─────
-type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel";
+type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel" | "mtn_special" | "telecel_special";
 
 interface DataPackage {
   id: string;
@@ -114,6 +115,8 @@ const networkConfig: Record<Network, { label: string; color: string }> = {
   mtn_express: { label: "MTN Express", color: "text-amber-500" },
   airteltigo: { label: "AirtelTigo", color: "text-blue-400" },
   telecel: { label: "Telecel", color: "text-red-400" },
+  mtn_special: { label: "MTN Special", color: "text-yellow-400" },
+  telecel_special: { label: "Telecel Special", color: "text-red-400" },
 };
 
 const SPIN_COOLDOWN_MS = 8 * 60 * 60 * 1000;
@@ -133,7 +136,7 @@ const FIXED_ANGLES: Record<number, number> = {
 
 // ──────────────────────────────────────────────────────── Helpers ────
 const formatNetworkName = (n: string) =>
-  n === "mtn" ? "MTN" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : n;
+  n === "mtn" ? "MTN" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : isSpecialNetwork(n) ? getNetworkLabel(n) : n;
 
 const isValidPhone = (n: string) => /^\d{10}$/.test(n);
 const getSpinCooldownKey = (p: string) => `spin_cooldown_${p}`;
@@ -232,10 +235,11 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     msg = "Your data bundle has been delivered successfully.";
     note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
       : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
-        : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
+        : order.network === "telecel" || order.network === "telecel_special" ? "Check your Telecel messages."
+          : order.network === "mtn_special" ? "Check your MTN messages." : "Check your messages.";
   } else if ((orderStatus === "waiting" || orderStatus === "in-queue")) {
     const net = (order.network || "").toLowerCase();
-    const isNonMtn = net === "telecel" || net === "airteltigo" || net === "at-bigtime" || net === "at bigtime" || net === "atbigtime";
+    const isNonMtn = net === "telecel" || net === "telecel_special" || net === "airteltigo" || net === "at-bigtime" || net === "at bigtime" || net === "atbigtime";
     step = 2;
     if (isNonMtn) {
       msg = "Your order is in the queue.";
@@ -288,7 +292,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
 Order Details:
 - Order Date: ${orderDate}
 - Network: ${networkName}
-- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}
+- Data: ${(order as any).size_gb_text || (isSpecialNetwork(order.network) ? "" : order.size_gb + "GB")}
 - Amount: ${amountFormatted}
 - Customer Number: ${order.customer_number}
 - Order Status: ${orderStatusStr}
@@ -1217,7 +1221,7 @@ const Packages = () => {
   const [showAgentPrice, setShowAgentPrice] = useState(true);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(() => {
     const n = searchParams.get("network");
-    return n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" ? n : "mtn";
+    return n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special" ? n : "mtn";
   });
   const [loading, setLoading] = useState(true);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
@@ -1426,7 +1430,7 @@ const Packages = () => {
   // Fetch Special MTN Mashup pricing
   useEffect(() => {
     const n = searchParams.get("network");
-    if (n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel") setSelectedNetwork(n as Network);
+    if (n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special") setSelectedNetwork(n as Network);
   }, [searchParams]);
 
   const filtered = useMemo(() => packages.filter(p => {
@@ -1470,6 +1474,10 @@ const searchOrders = async (input?: string) => {
       if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
         const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, bundle_id").eq("id", order.package_id).maybeSingle();
         return { ...order, size_gb_text: pkg?.size_gb_text, bundle_id: pkg?.bundle_id };
+      }
+      if (isSpecialNetwork(order.network) && order.package_id && !order.size_gb_text) {
+        const { data: pkg } = await supabase.from("data_packages").select("size_gb_text").eq("id", order.package_id).maybeSingle();
+        return { ...order, size_gb_text: pkg?.size_gb_text };
       }
       return order;
     }));
@@ -1559,8 +1567,8 @@ const searchOrders = async (input?: string) => {
                                       <span className="text-sm font-medium text-foreground">{order.customer_number}</span>
                                     </div>
                                     <div className="flex items-center gap-3 text-sm">
-                                      <span className="uppercase text-muted-foreground">{order.network}</span>
-                                      <span className="font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</span>
+                                      <span className="uppercase text-muted-foreground">{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</span>
+                                      <span className="font-bold">{(order as any).size_gb_text || (isSpecialNetwork(order.network) ? "" : order.size_gb + "GB")}</span>
                                       <span className="text-primary">GHC {Number(order.amount).toFixed(2)}</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
@@ -1593,8 +1601,8 @@ const searchOrders = async (input?: string) => {
             </div>
             <section aria-labelledby="data-bundles-heading" className="mx-auto w-full max-w-md pb-12">
               <h2 id="data-bundles-heading" className="sr-only">Data Bundles</h2>
-              <DeliveryProgressCard selectedNetwork={selectedNetwork} />
-              <NetworkTabs value={selectedNetwork} onChange={setSelectedNetwork} className="mb-4 justify-center" />
+              <DeliveryProgressCard selectedNetwork={getNetworkFamily(selectedNetwork)} />
+              <NetworkTabs value={selectedNetwork} onChange={setSelectedNetwork} packages={packages} className="mb-4 justify-center" />
               {loading ? (
                 <div className="flex justify-center py-10" aria-label="Loading data bundles"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
               ) : filtered.length === 0 ? (
@@ -1602,8 +1610,8 @@ const searchOrders = async (input?: string) => {
               ) : (
                 <div className="flex flex-col gap-4">
                   {filtered.map((pkg) => {
-                    const catalogName = catalogNames[`${pkg.network === "mtn_express" ? "mtn" : pkg.network}:${Number(pkg.price).toFixed(2)}`];
-  const packageName = catalogName || pkg.size_gb_text || `${pkg.size_gb}GB`;
+                    const catalogName = isSpecialNetwork(pkg.network) ? undefined : catalogNames[`${pkg.network === "mtn_express" ? "mtn" : pkg.network}:${Number(pkg.price).toFixed(2)}`];
+  const packageName = catalogName || getPackageDisplayName(pkg);
                     const available = pkg.active !== false;
                     return (
                       <Card key={pkg.id} style={{ backgroundColor: "#2f176d", color: "#ffffff" }} className={`package-reference-card border-0 shadow-none ${available ? "" : "opacity-45"}`}>
