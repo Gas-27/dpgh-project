@@ -17,6 +17,7 @@ import { verifyHubtelMsisdn } from "@/services/hubtelService";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
+import PackageStatusIndicator from "@/components/PackageStatusIndicator";
 import { RefundStatusCell } from "@/components/RefundStatusCell";
 import { useStorefrontRefunds } from "@/hooks/useStorefrontRefunds";
 import { Navigate, Link } from "react-router-dom";
@@ -2877,16 +2878,14 @@ const fallbackBaseCost = Number(order.agent_base_price ?? order.base_cost ?? (or
                 const basePrice = basePrices[pkg.id] || pkg.price || 0;
                 const isInactive = pkg.active === false;
                 return (
-                  <Card key={pkg.id} className={`relative border-slate-700/50 bg-slate-900/5 transition-all ${isInactive ? "opacity-50 grayscale" : "hover:border-slate-600/50"}`}>
-                    {isInactive && (
-                      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
-                        Not available
-                      </div>
-                    )}
+                  <Card key={pkg.id} className={`relative border-slate-700/50 bg-slate-900/5 transition-all ${isInactive ? "" : "hover:border-slate-600/50"}`}>
                     <CardContent>
-                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                      <p className="text-lg font-bold text-cyan-400">GHC {Number(basePrice).toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">Agent Price</p>
+                      {isInactive && <PackageStatusIndicator status="not_available" note={pkg.inactive_note} />}
+                      <div className={isInactive ? "opacity-50 grayscale" : ""}>
+                        <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                        <p className="text-lg font-bold text-cyan-400">GHC {Number(basePrice).toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">Agent Price</p>
+                      </div>
                       <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => { if (!isInactive) { acknowledgedNewNumber.current = false; setShowNewNumberWarning(false); setBuyStep("phone"); setBuyCustomerNumber(""); setBuyingPkg(pkg); } }} disabled={isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                     </CardContent>
                   </Card>

@@ -24,6 +24,7 @@ import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { OrderSourceFilter } from "@/components/OrderSourceFilter";
 import { getOrderSource, ORDER_SOURCE_LABELS, type OrderSourceFilterKey } from "@/lib/orderSource";
 import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
+import PackageStatusIndicator from "@/components/PackageStatusIndicator";
 import { RefundStatusCell } from "@/components/RefundStatusCell";
 import { useStorefrontRefunds } from "@/hooks/useStorefrontRefunds";
 import { Navigate, Link, useNavigate } from "react-router-dom";
@@ -140,7 +141,7 @@ interface AgentStore {
   theme_config: { primary: string; primary_foreground: string; background: string; card_background: string; gridColumns: number; default_section?: string; show_agent_price?: boolean; };
   custom_domain?: string | null; custom_domain_status?: string;
   }
-interface DataPackage { id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean; }
+interface DataPackage { id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean; inactive_note?: string | null; }
 interface Order { id: string; customer_number: string; network: string; size_gb: number; amount: number; status: string; fulfillment_status: string; order_status: string; payment_method: string; created_at: string; package_id: string; }
 interface WithdrawalRequest { id: string; amount: number; status: string; created_at: string; }
 interface ProfitStats { totalRevenue: number; totalCost: number; totalProfit: number; availableForWithdrawal: number; }
@@ -3042,16 +3043,14 @@ return (
                 const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
                 const isInactive = pkg.active === false;
                 return (
-                  <Card key={pkg.id} className={`relative border-slate-700/50 bg-slate-900/5 transition-all ${isInactive ? "opacity-50 grayscale" : "hover:border-slate-600/50"}`}>
-                    {isInactive && (
-                      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
-                        Not available
-                      </div>
-                    )}
+                  <Card key={pkg.id} className={`relative border-slate-700/50 bg-slate-900/5 transition-all ${isInactive ? "" : "hover:border-slate-600/50"}`}>
                     <CardContent>
-                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                      <p className="text-lg font-bold text-cyan-400">GHC {price.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">Agent Price</p>
+                      {isInactive && <PackageStatusIndicator status="not_available" note={pkg.inactive_note} />}
+                      <div className={isInactive ? "opacity-50 grayscale" : ""}>
+                        <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                        <p className="text-lg font-bold text-cyan-400">GHC {price.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">Agent Price</p>
+                      </div>
                       {wouldUnderflow && !isInactive ? <p className="text-xs text-orange-400">Blocked ��� pending withdrawal</p> : null}
                       <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && openBuyDialog({ ...pkg, agent_price: price, price: price } as any)} disabled={wouldUnderflow || isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                     </CardContent>
