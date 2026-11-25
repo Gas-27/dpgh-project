@@ -1,13 +1,12 @@
 import { Button } from "@/components/ui/button";
 import NetworkSubTabs from "@/components/NetworkSubTabs";
-import { getNetworkFamily, isMashupNetwork, isVisiblePackage, type SpecialNetworkKey } from "@/lib/networkConfig";
+import { getNetworkFamily, type SpecialNetworkKey } from "@/lib/networkConfig";
 
 export const NETWORK_TAB_OPTIONS = [
   { key: "mtn", label: "MTN" },
   { key: "mtn_express", label: "MTN Express" },
   { key: "airteltigo", label: "AirtelTigo" },
   { key: "telecel", label: "Telecel" },
-  { key: "mashup", label: "MTN MashUp" },
 ] as const;
 
 export type NetworkTabKey = (typeof NETWORK_TAB_OPTIONS)[number]["key"] | SpecialNetworkKey;
@@ -22,7 +21,7 @@ type Props = {
 };
 
 const isYellow = (key: string) => key === "mtn" || key === "mtn_express";
-const tabColor = (key: string) => (isYellow(key) ? "#fbbf24" : key === "airteltigo" ? "#3b82f6" : key === "mashup" ? "#f97316" : "#ef4444");
+const tabColor = (key: string) => (isYellow(key) ? "#fbbf24" : key === "airteltigo" ? "#3b82f6" : "#ef4444");
 const activeColors = (key: string) => ({
   backgroundColor: tabColor(key),
   borderColor: tabColor(key),
@@ -31,8 +30,7 @@ const activeColors = (key: string) => ({
 
 export default function NetworkTabs({ value, onChange, className = "", packages }: Props) {
   const family = getNetworkFamily(value);
-  const hasMashupPackages = !packages || packages.some((p) => isMashupNetwork(p.network) && isVisiblePackage(p));
-  const visibleTabs = NETWORK_TAB_OPTIONS.filter((network) => network.key !== "mashup" || hasMashupPackages || family === "mashup");
+  const visibleTabs = NETWORK_TAB_OPTIONS;
 
   return (
     <div className="w-full">

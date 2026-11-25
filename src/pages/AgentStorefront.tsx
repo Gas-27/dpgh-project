@@ -1405,8 +1405,8 @@ const searchOrders = useCallback(async (input?: string) => {
 
           {/* ── Network filter ── */}
           <div className="container pb-6">
-<div className={`grid w-full grid-cols-2 gap-2 pb-2 ${packages.some((p) => isMashupNetwork(p.network)) ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
-  {["mtn", "mtn_express", "telecel", "airteltigo", ...(packages.some((p) => isMashupNetwork(p.network)) ? ["mashup"] : [])].map((net) => {
+<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-4">
+  {["mtn", "mtn_express", "telecel", "airteltigo"].map((net) => {
     const isSelected = getNetworkFamily(networkFilter) === net;
     return (
                 <Button
@@ -1417,11 +1417,10 @@ const searchOrders = useCallback(async (input?: string) => {
                   style={isSelected && net === "mtn" ? { background: "#fbbf24", color: "#000" } :
                          isSelected && net === "mtn_express" ? { background: "#f59e0b", color: "#000" } :
                          isSelected && net === "telecel" ? { background: "#ef4444", color: "#fff" } :
-                         isSelected && net === "airteltigo" ? { background: "#3b82f6", color: "#fff" } :
-                         isSelected && net === "mashup" ? { background: "#f97316", color: "#fff" } : {}}
+                         isSelected && net === "airteltigo" ? { background: "#3b82f6", color: "#fff" } : {}}
                   onClick={() => setNetworkFilter(net)}
                 >
-                  {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "airteltigo" ? "AirtelTigo" : net === "mashup" ? "MTN MashUp" : "Telecel"}
+                  {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
                 </Button>
     );
   })}

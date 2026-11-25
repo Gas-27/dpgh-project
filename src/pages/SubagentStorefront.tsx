@@ -1122,8 +1122,8 @@ const searchOrders = useCallback(async (input?: string) => {
 
         {activeSection === "data" && <>
         {/* Network Tabs */}
-<div className={`grid w-full grid-cols-2 gap-2 pb-2 ${packages.some((p) => isMashupNetwork(p.network)) ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
-  {["mtn", "mtn_express", "telecel", "airteltigo", ...(packages.some((p) => isMashupNetwork(p.network)) ? ["mashup"] : [])].map((net) => {
+<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-4">
+  {["mtn", "mtn_express", "telecel", "airteltigo"].map((net) => {
     const isSelected = activeSection === "data" && getNetworkFamily(networkFilter) === net;
     return (
             <Button

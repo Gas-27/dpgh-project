@@ -4,48 +4,56 @@ import { getActiveSpecialNetworks, getNetworkFamily } from "@/lib/networkConfig"
 type PackageLike = { network?: string | null; active?: boolean | null };
 
 type Props = {
-  /** Current network key, e.g. "mtn", "mtn_special", "telecel", "telecel_special". */
+  /** Current network key, e.g. "mtn", "mtn_special", "mashup", "telecel", "telecel_special". */
   value: string;
   onChange: (value: string) => void;
   packages: PackageLike[];
   className?: string;
 };
 
-const SUB_TABS: Record<string, { parent: string; special: string; bundlesLabel: string; specialLabel: string; active: { backgroundColor: string; borderColor: string; color: string } }> = {
-  mtn: {
-    parent: "mtn",
-    special: "mtn_special",
-    bundlesLabel: "MTN Bundles",
-    specialLabel: "MTN Special",
-    active: { backgroundColor: "#fbbf24", borderColor: "#fbbf24", color: "#000" },
-  },
-  telecel: {
-    parent: "telecel",
-    special: "telecel_special",
-    bundlesLabel: "Telecel Bundles",
-    specialLabel: "Telecel Special",
-    active: { backgroundColor: "#ef4444", borderColor: "#ef4444", color: "#fff" },
-  },
+type SubTabOption = {
+  key: string;
+  label: string;
+  /** Network key that must have active packages for this option to show. Omit for the always-on bundles option. */
+  requires?: string;
+  active: { backgroundColor: string; borderColor: string; color: string };
+};
+
+const YELLOW = { backgroundColor: "#fbbf24", borderColor: "#fbbf24", color: "#000" };
+const RED = { backgroundColor: "#ef4444", borderColor: "#ef4444", color: "#fff" };
+const ORANGE = { backgroundColor: "#f97316", borderColor: "#f97316", color: "#fff" };
+
+const SUB_TABS: Record<string, SubTabOption[]> = {
+  mtn: [
+    { key: "mtn", label: "MTN Bundles", active: YELLOW },
+    { key: "mtn_special", label: "MTN Special", requires: "mtn_special", active: YELLOW },
+    { key: "mashup", label: "MTN MashUp", requires: "mashup", active: ORANGE },
+  ],
+  telecel: [
+    { key: "telecel", label: "Telecel Bundles", active: RED },
+    { key: "telecel_special", label: "Telecel Special", requires: "telecel_special", active: RED },
+  ],
 };
 
 /**
- * "Bundles / Special" sub-tabs shown under the MTN and Telecel tabs.
- * Renders nothing unless the special network has at least one active package.
+ * "Bundles / Special / MashUp" sub-tabs shown under the MTN and Telecel tabs.
+ * Renders nothing unless at least one special network has an active package.
  */
 export default function NetworkSubTabs({ value, onChange, packages, className = "" }: Props) {
-  const config = SUB_TABS[getNetworkFamily(value)];
+  const family = getNetworkFamily(value);
+  const config = SUB_TABS[family];
   if (!config) return null;
-  if (!getActiveSpecialNetworks(packages).includes(config.special as never)) return null;
 
-  const options = [
-    { key: config.parent, label: config.bundlesLabel },
-    { key: config.special, label: config.specialLabel },
-  ];
+  const activeSpecials: string[] = getActiveSpecialNetworks(packages);
+  const options = config.filter((option) => !option.requires || activeSpecials.includes(option.requires));
+  if (options.length < 2) return null;
+
+  const currentKey = value === "mtn_mashup" ? "mashup" : value;
 
   return (
-    <div className={`flex w-full items-center justify-center gap-2 ${className}`} role="tablist" aria-label={`${config.bundlesLabel} and ${config.specialLabel}`}>
+    <div className={`flex w-full items-center justify-center gap-2 ${className}`} role="tablist" aria-label={options.map((o) => o.label).join(", ")}>
       {options.map((option) => {
-        const selected = value === option.key;
+        const selected = currentKey === option.key;
         return (
           <Button
             key={option.key}
@@ -54,7 +62,7 @@ export default function NetworkSubTabs({ value, onChange, packages, className = 
             aria-selected={selected}
             onClick={() => onChange(option.key)}
             className={`network-subtab h-8 flex-1 whitespace-nowrap rounded-full border px-3 text-xs font-bold shadow-none transition-colors sm:flex-none sm:px-5 sm:text-sm ${selected ? "network-subtab-active" : "network-tab-inactive"}`}
-            style={selected ? config.active : undefined}
+            style={selected ? option.active : undefined}
           >
             {option.label}
           </Button>
