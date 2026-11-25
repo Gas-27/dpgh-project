@@ -23,6 +23,7 @@ import { DeliveryProgressApiDocs } from "@/components/DeliveryProgressApiDocs";
 import { fetchProgressKey } from "@/lib/fetchProgressKey";
 import WebhookDocs from "@/components/WebhookDocs";
 import CheapDataOrderApiDocs from "@/components/CheapDataOrderApiDocs";
+import { SupportedNetworksDocs, GetPackagesDocs } from "@/components/CheapDataNetworksApiDocs";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
 import ApiWeeklyTargetMeter from "@/components/ApiWeeklyTargetMeter";
 import PaymentVerifier from "@/components/PaymentVerifier";
@@ -2432,69 +2433,11 @@ const renderApiDocs = () => (
   {/* Delivery Progress API */}
   <DeliveryProgressApiDocs />
 
-  {/* Supported Networks */}
-  <Card id="cd-networks" className="scroll-mt-32">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-green-400" />
-            Supported Networks
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {[
-              { code: "mtn", name: "MTN Ghana" },
-              { code: "mtn_express", name: "MTN Ghana" },
-              { code: "telecel", name: "Telecel Ghana" },
-              { code: "airteltigo", name: "AirtelTigo Ghana" },
-            ].map(network => (
-              <div key={network.code} className="p-3 bg-muted rounded-lg border border-border">
-                <p className="font-mono text-sm font-semibold text-cyan-400">{network.code}</p>
-                <p className="text-sm text-muted-foreground">{network.name}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+  <SupportedNetworksDocs />
 
       {/* Main Endpoints */}
       <div className="space-y-4">
-        {/* GET /get-packages */}
-        <Card id="cd-get-packages" className="scroll-mt-32">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
-              <span>/get-packages</span>
-            </CardTitle>
-            <p className="text-sm text-muted-foreground mt-2">Retrieve all available data packages with pricing.</p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
-              <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                <li>• <span className="font-mono">network</span> - Filter by single network</li>
-                <li>• <span className="font-mono">networks[]</span> - Filter by multiple networks</li>
-              </ul>
-            </div>
-            <div className="bg-muted p-3 rounded-lg border border-border">
-              <p className="text-xs text-muted-foreground mb-2">Example:</p>
-              <p className="font-mono text-xs">GET https://api.dataplug.store/functions/v1/get-packages?network=mtn</p>
-            </div>
-            <div className="bg-muted p-3 rounded-lg border border-border">
-              <p className="text-xs text-muted-foreground mb-2">Successful JSON response (200):</p>
-              <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap">{`{
-  "success": true,
-  "count": 14,
-  "data": [
-    { "network": "mtn", "size_gb": 1, "price": 3.9 },
-    { "network": "mtn", "size_gb": 2, "price": 7.8 },
-    { "network": "mtn", "size_gb": 3, "price": 11.75 }
-  ]
-}`}</pre>
-              <p className="mt-2 text-xs text-muted-foreground">Sample shortened to 3 of 14 packages. Each package has only network, size_gb (GB) and price (GHS, your API price). The response does not include validity or availability fields; only active packages are listed. Omit the network parameter to get every network. Prices are live and may change, and use size_gb exactly as returned when calling /purchase.</p>
-            </div>
-          </CardContent>
-        </Card>
+        <GetPackagesDocs />
 
         <CheapDataOrderApiDocs />
 

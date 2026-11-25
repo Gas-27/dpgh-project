@@ -64,7 +64,7 @@ const HEADERS: Array<[string, string]> = [
   ["User-Agent", "JustBuy-Webhooks/1.0"],
 ];
 
-const STATUSES = ["processing", "waiting", "unverified", "delivered", "failed", "refunded"];
+const STATUSES = ["processing", "placed", "waiting", "unverified", "delivered", "failed", "refunded"];
 
 const ACTIONS: Array<[string, string, string]> = [
   ["get", "-", "Current settings (secret masked)"],
@@ -148,6 +148,13 @@ export default function WebhookDocs({ hasApiKey }: WebhookDocsProps) {
             waiting, waiting to delivered, etc.). It is NOT sent when the order is created: the <Mono>/purchase</Mono> response is
             your confirmation. Expect several events per order; the last one has a final status (<Mono>delivered</Mono>,{" "}
             <Mono>failed</Mono> or <Mono>refunded</Mono>).
+          </p>
+          <p>
+            For <Mono>mtn_special</Mono> and <Mono>telecel_special</Mono> orders the status flow is <Mono>processing</Mono> →{" "}
+            <Mono>placed</Mono> → <Mono>processing</Mono> → <Mono>delivered</Mono>, and you receive an{" "}
+            <Mono>order.status_changed</Mono> event for each change (same payload as above). <Mono>placed</Mono> means the order
+            was accepted and queued for delivery. If an order cannot be delivered it is refunded to your API wallet automatically
+            and the status becomes <Mono>refunded</Mono>.
           </p>
           <p>
             <Mono>webhook.test</Mono> is sent by the <Mono>test</Mono> action.
