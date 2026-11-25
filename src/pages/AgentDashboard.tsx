@@ -75,6 +75,7 @@ import WebhookDocs from "@/components/WebhookDocs";
 import CheapDataOrderApiDocs from "@/components/CheapDataOrderApiDocs";
 import { SupportedNetworksDocs, GetPackagesDocs } from "@/components/CheapDataNetworksApiDocs";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
+import { withStorePrivateDetails, SUBAGENT_PUBLIC_COLUMNS } from "@/lib/storePrivateDetails";
 import ApiWeeklyTargetMeter from "@/components/ApiWeeklyTargetMeter";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
 import SubagentsList from "@/components/SubagentsList";
@@ -846,11 +847,13 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       // Get all sub-subagents for those subagents
       const { data: ssaRows } = await supabase
         .from("sub_subagent_stores")
-        .select("*")
+        .select("id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, approved, subagent_store_id, agent_store_id, topup_reference, created_at, updated_at")
         .in("subagent_store_id", subagentIds);
 
+      const ssaWithPrivate = await withStorePrivateDetails("sub_subagent", ssaRows as any[] | null);
+
       // Enrich with parent subagent name
-      const enriched = (ssaRows || []).map((ssa: any) => {
+      const enriched = ssaWithPrivate.map((ssa: any) => {
         const parent = subagentRows.find((s: any) => s.id === ssa.subagent_store_id);
         return { ...ssa, parent_subagent_name: parent?.store_name || "Unknown Subagent" };
       });
@@ -1003,7 +1006,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         // Fetch personal purchases made from the Packages/UserDashboard page (customer_id = auth user, no agent_store_id)
         supabase.from("orders").select("*", { count: "exact" }).eq("customer_id", effectiveUserId).is("agent_store_id", null).order("created_at", { ascending: false }).range(0, 999),
         supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", sd.id).order("created_at", { ascending: false }),
-        supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
+        supabase.from("subagent_stores").select(SUBAGENT_PUBLIC_COLUMNS).eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
         supabase.from("agent_special_mtn_mashup_pricing").select("tier_1_price, tier_2_price, tier_3_price, tier_4_price").eq("agent_id", effectiveUserId).maybeSingle(),
@@ -1084,7 +1087,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       });
       setWithdrawals(payoutData);
       setTransferRecipients(recipientsR.data ?? []);
-      const subags = subagentR.data ?? [];
+      const subags = await withStorePrivateDetails("subagent", (subagentR.data ?? []) as any[]);
       setSubagents(subags);
     
     // Fetch topup history
@@ -4926,9 +4929,9 @@ handleMobileNumberChange(digits);
                   onRefresh={async () => {
                     const { data } = await supabase
                       .from("subagent_stores")
-                      .select("*")
+                      .select(SUBAGENT_PUBLIC_COLUMNS)
                       .eq("agent_store_id", store?.id);
-                    if (data) setSubagents(data);
+                    if (data) setSubagents(await withStorePrivateDetails("subagent", data as any[]));
                   }}
                 />
               </CardContent>

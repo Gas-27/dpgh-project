@@ -81,6 +81,7 @@ import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import NotificationPopup from "@/components/NotificationPopup";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 import { SHOW_USSD } from "@/lib/ussdVisibility";
+import { withStorePrivateDetail, withStorePrivateDetails, fetchWalletBalance, SUB_SUBAGENT_PUBLIC_COLUMNS } from "@/lib/storePrivateDetails";
 
 // Helper function to get current order stage
 function getOrderStatusLabel(status: string): string {
@@ -454,13 +455,9 @@ const SubagentDashboard = () => {
 
   useWalletSync(async () => {
     if (!subagentStore?.id) return;
-    const { data } = await supabase
-      .from("subagent_stores")
-      .select("wallet_balance")
-      .eq("id", subagentStore.id)
-      .maybeSingle();
-    const balance = Number(data?.wallet_balance);
-    if (Number.isFinite(balance)) {
+    const fetchedBalance = await fetchWalletBalance("subagent", subagentStore.id);
+    const balance = Number(fetchedBalance);
+    if (fetchedBalance !== null && Number.isFinite(balance)) {
       setSubagentStore((prev) => (prev && Number(prev.wallet_balance) !== balance ? { ...prev, wallet_balance: balance } : prev));
     }
   }, !!subagentStore?.id);
@@ -638,7 +635,7 @@ const SubagentDashboard = () => {
         console.log("[v0] SubagentDashboard - Admin impersonation with storeId:", storeId);
         const { data: storeData, error: storeErr } = await supabase
           .from("subagent_stores")
-  .select("id, user_id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, custom_domain, custom_domain_status")
+  .select("id, user_id, store_name, whatsapp_number, support_number, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, custom_domain, custom_domain_status")
   .eq("id", storeId)
           .single();
 
@@ -649,7 +646,7 @@ const SubagentDashboard = () => {
           return;
         }
 
-        const store = storeData;
+        const store: any = await withStorePrivateDetail("subagent", storeData as any);
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
         // Always use the database value for allow_sub_subagent_registration
   setSubagentStore({
@@ -690,7 +687,7 @@ const SubagentDashboard = () => {
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
-          supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("sub_subagent_stores").select(SUB_SUBAGENT_PUBLIC_COLUMNS).eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
   store.user_id
     ? supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id).eq("status", "active").order("created_at", { ascending: false })
     : Promise.resolve({ data: [] as any[], error: null }),
@@ -725,7 +722,7 @@ const SubagentDashboard = () => {
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
         
         // Fetch sub-subagent orders and calculate profits
-        const subSubagentsData = subSubagentsResult.data || [];
+        const subSubagentsData: any[] = await withStorePrivateDetails("sub_subagent", (subSubagentsResult.data || []) as any[]);
         setSubSubagents(subSubagentsData);
         
         if (subSubagentsData.length > 0) {
@@ -821,7 +818,7 @@ const SubagentDashboard = () => {
         console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("subagent_stores")
-  .select("id, user_id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, custom_domain, custom_domain_status")
+  .select("id, user_id, store_name, whatsapp_number, support_number, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, custom_domain, custom_domain_status")
   .eq("user_id", effectiveUserId);
 
         console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
@@ -839,7 +836,7 @@ const SubagentDashboard = () => {
           return;
         }
 
-        const store = storeData[0];
+        const store: any = await withStorePrivateDetail("subagent", storeData[0] as any);
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
   setSubagentStore(store);
   setShowAgentPrice(Boolean(store.theme_config?.show_agent_price));
@@ -876,7 +873,7 @@ const SubagentDashboard = () => {
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
-          supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("sub_subagent_stores").select(SUB_SUBAGENT_PUBLIC_COLUMNS).eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false })
         ]);
 
@@ -909,7 +906,7 @@ const SubagentDashboard = () => {
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
         
         // Set sub-subagents
-        const subSubagentsData = subSubagentsResult.data || [];
+        const subSubagentsData: any[] = await withStorePrivateDetails("sub_subagent", (subSubagentsResult.data || []) as any[]);
         setSubSubagents(subSubagentsData);
         
         // Calculate sub-subagent stats and merge their orders into the main orders list
@@ -1213,20 +1210,17 @@ const SubagentDashboard = () => {
 
         const { data: ssa } = await supabase
           .from("sub_subagent_stores")
-          .select("id, wallet_balance")
+          .select("id")
           .eq("id", order.sub_subagent_store_id)
           .maybeSingle();
 
         if (!ssa) { errorCount++; continue; }
 
         // Deduct refund amount from this subagent's own wallet first
-        const { data: myStore } = await supabase
-          .from("subagent_stores")
-          .select("id, wallet_balance")
-          .eq("id", subagentStore?.id)
-          .maybeSingle();
+        const myStore = subagentStore?.id ? { id: subagentStore.id as string } : null;
+        const myWalletBalance = myStore ? await fetchWalletBalance("subagent", myStore.id) : null;
 
-        const myBalance = Number(myStore?.wallet_balance || 0);
+        const myBalance = Number(myWalletBalance || 0);
         if (myBalance < refundAmount) {
           toast({
             title: "Insufficient Wallet Balance",
@@ -2126,17 +2120,13 @@ const handleSaveStore = async () => {
       setBuyLoading(true);
       
       // First, get the current wallet balance to ensure we have fresh data
-      const { data: freshStore, error: fetchError } = await supabase
-        .from("subagent_stores")
-        .select("wallet_balance")
-        .eq("id", subagentStore.id)
-        .single();
+      const freshBalance = await fetchWalletBalance("subagent", subagentStore.id);
       
-      if (fetchError || !freshStore) {
+      if (freshBalance === null) {
         throw new Error("Failed to fetch wallet balance");
       }
       
-      const currentBalance = freshStore.wallet_balance || 0;
+      const currentBalance = freshBalance || 0;
       
       if (price > currentBalance) {
         toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
@@ -3841,13 +3831,9 @@ handleMobileNumberChange(digits);
                               let latestBalance: number | null = null;
                               
                               // Get fresh wallet balance from database
-                              const { data: freshStore } = await supabase
-                                .from("subagent_stores")
-                                .select("wallet_balance")
-                                .eq("id", subagentStore.id)
-                                .single();
+                              const freshBulkBalance = await fetchWalletBalance("subagent", subagentStore.id);
                               
-                              const currentBalance = freshStore?.wallet_balance || 0;
+                              const currentBalance = freshBulkBalance || 0;
                               
                               // Check if we have enough balance
                               if (currentBalance < totalCost) {
@@ -4473,9 +4459,9 @@ handleMobileNumberChange(digits);
                   onRefresh={async () => {
                     const { data } = await supabase
                       .from("sub_subagent_stores")
-                      .select("*")
-                      .eq("subagent_store_id", subagentStore?.id);
-                    if (data) setSubSubagents(data);
+  .select(SUB_SUBAGENT_PUBLIC_COLUMNS)
+  .eq("subagent_store_id", subagentStore?.id);
+  if (data) setSubSubagents(await withStorePrivateDetails("sub_subagent", data as any[]));
                   }}
                 />
               </CardContent>

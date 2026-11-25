@@ -8,6 +8,7 @@ import { startVisiblePolling } from "@/lib/visiblePolling";
 import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { DOMAINS } from "@/config/domains";
 import { getStoreNameFromSubdomain, findStoreByName, fetchAllStores } from "@/utils/storeUtils";
+import { SUBAGENT_STOREFRONT_COLUMNS } from "@/lib/storePrivateDetails";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -781,7 +782,7 @@ const AgentStorefront = () => {
       // Fetch ALL agent and subagent stores via pagination (bypasses the 1000-row cap)
       const [agentStores, subagentStores] = await Promise.all([
         fetchAllStores(supabase, "agent_stores"),
-        fetchAllStores(supabase, "subagent_stores", "*, agent_stores(store_name)"),
+        fetchAllStores(supabase, "subagent_stores", `${SUBAGENT_STOREFRONT_COLUMNS}, agent_stores(store_name)`),
       ]);
 
       // Try to find match in agent stores first

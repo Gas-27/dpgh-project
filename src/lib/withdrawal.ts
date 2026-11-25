@@ -1,4 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
+import { fetchWalletBalance } from "@/lib/storePrivateDetails";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || "",
@@ -58,18 +59,14 @@ export async function getAgentBalance(agentStoreId: string): Promise<Balance> {
 
 // Get subagent balance
 export async function getSubagentBalance(subagentStoreId: string): Promise<Balance> {
-  const { data, error } = await supabase
-    .from("subagent_stores")
-    .select("wallet_balance")
-    .eq("id", subagentStoreId)
-    .single();
+  const balance = await fetchWalletBalance("subagent", subagentStoreId);
 
-  if (error || !data) {
+  if (balance === null) {
     throw new Error("Failed to fetch subagent balance");
   }
 
   return {
-    wallet_balance: Number(data.wallet_balance) || 0,
+    wallet_balance: balance || 0,
   };
 }
 

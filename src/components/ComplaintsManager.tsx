@@ -19,6 +19,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Separator } from "@/components/ui/separator";
 import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
 import { getNetworkLabel, getOrderPackageName, isSpecialNetwork } from "@/lib/networkConfig";
+import { SUBAGENT_PUBLIC_COLUMNS } from "@/lib/storePrivateDetails";
 
 interface Complaint {
   id: string;
@@ -178,7 +179,7 @@ export const ComplaintsManager = ({ isAgent = false, agentStoreId, readOnly = fa
       const [ordersResult, agentsResult, subagentsResult] = await Promise.all([
         ordersPromise,
         agentIds.length ? supabase.from("agent_stores").select("id, user_id, store_name, phone_number, whatsapp_number, support_number, approved, created_at").in("id", agentIds) : Promise.resolve({ data: [], error: null }),
-        subagentIds.length ? supabase.from("subagent_stores").select("*").in("id", subagentIds) : Promise.resolve({ data: [], error: null }),
+        subagentIds.length ? supabase.from("subagent_stores").select(SUBAGENT_PUBLIC_COLUMNS).in("id", subagentIds) : Promise.resolve({ data: [], error: null }),
       ]);
 
       const specialPackageIds = [

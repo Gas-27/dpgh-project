@@ -8,6 +8,7 @@ import { startVisiblePolling } from "@/lib/visiblePolling";
 import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { DOMAINS } from "@/config/domains";
 import { findStoreByName, fetchAllStores } from "@/utils/storeUtils";
+import { SUBAGENT_STOREFRONT_COLUMNS } from "@/lib/storePrivateDetails";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -601,7 +602,7 @@ export function SubagentStorefront() {
       }
 
       // Fetch ALL subagent stores via pagination (bypasses the 1000-row cap)
-      const stores = await fetchAllStores(supabase, "subagent_stores");
+      const stores = await fetchAllStores(supabase, "subagent_stores", SUBAGENT_STOREFRONT_COLUMNS);
 
       if (!stores || stores.length === 0) {
         setNotFound(true);

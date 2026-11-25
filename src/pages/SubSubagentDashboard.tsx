@@ -76,6 +76,7 @@ import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import NotificationPopup from "@/components/NotificationPopup";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 import { SHOW_USSD } from "@/lib/ussdVisibility";
+import { withStorePrivateDetail, fetchWalletBalance } from "@/lib/storePrivateDetails";
 
 // Helper function to get current order stage
 function getOrderStatusLabel(status: string): string {
@@ -409,13 +410,9 @@ const SubSubagentDashboard = () => {
 
   useWalletSync(async () => {
     if (!subagentStore?.id) return;
-    const { data } = await supabase
-      .from("sub_subagent_stores")
-      .select("wallet_balance")
-      .eq("id", subagentStore.id)
-      .maybeSingle();
-    const balance = Number(data?.wallet_balance);
-    if (Number.isFinite(balance)) {
+    const fetchedBalance = await fetchWalletBalance("sub_subagent", subagentStore.id);
+    const balance = Number(fetchedBalance);
+    if (fetchedBalance !== null && Number.isFinite(balance)) {
       setSubagentStore((prev) => (prev && Number(prev.wallet_balance) !== balance ? { ...prev, wallet_balance: balance } : prev));
     }
   }, !!subagentStore?.id);
@@ -615,7 +612,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] SubagentDashboard - Loading by storeId:", resolvedStoreId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id, topup_reference, custom_domain, custom_domain_status")
+          .select("id, store_name, whatsapp_number, support_number, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id, topup_reference, custom_domain, custom_domain_status")
           .eq("id", resolvedStoreId)
           .single();
 
@@ -626,7 +623,7 @@ const SubSubagentDashboard = () => {
           return;
         }
 
-        const store = storeData;
+        const store: any = await withStorePrivateDetail("sub_subagent", storeData as any);
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
         loadedStoreIdRef.current = store.id;
         setSubagentStore(store);
@@ -742,7 +739,7 @@ const SubSubagentDashboard = () => {
         console.log("[v0] Querying sub_subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("sub_subagent_stores")
-          .select("id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id, topup_reference, custom_domain, custom_domain_status")
+          .select("id, store_name, whatsapp_number, support_number, approved, created_at, whatsapp_group, updated_at, subagent_store_id, agent_store_id, topup_reference, custom_domain, custom_domain_status")
           .eq("user_id", effectiveUserId)
           .order("created_at", { ascending: false });
 
@@ -761,7 +758,7 @@ const SubSubagentDashboard = () => {
           return;
         }
 
-        const store = storeData[0];
+        const store: any = await withStorePrivateDetail("sub_subagent", storeData[0] as any);
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
         loadedStoreIdRef.current = store.id;
         setSubagentStore(store);
@@ -1555,17 +1552,13 @@ const handleSaveStore = async () => {
       setBuyLoading(true);
       
       // First, get the current wallet balance to ensure we have fresh data
-      const { data: freshStore, error: fetchError } = await supabase
-        .from("sub_subagent_stores")
-        .select("wallet_balance")
-        .eq("id", subagentStore.id)
-        .single();
+      const freshBalance = await fetchWalletBalance("sub_subagent", subagentStore.id);
       
-      if (fetchError || !freshStore) {
+      if (freshBalance === null) {
         throw new Error("Failed to fetch wallet balance");
       }
       
-      const currentBalance = freshStore.wallet_balance || 0;
+      const currentBalance = freshBalance || 0;
       
       if (price > currentBalance) {
         toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });

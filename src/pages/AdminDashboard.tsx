@@ -10,7 +10,8 @@ const WALLET_TABLE_OWNER: Record<string, AdminWalletOwnerType> = {
   sub_subagent_stores: "subsubagent",
 };
 import { APIPricingTab } from "@/components/APIPricingTab";
-import { useAuth } from "@/hooks/useAuth";
+  import { useAuth } from "@/hooks/useAuth";
+  import { withStorePrivateDetails, fetchWalletBalance, SUB_SUBAGENT_PUBLIC_COLUMNS } from "@/lib/storePrivateDetails";
 import { useOptimizedRealtime } from "@/hooks/useOptimizedRealtime";
 import { useDatabaseSearch } from "@/hooks/useDatabaseSearch";
 import { usePaginatedData } from "@/hooks/usePaginatedData";
@@ -418,10 +419,10 @@ const AdminDashboard = () => {
     try {
       const { data: ssData } = await supabase
         .from("sub_subagent_stores")
-        .select("*, subagent_stores(id, store_name, agent_store_id)")
+        .select(`${SUB_SUBAGENT_PUBLIC_COLUMNS}, subagent_stores(id, store_name, agent_store_id)`)
         .order("created_at", { ascending: false })
         .limit(200);
-      setSubSubagents(ssData || []);
+      setSubSubagents((await withStorePrivateDetails("sub_subagent", (ssData as any[]) || [])) as any[]);
       setLoadedTabs(prev => new Set([...prev, "sub_subagents"]));
     } catch {
       setSubSubagents([]);
@@ -543,8 +544,12 @@ const AdminDashboard = () => {
 
       const [agentStoresRes, subagentStoresRes, subSubStoresRes, recipientsRes] = await Promise.all([
         agentIds.length > 0 ? (supabase as any).rpc("get_agent_stores_private", { p_ids: agentIds }) : { data: [] },
-        subagentIds.length > 0 ? supabase.from("subagent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance").in("id", subagentIds) : { data: [] },
-        subSubIds.length > 0 ? supabase.from("sub_subagent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance").in("id", subSubIds) : { data: [] },
+        subagentIds.length > 0
+          ? supabase.from("subagent_stores").select("id, store_name, user_id").in("id", subagentIds).then(async (res: any) => ({ ...res, data: await withStorePrivateDetails("subagent", res.data || []) }))
+          : { data: [] },
+        subSubIds.length > 0
+          ? supabase.from("sub_subagent_stores").select("id, store_name, user_id").in("id", subSubIds).then(async (res: any) => ({ ...res, data: await withStorePrivateDetails("sub_subagent", res.data || []) }))
+          : { data: [] },
         recipientIds.length > 0 ? supabase.from("transfer_recipients").select("id, account_holder_name, mobile_money_number, mobile_money_network, account_number, bank_name").in("id", recipientIds) : { data: [] },
       ]);
 
@@ -748,8 +753,8 @@ const AdminDashboard = () => {
         const data = await fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 1000);
         setAgents(data ?? []);
       } else if (tabValue === "subagents") {
-        const data = await fetchRecords("subagent_stores", "id, store_name, agent_store_id, created_at, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, agent_stores(store_name, id, user_id)", { column: "created_at", ascending: false }, 1000);
-        setSubagents(data ?? []);
+        const data = await fetchRecords("subagent_stores", "id, store_name, agent_store_id, created_at, whatsapp_number, support_number, agent_stores(store_name, id, user_id)", { column: "created_at", ascending: false }, 1000);
+        setSubagents((await withStorePrivateDetails("subagent", (data as any[]) ?? [])) as any[]);
       } else if (tabValue === "users") {
         const data = await fetchRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }, 10000);
         setUsers(data ?? []);
@@ -807,7 +812,7 @@ const AdminDashboard = () => {
     try {
       const { data, error } = await supabase
         .from("sub_subagent_stores")
-        .select("*, subagent_stores(id, store_name, agent_store_id)")
+        .select(`${SUB_SUBAGENT_PUBLIC_COLUMNS}, subagent_stores(id, store_name, agent_store_id)`)
         .order("created_at", { ascending: false })
         .limit(200);
       
@@ -818,7 +823,7 @@ const AdminDashboard = () => {
         return;
       }
       
-      setSubSubagents(data || []);
+      setSubSubagents((await withStorePrivateDetails("sub_subagent", (data as any[]) || [])) as any[]);
       setLoadedTabs(prev => new Set([...prev, "sub_subagents"]));
     } catch (error) {
       console.error("[v0] Exception fetching sub-subagents:", error);
@@ -2115,7 +2120,7 @@ const AdminDashboard = () => {
 
         if ((order as any).sub_subagent_store_id) {
           refundAmount = await resolveAgentBasePrice(order, order.agent_store_id ?? null);
-          const { data: subSubagent } = await supabase.from("sub_subagent_stores").select("id, subagent_store_id, wallet_balance").eq("id", (order as any).sub_subagent_store_id).maybeSingle();
+          const { data: subSubagent } = await supabase.from("sub_subagent_stores").select("id, subagent_store_id").eq("id", (order as any).sub_subagent_store_id).maybeSingle();
           if (subSubagent && await creditWallet("sub_subagent_stores", subSubagent.id, refundAmount)) {
             targetWalletUpdated = true;
             if (subSubagent.subagent_store_id) {
@@ -2367,14 +2372,10 @@ const AdminDashboard = () => {
         }
       } else if (order.subagent_store_id) {
         // Subagent refund reversal: deduct from subagent wallet
-        const { data: subagent } = await supabase
-          .from("subagent_stores")
-          .select("id, wallet_balance")
-          .eq("id", order.subagent_store_id)
-          .maybeSingle();
+        const subagentBalance = await fetchWalletBalance("subagent", order.subagent_store_id);
 
-        if (subagent) {
-          targetWalletUpdated = await reverseDebit("subagent", subagent.id, Number(subagent.wallet_balance) || 0);
+        if (subagentBalance !== null) {
+          targetWalletUpdated = await reverseDebit("subagent", order.subagent_store_id, Number(subagentBalance) || 0);
         }
       } else if (order.customer_id) {
         // Check if this customer_id belongs to an agent (e.g. bought via Packages page
