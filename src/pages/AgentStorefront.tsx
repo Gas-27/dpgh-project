@@ -537,7 +537,7 @@ const NotificationModal = ({
 }): JSX.Element => {
   if (notifications.length === 0) return null as any;
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] pointer-events-auto flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative max-w-md w-full mx-4 bg-card rounded-2xl shadow-2xl border overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="relative p-6 pb-4 text-center">
           <div
@@ -959,11 +959,17 @@ const AgentStorefront = () => {
       .order("created_at", { ascending: false })) as any;
     if (!error && data) {
       const active = data as Notification[];
+      let saved: string[] = [];
+      try {
+        saved = JSON.parse(localStorage.getItem(`dismissed_notifications_${store.id}`) || "[]");
+      } catch {
+        saved = [];
+      }
       setNotifications(active);
-      const undismissed = active.filter((n) => !dismissedIds.includes(n.id));
-      if (undismissed.length > 0 && !modalOpen) setModalOpen(true);
+      setDismissedIds(saved);
+      if (active.some((n) => !saved.includes(n.id))) setModalOpen(true);
     }
-  }, [store?.id, dismissedIds, modalOpen]);
+  }, [store?.id]);
 
   useEffect(() => { if (store?.id) fetchNotifications(); }, [store?.id, fetchNotifications]);
 

@@ -782,8 +782,6 @@ export function SubagentStorefront() {
 
   // Notifications
   const fetchNotifications = useCallback(async () => {
-    // Legacy store-specific announcements are replaced by NotificationPopup.
-    return;
     if (!store?.id) return;
     const now = new Date().toISOString();
     const { data } = await supabase
@@ -795,18 +793,20 @@ export function SubagentStorefront() {
       .order("created_at", { ascending: false }) as any;
     
     if (data) {
+      let saved: string[] = [];
+      try {
+        saved = JSON.parse(localStorage.getItem(`dismissed_subagent_notifications_${store.id}`) || "[]");
+      } catch {
+        saved = [];
+      }
       setNotifications(data);
-      const undismissed = data.filter((n: any) => !dismissedIds.includes(n.id));
-      if (undismissed.length > 0 && !modalOpen) setModalOpen(true);
+      setDismissedIds(saved);
+      if (data.some((n: any) => !saved.includes(n.id))) setModalOpen(true);
     }
-  }, [store?.id, dismissedIds, modalOpen]);
+  }, [store?.id]);
 
   useEffect(() => {
-    if (store?.id) {
-      fetchNotifications();
-      const saved = localStorage.getItem(`dismissed_subagent_notifications_${store.id}`);
-      if (saved) setDismissedIds(JSON.parse(saved));
-    }
+    if (store?.id) fetchNotifications();
   }, [store?.id, fetchNotifications]);
 
   const dismissNotification = (id: string) => {
@@ -963,7 +963,7 @@ const searchOrders = useCallback(async (input?: string) => {
   <NotificationPopup surface="subagent-storefront" />
   {/* Notification Modal */}
       {modalOpen && undismissedNotifications.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div className="fixed inset-0 z-[100] pointer-events-auto flex items-center justify-center bg-black/70 p-4">
           <div className="relative w-full max-w-md rounded-xl border border-border p-6 space-y-4" style={{ background: cardBg }}>
             <button onClick={closeAllNotifications} className="absolute top-3 right-3 text-muted-foreground hover:text-white"><X className="h-5 w-5" /></button>
             <div className="flex items-center gap-2 text-lg font-bold" style={{ color: primaryColor }}>

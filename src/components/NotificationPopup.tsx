@@ -116,33 +116,33 @@ const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
     fetchNotifications();
   }, [user, roles, surface]);
 
-  const dismiss = async () => {
+  const dismiss = () => {
     if (notifications.length === 0) return;
-    if (!user) {
-      setNotifications((items) => items.filter((_, index) => index !== currentIndex));
-      setCurrentIndex((index) => Math.min(index, Math.max(0, notifications.length - 2)));
-      return;
-    }
-
     const notif = notifications[currentIndex];
 
-    const { data: existing } = await supabase
-      .from("notification_dismissals")
-      .select("view_count")
-      .eq("notification_id", notif.id)
-      .eq("user_id", user.id)
-      .maybeSingle();
-    await supabase.from("notification_dismissals").upsert({
-      notification_id: notif.id,
-      user_id: user.id,
-      view_count: (existing?.view_count ?? 0) + 1,
-    }, { onConflict: "notification_id,user_id" });
+    // Remove it from the screen right away; saving the dismissal happens in the background.
+    setNotifications((items) => items.filter((item) => item.id !== notif.id));
+    setCurrentIndex((index) => Math.min(index, Math.max(0, notifications.length - 2)));
 
-    if (currentIndex < notifications.length - 1) {
-      setCurrentIndex((i) => i + 1);
-    } else {
-      setNotifications([]);
-    }
+    if (!user) return;
+
+    void (async () => {
+      try {
+        const { data: existing } = await supabase
+          .from("notification_dismissals")
+          .select("view_count")
+          .eq("notification_id", notif.id)
+          .eq("user_id", user.id)
+          .maybeSingle();
+        await supabase.from("notification_dismissals").upsert({
+          notification_id: notif.id,
+          user_id: user.id,
+          view_count: (existing?.view_count ?? 0) + 1,
+        }, { onConflict: "notification_id,user_id" });
+      } catch (error) {
+        console.warn("Failed to save notification dismissal:", error);
+      }
+    })();
   };
 
   if (notifications.length === 0) return null;
@@ -152,7 +152,7 @@ const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
   const Icon = meta.icon;
 
   return (
-    <Dialog open={true} onOpenChange={() => dismiss()}>
+    <Dialog open={true} onOpenChange={(open) => { if (!open) dismiss(); }}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
 
         {/* HEADER */}
