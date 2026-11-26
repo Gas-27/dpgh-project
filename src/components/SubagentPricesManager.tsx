@@ -261,7 +261,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
             { key: "mtn_special", label: "MTN Special" },
             { key: "telecel_special", label: "Telecel Special" },
             { key: "mashup", label: "MTN MashUp" },
-          ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key && p.active !== false)).map(({ key, label }) => (
+          ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => String(p.network ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_") === key)).map(({ key, label }) => (
             <Button
               key={key}
               variant={networkFilter === key ? "hero" : "outline"}
@@ -325,7 +325,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                     Loading prices...
                   </TableCell>
                 </TableRow>
-              ) : (
+              ) : filteredPackages.length > 0 ? (
                 filteredPackages.map(pkg => {
                   const basePrice = pkg.agent_price || pkg.price;
                   const lockedPrice = getMashupBase(pkg);
@@ -357,6 +357,12 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                     </TableRow>
                   );
                 })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                    No data packages are available for {getNetworkLabel(networkFilter)}. If an admin switched a package off, it should still appear here marked “Not available.” Refresh the dashboard to reload the latest package list.
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>
