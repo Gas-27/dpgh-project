@@ -478,6 +478,31 @@
   }
 }
 
+html.has-pwa-banner .fixed.top-0:not([data-pwa-banner]),
+html.has-pwa-banner .sticky.top-0:not([data-pwa-banner]) {
+  top: var(--pwa-banner-h, 0px);
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 18s linear infinite;
+}
+
+.ticker-track:hover,
+.ticker-track:active {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
+}
+
 @keyframes glowPulse {
   0%, 100% {
     box-shadow: 0 0 20px hsl(190, 95%, 55% / 0.2), 0 0 40px hsl(190, 95%, 55% / 0.1);

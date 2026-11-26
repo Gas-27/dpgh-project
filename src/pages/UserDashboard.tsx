@@ -29,6 +29,7 @@ import ApiWeeklyTargetMeter from "@/components/ApiWeeklyTargetMeter";
 import PaymentVerifier from "@/components/PaymentVerifier";
   import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
   import WhatsAppChannelPopup from "@/components/WhatsAppChannelPopup";
+import AnnouncementTicker from "@/components/AnnouncementTicker";
 import SenderIdApprovedPopup from "@/components/SenderIdApprovedPopup";
 import BecomeAgentLoginPopup from "@/components/BecomeAgentLoginPopup";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
@@ -1212,21 +1213,14 @@ case "api-key":
     <div className="space-y-6">
             {/* Announcement Video — collapsible dropdown at very top */}
       {announcement && embedUrl && (
-        <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 overflow-hidden">
-          <button
+        <div className="space-y-2">
+          <AnnouncementTicker
+            message={announcement.title}
+            expanded={announcementOpen}
             onClick={() => setAnnouncementOpen(o => !o)}
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-cyan-500/10 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Video className="h-4 w-4 text-cyan-400 shrink-0" />
-              <span className="text-sm font-semibold text-foreground">{announcement.title}</span>
-            </div>
-            {announcementOpen
-              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-              : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-          </button>
+          />
           {announcementOpen && (
-            <div className="px-4 pb-4">
+            <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3">
               <div className="relative w-full" style={{ paddingTop: '42%' }}>
                 <iframe
                   src={embedUrl}
