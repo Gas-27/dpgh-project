@@ -63,7 +63,7 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
   } else {
       networkMatch = normalizedNetwork === networkFilter;
     }
-    return networkMatch && p.active !== false;
+    return networkMatch;
   });
 
   // Subagent base prices are fixed for MashUp (agent cost + 0.30 first 4 / + 0.60 rest)
@@ -334,8 +334,8 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                   const profit = Number(displayPrice) - basePrice;
                   
                   return (
-                    <TableRow key={pkg.id}>
-                      <TableCell className="font-display font-bold">{getPackageDisplayName(pkg)}</TableCell>
+  <TableRow key={pkg.id} className={pkg.active === false ? "opacity-60" : ""}>
+  <TableCell className="font-display font-bold">{getPackageDisplayName(pkg)}{pkg.active === false && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell>
                       <TableCell className="text-muted-foreground">GHC {Number(basePrice).toFixed(2)}</TableCell>
                       <TableCell>
                         <Input

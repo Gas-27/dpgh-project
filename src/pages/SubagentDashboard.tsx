@@ -3977,7 +3977,7 @@ handleMobileNumberChange(digits);
                       { key: "mtn_special", label: "MTN Special" },
                       { key: "telecel_special", label: "Telecel Special" },
                       { key: "mashup", label: "MTN MashUp" },
-                    ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key && p.active !== false)).map(({ key, label }) => (
+                    ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key)).map(({ key, label }) => (
                       <Button 
                         key={key} 
                         variant={networkFilter === key ? "hero" : "outline"} 
@@ -4489,7 +4489,7 @@ handleMobileNumberChange(digits);
                       { key: "mtn_special", label: "MTN Special" },
                       { key: "telecel_special", label: "Telecel Special" },
                       { key: "mashup", label: "MTN MashUp" },
-                    ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key && p.active !== false)).map(({ key, label }) => (
+                    ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key)).map(({ key, label }) => (
                       <Button 
                         key={key} 
                         variant={subSubagentNetworkFilterForSubsub === key ? "hero" : "outline"} 

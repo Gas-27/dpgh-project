@@ -25,16 +25,16 @@ export const isMashupNetwork = (value?: string | null): boolean => normalizeKey(
 
 /**
  * True for every package that may be shown to people. Non-MashUp packages are untouched;
- * MashUp packages must be active and belong to the current MashUp bundle ids.
+ * MashUp packages must belong to the current MashUp bundle ids. Inactive ones stay in the list
+ * so they show as "Not available" (and agents can still set their prices) instead of vanishing.
  */
 export const isVisiblePackage = (pkg?: { network?: string | null; active?: boolean | null; bundle_id?: number | string | null } | null): boolean => {
   if (!pkg) return false;
   if (!isMashupNetwork(pkg.network)) return true;
-  if (pkg.active === false) return false;
   return MASHUP_BUNDLE_IDS.includes(Number(pkg.bundle_id));
 };
 
-/** Drops old/inactive MashUp rows from a package list. */
+/** Drops old MashUp rows (bundle ids that are no longer current) from a package list. */
 export const filterVisiblePackages = <T extends { network?: string | null; active?: boolean | null; bundle_id?: number | string | null }>(packages: T[] | null | undefined): T[] =>
   (packages ?? []).filter(isVisiblePackage);
 
@@ -75,7 +75,7 @@ const getMashupDataMb = (pkg: { size_gb_text?: string | null; size_gb?: number |
 export const getMashupDownstreamMarkups = <T extends { id: string; network?: string | null; active?: boolean | null; bundle_id?: number | string | null; size_gb_text?: string | null; size_gb?: number | string | null }>(
   packages: T[] | null | undefined,
 ): Record<string, number> => {
-  const mashups = (packages ?? []).filter((p) => isMashupNetwork(p.network) && p.active !== false && MASHUP_BUNDLE_IDS.includes(Number(p.bundle_id)));
+  const mashups = (packages ?? []).filter((p) => isMashupNetwork(p.network) && MASHUP_BUNDLE_IDS.includes(Number(p.bundle_id)));
   const sorted = [...mashups].sort((a, b) => {
     const diff = getMashupDataMb(a) - getMashupDataMb(b);
     if (diff !== 0) return diff;
@@ -124,7 +124,7 @@ export const getLockedDownstreamMarkups = <T extends { id: string; network?: str
 ): Record<string, number> => {
   const result = getMashupDownstreamMarkups(packages);
   (packages ?? []).forEach((p) => {
-    if (isPriceLockedSpecialNetwork(p.network) && p.active !== false) result[p.id] = SPECIAL_DOWNSTREAM_MARKUP;
+    if (isPriceLockedSpecialNetwork(p.network)) result[p.id] = SPECIAL_DOWNSTREAM_MARKUP;
   });
   return result;
 };
@@ -191,6 +191,6 @@ export const getOrderPackageName = (
   return order.size_gb !== null && order.size_gb !== undefined ? `${order.size_gb}GB` : "";
 };
 
-/** Network keys of special packages that have at least one active package. */
+/** Network keys of special packages that have at least one package (active or switched off). */
 export const getActiveSpecialNetworks = (packages: Array<{ network?: string | null; active?: boolean | null; bundle_id?: number | string | null }>): SpecialNetworkKey[] =>
-  SPECIAL_NETWORK_KEYS.filter((key) => packages.some((p) => normalizeKey(p.network) === key && p.active !== false && isVisiblePackage(p)));
+  SPECIAL_NETWORK_KEYS.filter((key) => packages.some((p) => normalizeKey(p.network) === key && isVisiblePackage(p)));

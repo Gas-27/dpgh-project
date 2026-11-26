@@ -1419,7 +1419,7 @@ const searchOrders = useCallback(async (input?: string) => {
                          isSelected && net === "airteltigo" ? { background: "#3b82f6", color: "#fff" } : {}}
                   onClick={() => setNetworkFilter(net)}
                 >
-                  {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                  {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "mashup" ? "MTN MashUp" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
                 </Button>
     );
   })}

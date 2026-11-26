@@ -4545,7 +4545,7 @@ handleMobileNumberChange(digits);
                     { key: "telecel_special", label: "Telecel Special" },
                     { key: "mashup", label: "MTN MashUp" },
                     { key: "afa", label: "AFA Registration" },
-                  ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key && p.active !== false)).map(({ key, label }) => (
+                  ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key)).map(({ key, label }) => (
                     <Button 
                       key={key} 
                       variant={networkFilter === key ? "hero" : "outline"} 
