@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { Loader2, Trash2, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { withStorePrivateDetails } from "@/lib/storePrivateDetails";
 
 interface SubagentStore {
   id: string;
@@ -55,13 +56,14 @@ export function SubagentManagement({ agentStoreId }: SubagentManagementProps) {
         // Fetch subagents
         const { data: subagentsData, error: subagentsError } = await supabase
           .from("subagent_stores")
-          .select("id, store_name, whatsapp_number, approved, wallet_balance, created_at")
+          .select("id, store_name, whatsapp_number, approved, created_at")
           .eq("agent_store_id", agentStoreId)
           .order("created_at", { ascending: false });
 
         if (subagentsError) throw subagentsError;
 
-        setSubagents(subagentsData || []);
+        const withPrivate = await withStorePrivateDetails("subagent", subagentsData || []);
+        setSubagents(withPrivate.map((s: any) => ({ ...s, wallet_balance: Number(s.wallet_balance ?? 0) })));
       } catch (error) {
         console.error("Failed to fetch data:", error);
         toast({

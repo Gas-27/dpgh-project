@@ -1,4 +1,5 @@
 import DashboardTutorial, { AGENT_TUTORIAL } from "@/components/DashboardTutorial";
+import ApiKnowledgeGate from "@/components/ApiKnowledgeGate";
 import FlyerTabs from "@/components/FlyerExtras";
 import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
@@ -23,6 +24,7 @@ import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { OrderSourceFilter } from "@/components/OrderSourceFilter";
 import { getOrderSource, ORDER_SOURCE_LABELS, type OrderSourceFilterKey } from "@/lib/orderSource";
 import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
+import PackageStatusIndicator from "@/components/PackageStatusIndicator";
 import { RefundStatusCell } from "@/components/RefundStatusCell";
 import { useStorefrontRefunds } from "@/hooks/useStorefrontRefunds";
 import { Navigate, Link, useNavigate } from "react-router-dom";
@@ -58,9 +60,11 @@ import { useToast } from "@/hooks/use-toast";
 import ChatBot from "@/components/ChatBot";
   import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
   import WhatsAppChannelPopup from "@/components/WhatsAppChannelPopup";
+import SenderIdApprovedPopup from "@/components/SenderIdApprovedPopup";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import NotificationPopup from "@/components/NotificationPopup";
 import WalletTopupDialog from "@/components/WalletTopupDialog";
+import TabIntroDialog from "@/components/TabIntroDialog";
 import DeleteApiKeyDialog from "@/components/DeleteApiKeyDialog";
 import ApiExplainer from "@/components/ApiExplainer";
 import ApiKeyConsentDialog from "@/components/ApiKeyConsentDialog";
@@ -69,7 +73,9 @@ import { DeliveryProgressApiDocs } from "@/components/DeliveryProgressApiDocs";
 import { fetchProgressKey } from "@/lib/fetchProgressKey";
 import WebhookDocs from "@/components/WebhookDocs";
 import CheapDataOrderApiDocs from "@/components/CheapDataOrderApiDocs";
+import { SupportedNetworksDocs, GetPackagesDocs } from "@/components/CheapDataNetworksApiDocs";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
+import { withStorePrivateDetails, SUBAGENT_PUBLIC_COLUMNS } from "@/lib/storePrivateDetails";
 import ApiWeeklyTargetMeter from "@/components/ApiWeeklyTargetMeter";
 import DashboardPurchaseTabs from "@/components/DashboardPurchaseTabs";
 import SubagentsList from "@/components/SubagentsList";
@@ -91,6 +97,8 @@ import { SpinToWinCard } from "@/components/SpinToWinCard";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE, getMashupDefaultStorePrice, getMashupMaxStorePrice, isLockedPricingNetwork, getLockedMaxProfit } from "@/lib/networkConfig";
+import { isMtnNumber } from "@/lib/phoneUtils";
 import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import ComplaintsManager from "@/components/ComplaintsManager";
 import DomainDashboardPanel from "@/components/DomainDashboardPanel";
@@ -137,14 +145,14 @@ interface AgentStore {
   theme_config: { primary: string; primary_foreground: string; background: string; card_background: string; gridColumns: number; default_section?: string; show_agent_price?: boolean; };
   custom_domain?: string | null; custom_domain_status?: string;
   }
-interface DataPackage { id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean; }
+interface DataPackage { id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean; inactive_note?: string | null; }
 interface Order { id: string; customer_number: string; network: string; size_gb: number; amount: number; status: string; fulfillment_status: string; order_status: string; payment_method: string; created_at: string; package_id: string; }
 interface WithdrawalRequest { id: string; amount: number; status: string; created_at: string; }
 interface ProfitStats { totalRevenue: number; totalCost: number; totalProfit: number; availableForWithdrawal: number; }
 interface Notification { id: string; message: string; is_active: boolean; created_at: string; expires_at: string | null; }
 
 // ==================== CONSTANTS ====================
-const DEFAULT_THEME = { primary: "#0f9f9a", primary_foreground: "#ffffff", background: "#f6f3ee", card_background: "#fffaf2", gridColumns: 1, default_section: "data", cardRadius: 12, cardShadow: true, showShareStore: true, layout: ["header", "delivery", "categories", "tracking", "products"], sectionWidths: { header: 12, delivery: 12, categories: 12, tracking: 12, products: 12 }, visibleSections: { data: true, afa: true, instant: true, services: true, bulk: true, sms: true } };
+const DEFAULT_THEME = { primary: "#06b6d4", primary_foreground: "#ffffff", background: "#09090b", card_background: "#18181b", gb_text_color: "#ffffff", price_text_color: "#ffffff", button_text_color: "#ffffff", button_bg_color: "#2a2a2e", button_border_color: "#3f3f46", gridColumns: 1, default_section: "data", cardRadius: 12, cardShadow: true, showShareStore: true, layout: ["header", "delivery", "categories", "tracking", "products"], sectionWidths: { header: 12, delivery: 12, categories: 12, tracking: 12, products: 12 }, visibleSections: { data: true, afa: true, instant: true, services: true, bulk: true, sms: true } };
 const DEFAULT_FLYER_COLORS = { mtnColor: "#f5b81b", airtelColor: "#3b82f6", telecelColor: "#cc0000", buttonBg: "#0066ff" };
 
 const FLYER_W = 1080;
@@ -637,6 +645,9 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
 
   // Tabs and menu state
   const [activeTab, setActiveTab] = useState("overview");
+  const [apiAccessConfirmed, setApiAccessConfirmed] = useState(false);
+  const isApiTab = activeTab === "api-key" || activeTab === "api-docs";
+  useEffect(() => { if (!isApiTab) setApiAccessConfirmed(false); }, [isApiTab]);
   const [afaTabActive, setAfaTabActive] = useState("register");
   useEffect(() => { if (activeTab !== "afa") setAfaTabActive("register"); }, [activeTab]);
   const [apiDocTab, setApiDocTab] = useState<"cheap-data" | "social-boost" | "data-airtime" | "utilities" | "bulk-sms" | "afa">("cheap-data");
@@ -836,11 +847,13 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       // Get all sub-subagents for those subagents
       const { data: ssaRows } = await supabase
         .from("sub_subagent_stores")
-        .select("*")
+        .select("id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, approved, subagent_store_id, agent_store_id, topup_reference, created_at, updated_at")
         .in("subagent_store_id", subagentIds);
 
+      const ssaWithPrivate = await withStorePrivateDetails("sub_subagent", ssaRows as any[] | null);
+
       // Enrich with parent subagent name
-      const enriched = (ssaRows || []).map((ssa: any) => {
+      const enriched = ssaWithPrivate.map((ssa: any) => {
         const parent = subagentRows.find((s: any) => s.id === ssa.subagent_store_id);
         return { ...ssa, parent_subagent_name: parent?.store_name || "Unknown Subagent" };
       });
@@ -993,7 +1006,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         // Fetch personal purchases made from the Packages/UserDashboard page (customer_id = auth user, no agent_store_id)
         supabase.from("orders").select("*", { count: "exact" }).eq("customer_id", effectiveUserId).is("agent_store_id", null).order("created_at", { ascending: false }).range(0, 999),
         supabase.from("payout_requests").select("*, transfer_recipients(account_holder_name, mobile_money_network, mobile_money_number, account_number, bank_name, provider_type)").eq("requester_id", sd.id).order("created_at", { ascending: false }),
-        supabase.from("subagent_stores").select("*").eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
+        supabase.from("subagent_stores").select(SUBAGENT_PUBLIC_COLUMNS).eq("agent_store_id", sd.id).order("created_at", { ascending: false }),
         supabase.from("agent_custom_base_prices").select("package_id, custom_base_price").eq("agent_store_id", sd.id),
         supabase.from("subagent_package_prices").select("package_id, base_price").eq("agent_store_id", sd.id),
         supabase.from("agent_special_mtn_mashup_pricing").select("tier_1_price, tier_2_price, tier_3_price, tier_4_price").eq("agent_id", effectiveUserId).maybeSingle(),
@@ -1024,7 +1037,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         ...pkg,
         agent_price: customPriceMap[pkg.id] ?? pkg.agent_price, // Use custom base price if set by admin
       }));
-      setPackages(pkgs);
+      setPackages(filterVisiblePackages(pkgs));
       const pm: Record<string, number> = {};
       (priceR.data ?? []).forEach((p: any) => { pm[p.package_id] = p.sell_price; });
       setAgentPrices(pm);
@@ -1074,7 +1087,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       });
       setWithdrawals(payoutData);
       setTransferRecipients(recipientsR.data ?? []);
-      const subags = subagentR.data ?? [];
+      const subags = await withStorePrivateDetails("subagent", (subagentR.data ?? []) as any[]);
       setSubagents(subags);
     
     // Fetch topup history
@@ -1148,7 +1161,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       await fetchTotalProfit();
     } else {
           const { data: pkgData } = await supabase.from("data_packages").select("*, view_count").order("size_gb");
-      setPackages(pkgData ?? []);
+      setPackages(filterVisiblePackages(pkgData ?? []));
     }
     setLoading(false);
   };
@@ -1581,7 +1594,17 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
   };
 
   // Price handling with markup
+  const isMashupPkg = (pkg?: { network?: string | null }) => isLockedPricingNetwork(pkg?.network);
   const handlePriceChange = (id: string, v: string) => {
+    const pkg = packages.find(p => p.id === id);
+    if (pkg && isMashupPkg(pkg) && v !== "") {
+      const maxPrice = getMashupMaxStorePrice(pkg.agent_price, pkg.network);
+      if (parseFloat(v) > maxPrice) {
+        toast({ title: "Maximum price reached", description: `The most you can charge for this ${getNetworkLabel(pkg.network)} bundle is GHC ${maxPrice.toFixed(2)} (GHC ${getLockedMaxProfit(pkg.network).toFixed(2)} profit).`, variant: "destructive" });
+        setEditedPrices(p => ({ ...p, [id]: maxPrice }));
+        return;
+      }
+    }
     // Allow empty string for clearing the box - store as string for display
     setEditedPrices(p => ({ ...p, [id]: v === "" ? "" : (parseFloat(v) || v) }));
   };
@@ -1593,6 +1616,7 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         const numPrice = typeof sp === "string" ? parseFloat(sp) : sp;
         if (isNaN(numPrice) || numPrice <= 0) { toast({ title: "Invalid price", variant: "destructive" }); setSavingPrices(false); return; }
         if (numPrice < pkg.agent_price) { toast({ title: "Price below cost", variant: "destructive" }); setSavingPrices(false); return; }
+        if (isMashupPkg(pkg) && numPrice > getMashupMaxStorePrice(pkg.agent_price, pkg.network) + 0.001) { toast({ title: "Price too high", description: `${getNetworkLabel(pkg.network)} price cannot exceed GHC ${getMashupMaxStorePrice(pkg.agent_price, pkg.network).toFixed(2)} (GHC ${getLockedMaxProfit(pkg.network).toFixed(2)} maximum profit)`, variant: "destructive" }); setSavingPrices(false); return; }
       }
       for (const [id, sp] of Object.entries(editedPrices)) {
         const { error: priceError } = agentPrices[id] !== undefined
@@ -1631,11 +1655,12 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       let newPrice = basePrice * multiplier;
       newPrice = Math.round(newPrice * 100) / 100;
       if (newPrice < basePrice) newPrice = basePrice;
+      if (isMashupPkg(pkg)) newPrice = Math.min(newPrice, getMashupMaxStorePrice(basePrice, pkg.network));
       newEdited[pkg.id] = newPrice;
       appliedCount++;
     }
     setEditedPrices(newEdited);
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = getNetworkLabel(networkFilter);
     toast({
       title: `Markup applied to ${networkName} packages`,
       description: `${percent}% markup applied to the base price of ${appliedCount} packages. Remember to click "Save Prices" to keep these changes.`,
@@ -1666,7 +1691,12 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
   };
 
   const handleBuyConfirm = async () => {
-    if (!store || !buyPkg) return; setBuyLoading(true);
+    if (!store || !buyPkg) return;
+    if (isMashupNetwork(buyPkg.network) && !isMtnNumber(buyPhone)) {
+      toast({ title: "MTN numbers only", description: MASHUP_MTN_ONLY_MESSAGE, variant: "destructive" });
+      return;
+    }
+    setBuyLoading(true);
     try {
       await assertNumbersNotBlocked([buyPhone, user?.user_metadata?.phone, store.support_number, store.whatsapp_number]);
     } catch (blockedErr: any) {
@@ -1696,28 +1726,8 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
       // Extract size_gb the same way verify-payment does: match first numeric value
       const packageName = buyPkg.size_gb_text || buyPkg.size_gb?.toString() || "";
       const sizeMatch = packageName.toString().match(/(\d+(?:\.\d+)?)/);
-      const extractedSize = sizeMatch ? parseFloat(sizeMatch[1]) : buyPkg.size_gb;
-      
-      // For mashup packages, get datahubnet ID from the hardcoded mapping
-      let dataPackageId = undefined;
-      console.log("[v0] Wallet purchase - buyPkg details:", { network: buyPkg.network, size_gb_text: buyPkg.size_gb_text, size_gb: buyPkg.size_gb, allKeys: Object.keys(buyPkg) });
-      if (buyPkg.network === "mashup" && buyPkg.size_gb_text) {
-        // Map size_gb_text to datahubnet ID
-        const mashupMapping: Record<string, number> = {
-          "1.7GB": 14,
-          "5.1GB": 3,
-          "2.6 GB + 1,077 mins": 16,
-          "8.2GB": 17,
-          "11.9GB": 18,
-          "3.61GB + 1485Mins": 20,
-          "15.3GB": 19,
-        };
-        dataPackageId = mashupMapping[buyPkg.size_gb_text];
-        console.log("[v0] Mashup mapping lookup - size_gb_text:", buyPkg.size_gb_text, "result:", dataPackageId);
-      } else {
-        console.log("[v0] Not a mashup or missing size_gb_text - network:", buyPkg.network);
-      }
-      
+      const extractedSize = isMashupNetwork(buyPkg.network) ? buyPkg.size_gb : (sizeMatch ? parseFloat(sizeMatch[1]) : buyPkg.size_gb);
+
       const { data: od, error: oe } = await supabase.from("orders").insert({ 
         id: walletOrderId,
         customer_number: buyPhone.trim(), 
@@ -1731,9 +1741,8 @@ totalRevenue: Number(rpcResult.data?.total_revenue ?? 0) + apiOrders.reduce((sum
         payment_method: "wallet"
       }).select("id").single();
       if (oe) { await refundFailedOrder(walletOrderId); toast({ title: "Order error", description: oe.message, variant: "destructive" }); setBuyLoading(false); return; }
-      console.log("[v0] Wallet order created, invoking fulfill-order for order:", od.id, "network:", buyPkg.network, "dataPackageId:", dataPackageId);
-      const { data: fulfillData, error: fulfillError } = await supabase.functions.invoke("fulfill-order", { body: { order_id: od.id, data_package_id: dataPackageId } });
-      if (fulfillError) { console.log("[v0] Fulfill-order error:", fulfillError); toast({ title: "Fulfillment error", description: fulfillError.message || "Order created but fulfillment failed", variant: "destructive" }); }
+      const { data: fulfillData, error: fulfillError } = await supabase.functions.invoke("fulfill-order", { body: { order_id: od.id } });
+      if (fulfillError) { toast({ title: "Fulfillment error", description: fulfillError.message || "Order created but fulfillment failed", variant: "destructive" }); }
       setStore({ ...store, wallet_balance: debit.balanceAfter });
       toast({ title: "Order placed!" }); setBuyDialogOpen(false);
       fetchAllData();
@@ -2693,6 +2702,7 @@ return (
         )}
 
         <DashboardTutorial storageKey="agent" userId={user?.id} steps={AGENT_TUTORIAL} onNavigate={setActiveTab} />
+        <TabIntroDialog activeTab={activeTab} storageKey="tab-intros-seen-agent" />
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
   <TabsList className="hidden" />
   <div className="grid grid-cols-3 gap-2 sm:gap-3">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa", label: "AFA Registration" }, { id: "subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Bulk SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Utilities" }, { id: "social-boost", label: "Social Boost" }, { id: "subagent-prices", label: "Subagent Pricing" }, { id: "api-key", label: "API Info" }, { id: "flyer", label: "Flyer Generator" }, { id: "marketing", label: "Marketing" }].map((item) => { const selected = activeTab === item.id; return <OverviewPill key={item.id} label={item.label} text={selected ? "Overview" : item.label} onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} />; })}</div>
@@ -2764,7 +2774,7 @@ return (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Orders (Filtered)" : "Total Orders"}</p><p className="font-display text-2xl font-bold mt-1 text-foreground">{totalOrders}</p></CardContent></Card>
               <Card className="border-border"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">{dateFilter !== "all" ? "Revenue (Filtered)" : "Revenue"}</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {databaseFinancialTotals.totalRevenue.toFixed(2)}</p></CardContent></Card>
-              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Profit</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {databaseFinancialTotals.totalProfit.toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Based on filter" : "All-time profit"}</p><details className="mt-2 text-left text-sm"><summary className="cursor-pointer font-semibold text-green-400">What is this?</summary><p className="mt-2 rounded-md border border-green-500/40 bg-green-500/10 p-3 text-muted-foreground">This is a display of your profit from store sales and profit from subagent sales. This money is already part of your wallet balance and you can spend or withdraw it anytime.</p></details></CardContent></Card>
+              <Card className="border-green-500/30 bg-green-500/5"><CardContent className="p-6 text-center"><p className="text-muted-foreground text-sm">Profit</p><p className="font-display text-2xl font-bold mt-1 text-green-400">GHC {(databaseFinancialTotals.totalProfit + (dateFilter === "all" ? Number(store?.subagent_commission_balance ?? 0) : 0)).toFixed(2)}</p><p className="text-xs text-muted-foreground mt-1">{dateFilter !== "all" ? "Store profit based on filter" : "All-time profit"}</p>{dateFilter === "all" && <div className="mt-2 space-y-0.5 text-xs text-muted-foreground"><p>Store profit: GHC {databaseFinancialTotals.totalProfit.toFixed(2)}</p><p>Subagent profit: GHC {Number(store?.subagent_commission_balance ?? 0).toFixed(2)}</p></div>}<details className="mt-2 text-left text-sm"><summary className="cursor-pointer font-semibold text-green-400">What is this?</summary><p className="mt-2 rounded-md border border-green-500/40 bg-green-500/10 p-3 text-muted-foreground">This is your profit from store sales added to your profit from subagent sales. Store profit is already part of your wallet balance, while subagent profit is withdrawn separately in the Wallet tab.</p></details></CardContent></Card>
   {apiKey && <Card className="border-cyan-500/30 bg-cyan-500/5"><CardContent className="p-6 text-center"><p className="text-sm text-muted-foreground">API Wallet</p><p className="font-display text-2xl font-bold text-cyan-400 mt-1">GHC {Number(wallet).toFixed(2)}</p></CardContent></Card>}
   <Card className="border-yellow-500/30 bg-yellow-500/5">
   <CardContent className="p-6">
@@ -2834,7 +2844,14 @@ return (
             {/* Refunds Received card — total from DB, not just visible page */}
             {allRefundedOrders.length > 0 && (
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                <Card className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-colors">
+                <Card
+                  role="button"
+                  tabIndex={0}
+                  aria-label="Open refunds"
+                  className="border-amber-500/30 bg-amber-500/5 cursor-pointer hover:border-amber-500/50 transition-colors"
+                  onClick={() => { setActiveTab("refunds"); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setActiveTab("refunds"); window.scrollTo({ top: 0, behavior: "smooth" }); } }}
+                >
                   <CardContent className="p-6 flex flex-col items-center text-center space-y-3">
                     <Wallet className="h-8 w-8 text-amber-400" />
                     <div>
@@ -2967,7 +2984,7 @@ return (
                           setSourceDialogOpen(true);
                         };
 
-                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}{isMergedFromUser && <div className="mt-1"><Badge variant="outline" className="text-xs">From user account</Badge></div>}</TableCell><TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell><TableCell className="uppercase text-sm">{order.network || "—"}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer">{subSubagentName}</Badge></button> : isSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subagentName}</Badge></button> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={normalizeOrderStatus(order)} /></TableCell><TableCell>{(order.status === "refunded" || order.fulfillment_status === "refunded") ? <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">Refunded</Badge> : <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>}</TableCell><TableCell>{normalizeOrderStatus(order) === "delivered" ? (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>) : <span className="text-muted-foreground">—</span>}</TableCell></TableRow>); })}</TableBody></Table></div>
+                        return (<TableRow key={order.id}><TableCell className="text-sm whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}{isMergedFromUser && <div className="mt-1"><Badge variant="outline" className="text-xs">From user account</Badge></div>}</TableCell><TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell><TableCell className={isSpecialNetwork(order.network) ? "text-sm" : "uppercase text-sm"}>{order.network ? (isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network) : "—"}</TableCell><TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell><TableCell>GHC {Number(sellPrice).toFixed(2)}</TableCell><TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell><TableCell className={profit >= 0 ? "text-green-400 font-semibold" : "text-red-400"}>GHC {Number(profit).toFixed(2)}</TableCell><TableCell><Badge variant="outline" className="text-xs">{paymentMethodDisplay}</Badge></TableCell><TableCell>{isSubSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-cyan-500/10 text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/20 cursor-pointer">{subSubagentName}</Badge></button> : isSubagentOrder ? <button onClick={handleSourceClick} className="cursor-pointer"><Badge variant="outline" className="text-xs bg-purple-500/10 text-purple-400 border-purple-500/30 hover:bg-purple-500/20 cursor-pointer">{subagentName}</Badge></button> : isAPIOrder ? <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-400 border-orange-500/30">API</Badge> : <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-400 border-blue-500/30">Direct</Badge>}</TableCell><TableCell><OrderStatusBadge status={normalizeOrderStatus(order)} /></TableCell><TableCell>{(order.status === "refunded" || order.fulfillment_status === "refunded") ? <Badge className="text-xs bg-orange-500/20 text-orange-400 border border-orange-500/30">Refunded</Badge> : <Badge className="text-xs bg-green-600/20 text-green-400 border border-green-600/30">completed</Badge>}</TableCell><TableCell>{normalizeOrderStatus(order) === "delivered" ? (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>) : <span className="text-muted-foreground">—</span>}</TableCell></TableRow>); })}</TableBody></Table></div>
                     {apiReportOrder && (<ReportComplaintDialog open={Boolean(apiReportOrder)} onOpenChange={(open) => { if (!open) setApiReportOrder(null); }} order={{ id: apiReportOrder.id, customer_number: apiReportOrder.customer_number, network: apiReportOrder.network, size_gb: Number(apiReportOrder.size_gb || 0), amount: Number(apiReportOrder.selling_price || apiReportOrder.amount || 0), created_at: apiReportOrder.created_at, fulfillment_status: apiReportOrder.fulfillment_status || "delivered", status: apiReportOrder.status || "delivered" }} complaintType="api_order" agentStoreId={store?.id} />)}
                     {/* Pagination */}
                     {filteredOrders.length > ordersPerPage && (() => {
@@ -3010,7 +3027,7 @@ return (
               <CardContent className="p-4 space-y-1"><div className="flex items-center justify-between"><div className="flex items-center gap-2"><Wallet className="h-5 w-5 text-primary" /><span className="font-medium">Wallet Balance:</span></div><span className="font-display text-xl font-bold text-primary">GHC {store.wallet_balance?.toFixed(2) ?? "0.00"}</span></div>{hasPendingWithdrawal && <p className="text-xs text-orange-400">WARNING: GHC {pendingWithdrawalAmount.toFixed(2)} reserved for pending withdrawal. Effective spendable: <strong>GHC {effectiveBalance.toFixed(2)}</strong></p>}</CardContent>
             </Card>)}
             <DeliveryProgressCard selectedNetwork={networkFilter} />
-  <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
+  <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} packages={packages} />
   <ScheduleDataPurchase ownerType="agent" ownerId={store?.id} variant="bar" />
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
               {packages.filter(p => {
@@ -3028,16 +3045,14 @@ return (
                 const wouldUnderflow = hasPendingWithdrawal && (Number(store?.wallet_balance ?? 0) - price) < pendingWithdrawalAmount;
                 const isInactive = pkg.active === false;
                 return (
-                  <Card key={pkg.id} className={`relative border-slate-700/50 bg-slate-900/5 transition-all ${isInactive ? "opacity-50 grayscale" : "hover:border-slate-600/50"}`}>
-                    {isInactive && (
-                      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
-                        Not available
-                      </div>
-                    )}
+                  <Card key={pkg.id} className={`relative border-slate-700/50 bg-slate-900/5 transition-all ${isInactive ? "" : "hover:border-slate-600/50"}`}>
                     <CardContent>
-                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                      <p className="text-lg font-bold text-cyan-400">GHC {price.toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">Agent Price</p>
+                      {isInactive && <PackageStatusIndicator status="not_available" note={pkg.inactive_note} />}
+                      <div className={isInactive ? "opacity-50 grayscale" : ""}>
+                        <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                        <p className="text-lg font-bold text-cyan-400">GHC {price.toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">Agent Price</p>
+                      </div>
                       {wouldUnderflow && !isInactive ? <p className="text-xs text-orange-400">Blocked ��� pending withdrawal</p> : null}
                       <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => !isInactive && openBuyDialog({ ...pkg, agent_price: price, price: price } as any)} disabled={wouldUnderflow || isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                     </CardContent>
@@ -3232,8 +3247,8 @@ return (
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}</TableCell>
                               <TableCell className="font-medium text-xs">{order.customer_number}</TableCell>
-                              <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                              <TableCell className="text-sm">{order.size_gb}GB</TableCell>
+                              <TableCell className={isSpecialNetwork(order.network) ? "text-sm" : "uppercase text-sm"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
+                              <TableCell className="text-sm">{(order as any).size_gb_text || `${order.size_gb}GB`}</TableCell>
                               <TableCell className="font-semibold text-amber-400 text-sm">
                                 {basePrice > 0 ? `GHC ${basePrice.toFixed(2)}` : <span className="text-muted-foreground text-xs">—</span>}
                               </TableCell>
@@ -3296,24 +3311,6 @@ return (
           {/* ============================= STORE PRICES ============================= */}
 <TabsContent value="store" className="space-y-6 mt-0">
   <div className="flex flex-wrap items-center justify-between gap-3">
-  <div className="flex items-center gap-3 rounded-lg border border-border bg-secondary/30 px-3 py-2">
-    <Switch
-      id="show-agent-price"
-      checked={Boolean(store?.theme_config?.show_agent_price)}
-      onCheckedChange={async (checked) => {
-        if (!store) return;
-        const nextTheme = { ...store.theme_config, show_agent_price: checked };
-        const { error } = await supabase.from("agent_stores").update({ theme_config: nextTheme }).eq("id", store.id);
-        if (error) {
-          toast({ title: "Could not update price visibility", description: error.message, variant: "destructive" });
-          return;
-        }
-        setStore({ ...store, theme_config: nextTheme });
-        toast({ title: checked ? "Agent price shown" : "Agent price hidden", description: "This controls the package cards on your storefront." });
-      }}
-    />
-    <Label htmlFor="show-agent-price" className="cursor-pointer text-sm">Show agent price on storefront</Label>
-  </div>
   {/* Network filter buttons */}
               <div className="flex gap-2 flex-wrap">
                 {[
@@ -3321,7 +3318,10 @@ return (
                   { key: "mtn_express", label: "MTN Express" },
                   { key: "airteltigo", label: "AirtelTigo" },
                   { key: "telecel", label: "Telecel" },
-                                ].map(({ key, label }) => (
+                  { key: "mtn_special", label: "MTN Special" },
+                  { key: "telecel_special", label: "Telecel Special" },
+                  { key: "mashup", label: "MTN MashUp" },
+                ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key)).map(({ key, label }) => (
                   <Button 
                     key={key} 
                     variant={networkFilter === key ? "hero" : "outline"} 
@@ -3341,11 +3341,11 @@ return (
             </div>
             <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
               <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br></br>������ Markup Explanation(Remember to click save after applying markup</p>
-              <p className="text-xs text-muted-foreground">Markup changes all your selling price for the selected network base on the percentage you want all the prices to be increase by  .Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
+              <p className="text-xs text-muted-foreground">Markup changes all your selling price for the selected network base on the percentage you want all the prices to be increase by  .Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{getNetworkLabel(networkFilter)}</strong>).</p>
             </div>
             <p className="text-sm text-muted-foreground">Your profit = Selling Price - Base Price. Use markup to increase all prices by a % (based on base price).</p>
             <Card className="border-border"><div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>Size</TableHead><TableHead>Base Price</TableHead><TableHead>Your Selling Price</TableHead><TableHead>Profit</TableHead></TableRow></TableHeader>
-              <TableBody>{filteredPackages.map(pkg => { const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? pkg.price; const profit = cur - pkg.agent_price; const isInactive = pkg.active === false; return (<TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}><TableCell className="font-display font-bold">{pkg.size_gb_text || pkg.size_gb + "GB"}{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell><TableCell className="text-muted-foreground">GHC {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" /></TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GHC {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
+              <TableBody>{filteredPackages.map(pkg => { const mashupMax = isMashupPkg(pkg) ? getMashupMaxStorePrice(pkg.agent_price, pkg.network) : undefined; const cur = editedPrices[pkg.id] ?? agentPrices[pkg.id] ?? (mashupMax !== undefined ? getMashupDefaultStorePrice(pkg.agent_price, pkg.network) : pkg.price); const profit = Number(cur) - pkg.agent_price; const isInactive = pkg.active === false; return (<TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}><TableCell className="font-display font-bold">{getPackageDisplayName(pkg)}{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell><TableCell className="text-muted-foreground">GHC {Number(pkg.agent_price).toFixed(2)}</TableCell><TableCell><Input type="number" step="0.01" max={mashupMax} value={cur} onChange={e => handlePriceChange(pkg.id, e.target.value)} className="w-24 h-8" />{mashupMax !== undefined && <p className="text-xs text-muted-foreground mt-1">Max: GHC {mashupMax.toFixed(2)}</p>}</TableCell><TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>GHC {profit.toFixed(2)}</TableCell></TableRow>); })}</TableBody></Table></div></Card>
           </TabsContent>
 
           {/* ============================= FLYER GENERATOR ============================= */}
@@ -3675,7 +3675,7 @@ return (
                               setBulkResults(results);
                               setBulkProcessing(false);
                               toast({ title: "Bulk Order Complete", description: `${results.filter(r => r.status === "success").length}/${results.length} orders created successfully.` });
-                              fetchData();
+                              fetchAllData();
                             }}
                           >
                             {bulkProcessing ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Processing...</> : <><Wallet className="h-4 w-4 mr-2" /> Pay with Wallet (GHC {totalCost.toFixed(2)})</>}
@@ -4174,6 +4174,7 @@ handleMobileNumberChange(digits);
 
           {/* ============================= API DOCS ============================= */}
           <TabsContent value="api-docs" className="mt-0 space-y-6">
+<ApiKnowledgeGate confirmed={apiAccessConfirmed} onConfirm={() => setApiAccessConfirmed(true)} onBack={() => setActiveTab("overview")}>
   <div className="grid grid-cols-2 gap-2 rounded-xl bg-muted p-1 sm:grid-cols-4 lg:grid-cols-7">
   <Button type="button" variant="ghost" onClick={() => setActiveTab("api-key")}>API Key</Button>
   <Button type="button" variant={apiDocTab === "cheap-data" ? "secondary" : "ghost"} className={apiDocTab === "cheap-data" ? "bg-background" : ""} onClick={() => setApiDocTab("cheap-data")}>Cheap Data</Button>
@@ -4244,69 +4245,11 @@ handleMobileNumberChange(digits);
             {/* Delivery Progress API */}
             <DeliveryProgressApiDocs />
 
-            {/* Supported Networks */}
-            <Card id="cd-networks" className="scroll-mt-32">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Globe className="h-5 w-5 text-green-400" />
-                  Supported Networks
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {[
-                    { code: "mtn", name: "MTN Ghana" },
-                    { code: "mtn_express", name: "MTN Ghana" },
-                    { code: "telecel", name: "Telecel Ghana" },
-                    { code: "airteltigo", name: "AirtelTigo Ghana" },
-                  ].map(network => (
-                    <div key={network.code} className="p-3 bg-muted rounded-lg border border-border">
-                      <p className="font-mono text-sm font-semibold text-cyan-400">{network.code}</p>
-                      <p className="text-sm text-muted-foreground">{network.name}</p>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+            <SupportedNetworksDocs />
 
             {/* Main Endpoints */}
             <div className="space-y-4">
-              {/* GET /get-packages */}
-              <Card id="cd-get-packages" className="scroll-mt-32">
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
-                    <span>/get-packages</span>
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-2">Retrieve all available data packages with pricing.</p>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div>
-                    <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
-                    <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                      <li>��� <span className="font-mono">network</span> - Filter by single network</li>
-                      <li>• <span className="font-mono">networks[]</span> - Filter by multiple networks</li>
-                    </ul>
-                  </div>
-                  <div className="bg-muted p-3 rounded-lg border border-border">
-                    <p className="text-xs text-muted-foreground mb-2">Example:</p>
-              <p className="font-mono text-xs">GET https://api.dataplug.store/functions/v1/get-packages?network=mtn</p>
-            </div>
-            <div className="bg-muted p-3 rounded-lg border border-border">
-              <p className="text-xs text-muted-foreground mb-2">Successful JSON response (200):</p>
-              <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap">{`{
-  "success": true,
-  "count": 14,
-  "data": [
-    { "network": "mtn", "size_gb": 1, "price": 3.9 },
-    { "network": "mtn", "size_gb": 2, "price": 7.8 },
-    { "network": "mtn", "size_gb": 3, "price": 11.75 }
-  ]
-}`}</pre>
-              <p className="mt-2 text-xs text-muted-foreground">Sample shortened to 3 of 14 packages. Each package has only network, size_gb (GB) and price (GHS, your API price). The response does not include validity or availability fields; only active packages are listed. Omit the network parameter to get every network. Prices are live and may change, and use size_gb exactly as returned when calling /purchase.</p>
-            </div>
-          </CardContent>
-              </Card>
+              <GetPackagesDocs />
 
               <CheapDataOrderApiDocs />
 
@@ -4360,6 +4303,7 @@ handleMobileNumberChange(digits);
               </Card>
             </div>
             </>}
+</ApiKnowledgeGate>
           </TabsContent>
 
           {/* ============================= API ORDERS ============================= */}
@@ -4437,7 +4381,7 @@ handleMobileNumberChange(digits);
                             </TableCell>
                             <TableCell className="text-xs font-mono">{order.customer_number}</TableCell>
                             <TableCell className="text-xs">
-                              <span className="px-2 py-1 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
+                              <span className="px-2 py-1 rounded bg-muted text-foreground">{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network?.toUpperCase()}</span>
                             </TableCell>
                             <TableCell className="text-xs font-semibold text-cyan-400">{order.size_gb_text || `${order.size_gb}GB`}</TableCell>
                             <TableCell className="text-xs text-muted-foreground">API Wallet</TableCell>
@@ -4473,6 +4417,7 @@ handleMobileNumberChange(digits);
 
           {/* ============================= API KEY ============================= */}
           <TabsContent value="api-key" className="mt-0 space-y-4">
+<ApiKnowledgeGate confirmed={apiAccessConfirmed} onConfirm={() => setApiAccessConfirmed(true)} onBack={() => setActiveTab("overview")}>
   <div className="grid grid-cols-3 gap-2 rounded-xl bg-muted p-1">
     <Button type="button" variant="secondary" className="bg-background" onClick={() => setActiveTab("api-key")}>API Key</Button>
     
@@ -4596,8 +4541,11 @@ handleMobileNumberChange(digits);
                     { key: "mtn_express", label: "MTN Express" },
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
+                    { key: "mtn_special", label: "MTN Special" },
+                    { key: "telecel_special", label: "Telecel Special" },
+                    { key: "mashup", label: "MTN MashUp" },
                     { key: "afa", label: "AFA Registration" },
-                  ].map(({ key, label }) => (
+                  ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key)).map(({ key, label }) => (
                     <Button 
                       key={key} 
                       variant={networkFilter === key ? "hero" : "outline"} 
@@ -4647,7 +4595,7 @@ handleMobileNumberChange(digits);
     return packageNetwork === selectedNetwork;
                   }).length === 0 && (
                     <div className="col-span-full text-center py-8 text-muted-foreground">
-                      No packages available for {networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "mtn" ? "MTN" : "Telecel"}.
+                      No packages available for {getNetworkLabel(networkFilter)}.
                     </div>
                   )}
                 </div>
@@ -4765,9 +4713,10 @@ handleMobileNumberChange(digits);
               identityId={user?.id}
               userEmail={user?.email}
             />
+</ApiKnowledgeGate>
           </TabsContent>
 
-  <TabsContent value="products" className="mt-0">
+          <TabsContent value="products" className="mt-0">
   {store && <AgentProductStorePanel storeId={store.id} storeKind="agent" supportPhone={supportNum} walletBalance={Number(store.wallet_balance ?? 0)} onWalletBalanceChange={(wallet_balance) => setStore((current) => current ? { ...current, wallet_balance } : current)} />}
   </TabsContent>
 
@@ -4980,9 +4929,9 @@ handleMobileNumberChange(digits);
                   onRefresh={async () => {
                     const { data } = await supabase
                       .from("subagent_stores")
-                      .select("*")
+                      .select(SUBAGENT_PUBLIC_COLUMNS)
                       .eq("agent_store_id", store?.id);
-                    if (data) setSubagents(data);
+                    if (data) setSubagents(await withStorePrivateDetails("subagent", data as any[]));
                   }}
                 />
               </CardContent>
@@ -4993,6 +4942,28 @@ handleMobileNumberChange(digits);
           <TabsContent value="subagent-prices" className="mt-0 space-y-6">
             {/* AFA Bundle Price for Subagents — shown first, no extra wrapper */}
             <AgentAFAPriceManager onPriceSaved={refetchStoreData} />
+
+            <div className="flex items-start gap-3 rounded-lg border border-border bg-secondary/30 px-3 py-3">
+              <Switch
+                id="show-agent-price"
+                className="mt-0.5 shrink-0"
+                checked={Boolean(store?.theme_config?.show_agent_price)}
+                onCheckedChange={async (checked) => {
+                  if (!store) return;
+                  const nextTheme = { ...store.theme_config, show_agent_price: checked };
+                  const { error } = await supabase.from("agent_stores").update({ theme_config: nextTheme }).eq("id", store.id);
+                  if (error) {
+                    toast({ title: "Could not update price visibility", description: error.message, variant: "destructive" });
+                    return;
+                  }
+                  setStore({ ...store, theme_config: nextTheme });
+                  toast({ title: checked ? "Subagent price shown" : "Subagent price hidden", description: "This controls the subagent price shown on your storefront package cards." });
+                }}
+              />
+              <Label htmlFor="show-agent-price" className="cursor-pointer text-sm leading-snug">
+                Let the price you set for subagents show on your store so customers can see the price they will get as a subagent under you
+              </Label>
+            </div>
 
             <Card className="border-border">
               <CardHeader>
@@ -5091,7 +5062,7 @@ handleMobileNumberChange(digits);
                                 <TableCell className="uppercase text-sm">{o.network || "—"}</TableCell>
                                 <TableCell className="font-bold">{o.size_gb != null ? o.size_gb + "GB" : "—"}</TableCell>
                                 <TableCell>GHC {Number(o.selling_price || o.amount || 0).toFixed(2)}</TableCell>
-                                <TableCell><OrderStatusBadge status={o.order_status || o.fulfillment_status || o.status} network={o.network} /></TableCell>
+                                <TableCell><OrderStatusBadge status={normalizeOrderStatus(o)} network={o.network} /></TableCell>
                               </TableRow>
                             ))}
                           </TableBody>
@@ -5260,13 +5231,13 @@ handleMobileNumberChange(digits);
 
       <Dialog open={buyDialogOpen} onOpenChange={v => !v && setBuyDialogOpen(false)}>
         <DialogContent className="sm:max-w-md border-border bg-card">
-          <DialogHeader><DialogTitle className="font-display text-xl">{buyPkg?.network === "special-mtn" ? `Buy ${(buyPkg as any).mins || 0} mins + ${buyPkg?.size_gb}GB` : `Buy ${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</DialogTitle><DialogDescription>Purchase {buyPkg?.network === "special-mtn" ? "minutes + data" : "data"} at agent price</DialogDescription></DialogHeader>
+          <DialogHeader><DialogTitle className="font-display text-xl">{buyPkg?.network === "special-mtn" ? `Buy ${(buyPkg as any).mins || 0} mins + ${buyPkg?.size_gb}GB` : isSpecialNetwork(buyPkg?.network) ? `Buy ${getPackageDisplayName(buyPkg)} ${getNetworkLabel(buyPkg?.network)}` : `Buy ${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</DialogTitle><DialogDescription>Purchase {buyPkg?.network === "special-mtn" ? "minutes + data" : "data"} at agent price</DialogDescription></DialogHeader>
           {buyStep === "phone" ? (
             <div className="space-y-4 pt-2"><div className="space-y-2"><Label>Recipient Phone Number (exactly 10 digits)</Label><div><Input type="tel" placeholder="0XX XXX XXXX" maxLength={10} value={buyPhone} onChange={e => setBuyPhone(e.target.value.replace(/\D/g, "").slice(0, 10))} className={`${buyPhone.length > 0 && buyPhone.length < 10 ? "border-red-500 focus-visible:ring-red-500" : ""}`} autoFocus />{buySimLookupLoading && <p className="mt-1 text-xs text-muted-foreground">Checking who this SIM is registered to…</p>}{buySimName && <p className="mt-2 rounded-md border border-primary/20 bg-primary/5 px-3 py-2 text-xs">SIM registered to <span className="font-semibold">{buySimName}</span></p>}{buySimLookupError && <p className="mt-1 text-xs text-muted-foreground">SIM registration lookup unavailable. You can still continue.</p>}</div>{buyPhone.length > 0 && buyPhone.length < 10 && (<p className="text-xs text-red-500">{10 - buyPhone.length} digit{10 - buyPhone.length !== 1 ? "s" : ""} remaining</p>)}<NetworkIndicator phone={buyPhone} /></div><Button variant="hero" className="w-full" onClick={async () => { if (!isValidPhoneLength(buyPhone)) { toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" }); return; } const detected = detectNetwork(buyPhone); if ((buyPkg?.network === "mtn_mashup" || buyPkg?.network === "mashup") && detected !== "mtn") { toast({ title: "MTN Only", description: `This package is only available for MTN numbers. This appears to be ${detected.toUpperCase()}.`, variant: "destructive" }); return; } if (buyPkg?.network && buyPkg.network !== "mtn_mashup" && buyPkg.network !== "mashup" && !phoneMatchesNetwork(buyPhone, buyPkg?.network || "")) { toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyPkg?.network.toUpperCase()} package`, variant: "destructive" }); return; } const isMTNPackage = buyPkg?.network === "mtn" || buyPkg?.network === "mtn_express"; if (isMTNPackage) { const { count } = await supabase.from("orders").select("id", { count: "exact", head: true }).eq("customer_number", buyPhone.trim()); if ((count ?? 0) === 0 && !(await isNumberSubmittedForApproval(buyPhone))) { setShowNewNumberWarning(true); return; } } setBuyStep("confirm"); }}>Continue</Button></div>
           ) : (
             <div className="space-y-4 pt-2"><div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
               <>
-                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyPkg?.size_gb}GB {buyPkg?.network.toUpperCase()}</span></div>
+                <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{isSpecialNetwork(buyPkg?.network) ? `${getPackageDisplayName(buyPkg)} ${getNetworkLabel(buyPkg?.network)}` : `${buyPkg?.size_gb}GB ${buyPkg?.network.toUpperCase()}`}</span></div>
                 <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold">{buyPhone}</span></div>{buySimName && <div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">SIM registered to</span><span className="text-right font-semibold">{buySimName}</span></div>}
               </>
             <div className="border-t border-border my-1" /><div className="flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-primary">GHC {Number(buyPkg?.agent_price ?? 0).toFixed(2)}</span></div></div>{hasPendingWithdrawal && (<div className="bg-orange-500/10 border border-orange-500/30 rounded-lg p-3 text-xs text-orange-400">��������� You have a pending withdrawal of GHC {pendingWithdrawalAmount.toFixed(2)}. Wallet balance after buying must not drop below this amount.</div>)}<div className="rounded-lg border border-red-500/50 bg-red-500/10 p-3 text-xs text-red-400 leading-relaxed"><span className="font-semibold block mb-1">Important Notice</span>Make sure the recipient number has no outstanding airtime, MoMo, or bundle debt. Network providers will not deliver data to numbers with unpaid balances — this is a network rule we cannot override.</div><div className="space-y-2"><Label>Payment Method</Label><div className="grid grid-cols-1 gap-2"><div className="flex gap-2 items-stretch">
@@ -5313,6 +5284,7 @@ handleMobileNumberChange(digits);
       
       <WhatsAppFloatingButton />
       <WhatsAppChannelPopup />
+      <SenderIdApprovedPopup />
       <ChatBot page="agent-dashboard" />
 
       <SourceInfoDialog

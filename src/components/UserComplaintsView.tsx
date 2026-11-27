@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { AlertCircle, CheckCircle2, Clock, MessageCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { ComplaintNotesThread } from "@/components/ComplaintNotesThread";
+import { getOrderPackageName, isSpecialNetwork } from "@/lib/networkConfig";
 
 interface UserComplaint {
   id: string;
@@ -16,6 +17,8 @@ interface UserComplaint {
   orders?: {
     network: string;
     size_gb: number;
+    size_gb_text?: string | null;
+    package_id?: string | null;
     amount: number;
   };
 }
@@ -44,7 +47,7 @@ export function UserComplaintsView({ userId }: UserComplaintsViewProps) {
 
         let query = supabase
           .from("complaints")
-          .select("id, complaint_title, complaint_details, complaint_type, status, created_at, orders(network, size_gb, amount)")
+          .select("id, complaint_title, complaint_details, complaint_type, status, created_at, orders(network, size_gb, package_id, amount)")
           .order("created_at", { ascending: false });
 
         if (orderIds.length > 0) {
@@ -58,7 +61,27 @@ export function UserComplaintsView({ userId }: UserComplaintsViewProps) {
 
         const { data, error } = await query;
         if (error) throw error;
-        setComplaints((data ?? []) as UserComplaint[]);
+        const rows = (data ?? []) as UserComplaint[];
+        const specialPackageIds = Array.from(
+          new Set(
+            rows
+              .filter((c) => c.orders && isSpecialNetwork(c.orders.network) && c.orders.package_id)
+              .map((c) => c.orders!.package_id as string),
+          ),
+        );
+        if (specialPackageIds.length > 0) {
+          const { data: pkgs } = await supabase
+            .from("data_packages")
+            .select("id, size_gb_text")
+            .in("id", specialPackageIds);
+          const pkgNames = new Map<string, string | null>((pkgs ?? []).map((p: any) => [String(p.id), p.size_gb_text]));
+          rows.forEach((c) => {
+            if (c.orders?.package_id && pkgNames.has(String(c.orders.package_id))) {
+              c.orders.size_gb_text = pkgNames.get(String(c.orders.package_id));
+            }
+          });
+        }
+        setComplaints(rows);
       } catch (e) {
         console.error("[v0] UserComplaintsView fetch error:", e);
       } finally {
@@ -86,8 +109,9 @@ export function UserComplaintsView({ userId }: UserComplaintsViewProps) {
     const map: Record<string, string> = {
       MTN_EXPRESS: "MTN Express", MTN: "MTN", VODAFONE: "Vodafone",
       AIRTELTIGO: "AirtelTigo", TELECEL: "Telecel",
+      MTN_SPECIAL: "MTN Special", TELECEL_SPECIAL: "Telecel Special",
     };
-    return map[n] || n;
+    return map[n] || map[String(n).toUpperCase()] || n;
   };
 
   return (
@@ -145,7 +169,7 @@ export function UserComplaintsView({ userId }: UserComplaintsViewProps) {
                         <div className="flex items-center gap-3 mt-1 flex-wrap">
                           {complaint.orders && (
                             <span className="text-xs text-muted-foreground">
-                              {networkName(complaint.orders.network)} {complaint.orders.size_gb}GB
+                              {networkName(complaint.orders.network)} {isSpecialNetwork(complaint.orders.network) ? getOrderPackageName(complaint.orders) : `${complaint.orders.size_gb}GB`}
                             </span>
                           )}
                           <span className="text-xs text-muted-foreground">

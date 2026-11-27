@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog";
+import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 
 export interface TutorialStep {
@@ -78,29 +78,28 @@ export default function DashboardTutorial({ storageKey, userId, steps, onNavigat
     onNavigate?.("overview");
   };
 
-  const goTo = (next: number) => {
-    setIndex(next);
-    const tab = steps[next].tabId;
-    if (tab) onNavigate?.(tab);
-  };
+  // The page behind the tutorial must never change while it is open, so steps do not switch tabs.
+  const goTo = (next: number) => setIndex(next);
 
   const step = steps[index];
   const last = index === steps.length - 1;
 
   return (
-    <Dialog open={open} onOpenChange={() => undefined}>
-      <DialogContent
-        showClose={false}
-        className="max-w-md gap-0 overflow-hidden p-0"
-        onEscapeKeyDown={(event) => event.preventDefault()}
-        onPointerDownOutside={(event) => event.preventDefault()}
-        onInteractOutside={(event) => event.preventDefault()}
-      >
+    <DialogPrimitive.Root open={open} onOpenChange={() => undefined} modal>
+      <DialogPrimitive.Portal>
+        <DialogPrimitive.Overlay className="fixed inset-0 z-[200] touch-none bg-black/80 data-[state=open]:animate-in data-[state=open]:fade-in-0" />
+        <DialogPrimitive.Content
+          className="fixed left-1/2 top-1/2 z-[201] w-[calc(100%-2rem)] max-w-md -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-lg border bg-background shadow-lg"
+          onEscapeKeyDown={(event) => event.preventDefault()}
+          onPointerDownOutside={(event) => event.preventDefault()}
+          onInteractOutside={(event) => event.preventDefault()}
+          onOpenAutoFocus={(event) => event.preventDefault()}
+        >
         <img src={step.image} alt="" className="aspect-video w-full object-cover" />
         <div className="space-y-3 p-5">
           <p className="text-xs font-medium text-muted-foreground">Step {index + 1} of {steps.length}</p>
-          <DialogTitle className="text-xl">{step.title}</DialogTitle>
-          <DialogDescription className="text-sm leading-relaxed">{step.description}</DialogDescription>
+          <DialogPrimitive.Title className="text-xl font-semibold leading-none tracking-tight">{step.title}</DialogPrimitive.Title>
+          <DialogPrimitive.Description className="text-sm leading-relaxed text-muted-foreground">{step.description}</DialogPrimitive.Description>
           <div className="flex items-center gap-1.5" aria-hidden="true">
             {steps.map((_, i) => (
               <span key={i} className={`h-1.5 rounded-full transition-all ${i === index ? "w-6 bg-primary" : "w-1.5 bg-muted"}`} />
@@ -113,7 +112,8 @@ export default function DashboardTutorial({ storageKey, userId, steps, onNavigat
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogPrimitive.Content>
+      </DialogPrimitive.Portal>
+    </DialogPrimitive.Root>
   );
 }

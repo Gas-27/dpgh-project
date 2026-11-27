@@ -278,6 +278,7 @@ export type Database = {
           agent_price: number
           created_at: string | null
           id: string
+          inactive_note: string | null
           network: string
           price: number
           size_gb: number
@@ -287,6 +288,7 @@ export type Database = {
           agent_price?: number
           created_at?: string | null
           id?: string
+          inactive_note?: string | null
           network: string
           price?: number
           size_gb: number
@@ -296,6 +298,7 @@ export type Database = {
           agent_price?: number
           created_at?: string | null
           id?: string
+          inactive_note?: string | null
           network?: string
           price?: number
           size_gb?: number

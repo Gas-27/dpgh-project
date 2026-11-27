@@ -95,7 +95,7 @@ export default function SubSubagentRegistrationForm({
       try {
         const { data, error } = await supabase
           .from("subagent_stores")
-          .select("*")
+          .select("id, user_id, agent_store_id, store_name, approved, allow_registration, suspended")
           .eq("id", subagentStoreId)
           .single();
 

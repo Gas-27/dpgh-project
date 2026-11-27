@@ -80,6 +80,7 @@
   .network-tabs .network-tab-active.network-tab-mtn_express { background: #fbbf24 !important; color: #111827 !important; border-color: #fbbf24 !important; }
   .network-tabs .network-tab-active.network-tab-airteltigo { background: #3b82f6 !important; color: #ffffff !important; border-color: #3b82f6 !important; }
   .network-tabs .network-tab-active.network-tab-telecel { background: #ef4444 !important; color: #ffffff !important; border-color: #ef4444 !important; }
+.network-tabs .network-tab-active.network-tab-mashup { background: #f97316 !important; color: #ffffff !important; border-color: #f97316 !important; }
   .delivery-progress-card,
   .delivery-progress-card [data-slot="card-header"],
   .delivery-progress-card [data-slot="card-content"] { color: #fff !important; background: #321274 !important; }
@@ -475,6 +476,31 @@
   50% {
     transform: translateY(-8px);
   }
+}
+
+html.has-pwa-banner .fixed.top-0:not([data-pwa-banner]),
+html.has-pwa-banner .sticky.top-0:not([data-pwa-banner]) {
+  top: var(--pwa-banner-h, 0px);
+}
+
+@keyframes ticker-scroll {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker-scroll 18s linear infinite;
+}
+
+.ticker-track:hover,
+.ticker-track:active {
+  animation-play-state: paused;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ticker-track { animation: none; }
 }
 
 @keyframes glowPulse {

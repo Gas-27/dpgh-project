@@ -110,6 +110,10 @@ export default function WalletAFARegistration({ kind, storeId, walletBalance, on
             </div>
           </div>
 
+          <div role="note" className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm font-medium text-blue-900">
+            Enter accurate information only. Your full name, Ghana card number and date of birth must match your Ghana card exactly, and the phone number must be the MTN number you want registered. Wrong or mismatched details can cause the registration to be rejected, and the fee is not refunded.
+          </div>
+
           <form onSubmit={submit} className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="afa-name">Full name</Label>

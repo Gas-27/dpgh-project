@@ -545,12 +545,14 @@ export default function SmsComposer({ ownerType, ownerId, storeUrl: providedStor
     }
     const delivered = Number(finished.data.sent || 0);
     const undelivered = Number(finished.data.failed || 0);
+    const refunded = Number(finished.data.refunded || 0);
+    const refundNote = refunded > 0 ? ` GHS ${refunded.toFixed(2)} refunded to your wallet.` : "";
     if (delivered === 0) {
-      toast({ title: "SMS was not sent", description: `No messages were delivered. GHS ${Number(finished.data.refunded || 0).toFixed(2)} was refunded to your wallet.`, variant: "destructive" });
+      toast({ title: "SMS was not sent", description: `No messages were delivered.${refundNote}`, variant: "destructive" });
       return;
     }
     if (undelivered > 0) {
-      toast({ title: "SMS partly sent", description: `${delivered} of ${total} delivered. GHS ${Number(finished.data.refunded || 0).toFixed(2)} for the ${undelivered} undelivered was refunded to your wallet.` });
+      toast({ title: "SMS partly sent", description: `${delivered} sent, ${undelivered} not delivered.${refundNote}` });
     } else {
       toast({ title: "SMS sent", description: `${delivered} recipient(s) processed - ${pages} page(s) each.` });
     }

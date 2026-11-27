@@ -23,6 +23,7 @@ import GameHubLeaderboard from "@/components/GameHubLeaderboard";
 import GameHubPlayer from "@/components/GameHubPlayer";
 import GameHubArcheryPlayer from "@/components/GameHubArcheryPlayer";
 import GameHubRewardPlayer from "@/components/GameHubRewardPlayer";
+import { supabase } from "@/integrations/supabase/client";
 import { useGameHubUser } from "@/hooks/useGameHubUser";
 import { useToast } from "@/hooks/use-toast";
 import { applyChanceOrder, buildGameShareUrl, fetchGameRewardSettings, fetchGameVideos, maskEmail, shareText, type GameVideo } from "@/lib/gameHubApi";
@@ -204,27 +205,27 @@ function SectionHeader({ id, icon: Icon, title, count }: { id: string; icon: typ
   );
 }
 
-type GameActions = { rules: RuleMap; wins: Record<string, number>; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void };
+type GameActions = { rules: RuleMap; wins: Record<string, number>; claimVisible?: boolean; onPlay: (game: HubGame) => void; onShare: (game: HubGame) => void };
 
 const rewardGames = hubGames.filter((game) => game.native);
 const hubOnlyGames = hubGames.filter((game) => !game.native);
 
-function RewardGamesSection({ rules, wins, onPlay, onShare }: GameActions) {
+function RewardGamesSection({ rules, wins, claimVisible = true, onPlay, onShare }: GameActions) {
   return (
     <section aria-labelledby="gamehub-rewards" className="space-y-3">
       <SectionHeader id="gamehub-rewards" icon={Trophy} title="Play & Win Free Data" count={rewardGames.length} />
       <div className="grid grid-cols-2 gap-3">
-        {rewardGames.map((game) => <GameCard key={game.id} game={game} rules={rules} wins={wins?.[game.id] ?? 0} showWins onPlay={onPlay} onShare={onShare} />)}
+        {rewardGames.map((game) => <GameCard key={game.id} game={game} rules={rules} wins={wins?.[game.id] ?? 0} showWins={claimVisible && rules[game.id]?.enabled !== false} onPlay={onPlay} onShare={onShare} />)}
       </div>
     </section>
   );
 }
 
-function GamesTab({ videos, rules, wins, onPlay, onShare }: GameActions & { videos: GameVideo[] }) {
+function GamesTab({ videos, rules, wins, claimVisible, onPlay, onShare }: GameActions & { videos: GameVideo[] }) {
   return (
     <div className="space-y-5">
       <FeaturedCarousel videos={videos} rules={rules} onPlay={onPlay} />
-      <RewardGamesSection rules={rules} wins={wins} onPlay={onPlay} onShare={onShare} />
+      <RewardGamesSection rules={rules} wins={wins} claimVisible={claimVisible} onPlay={onPlay} onShare={onShare} />
       <IntroCard onBrowse={() => document.getElementById("gamehub-all")?.scrollIntoView({ behavior: "smooth", block: "start" })} />
       <GamesStrip onPlay={onPlay} />
       <section aria-labelledby="gamehub-hot">
@@ -324,6 +325,21 @@ export default function GameHubDialog() {
   const { data: videos = [] } = useQuery({ queryKey: ["gamehub-videos"], queryFn: fetchGameVideos, enabled: open, staleTime: 60_000 });
 
   const { data: settings = [] } = useQuery({ queryKey: ["gamehub-rules"], queryFn: fetchGameRewardSettings, enabled: open, staleTime: 15_000, refetchOnWindowFocus: true });
+  const { data: claimVisible = false } = useQuery({
+    queryKey: ["gamehub-claim-visible"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("promo_code_settings")
+        .select("claim_visible")
+        .eq("store_type", "admin")
+        .order("updated_at", { ascending: false })
+        .limit(1);
+      return data?.[0]?.claim_visible === true;
+    },
+    enabled: open,
+    staleTime: 15_000,
+    refetchOnWindowFocus: true,
+  });
   const wins = useShowcaseWinCounts(hubGames.map((game) => game.id), open);
   const rules: RuleMap = Object.fromEntries((settings ?? []).filter((row): row is GameRuleSummary => Boolean(row?.game_id)).map((row) => [row.game_id, row]));
 
@@ -418,7 +434,7 @@ export default function GameHubDialog() {
             <TabsTrigger value="leaderboard" className="data-[state=active]:bg-violet-600 data-[state=active]:text-white"><Puzzle className="mr-2 h-4 w-4" aria-hidden="true" /> Leaderboard</TabsTrigger>
           </TabsList>
           <div className="min-h-0 flex-1 overflow-y-auto px-4 pb-8 pt-4">
-            <TabsContent value="games" className="mt-0"><GameHubJoinCard signedIn={Boolean(user)} /><GamesTab videos={videos} rules={rules} wins={wins} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
+            <TabsContent value="games" className="mt-0"><GameHubJoinCard signedIn={Boolean(user)} /><GamesTab videos={videos} rules={rules} wins={wins} claimVisible={claimVisible} onPlay={requestPlay} onShare={handleShare} /></TabsContent>
             <TabsContent value="tournaments" className="mt-0">
               <GameHubSnakeContests signedIn={Boolean(user)} />
               <GameHubTournaments signedIn={Boolean(user)} />

@@ -3,7 +3,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const app = fs.readFileSync(path.join(root, "src/App.tsx"), "utf8");
-const sitemap = fs.readFileSync(path.join(root, "public/sitemap.xml"), "utf8");
+const sitemap = fs.readFileSync(path.join(root, "public/sitemap-default.xml"), "utf8");
 const editorial = fs.readFileSync(path.join(root, "src/data/ghana-editorial-library.ts"), "utf8");
 const routes = [...app.matchAll(/<Route path="([^"]+)"/g)].map((match) => match[1]);
 const sitemapUrls = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1].replace("https://dataplug.store", ""));

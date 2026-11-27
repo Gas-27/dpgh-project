@@ -8,6 +8,8 @@ import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, L
 import { TrendingUp, Users, DollarSign, Package, Calendar } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
+const COLORS = ['#0ea5e9', '#22c55e', '#f59e0b', '#ef4444', '#a855f7', '#14b8a6'];
+
 interface AnalyticsData {
   packageName: string;
   registrations: number;

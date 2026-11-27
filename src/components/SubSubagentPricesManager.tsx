@@ -6,6 +6,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Percent, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork } from "@/lib/networkConfig";
 
 interface SubSubagentPricesManagerProps {
   subagentStoreId: string;
@@ -64,7 +65,7 @@ export default function SubSubagentPricesManager({
   } else {
       networkMatch = normalizedNetwork === networkFilter;
     }
-    return networkMatch && p.active !== false;
+    return networkMatch;
   });
 
   const handlePriceChange = (packageId: string, value: string) => {
@@ -81,7 +82,7 @@ export default function SubSubagentPricesManager({
     }
 
     const markup = parseFloat(markupPercent) / 100;
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = getNetworkLabel(networkFilter);
     
     filteredPackages.forEach(pkg => {
       // Use your subagent price as the base
@@ -220,7 +221,10 @@ export default function SubSubagentPricesManager({
             { key: "mtn_express", label: "MTN Express" },
             { key: "airteltigo", label: "AirtelTigo" },
             { key: "telecel", label: "Telecel" },
-          ].map(({ key, label }) => (
+            { key: "mtn_special", label: "MTN Special" },
+            { key: "telecel_special", label: "Telecel Special" },
+            { key: "mashup", label: "MTN MashUp" },
+          ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key && p.active !== false)).map(({ key, label }) => (
             <Button
               key={key}
               variant={networkFilter === key ? "hero" : "outline"}
@@ -255,7 +259,7 @@ export default function SubSubagentPricesManager({
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
         <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br /> 💡 Markup Explanation (Remember to click save after applying markup)</p>
         <p className="text-xs text-muted-foreground mt-2">
-          Markup changes all subagent selling prices for the selected network based on the percentage you want all prices to be increased by. Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).
+          Markup changes all subagent selling prices for the selected network based on the percentage you want all prices to be increased by. Markup is applied to the <strong>Base Price</strong> (your cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{getNetworkLabel(networkFilter)}</strong>).
         </p>
       </div>
 
@@ -286,8 +290,8 @@ export default function SubSubagentPricesManager({
                   const profit = Number(displayPrice) - basePrice;
                   
                   return (
-                    <TableRow key={pkg.id}>
-                      <TableCell className="font-display font-bold">{pkg.size_gb_text || `${pkg.size_gb}GB`}</TableCell>
+  <TableRow key={pkg.id} className={pkg.active === false ? "opacity-60" : ""}>
+  <TableCell className="font-display font-bold">{getPackageDisplayName(pkg)}{pkg.active === false && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell>
                       <TableCell className="text-muted-foreground">GHC {Number(basePrice).toFixed(2)}</TableCell>
                       <TableCell>
                         <Input

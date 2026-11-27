@@ -65,6 +65,7 @@ export default function NotificationPrompt() {
           description: "You can enable notifications later from the bell icon.",
           variant: "destructive" 
         });
+        setIsLoading(false);
         handleDismiss();
         return;
       }
@@ -107,14 +108,26 @@ export default function NotificationPrompt() {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-      <div className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-300">
+    <div
+      className="fixed inset-0 z-[150] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
+      onClick={handleDismiss}
+      role="presentation"
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Enable notifications"
+        onClick={(e) => e.stopPropagation()}
+        className="bg-card border border-border rounded-2xl p-6 max-w-sm w-full shadow-2xl animate-in fade-in zoom-in duration-300"
+      >
         <div className="flex justify-end">
-          <button 
+          <button
+            type="button"
             onClick={handleDismiss}
-            className="text-muted-foreground hover:text-foreground transition-colors"
+            aria-label="Close"
+            className="-mr-2 -mt-2 rounded-full p-2 text-muted-foreground hover:text-foreground transition-colors"
           >
-            <X className="h-5 w-5" />
+            <X className="h-6 w-6" />
           </button>
         </div>
         
@@ -137,6 +150,9 @@ export default function NotificationPrompt() {
               className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold py-3"
             >
               {isLoading ? "Enabling..." : "Enable Notifications"}
+            </Button>
+            <Button type="button" variant="ghost" onClick={handleDismiss} className="w-full text-muted-foreground">
+              Not now
             </Button>
           </div>
         </div>

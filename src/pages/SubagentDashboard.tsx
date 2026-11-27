@@ -2,6 +2,7 @@ import DashboardTutorial, { SUBAGENT_TUTORIAL } from "@/components/DashboardTuto
 import FlyerTabs from "@/components/FlyerExtras";
 import MarketingHub from "@/components/MarketingHub";
 import OverviewPill from "@/components/OverviewPill";
+import TabIntroDialog from "@/components/TabIntroDialog";
 import { useState, useEffect, useRef } from "react";
   import { supabase } from "@/integrations/supabase/client";
 import { useWalletSync } from "@/hooks/useWalletSync";
@@ -16,6 +17,7 @@ import { verifyHubtelMsisdn } from "@/services/hubtelService";
 import { useAuth } from "@/hooks/useAuth";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
 import { SourceInfoDialog, type SourceInfo } from "@/components/SourceInfoDialog";
+import PackageStatusIndicator from "@/components/PackageStatusIndicator";
 import { RefundStatusCell } from "@/components/RefundStatusCell";
 import { useStorefrontRefunds } from "@/hooks/useStorefrontRefunds";
 import { Navigate, Link } from "react-router-dom";
@@ -46,7 +48,7 @@ import DomainDashboardPanel from "@/components/DomainDashboardPanel";
 import { isValidStoreName, sanitizeStoreName, STORE_NAME_RULE } from "@/utils/storeUtils";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger, SheetClose } from "@/components/ui/sheet";
 import NetworkIndicator from "@/components/NetworkIndicator";
-import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength } from "@/lib/phoneUtils";
+import { detectNetwork, phoneMatchesNetwork, isValidPhoneLength, isMtnNumber } from "@/lib/phoneUtils";
 import { isNumberSubmittedForApproval } from "@/lib/numberApprovalCheck";
 import { Switch } from "@/components/ui/switch";
 import FlyerGenerator from "@/components/FlyerGenerator";
@@ -63,6 +65,7 @@ import WalletAFARegistration from "@/components/WalletAFARegistration";
 import { DOMAINS } from "@/config/domains";
 import { openGameHubIfAvailable } from "@/lib/tabControls";
 import ChatBot from "@/components/ChatBot";
+import SenderIdApprovedPopup from "@/components/SenderIdApprovedPopup";
 import ReportCenter from "@/components/ReportCenter";
 import ReportComplaintDialog from "@/components/ReportComplaintDialog";
 import AlreadyReportedButton from "@/components/AlreadyReportedButton";
@@ -73,10 +76,12 @@ import ScheduleSms from "@/components/ScheduleSms";
 import SmsHistory from "@/components/SmsHistory";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
 import NetworkTabs from "@/components/NetworkTabs";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, MASHUP_MTN_ONLY_MESSAGE, getLockedDownstreamMarkups, getMashupDefaultStorePrice, getMashupMaxStorePrice, roundMoney, getLockedPriceMessage, getLockedProfitDescription, isLockedPricingNetwork, getLockedMaxProfit } from "@/lib/networkConfig";
 import ScheduleDataPurchase from "@/components/ScheduleDataPurchase";
 import NotificationPopup from "@/components/NotificationPopup";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 import { SHOW_USSD } from "@/lib/ussdVisibility";
+import { withStorePrivateDetail, withStorePrivateDetails, fetchWalletBalance, SUB_SUBAGENT_PUBLIC_COLUMNS } from "@/lib/storePrivateDetails";
 
 // Helper function to get current order stage
 function getOrderStatusLabel(status: string): string {
@@ -450,13 +455,9 @@ const SubagentDashboard = () => {
 
   useWalletSync(async () => {
     if (!subagentStore?.id) return;
-    const { data } = await supabase
-      .from("subagent_stores")
-      .select("wallet_balance")
-      .eq("id", subagentStore.id)
-      .maybeSingle();
-    const balance = Number(data?.wallet_balance);
-    if (Number.isFinite(balance)) {
+    const fetchedBalance = await fetchWalletBalance("subagent", subagentStore.id);
+    const balance = Number(fetchedBalance);
+    if (fetchedBalance !== null && Number.isFinite(balance)) {
       setSubagentStore((prev) => (prev && Number(prev.wallet_balance) !== balance ? { ...prev, wallet_balance: balance } : prev));
     }
   }, !!subagentStore?.id);
@@ -548,7 +549,7 @@ const SubagentDashboard = () => {
         .from("data_packages")
         .select("*")
         .order("size_gb", { ascending: true }));
-      if (data) setPackages(data);
+      if (data) setPackages(filterVisiblePackages(data));
     };
     return startVisiblePolling(pollPackages, 5 * 60 * 1000);
   }, []);
@@ -634,7 +635,7 @@ const SubagentDashboard = () => {
         console.log("[v0] SubagentDashboard - Admin impersonation with storeId:", storeId);
         const { data: storeData, error: storeErr } = await supabase
           .from("subagent_stores")
-  .select("id, user_id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, custom_domain, custom_domain_status")
+  .select("id, user_id, store_name, whatsapp_number, support_number, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, custom_domain, custom_domain_status")
   .eq("id", storeId)
           .single();
 
@@ -645,7 +646,7 @@ const SubagentDashboard = () => {
           return;
         }
 
-        const store = storeData;
+        const store: any = await withStorePrivateDetail("subagent", storeData as any);
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
         // Always use the database value for allow_sub_subagent_registration
   setSubagentStore({
@@ -686,7 +687,7 @@ const SubagentDashboard = () => {
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
-          supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("sub_subagent_stores").select(SUB_SUBAGENT_PUBLIC_COLUMNS).eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
   store.user_id
     ? supabase.from("transfer_recipients").select("*").eq("user_id", store.user_id).eq("status", "active").order("created_at", { ascending: false })
     : Promise.resolve({ data: [] as any[], error: null }),
@@ -716,12 +717,12 @@ const SubagentDashboard = () => {
         });
         setWithdrawals(payoutData);
         setTransferRecipients(recipientsResult.data || []);
-        setPackages(packagesResult.data || []);
+        setPackages(filterVisiblePackages(packagesResult.data || []));
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
         
         // Fetch sub-subagent orders and calculate profits
-        const subSubagentsData = subSubagentsResult.data || [];
+        const subSubagentsData: any[] = await withStorePrivateDetails("sub_subagent", (subSubagentsResult.data || []) as any[]);
         setSubSubagents(subSubagentsData);
         
         if (subSubagentsData.length > 0) {
@@ -817,7 +818,7 @@ const SubagentDashboard = () => {
         console.log("[v0] Querying subagent_stores with user_id:", effectiveUserId);
         const { data: storeData, error: storeErr } = await supabase
           .from("subagent_stores")
-  .select("id, user_id, store_name, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, custom_domain, custom_domain_status")
+  .select("id, user_id, store_name, whatsapp_number, support_number, approved, agent_store_id, created_at, theme_config, store_headline, whatsapp_group, topup_reference, allow_sub_subagent_registration, custom_domain, custom_domain_status")
   .eq("user_id", effectiveUserId);
 
         console.log("[v0] Store query result - error:", storeErr, "count:", storeData?.length);
@@ -835,7 +836,7 @@ const SubagentDashboard = () => {
           return;
         }
 
-        const store = storeData[0];
+        const store: any = await withStorePrivateDetail("subagent", storeData[0] as any);
         console.log("[v0] Loaded store:", store.store_name, "with id:", store.id);
   setSubagentStore(store);
   setShowAgentPrice(Boolean(store.theme_config?.show_agent_price));
@@ -872,7 +873,7 @@ const SubagentDashboard = () => {
           supabase.from("subagent_package_prices").select("package_id, sell_price").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("subagent_wallet_topups").select("id, amount, paystack_reference, created_at").eq("subagent_store_id", store.id).order("created_at", { ascending: false }).limit(50),
           supabase.from("agent_stores").select("whatsapp_number, support_number, store_name").eq("id", store.agent_store_id).single(),
-          supabase.from("sub_subagent_stores").select("*").eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
+          supabase.from("sub_subagent_stores").select(SUB_SUBAGENT_PUBLIC_COLUMNS).eq("subagent_store_id", store.id).order("created_at", { ascending: false }),
           supabase.from("transfer_recipients").select("*").eq("user_id", effectiveUserId).eq("status", "active").order("created_at", { ascending: false })
         ]);
 
@@ -900,12 +901,12 @@ const SubagentDashboard = () => {
         });
         setWithdrawals(payoutData2);
         setTransferRecipients(recipientsResult.data || []);
-        setPackages(packagesResult.data || []);
+        setPackages(filterVisiblePackages(packagesResult.data || []));
         setTopupHistory(topupsResult.data || []);
         if (agentInfoResult.data) setAgentInfo(agentInfoResult.data);
         
         // Set sub-subagents
-        const subSubagentsData = subSubagentsResult.data || [];
+        const subSubagentsData: any[] = await withStorePrivateDetails("sub_subagent", (subSubagentsResult.data || []) as any[]);
         setSubSubagents(subSubagentsData);
         
         // Calculate sub-subagent stats and merge their orders into the main orders list
@@ -1209,20 +1210,17 @@ const SubagentDashboard = () => {
 
         const { data: ssa } = await supabase
           .from("sub_subagent_stores")
-          .select("id, wallet_balance")
+          .select("id")
           .eq("id", order.sub_subagent_store_id)
           .maybeSingle();
 
         if (!ssa) { errorCount++; continue; }
 
         // Deduct refund amount from this subagent's own wallet first
-        const { data: myStore } = await supabase
-          .from("subagent_stores")
-          .select("id, wallet_balance")
-          .eq("id", subagentStore?.id)
-          .maybeSingle();
+        const myStore = subagentStore?.id ? { id: subagentStore.id as string } : null;
+        const myWalletBalance = myStore ? await fetchWalletBalance("subagent", myStore.id) : null;
 
-        const myBalance = Number(myStore?.wallet_balance || 0);
+        const myBalance = Number(myWalletBalance || 0);
         if (myBalance < refundAmount) {
           toast({
             title: "Insufficient Wallet Balance",
@@ -1751,7 +1749,21 @@ const handleSaveStore = async () => {
     return p.network === subSubagentNetworkFilter;
   });
 
+  const mashupMarkups = getLockedDownstreamMarkups(packages);
+  const isMashupPackageId = (packageId: string) => mashupMarkups[packageId] !== undefined;
+  const getMashupCost = (packageId: string) => Number(basePrices[packageId] || packages.find(p => p.id === packageId)?.price || 0);
+  const getLockedNetwork = (packageId: string) => packages.find(p => p.id === packageId)?.network;
+  const getLockedMax = (packageId: string) => getMashupMaxStorePrice(getMashupCost(packageId), getLockedNetwork(packageId));
+
   const handlePriceChange = (packageId: string, value: string) => {
+    if (isMashupPackageId(packageId) && value !== "") {
+      const maxPrice = getLockedMax(packageId);
+      if (parseFloat(value) > maxPrice) {
+        toast({ title: "Maximum price reached", description: `The most you can charge for this ${getNetworkLabel(getLockedNetwork(packageId))} bundle is GHC ${maxPrice.toFixed(2)} (GHC ${getLockedMaxProfit(getLockedNetwork(packageId)).toFixed(2)} profit).`, variant: "destructive" });
+        setEditedPrices(prev => ({ ...prev, [packageId]: maxPrice }));
+        return;
+      }
+    }
     // Allow empty string for clearing the box - store as string for display
     setEditedPrices(prev => ({
       ...prev,
@@ -1766,11 +1778,12 @@ const handleSaveStore = async () => {
     }
 
     const markup = parseFloat(markupPercent) / 100;
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = getNetworkLabel(networkFilter);
     
     filteredPackages.forEach(pkg => {
       const basePrice = basePrices[pkg.id] || pkg.price || 0;
-      const newPrice = basePrice * (1 + markup);
+      let newPrice = basePrice * (1 + markup);
+      if (isMashupPackageId(pkg.id)) newPrice = Math.min(newPrice, getMashupMaxStorePrice(basePrice, pkg.network));
       setEditedPrices(prev => ({
         ...prev,
         [pkg.id]: parseFloat(newPrice.toFixed(2))
@@ -1809,6 +1822,15 @@ const handleSaveStore = async () => {
           toast({
             title: "Invalid Price",
             description: `Your price cannot be below agent's base price (GHC ${basePrice.toFixed(2)})`,
+            variant: "destructive"
+          });
+          setSavingPrices(false);
+          return;
+        }
+        if (isMashupPackageId(packageId) && price > getLockedMax(packageId) + 0.001) {
+          toast({
+            title: "Invalid Price",
+            description: `${getNetworkLabel(getLockedNetwork(packageId))} price cannot exceed GHC ${getLockedMax(packageId).toFixed(2)} (GHC ${getLockedMaxProfit(getLockedNetwork(packageId)).toFixed(2)} maximum profit)`,
             variant: "destructive"
           });
           setSavingPrices(false);
@@ -1890,7 +1912,16 @@ const handleSaveStore = async () => {
   };
 
   // Sub-Subagent pricing handlers - for setting prices we charge sub-subagents
+  const getMashupSubSubBase = (packageId: string): number | undefined => {
+    const markup = mashupMarkups[packageId];
+    return markup === undefined ? undefined : roundMoney(getMashupCost(packageId) + markup);
+  };
+
   const handleSubSubagentPriceChange = (packageId: string, value: string) => {
+    if (isMashupPackageId(packageId)) {
+      toast({ title: "Price locked", description: getLockedPriceMessage(getLockedNetwork(packageId)) });
+      return;
+    }
     setSubSubagentEditedSubSubPrices(prev => ({
       ...prev,
       [packageId]: value === "" ? "" : (parseFloat(value) || value)
@@ -1904,10 +1935,11 @@ const handleSaveStore = async () => {
     }
 
     const markup = parseFloat(subSubagentMarkupPercentForSubsub) / 100;
-    const networkName = subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "mtn_express" ? "MTN Express" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = getNetworkLabel(subSubagentNetworkFilterForSubsub);
     
     const filteredPkgs = packages.filter(pkg => pkg.network === subSubagentNetworkFilterForSubsub);
     filteredPkgs.forEach(pkg => {
+      if (isMashupPackageId(pkg.id)) return;
       // Use your selling price as base for markup (what you charge customers)
       const basePrice = subagentPrices[pkg.id] || basePrices[pkg.id] || pkg.price || 0;
       const newPrice = basePrice * (1 + markup);
@@ -2026,10 +2058,14 @@ const handleSaveStore = async () => {
       toast({ title: "Phone number must be exactly 10 digits", variant: "destructive" });
       return;
     }
+    if (isMashupNetwork(buyingPkg.network) && !isMtnNumber(buyCustomerNumber)) {
+      toast({ title: "Network mismatch", description: MASHUP_MTN_ONLY_MESSAGE, variant: "destructive" });
+      return;
+    }
     const detected = detectNetwork(buyCustomerNumber);
     const validMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detected === "mtn";
     if (!validMashup && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
-      toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyingPkg.network.toUpperCase()} package`, variant: "destructive" });
+      toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${getNetworkLabel(buyingPkg.network).toUpperCase()} package`, variant: "destructive" });
       return;
     }
     setBuyStep("confirm");
@@ -2044,11 +2080,16 @@ const handleSaveStore = async () => {
       return;
     }
     
+    if (isMashupNetwork(buyingPkg.network) && !isMtnNumber(buyCustomerNumber)) {
+      toast({ title: "Network mismatch", description: MASHUP_MTN_ONLY_MESSAGE, variant: "destructive" });
+      return;
+    }
+
     // Validate phone matches selected network (allow mtn to buy mtn_mashup and mashup)
     const isValidForMTNMashup = (buyingPkg.network === "mtn_mashup" || buyingPkg.network === "mashup") && detectNetwork(buyCustomerNumber) === "mtn";
     if (!isValidForMTNMashup && !phoneMatchesNetwork(buyCustomerNumber, buyingPkg.network)) {
       const detected = detectNetwork(buyCustomerNumber);
-      toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${buyingPkg.network.toUpperCase()} package`, variant: "destructive" });
+      toast({ title: "Network mismatch", description: `This phone number appears to be ${detected.toUpperCase()}, but you selected ${getNetworkLabel(buyingPkg.network).toUpperCase()} package`, variant: "destructive" });
       return;
     }
 
@@ -2079,17 +2120,13 @@ const handleSaveStore = async () => {
       setBuyLoading(true);
       
       // First, get the current wallet balance to ensure we have fresh data
-      const { data: freshStore, error: fetchError } = await supabase
-        .from("subagent_stores")
-        .select("wallet_balance")
-        .eq("id", subagentStore.id)
-        .single();
+      const freshBalance = await fetchWalletBalance("subagent", subagentStore.id);
       
-      if (fetchError || !freshStore) {
+      if (freshBalance === null) {
         throw new Error("Failed to fetch wallet balance");
       }
       
-      const currentBalance = freshStore.wallet_balance || 0;
+      const currentBalance = freshBalance || 0;
       
       if (price > currentBalance) {
         toast({ title: "Error", description: "Insufficient wallet balance", variant: "destructive" });
@@ -2114,6 +2151,7 @@ const handleSaveStore = async () => {
       const packageName = buyingPkg.size_gb_text || buyingPkg.size_gb?.toString() || "";
       const sizeMatch = packageName.toString().match(/(\d+(?:\.\d+)?)/);
       const extractedSize = sizeMatch ? parseFloat(sizeMatch[1]) : buyingPkg.size_gb;
+      let dataPackageId: number | undefined = undefined;
       
     // COMMENTED OUT: mashup packages deactivated
     // For mashup packages, get datahubnet ID from the hardcoded mapping
@@ -2192,7 +2230,7 @@ const handleSaveStore = async () => {
       // Update local state immediately
       setSubagentStore(prev => prev ? { ...prev, wallet_balance: newBalance } : prev);
       
-      toast({ title: "Success", description: `${buyingPkg.size_gb}GB data purchased for ${buyCustomerNumber}` });
+      toast({ title: "Success", description: `${isSpecialNetwork(buyingPkg.network) ? getPackageDisplayName(buyingPkg) : `${buyingPkg.size_gb}GB`} data purchased for ${buyCustomerNumber}` });
       setBuyingPkg(null);
       setBuyCustomerNumber("");
       fetchData();
@@ -2219,6 +2257,41 @@ const handleSaveStore = async () => {
   if (!isImpersonating && (!isSubagent || isSubSubagent)) {
     return <Navigate to="/" />;
   }
+
+  // MashUp prices charged to sub-subagents are fixed (cost + 0.30 / 0.60); persist them as template rows.
+  useEffect(() => {
+    if (loading || !subagentStore?.id) return;
+    const pending = packages
+      .map(pkg => ({ id: pkg.id as string, price: getMashupSubSubBase(pkg.id) }))
+      .filter((item): item is { id: string; price: number } =>
+        item.price !== undefined && basePrices[item.id] !== undefined && Math.abs((subSubagentPrices[item.id] ?? -1) - item.price) > 0.001);
+    if (pending.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const synced: Record<string, number> = {};
+      for (const { id, price } of pending) {
+        const { data: existingRows, error: fetchError } = await supabase
+          .from("sub_subagent_package_prices")
+          .select("id")
+          .eq("subagent_store_id", subagentStore.id)
+          .eq("package_id", id)
+          .is("sub_subagent_store_id", null)
+          .order("created_at", { ascending: false });
+        if (fetchError) continue;
+        const values = { base_price: price, subagent_minimum_price: price, sell_price: price };
+        const { error } = existingRows && existingRows.length > 0
+          ? await supabase.from("sub_subagent_package_prices").update(values).eq("id", existingRows[0].id)
+          : await supabase.from("sub_subagent_package_prices").insert({ subagent_store_id: subagentStore.id, package_id: id, sub_subagent_store_id: null, ...values });
+        if (!error) synced[id] = price;
+      }
+      if (!cancelled && Object.keys(synced).length > 0) {
+        setSubSubagentPrices(prev => ({ ...prev, ...synced }));
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, subagentStore?.id, packages, basePrices, subSubagentPrices]);
 
   if (loading) {
     return (
@@ -2532,6 +2605,7 @@ return (
         </Card>
 
         <DashboardTutorial storageKey="subagent" userId={user?.id} steps={SUBAGENT_TUTORIAL} onNavigate={setActiveTab} />
+        <TabIntroDialog activeTab={activeTab} storageKey="tab-intros-seen-subagent" />
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="hidden" />
           <div className="grid grid-cols-3 gap-2 sm:gap-3">{[{ id: "gamehub", label: "GameHub" }, { id: "buy", label: "Buy Data" }, { id: "promo", label: "Promo Codes" }, { id: "domains", label: "Domains" }, { id: "instant-data", label: "Instant Data" }, { id: "subscription", label: "Subscription" }, { id: "subscription-price", label: "Subscription (Price Set)" }, { id: "topup", label: "Top Up" }, { id: "store", label: "Store Prices" }, { id: "notifications", label: "Notifications" }, { id: "afa-registrations", label: "AFA Registration" }, { id: "sub-subagents", label: "Subagents" }, { id: "appearance", label: "Appearance" }, { id: "sms", label: "Bulk SMS" }, { id: "products", label: "Products" }, { id: "services", label: "Utilities" }, { id: "social-boost", label: "Social Boost" }, { id: "sub-subagent-pricing", label: "Subagent Pricing" }, { id: "flyer", label: "Flyer Generator" }, { id: "marketing", label: "Marketing" }].map((item) => { const selected = activeTab === item.id; return <OverviewPill key={item.id} label={item.label} text={selected ? "Overview" : item.label} onClick={() => item.id === "gamehub" ? void openGameHubIfAvailable() : setActiveTab(selected ? "overview" : item.id)} />; })}</div>
@@ -2796,7 +2870,7 @@ const fallbackBaseCost = Number(order.agent_base_price ?? order.base_cost ?? (or
                               <TableRow key={order.id}>
                                 <TableCell className="text-sm whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell>
                                 <TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell>
-                                <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                                <TableCell className={isSpecialNetwork(order.network) ? "text-sm" : "uppercase text-sm"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
                                 <TableCell className="font-display font-bold">{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell>
                                 <TableCell className="font-semibold">GHC {Number(sellPrice).toFixed(2)}</TableCell>
                                 <TableCell className="text-muted-foreground">GHC {Number(baseCost).toFixed(2)}</TableCell>
@@ -2873,16 +2947,14 @@ const fallbackBaseCost = Number(order.agent_base_price ?? order.base_cost ?? (or
                 const basePrice = basePrices[pkg.id] || pkg.price || 0;
                 const isInactive = pkg.active === false;
                 return (
-                  <Card key={pkg.id} className={`relative border-slate-700/50 bg-slate-900/5 transition-all ${isInactive ? "opacity-50 grayscale" : "hover:border-slate-600/50"}`}>
-                    {isInactive && (
-                      <div className="absolute top-2 left-1/2 -translate-x-1/2 z-10 whitespace-nowrap rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground shadow">
-                        Not available
-                      </div>
-                    )}
+                  <Card key={pkg.id} className={`relative border-slate-700/50 bg-slate-900/5 transition-all ${isInactive ? "" : "hover:border-slate-600/50"}`}>
                     <CardContent>
-                      <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
-                      <p className="text-lg font-bold text-cyan-400">GHC {Number(basePrice).toFixed(2)}</p>
-                      <p className="text-xs text-muted-foreground">Agent Price</p>
+                      {isInactive && <PackageStatusIndicator status="not_available" note={pkg.inactive_note} />}
+                      <div className={isInactive ? "opacity-50 grayscale" : ""}>
+                        <p className="font-display text-lg font-bold text-foreground">{pkg.size_gb_text || pkg.size_gb + "GB"}</p>
+                        <p className="text-lg font-bold text-cyan-400">GHC {Number(basePrice).toFixed(2)}</p>
+                        <p className="text-xs text-muted-foreground">Agent Price</p>
+                      </div>
                       <Button variant="hero" size="sm" className="w-full bg-cyan-600 hover:bg-cyan-700 disabled:opacity-100 disabled:cursor-not-allowed" onClick={() => { if (!isInactive) { acknowledgedNewNumber.current = false; setShowNewNumberWarning(false); setBuyStep("phone"); setBuyCustomerNumber(""); setBuyingPkg(pkg); } }} disabled={isInactive}>{isInactive ? "Not Available" : "Buy Now"}</Button>
                     </CardContent>
                   </Card>
@@ -2894,7 +2966,7 @@ const fallbackBaseCost = Number(order.agent_base_price ?? order.base_cost ?? (or
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <Card className="w-full max-w-md border-border">
                   <CardHeader className="flex flex-row items-center justify-between">
-                    <CardTitle className="font-display">Buy {buyingPkg.size_gb}GB {buyingPkg.network.toUpperCase()}</CardTitle>
+                    <CardTitle className="font-display">Buy {isSpecialNetwork(buyingPkg.network) ? `${getPackageDisplayName(buyingPkg)} ${getNetworkLabel(buyingPkg.network)}` : `${buyingPkg.size_gb}GB ${buyingPkg.network.toUpperCase()}`}</CardTitle>
                     <button onClick={() => { setBuyingPkg(null); setBuyCustomerNumber(""); }} className="text-muted-foreground hover:text-foreground text-2xl">x</button>
                   </CardHeader>
                   <CardContent className="space-y-4">
@@ -2933,7 +3005,7 @@ onClick={handleBuyContinue}
                     </div>
                     </> : <>
                       <div className="rounded-xl border border-border bg-secondary/50 p-4 space-y-3">
-                        <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{buyingPkg.size_gb}GB {buyingPkg.network.toUpperCase()}</span></div>
+                        <div className="flex justify-between text-sm"><span className="text-muted-foreground">Package</span><span className="font-semibold">{isSpecialNetwork(buyingPkg.network) ? `${getPackageDisplayName(buyingPkg)} ${getNetworkLabel(buyingPkg.network)}` : `${buyingPkg.size_gb}GB ${buyingPkg.network.toUpperCase()}`}</span></div>
                         <div className="flex justify-between text-sm"><span className="text-muted-foreground">Phone</span><span className="font-semibold underline">{buyCustomerNumber}</span></div>
                         {buySimName && <div className="flex justify-between gap-4 text-sm"><span className="text-muted-foreground">SIM registered to</span><span className="text-right font-semibold">{buySimName}</span></div>}
                         <div className="border-t border-border pt-3 flex justify-between text-base font-bold"><span>Agent Price</span><span className="text-cyan-400">GHC {Number(basePrices[buyingPkg.id] || buyingPkg.price || 0).toFixed(2)}</span></div>
@@ -3002,7 +3074,7 @@ onClick={handleBuyContinue}
                           return (
                             <TableRow key={order.id}>
                               <TableCell className="font-mono text-sm">{order.customer_number || "—"}</TableCell>
-                              <TableCell>{order.network ? order.network.toUpperCase() : "—"}</TableCell>
+                              <TableCell>{order.network ? (isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network.toUpperCase()) : "—"}</TableCell>
                               <TableCell>{(order as any).size_gb_text || (order.size_gb != null ? order.size_gb + "GB" : "—")}</TableCell>
                               <TableCell className="capitalize text-sm">{order.payment_method === "wallet" ? "Wallet" : order.payment_method === "paystack" ? "Paystack" : order.payment_method || "Paystack"}</TableCell>
                               <TableCell className="font-semibold">GHC {Number(sellPrice).toFixed(2)}</TableCell>
@@ -3011,7 +3083,7 @@ onClick={handleBuyContinue}
                                 GHC {Number(profit).toFixed(2)}
                               </TableCell>
                               <TableCell>
-                                <Badge variant={order.fulfillment_status === "delivered" ? "default" : "secondary"}>
+                                <Badge variant={normalizeOrderStatus(order) === "delivered" ? "default" : "secondary"}>
                                   {getOrderStage(order)}
                                 </Badge>
                               </TableCell>
@@ -3019,7 +3091,7 @@ onClick={handleBuyContinue}
                                 {new Date(order.created_at).toLocaleString()}
                               </TableCell>
                               <TableCell>
-                                {(order.fulfillment_status === "delivered" || order.status === "delivered") ? (
+                                {normalizeOrderStatus(order) === "delivered" ? (
                                   (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setReportOrder(order)}>Report not received</Button>)
                                 ) : <span className="text-xs text-muted-foreground">—</span>}
                               </TableCell>
@@ -3169,8 +3241,8 @@ onClick={handleBuyContinue}
                                   {order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}
                                 </TableCell>
                                 <TableCell className="font-medium">{order.customer_number}</TableCell>
-                                <TableCell className="uppercase text-sm">{order.network}</TableCell>
-                                <TableCell>{order.size_gb}GB</TableCell>
+                                <TableCell className={isSpecialNetwork(order.network) ? "text-sm" : "uppercase text-sm"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
+                                <TableCell>{(order as any).size_gb_text || `${order.size_gb}GB`}</TableCell>
                                 <TableCell className="text-sm">GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
                                 <TableCell>
                                   <Badge variant="outline" className={`text-xs ${sourceBadgeClass}`}>{sourceLabel}</Badge>
@@ -3759,13 +3831,9 @@ handleMobileNumberChange(digits);
                               let latestBalance: number | null = null;
                               
                               // Get fresh wallet balance from database
-                              const { data: freshStore } = await supabase
-                                .from("subagent_stores")
-                                .select("wallet_balance")
-                                .eq("id", subagentStore.id)
-                                .single();
+                              const freshBulkBalance = await fetchWalletBalance("subagent", subagentStore.id);
                               
-                              const currentBalance = freshStore?.wallet_balance || 0;
+                              const currentBalance = freshBulkBalance || 0;
                               
                               // Check if we have enough balance
                               if (currentBalance < totalCost) {
@@ -3906,7 +3974,10 @@ handleMobileNumberChange(digits);
                       { key: "mtn_express", label: "MTN Express" },
                       { key: "airteltigo", label: "AirtelTigo" },
                       { key: "telecel", label: "Telecel" },
-                                        ].map(({ key, label }) => (
+                      { key: "mtn_special", label: "MTN Special" },
+                      { key: "telecel_special", label: "Telecel Special" },
+                      { key: "mashup", label: "MTN MashUp" },
+                    ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key)).map(({ key, label }) => (
                       <Button 
                         key={key} 
                         variant={networkFilter === key ? "hero" : "outline"} 
@@ -3939,7 +4010,7 @@ handleMobileNumberChange(digits);
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
                   <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one {"\u{1F680}"} Markup Explanation (Remember to click save after applying markup)</p>
-                  <p className="text-xs text-muted-foreground mt-2">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
+                  <p className="text-xs text-muted-foreground mt-2">Markup changes all your selling price for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (agent&apos;s base price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{getNetworkLabel(networkFilter)}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Selling Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
                 <Card className="border-border">
@@ -3957,15 +4028,17 @@ handleMobileNumberChange(digits);
                         {filteredPackages.length > 0 ? (
                           filteredPackages.map(pkg => {
                             const costFromAgent = basePrices[pkg.id] || pkg.price || 0;
+                            const isMashupRow = isMashupPackageId(pkg.id);
+                            const mashupMax = isMashupRow ? getMashupMaxStorePrice(costFromAgent, pkg.network) : undefined;
                             const savedPrice = subagentPrices[pkg.id];
-                            const cur = editedPrices[pkg.id] ?? savedPrice ?? costFromAgent;
-                            const profit = cur - costFromAgent;
+                            const cur = editedPrices[pkg.id] ?? savedPrice ?? (isMashupRow ? getMashupDefaultStorePrice(costFromAgent, pkg.network) : costFromAgent);
+                            const profit = Number(cur) - costFromAgent;
                             const isInvalid = editedPrices[pkg.id] !== undefined && editedPrices[pkg.id] < costFromAgent;
                             const hasSavedPrice = savedPrice !== undefined;
                             const isInactive = pkg.active === false;
                             return (
                               <TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}>
-                                <TableCell className="font-display font-bold">{pkg.size_gb}GB{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell>
+                                <TableCell className="font-display font-bold">{isSpecialNetwork(pkg.network) ? getPackageDisplayName(pkg) : `${pkg.size_gb}GB`}{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell>
                                 <TableCell className="text-muted-foreground">
                                   GHC {Number(costFromAgent).toFixed(2)}
                                 </TableCell>
@@ -3975,12 +4048,16 @@ handleMobileNumberChange(digits);
                                       type="number" 
                                       step="0.01" 
                                       min={costFromAgent}
+                                      max={mashupMax}
                                       value={cur} 
                                       onChange={e => handlePriceChange(pkg.id, e.target.value)} 
                                       className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !editedPrices[pkg.id] ? "border-green-500" : ""}`}
                                     />
                                     {isInvalid && (
                                       <p className="text-xs text-red-500">Min: GHC {costFromAgent.toFixed(2)}</p>
+                                    )}
+                                    {mashupMax !== undefined && (
+                                      <p className="text-xs text-muted-foreground">Max: GHC {mashupMax.toFixed(2)}</p>
                                     )}
                                     {hasSavedPrice && !editedPrices[pkg.id] && (
                                       <p className="text-xs text-green-500">Saved</p>
@@ -3996,7 +4073,7 @@ handleMobileNumberChange(digits);
                         ) : (
                           <TableRow>
                             <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                              No packages for {networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                              No packages for {getNetworkLabel(networkFilter)}
                             </TableCell>
                           </TableRow>
                         )}
@@ -4382,9 +4459,9 @@ handleMobileNumberChange(digits);
                   onRefresh={async () => {
                     const { data } = await supabase
                       .from("sub_subagent_stores")
-                      .select("*")
-                      .eq("subagent_store_id", subagentStore?.id);
-                    if (data) setSubSubagents(data);
+  .select(SUB_SUBAGENT_PUBLIC_COLUMNS)
+  .eq("subagent_store_id", subagentStore?.id);
+  if (data) setSubSubagents(await withStorePrivateDetails("sub_subagent", data as any[]));
                   }}
                 />
               </CardContent>
@@ -4409,7 +4486,10 @@ handleMobileNumberChange(digits);
                       { key: "mtn_express", label: "MTN Express" },
                       { key: "airteltigo", label: "AirtelTigo" },
                       { key: "telecel", label: "Telecel" },
-                                        ].map(({ key, label }) => (
+                      { key: "mtn_special", label: "MTN Special" },
+                      { key: "telecel_special", label: "Telecel Special" },
+                      { key: "mashup", label: "MTN MashUp" },
+                    ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => p.network === key)).map(({ key, label }) => (
                       <Button 
                         key={key} 
                         variant={subSubagentNetworkFilterForSubsub === key ? "hero" : "outline"} 
@@ -4442,9 +4522,14 @@ handleMobileNumberChange(digits);
                 </div>
                 <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
                   <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one {"\u{1F680}"} Markup Explanation (Remember to click save after applying markup)</p>
-                  <p className="text-xs text-muted-foreground mt-2">Markup changes all your prices to subagents for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (your cost price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).</p>
+                  <p className="text-xs text-muted-foreground mt-2">Markup changes all your prices to subagents for the selected network based on the percentage you want all the prices to be increase by. Markup is applied to the <strong>Base Price</strong> (your cost price). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{getNetworkLabel(subSubagentNetworkFilterForSubsub)}</strong>).</p>
                 </div>
                 <p className="text-sm text-muted-foreground">Your profit = Your Subagent Price - Cost from Agent. Use markup to increase all prices by a % (based on cost).</p>
+                {isLockedPricingNetwork(subSubagentNetworkFilterForSubsub) && (
+                  <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+                    {getLockedPriceMessage(subSubagentNetworkFilterForSubsub)} {getLockedProfitDescription(subSubagentNetworkFilterForSubsub)}
+                  </div>
+                )}
                 <Card className="border-border">
                   <div className="overflow-x-auto">
                     <Table>
@@ -4460,15 +4545,17 @@ handleMobileNumberChange(digits);
                         {packages.filter(pkg => pkg.network === subSubagentNetworkFilterForSubsub).length > 0 ? (
                           packages.filter(pkg => pkg.network === subSubagentNetworkFilterForSubsub).map(pkg => {
                             const costFromAgent = basePrices[pkg.id] || pkg.price || 0;
-                            const savedPrice = subSubagentPrices[pkg.id];
-                            const cur = subSubagentEditedSubSubPrices[pkg.id] ?? savedPrice ?? costFromAgent;
+                            const lockedMashupPrice = getMashupSubSubBase(pkg.id);
+                            const isLocked = lockedMashupPrice !== undefined;
+                            const savedPrice = isLocked ? lockedMashupPrice : subSubagentPrices[pkg.id];
+                            const cur = isLocked ? lockedMashupPrice : (subSubagentEditedSubSubPrices[pkg.id] ?? savedPrice ?? costFromAgent);
                             const profit = cur - costFromAgent;
                             const isInvalid = subSubagentEditedSubSubPrices[pkg.id] !== undefined && subSubagentEditedSubSubPrices[pkg.id] < costFromAgent;
                             const hasSavedPrice = savedPrice !== undefined;
                             const isInactive = pkg.active === false;
                             return (
                               <TableRow key={pkg.id} className={isInactive ? "opacity-50" : ""}>
-                                <TableCell className="font-display font-bold">{pkg.size_gb}GB{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell>
+                                <TableCell className="font-display font-bold">{isSpecialNetwork(pkg.network) ? getPackageDisplayName(pkg) : `${pkg.size_gb}GB`}{isInactive && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell>
                                 <TableCell className="text-muted-foreground">
                                   GHC {Number(costFromAgent).toFixed(2)}
                                 </TableCell>
@@ -4479,9 +4566,16 @@ handleMobileNumberChange(digits);
                                       step="0.01" 
                                       min={costFromAgent}
                                       value={cur} 
+                                      readOnly={isLocked}
+                                      aria-readonly={isLocked}
+                                      title={isLocked ? getLockedPriceMessage(pkg.network) : undefined}
+                                      onFocus={isLocked ? () => toast({ title: "Price locked", description: getLockedPriceMessage(pkg.network) }) : undefined}
                                       onChange={e => handleSubSubagentPriceChange(pkg.id, e.target.value)} 
-                                      className={`w-24 h-8 ${isInvalid ? "border-red-500" : hasSavedPrice && !subSubagentEditedSubSubPrices[pkg.id] ? "border-green-500" : ""}`}
+                                      className={`w-24 h-8 ${isLocked ? "cursor-not-allowed bg-muted" : isInvalid ? "border-red-500" : hasSavedPrice && !subSubagentEditedSubSubPrices[pkg.id] ? "border-green-500" : ""}`}
                                     />
+                                    {isLocked && (
+                                      <p className="text-xs text-muted-foreground">Fixed price</p>
+                                    )}
                                     {isInvalid && (
                                       <p className="text-xs text-red-500">Min: GHC {costFromAgent.toFixed(2)}</p>
                                     )}
@@ -4499,7 +4593,7 @@ handleMobileNumberChange(digits);
                         ) : (
                           <TableRow>
                             <TableCell colSpan={4} className="text-center text-muted-foreground py-4">
-                              No packages for {subSubagentNetworkFilterForSubsub === "mtn" ? "MTN" : subSubagentNetworkFilterForSubsub === "airteltigo" ? "AirtelTigo" : subSubagentNetworkFilterForSubsub === "telecel" ? "Telecel" : "MTN Special Mashup"}
+                              No packages for {getNetworkLabel(subSubagentNetworkFilterForSubsub)}
                             </TableCell>
                           </TableRow>
                         )}
@@ -4749,6 +4843,7 @@ handleMobileNumberChange(digits);
         onClose={() => setSourceDialogOpen(false)}
         info={sourceDialogInfo}
       />
+      <SenderIdApprovedPopup />
       <ChatBot page="subagent-dashboard" />
 
       {/* New MTN beneficiary number warning */}

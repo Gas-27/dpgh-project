@@ -26,5 +26,62 @@ ${unique.map((route) => {
 }).join("\n")}
 </urlset>
 `;
-fs.writeFileSync(path.join(root, "public/sitemap.xml"), xml);
+fs.writeFileSync(path.join(root, "public/sitemap-default.xml"), xml);
 console.log(`Generated ${unique.length} canonical URLs.`);
+
+// ---- justbuygh.com sitemap + robots (served per host via vercel.json rewrites) ----
+const { SITE, absoluteUrl } = await import("../src/data/seo/site.mjs");
+const { PAGES } = await import("../src/data/seo/pages.mjs");
+const { GUIDES } = await import("../src/data/seo/guides.mjs");
+
+const justBuyEntries = [
+  ...Object.values(PAGES).map((page) => ({
+    loc: absoluteUrl(page.path),
+    changefreq: page.path === "/" || page.path === "/packages" || page.path === "/subscription" ? "daily" : "weekly",
+    priority: ["/", "/packages", "/subscription"].includes(page.path) ? "1.0" : "0.8",
+  })),
+  { loc: absoluteUrl("/guides"), changefreq: "weekly", priority: "0.8" },
+  ...GUIDES.map((guide) => ({ loc: absoluteUrl(`/guides/${guide.slug}`), changefreq: "monthly", priority: "0.7", lastmod: guide.updated })),
+];
+const justBuyXml = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+${justBuyEntries.map((entry) => `  <url><loc>${escapeXml(entry.loc)}</loc><lastmod>${entry.lastmod || lastmod}</lastmod><changefreq>${entry.changefreq}</changefreq><priority>${entry.priority}</priority></url>`).join("\n")}
+</urlset>
+`;
+fs.writeFileSync(path.join(root, "public/sitemap-justbuygh.xml"), justBuyXml);
+
+const justBuyRobots = `User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /admin-only
+Disallow: /only-admin
+Disallow: /sub-admin
+Disallow: /dashboard
+Disallow: /user-dashboard
+Disallow: /agent-dashboard
+Disallow: /subagent-dashboard
+Disallow: /sub-subagent-dashboard
+Disallow: /api/
+Disallow: /auth/
+Disallow: /login
+Disallow: /signup
+Disallow: /reset-password
+Disallow: /verify-email
+Disallow: /wallet
+Disallow: /checkout
+Disallow: /account
+Disallow: /agent/
+Disallow: /agent-registration-callback
+Disallow: /subagent-registration/
+Disallow: /sub-subagent-registration/
+Disallow: /subagent-approval-payment
+Disallow: /verify-subagent-payment
+Disallow: /subagent-payment-complete
+Disallow: /pending-approval
+Disallow: /private-subscription/
+Disallow: /service-access/
+
+Sitemap: ${SITE.origin}/sitemap.xml
+`;
+fs.writeFileSync(path.join(root, "public/robots-justbuygh.txt"), justBuyRobots);
+console.log(`Generated ${justBuyEntries.length} justbuygh.com URLs.`);

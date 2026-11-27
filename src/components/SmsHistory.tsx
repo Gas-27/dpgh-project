@@ -3,11 +3,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Check, Loader2, RefreshCw } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 type SmsHistoryProps = { ownerType: "customer" | "agent" | "subagent" | "subsubagent"; ownerId?: string; apiUserIds?: string[] };
-type SmsRow = { id: string; sender_id: string; recipients: string[] | null; message: string; status: string; total_charge: number | null; created_at: string; completed_at?: string | null; provider_response?: unknown; provider_message_ids?: string[] | null; last_delivery_check_at?: string | null };
+type SmsRow = { id: string; sender_id: string; recipients: string[] | null; message: string; status: string; total_charge: number | null; created_at: string; completed_at?: string | null; provider_response?: unknown; provider_message_ids?: string[] | null; last_delivery_check_at?: string | null; sent_count?: number | null; failed_count?: number | null; refunded_amount?: number | null; refunded_at?: string | null };
+
+const refundNote = (row: SmsRow) => {
+  if (row.status !== "failed" && row.status !== "partial") return null;
+  const refunded = row.refunded_amount == null ? null : Number(row.refunded_amount);
+  if (refunded === null) return "Undelivered messages were refunded to your wallet.";
+  if (!(refunded > 0)) return null;
+  const amount = refunded.toFixed(2);
+  if (row.status === "failed") return `GHS ${amount} refunded to your wallet. No messages were delivered.`;
+  const failed = Number(row.failed_count || 0);
+  const delivered = Number(row.sent_count || 0);
+  const total = row.recipients?.length || delivered + failed;
+  return `GHS ${amount} refunded to your wallet for ${failed} undelivered message${failed === 1 ? "" : "s"}. ${delivered} of ${total} delivered.`;
+};
 
 const getMessageIds = (response: unknown) => {
   if (!Array.isArray(response)) return [];
@@ -23,7 +36,7 @@ export default function SmsHistory({ ownerType, ownerId, apiUserIds = [] }: SmsH
   const load = useCallback(async (checkDelivery = false) => {
     if (!ownerId) return;
     setRefreshing(checkDelivery);
-    let query = supabase.from("sms_messages").select("id,sender_id,recipients,message,status,total_charge,created_at,completed_at,provider_response,provider_message_ids,last_delivery_check_at").eq("owner_type", ownerType).order("created_at", { ascending: false }).limit(50);
+    let query = supabase.from("sms_messages").select("id,sender_id,recipients,message,status,total_charge,created_at,completed_at,provider_response,provider_message_ids,last_delivery_check_at,sent_count,failed_count,refunded_amount,refunded_at").eq("owner_type", ownerType).order("created_at", { ascending: false }).limit(50);
     const safeApiUserIds = apiUserIds.filter((id) => /^[0-9a-f-]{36}$/i.test(id));
     if (safeApiUserIds.length) {
       query = query.or(`owner_id.eq.${ownerId},api_user_id.in.(${safeApiUserIds.join(",")})`);
@@ -69,6 +82,7 @@ export default function SmsHistory({ ownerType, ownerId, apiUserIds = [] }: SmsH
           <div className="flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2"><span className="font-semibold">{row.sender_id}</span><Badge variant={row.status === "delivered" || row.status === "sent" ? "default" : "destructive"}>{row.status}</Badge></div><span className="text-xs text-muted-foreground">{new Date(row.created_at).toLocaleString()}</span></div>
           <p className="mt-2 text-sm text-foreground">{row.message}</p>
           <div className="mt-2 flex flex-wrap gap-4 text-xs text-muted-foreground"><span>{row.recipients?.length || 0} recipient(s)</span><span>GHS {Number(row.total_charge || 0).toFixed(2)}</span>{row.completed_at && <span>Completed {new Date(row.completed_at).toLocaleString()}</span>}</div>
+          {refundNote(row) && <p className="mt-2 flex items-start gap-1.5 text-xs font-medium text-emerald-600 dark:text-emerald-400"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" /><span>{refundNote(row)}</span></p>}
         </div>)}
       </div>}
     </CardContent>

@@ -51,6 +51,39 @@ export default function AgentProductStorePanel({ storeId, storeKind, supportPhon
   const [editingId, setEditingId] = useState<string | null>(null);
   const [autoRenew, setAutoRenew] = useState(true);
   const autoRenewTried = useRef(false);
+  const draftKey = storeId ? `product-post-draft:${storeKind}:${storeId}` : null;
+  const [draftReady, setDraftReady] = useState(false);
+
+  // Mobile browsers often reload the page while the photo picker or camera is open, so the unfinished post is kept for the tab session.
+  useEffect(() => {
+    setDraftReady(false);
+    if (!draftKey) return;
+    try {
+      const saved = JSON.parse(sessionStorage.getItem(draftKey) || "null");
+      if (saved) {
+        setTitle(saved.title || "");
+        setDescription(saved.description || "");
+        setPrice(saved.price || "");
+        setRegion(saved.region || "");
+        setPaymentMode(saved.paymentMode === "direct" ? "direct" : "whatsapp");
+        setPaymentNumber(current => saved.paymentNumber || current);
+        setImages(Array.isArray(saved.images) ? saved.images.filter((url: unknown) => typeof url === "string").slice(0, MAX_IMAGES) : []);
+      }
+    } catch {
+      sessionStorage.removeItem(draftKey);
+    }
+    setDraftReady(true);
+  }, [draftKey]);
+
+  useEffect(() => {
+    if (!draftReady || !draftKey || editingId) return;
+    try {
+      if (!title && !description && !price && !region && images.length === 0) sessionStorage.removeItem(draftKey);
+      else sessionStorage.setItem(draftKey, JSON.stringify({ title, description, price, region, paymentMode, paymentNumber, images }));
+    } catch {
+      // Storage can be full or blocked; the draft is a convenience only.
+    }
+  }, [draftReady, draftKey, editingId, title, description, price, region, paymentMode, paymentNumber, images]);
 
   const blockedTerm = findProhibitedTerm(title, description);
   const activePaid = expiresAt ? new Date(expiresAt) > new Date() : false;

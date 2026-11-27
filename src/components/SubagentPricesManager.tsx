@@ -6,6 +6,7 @@ import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from "@
 import { Percent, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
+import { getNetworkLabel, getPackageDisplayName, isSpecialNetwork, getLockedDownstreamMarkups, roundMoney, getLockedPriceMessage, getLockedProfitDescription, isLockedPricingNetwork } from "@/lib/networkConfig";
 
 interface SubagentPricesManagerProps {
   agentStoreId: string;
@@ -62,10 +63,58 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
   } else {
       networkMatch = normalizedNetwork === networkFilter;
     }
-    return networkMatch && p.active !== false;
+    return networkMatch;
   });
 
+  // Subagent base prices are fixed for MashUp (agent cost + 0.30 first 4 / + 0.60 rest)
+  // and for MTN Special / Telecel Special (agent cost + 0.50).
+  const mashupMarkups = React.useMemo(() => getLockedDownstreamMarkups(packages), [packages]);
+  const getMashupBase = (pkg: any): number | undefined => {
+    const markup = mashupMarkups[pkg.id];
+    if (markup === undefined) return undefined;
+    return roundMoney(Number(pkg.agent_price || pkg.price) + markup);
+  };
+
+  // Persist the fixed MashUp prices so storefronts and purchase flows read the same value.
+  React.useEffect(() => {
+    if (loadingPrices || !agentStoreId) return;
+    const pending = packages
+      .map(pkg => ({ pkg, price: getMashupBase(pkg) }))
+      .filter((item): item is { pkg: any; price: number } =>
+        item.price !== undefined && Math.abs((savedBasePrices[item.pkg.id] ?? -1) - item.price) > 0.001);
+    if (pending.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const synced: Record<string, number> = {};
+      for (const { pkg, price } of pending) {
+        const { data: existingRows, error: fetchError } = await supabase
+          .from("subagent_package_prices")
+          .select("id")
+          .eq("agent_store_id", agentStoreId)
+          .is("subagent_store_id", null)
+          .eq("package_id", pkg.id)
+          .order("created_at", { ascending: false });
+        if (fetchError) continue;
+        const { error } = existingRows && existingRows.length > 0
+          ? await supabase.from("subagent_package_prices").update({ base_price: price }).eq("id", existingRows[0].id)
+          : await supabase.from("subagent_package_prices").insert({ agent_store_id: agentStoreId, subagent_store_id: null, package_id: pkg.id, base_price: price });
+        if (!error) synced[pkg.id] = price;
+      }
+      if (!cancelled && Object.keys(synced).length > 0) {
+        setSavedBasePrices(prev => ({ ...prev, ...synced }));
+        if (onPricesSaved) onPricesSaved();
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingPrices, agentStoreId, packages, savedBasePrices]);
+
   const handlePriceChange = (packageId: string, value: string) => {
+    if (mashupMarkups[packageId] !== undefined) {
+      toast({ title: "Price locked", description: getLockedPriceMessage(packages.find(p => p.id === packageId)?.network) });
+      return;
+    }
     // Allow empty string for clearing the box - store as string for display
     setEditedPrices(prev => ({
       ...prev,
@@ -80,9 +129,10 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
     }
 
     const markup = parseFloat(markupPercent) / 100;
-    const networkName = networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel";
+    const networkName = getNetworkLabel(networkFilter);
     
     filteredPackages.forEach(pkg => {
+      if (mashupMarkups[pkg.id] !== undefined) return;
       // Use agent_price as the base (this already has admin's custom price if set)
       const basePrice = pkg.agent_price || pkg.price;
       const newPrice = basePrice * (1 + markup);
@@ -208,7 +258,10 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
             { key: "mtn_express", label: "MTN Express" },
             { key: "airteltigo", label: "AirtelTigo" },
             { key: "telecel", label: "Telecel" },
-          ].map(({ key, label }) => (
+            { key: "mtn_special", label: "MTN Special" },
+            { key: "telecel_special", label: "Telecel Special" },
+            { key: "mashup", label: "MTN MashUp" },
+          ].filter(({ key }) => !isSpecialNetwork(key) || packages.some(p => String(p.network ?? "").trim().toLowerCase().replace(/[\s-]+/g, "_") === key)).map(({ key, label }) => (
             <Button
               key={key}
               variant={networkFilter === key ? "hero" : "outline"}
@@ -243,11 +296,16 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
       <div className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-3 text-sm">
         <p className="font-semibold">USE Markup if you feel lazy and do not want to edit each GB price one by one <br /> 💡 Markup Explanation (Remember to click save after applying markup)</p>
         <p className="text-xs text-muted-foreground mt-2">
-          Markup changes all subagent selling prices for the selected network based on the percentage you want all prices to be increased by. Markup is applied to the <strong>Base Price</strong> (agent cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{networkFilter === "mtn" ? "MTN" : networkFilter === "mtn_express" ? "MTN Express" : networkFilter === "airteltigo" ? "AirtelTigo" : "Telecel"}</strong>).
+          Markup changes all subagent selling prices for the selected network based on the percentage you want all prices to be increased by. Markup is applied to the <strong>Base Price</strong> (agent cost). For example, if Base Price = GHC 4.10, +10% gives GHC 4.51. After applying, you must click <strong>"Save Prices"</strong> to keep the changes. The markup affects only the currently selected network (<strong>{getNetworkLabel(networkFilter)}</strong>).
         </p>
       </div>
 
       <p className="text-sm text-muted-foreground">Subagent profit = Their Selling Price - Your Cost Price. Use markup to increase all subagent prices by a % (based on your cost price).</p>
+      {isLockedPricingNetwork(networkFilter) && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm">
+          {getLockedPriceMessage(networkFilter)} {getLockedProfitDescription(networkFilter)}
+        </div>
+      )}
 
       <Card className="border-border">
         <div className="overflow-x-auto">
@@ -267,15 +325,17 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                     Loading prices...
                   </TableCell>
                 </TableRow>
-              ) : (
+              ) : filteredPackages.length > 0 ? (
                 filteredPackages.map(pkg => {
                   const basePrice = pkg.agent_price || pkg.price;
-                  const displayPrice = editedPrices[pkg.id] ?? savedBasePrices[pkg.id] ?? basePrice;
+                  const lockedPrice = getMashupBase(pkg);
+                  const isLocked = lockedPrice !== undefined;
+                  const displayPrice = isLocked ? lockedPrice : (editedPrices[pkg.id] ?? savedBasePrices[pkg.id] ?? basePrice);
                   const profit = Number(displayPrice) - basePrice;
                   
                   return (
-                    <TableRow key={pkg.id}>
-                      <TableCell className="font-display font-bold">{pkg.size_gb_text || `${pkg.size_gb}GB`}</TableCell>
+  <TableRow key={pkg.id} className={pkg.active === false ? "opacity-60" : ""}>
+  <TableCell className="font-display font-bold">{getPackageDisplayName(pkg)}{pkg.active === false && <span className="ml-2 rounded-full bg-muted px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">Not available</span>}</TableCell>
                       <TableCell className="text-muted-foreground">GHC {Number(basePrice).toFixed(2)}</TableCell>
                       <TableCell>
                         <Input
@@ -283,8 +343,12 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                           step="0.01"
                           min={basePrice}
                           value={displayPrice}
+                          readOnly={isLocked}
+                          aria-readonly={isLocked}
+                          title={isLocked ? getLockedPriceMessage(pkg.network) : undefined}
+                          onFocus={isLocked ? () => toast({ title: "Price locked", description: getLockedPriceMessage(pkg.network) }) : undefined}
                           onChange={e => handlePriceChange(pkg.id, e.target.value)}
-                          className="w-24 h-8"
+                          className={`w-24 h-8 ${isLocked ? "cursor-not-allowed bg-muted" : ""}`}
                         />
                       </TableCell>
                       <TableCell className={`font-semibold ${profit >= 0 ? "text-green-400" : "text-destructive"}`}>
@@ -293,6 +357,12 @@ export default function SubagentPricesManager({ agentStoreId, packages, agentPri
                     </TableRow>
                   );
                 })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={4} className="py-8 text-center text-muted-foreground">
+                    No data packages are available for {getNetworkLabel(networkFilter)}. If an admin switched a package off, it should still appear here marked “Not available.” Refresh the dashboard to reload the latest package list.
+                  </TableCell>
+                </TableRow>
               )}
             </TableBody>
           </Table>

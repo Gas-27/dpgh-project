@@ -5,6 +5,7 @@ import ShareScoreButtons from "@/components/ShareScoreButtons";
 import { buildGameHubShareUrl } from "@/lib/gameHubRoute";
 import { buildGameShareUrl, fetchLeaderboard, fetchPublicRewards, type LeaderboardPeriod } from "@/lib/gameHubApi";
 import { hubGames } from "@/lib/gameHubGames";
+import { livePlayerCount } from "@/lib/gameHubShowcase";
 
 const periods: { id: LeaderboardPeriod; label: string }[] = [
   { id: "today", label: "Today" },
@@ -15,6 +16,22 @@ const periods: { id: LeaderboardPeriod; label: string }[] = [
 ];
 
 const justBuyGames = hubGames.filter((game) => game.native);
+
+const INITIAL_VISIBLE_ROWS = 200;
+
+function LivePlayers() {
+  const [count, setCount] = useState(() => livePlayerCount(Date.now()));
+  useEffect(() => {
+    const timer = window.setInterval(() => setCount(livePlayerCount(Date.now())), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  return (
+    <p className="mt-3 inline-flex items-center gap-2 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-3 py-1 text-xs font-semibold text-emerald-200" aria-live="polite">
+      <span className="h-2 w-2 rounded-full bg-emerald-400" aria-hidden="true" />
+      {count.toLocaleString()} players playing now
+    </p>
+  );
+}
 
 export default function GameHubLeaderboard() {
   const [gameId, setGameId] = useState<string | null>(null);
@@ -42,6 +59,12 @@ export default function GameHubLeaderboard() {
   const listRef = useRef<HTMLDivElement>(null);
   const [showPositions, setShowPositions] = useState(false);
   const [pendingScroll, setPendingScroll] = useState(false);
+  const [visibleRows, setVisibleRows] = useState(INITIAL_VISIBLE_ROWS);
+  const shownRows = rows.filter((row, index) => index < visibleRows || row.is_you);
+
+  useEffect(() => {
+    setVisibleRows(INITIAL_VISIBLE_ROWS);
+  }, [gameId, period]);
 
   const positionScopes = [{ id: null as string | null, name: "All games" }, ...justBuyGames.map((game) => ({ id: game.id as string | null, name: game.name }))];
   const positionQueries = useQueries({
@@ -89,6 +112,7 @@ export default function GameHubLeaderboard() {
       <div className="rounded-3xl border border-violet-400/25 bg-violet-950/60 p-5">
         <h3 className="flex items-center gap-2 text-xl font-bold text-white"><Trophy className="h-5 w-5 text-amber-300" aria-hidden="true" /> Leaderboard</h3>
         <p className="mt-1 text-sm leading-relaxed text-violet-200/75">Only games played on JustBuy count. Players appear by a short, hidden version of their email, and guests appear with a generated guest ID.</p>
+        <LivePlayers />
         <div className="mt-4 flex gap-2 overflow-x-auto pb-1" role="group" aria-label="Time period">
           {periods.map((item) => (
             <button key={item.id} type="button" aria-pressed={period === item.id} onClick={() => setPeriod(item.id)} className={pillClass(period === item.id)}>{item.label}</button>
@@ -181,7 +205,7 @@ export default function GameHubLeaderboard() {
                 </td>
               </tr>
             ) : (
-              rows.map((row) => (
+              shownRows.map((row) => (
                 <tr key={`${row.rank}-${row.player}`} data-me={row.is_you ? "true" : undefined} className={row.is_you ? "bg-violet-600/30" : "border-t border-violet-400/10"}>
                   <td className="px-4 py-3 font-bold text-amber-300">#{row.rank}</td>
                   <td className="px-4 py-3 text-white">
@@ -195,6 +219,11 @@ export default function GameHubLeaderboard() {
             )}
           </tbody>
         </table>
+        {rows.length > visibleRows ? (
+          <button type="button" onClick={() => setVisibleRows((current) => current + 300)} className="w-full border-t border-violet-400/10 px-4 py-3 text-sm font-semibold text-violet-200 hover:bg-violet-900/60">
+            Show more players
+          </button>
+        ) : null}
       </div>
       ) : (
       <div className="rounded-3xl border border-amber-300/25 bg-violet-950/60 p-5">

@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { cachedQuery } from "@/lib/cachedQuery";
 import { startVisiblePolling } from "@/lib/visiblePolling";
-import { isFinalOrderStatus, startOrderPolling } from "@/lib/orderPolling";
+import { isFinalOrder, startOrderPolling } from "@/lib/orderPolling";
 import { useCachedData } from "@/hooks/useCachedData";
 import Navbar from "@/components/Navbar";
 import NotificationPopup from "@/components/NotificationPopup";
@@ -55,9 +55,10 @@ import {
 import { Label } from "@/components/ui/label";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
 import { useOrderStatusRefresh } from "@/hooks/useOrderStatusRefresh";
+import { filterVisiblePackages, getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, packageMatchesNetwork } from "@/lib/networkConfig";
 
 // ──────────────────────────────────────────────────────────── Types ─────
-type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel";
+type Network = "mtn" | "mtn_express" | "airteltigo" | "telecel" | "mtn_special" | "telecel_special" | "mashup" | "mtn_express_special";
 
 interface DataPackage {
   id: string;
@@ -77,6 +78,7 @@ interface DataPackage {
   active?: boolean;
   is_online?: boolean;
   offline_reason?: string;
+  inactive_note?: string | null;
 }
 
 interface Order {
@@ -113,6 +115,10 @@ const networkConfig: Record<Network, { label: string; color: string }> = {
   mtn_express: { label: "MTN Express", color: "text-amber-500" },
   airteltigo: { label: "AirtelTigo", color: "text-blue-400" },
   telecel: { label: "Telecel", color: "text-red-400" },
+  mtn_special: { label: "MTN Special", color: "text-yellow-400" },
+  telecel_special: { label: "Telecel Special", color: "text-red-400" },
+  mashup: { label: "MTN MashUp", color: "text-orange-400" },
+  mtn_express_special: { label: "MTN Special", color: "text-yellow-400" },
 };
 
 const SPIN_COOLDOWN_MS = 8 * 60 * 60 * 1000;
@@ -132,7 +138,7 @@ const FIXED_ANGLES: Record<number, number> = {
 
 // ──────────────────────────────────────────────────────── Helpers ────
 const formatNetworkName = (n: string) =>
-  n === "mtn" ? "MTN" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : n;
+  n === "mtn" ? "MTN" : n === "airteltigo" ? "AirtelTigo" : n === "telecel" ? "Telecel" : isSpecialNetwork(n) ? getNetworkLabel(n) : n;
 
 const isValidPhone = (n: string) => /^\d{10}$/.test(n);
 const getSpinCooldownKey = (p: string) => `spin_cooldown_${p}`;
@@ -231,10 +237,11 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
     msg = "Your data bundle has been delivered successfully.";
     note = order.network === "mtn" ? "Check your MTNUP2U and MTN messages."
       : order.network === "airteltigo" ? "Check your AirtelTigo iShare and BigTime messages."
-        : order.network === "telecel" ? "Check your Telecel messages." : "Check your messages.";
+        : order.network === "telecel" || order.network === "telecel_special" ? "Check your Telecel messages."
+          : order.network === "mtn_special" ? "Check your MTN messages." : "Check your messages.";
   } else if ((orderStatus === "waiting" || orderStatus === "in-queue")) {
     const net = (order.network || "").toLowerCase();
-    const isNonMtn = net === "telecel" || net === "airteltigo" || net === "at-bigtime" || net === "at bigtime" || net === "atbigtime";
+    const isNonMtn = net === "telecel" || net === "telecel_special" || net === "airteltigo" || net === "at-bigtime" || net === "at bigtime" || net === "atbigtime";
     step = 2;
     if (isNonMtn) {
       msg = "Your order is in the queue.";
@@ -287,7 +294,7 @@ const OrderTrackingCard = ({ order, toast, onReportClick }: { order: Order; toas
 Order Details:
 - Order Date: ${orderDate}
 - Network: ${networkName}
-- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}
+- Data: ${(order as any).size_gb_text || (isSpecialNetwork(order.network) ? "" : order.size_gb + "GB")}
 - Amount: ${amountFormatted}
 - Customer Number: ${order.customer_number}
 - Order Status: ${orderStatusStr}
@@ -1216,7 +1223,7 @@ const Packages = () => {
   const [showAgentPrice, setShowAgentPrice] = useState(true);
   const [selectedNetwork, setSelectedNetwork] = useState<Network>(() => {
     const n = searchParams.get("network");
-    return n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" ? n : "mtn";
+    return n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special" || n === "mashup" || n === "mtn_express_special" ? n : "mtn";
   });
   const [loading, setLoading] = useState(true);
   const [paymentPkg, setPaymentPkg] = useState<DataPackage | null>(null);
@@ -1327,10 +1334,10 @@ const Packages = () => {
   });
 
   // Fetch packages with caching - include size_gb_text for mtn_mashup packages
-  cachedQuery("data_packages:storefront", () => supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count").order("size_gb", { ascending: true }))
+  cachedQuery("data_packages:storefront", () => supabase.from("data_packages").select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count,inactive_note").order("size_gb", { ascending: true }))
       .then(({ data, error }) => {
         if (error) console.error("[v0] Failed to fetch data packages:", error);
-        setPackages(data ?? []);
+        setPackages(filterVisiblePackages(data ?? []));
         setLoading(false);
       });
   }, []);
@@ -1341,10 +1348,10 @@ const Packages = () => {
     async () => {
       const { data, error } = await cachedQuery("data_packages:storefront", () => supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count")
+        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count,inactive_note")
         .order("size_gb", { ascending: true }));
       if (error) throw error;
-      return data ?? [];
+      return filterVisiblePackages(data ?? []);
     },
     { revalidateInterval: 30000, fallbackData: packages }
   );
@@ -1364,9 +1371,9 @@ const Packages = () => {
     const refreshPackages = async () => {
       const { data } = await cachedQuery("data_packages:storefront", () => supabase
         .from("data_packages")
-        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count")
+        .select("id,network,size_gb,size_gb_text,bundle_id,price,agent_price,api_price,active,view_count,inactive_note")
         .order("size_gb", { ascending: true }));
-      if (data) setPackages(data);
+      if (data) setPackages(filterVisiblePackages(data));
     };
 
     // TODO: the `site_config` table does not exist in the database, so the periodic
@@ -1381,7 +1388,7 @@ const Packages = () => {
   const [orderPollRun, setOrderPollRun] = useState(0);
   const pendingOrderKey = useMemo(
     () => orders
-      .filter((o) => o.id && !isFinalOrderStatus(o.order_status, o.status, o.fulfillment_status))
+      .filter((o) => o.id && !isFinalOrder(o))
       .map((o) => o.id)
       .sort()
       .join(","),
@@ -1405,11 +1412,12 @@ const Packages = () => {
     if (!pendingOrderKey) return;
     const ids = pendingOrderKey.split(",").filter(Boolean);
     if (ids.length === 0) return;
+    const networkById = new Map(orders.map((o) => [o.id, o.network]));
     return startOrderPolling({
       task: async () => {
         const data = await fetchOrderStatuses(ids);
         if (!data) return true;
-        return data.some((row) => !isFinalOrderStatus(row.order_status, row.status, row.fulfillment_status));
+        return data.some((row) => !isFinalOrder({ ...row, network: row.network ?? networkById.get(row.id) }));
       },
       onExhausted: () => setOrderPollingStopped(true),
     });
@@ -1425,19 +1433,10 @@ const Packages = () => {
   // Fetch Special MTN Mashup pricing
   useEffect(() => {
     const n = searchParams.get("network");
-    if (n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel") setSelectedNetwork(n as Network);
+    if (n === "mtn" || n === "mtn_express" || n === "airteltigo" || n === "telecel" || n === "mtn_special" || n === "telecel_special" || n === "mashup" || n === "mtn_express_special") setSelectedNetwork(n as Network);
   }, [searchParams]);
 
-  const filtered = useMemo(() => packages.filter(p => {
-    const packageNetwork = String(p.network || "").trim().toLowerCase();
-    if (selectedNetwork === "telecel") {
-      return packageNetwork === "telecel";
-    }
-    if (selectedNetwork === "airteltigo") {
-      return packageNetwork === "airteltigo" || packageNetwork === "atbigtime" || packageNetwork === "atbigshare";
-    }
-    return packageNetwork === selectedNetwork;
-  }), [packages, selectedNetwork]);
+  const filtered = useMemo(() => packages.filter((pkg) => packageMatchesNetwork(pkg.network, selectedNetwork)), [packages, selectedNetwork]);
 
 const searchOrders = async (input?: string) => {
   const searchTerm = input ?? searchQuery;
@@ -1469,6 +1468,10 @@ const searchOrders = async (input?: string) => {
       if ((order.network === "mtn_mashup" || order.network === "mashup") && order.package_id) {
         const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, bundle_id").eq("id", order.package_id).maybeSingle();
         return { ...order, size_gb_text: pkg?.size_gb_text, bundle_id: pkg?.bundle_id };
+      }
+      if (isSpecialNetwork(order.network) && order.package_id && !order.size_gb_text) {
+        const { data: pkg } = await supabase.from("data_packages").select("size_gb_text").eq("id", order.package_id).maybeSingle();
+        return { ...order, size_gb_text: pkg?.size_gb_text };
       }
       return order;
     }));
@@ -1505,7 +1508,7 @@ const searchOrders = async (input?: string) => {
       <NotificationPopup surface="packages" />
       <Navbar />
       <div className="container pt-24 pb-16">
-        <h1 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h1>
+        <h2 className="font-display text-3xl md:text-4xl font-bold text-center mb-2">Our <span className="text-primary">Products</span></h2>
         <p className="text-muted-foreground text-center mb-4">Choose a category and get connected instantly</p>
 
 
@@ -1558,8 +1561,8 @@ const searchOrders = async (input?: string) => {
                                       <span className="text-sm font-medium text-foreground">{order.customer_number}</span>
                                     </div>
                                     <div className="flex items-center gap-3 text-sm">
-                                      <span className="uppercase text-muted-foreground">{order.network}</span>
-                                      <span className="font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</span>
+                                      <span className="uppercase text-muted-foreground">{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</span>
+                                      <span className="font-bold">{(order as any).size_gb_text || (isSpecialNetwork(order.network) ? "" : order.size_gb + "GB")}</span>
                                       <span className="text-primary">GHC {Number(order.amount).toFixed(2)}</span>
                                     </div>
                                     <p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p>
@@ -1592,8 +1595,8 @@ const searchOrders = async (input?: string) => {
             </div>
             <section aria-labelledby="data-bundles-heading" className="mx-auto w-full max-w-md pb-12">
               <h2 id="data-bundles-heading" className="sr-only">Data Bundles</h2>
-              <DeliveryProgressCard selectedNetwork={selectedNetwork} />
-              <NetworkTabs value={selectedNetwork} onChange={setSelectedNetwork} className="mb-4 justify-center" />
+              <DeliveryProgressCard selectedNetwork={getNetworkFamily(selectedNetwork)} />
+              <NetworkTabs value={selectedNetwork} onChange={setSelectedNetwork} packages={packages} className="mb-4 justify-center" />
               {loading ? (
                 <div className="flex justify-center py-10" aria-label="Loading data bundles"><Loader2 className="h-7 w-7 animate-spin text-primary" /></div>
               ) : filtered.length === 0 ? (
@@ -1601,12 +1604,13 @@ const searchOrders = async (input?: string) => {
               ) : (
                 <div className="flex flex-col gap-4">
                   {filtered.map((pkg) => {
-                    const catalogName = catalogNames[`${pkg.network === "mtn_express" ? "mtn" : pkg.network}:${Number(pkg.price).toFixed(2)}`];
-  const packageName = catalogName || pkg.size_gb_text || `${pkg.size_gb}GB`;
+                    const catalogName = isSpecialNetwork(pkg.network) ? undefined : catalogNames[`${pkg.network === "mtn_express" ? "mtn" : pkg.network}:${Number(pkg.price).toFixed(2)}`];
+  const packageName = catalogName || getPackageDisplayName(pkg);
                     const available = pkg.active !== false;
                     return (
                       <Card key={pkg.id} style={{ backgroundColor: "#2f176d", color: "#ffffff" }} className={`package-reference-card border-0 shadow-none ${available ? "" : "opacity-45"}`}>
                         <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
+  {!available && <PackageStatusIndicator status="not_available" note={pkg.inactive_note} />}
   <p className="font-display text-4xl font-extrabold leading-none text-white">{packageName}</p>
   <p className={`text-sm font-bold uppercase ${networkConfig[selectedNetwork].color}`}>{networkConfig[selectedNetwork].label}</p>
   {(pkg.bundle_name || pkg.package_name || pkg.name || pkg.title) && <p className="text-sm font-semibold text-white">{pkg.bundle_name || pkg.package_name || pkg.name || pkg.title}</p>}

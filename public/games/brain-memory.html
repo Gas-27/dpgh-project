@@ -832,6 +832,8 @@
             .menu-btn { padding: 12px 30px; }
             .features-grid { display: none; }
         }
+        body.capture-shield #game-container { visibility: hidden; }
+        #game-container { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
     </style>
 <script src="/js/mobile-ux.js?v=20260808" defer></script>
 </head>
@@ -1362,11 +1364,6 @@
             const tileId = parseInt(event.target.dataset.tileId);
             gameState.playerSequence.push(tileId);
             
-            if (!gameState.timerStarted) {
-                startTimer();
-                gameState.timerStarted = true;
-            }
-            
             activateTile(tileId);
             checkPlayerMove(tileId);
         }
@@ -1433,18 +1430,111 @@
             }, 800);
         }
 
+        // ============ SCREEN RECORDING PROTECTION ============
+        // A web page cannot see an operating-system screen recorder, so this makes a recording
+        // useless instead: the pattern is hidden whenever the page loses focus (control centre,
+        // app switcher, split screen, tab switch) and a fresh random pattern replaces the one
+        // that was on screen, so anything recorded no longer matches what must be repeated.
+        let previewToken = 0;
+        let previewing = false;
+        let replayPending = false;
+
+        function regeneratePattern() {
+            const total = Math.pow(getGridSizeForLevel(gameState.currentLevel), 2);
+            const len = gameState.gameSequence.length || getSequenceLength(gameState.currentLevel);
+            gameState.gameSequence = [];
+            for (let k = 0; k < len; k++) gameState.gameSequence.push(Math.floor(Math.random() * total) + 1);
+            gameState.playerSequence = [];
+        }
+
+        function interruptPreview(reason) {
+            if (!previewing || !gameState.gameActive) return;
+            previewToken++;
+            previewing = false;
+            regeneratePattern();
+            const messageEl = document.getElementById('game-message');
+            messageEl.className = 'game-message game-over';
+            if (reason === 'capture') {
+                messageEl.innerHTML = 'Screen recording is not allowed. Pattern changed.';
+                loseLife();
+            } else {
+                messageEl.innerHTML = 'You left the game while the pattern was showing. A new pattern is coming.';
+                replayPending = true;
+            }
+        }
+
+        function resumeAfterInterrupt() {
+            if (!replayPending || document.hidden) return;
+            replayPending = false;
+            setTimeout(() => {
+                if (!gameState.gameActive || previewing || gameState.isPlayerTurn) return;
+                const messageEl = document.getElementById('game-message');
+                messageEl.className = 'game-message';
+                messageEl.innerHTML = '🎯 Memorize the new pattern!';
+                showSequence();
+            }, 1500);
+        }
+
+        function setCaptureShield(on) {
+            document.body.classList.toggle('capture-shield', on);
+        }
+
+        try {
+            const md = navigator.mediaDevices;
+            if (md && md.getDisplayMedia) {
+                md.getDisplayMedia = function () {
+                    interruptPreview('capture');
+                    return Promise.reject(new DOMException('Screen capture is disabled in this game.', 'NotAllowedError'));
+                };
+            }
+        } catch (e) {}
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                setCaptureShield(true);
+                interruptPreview('hidden');
+            } else {
+                setCaptureShield(false);
+                resumeAfterInterrupt();
+            }
+        });
+        window.addEventListener('blur', () => {
+            setCaptureShield(true);
+            interruptPreview('hidden');
+        });
+        window.addEventListener('focus', () => {
+            setCaptureShield(false);
+            resumeAfterInterrupt();
+        });
+        window.addEventListener('pagehide', () => interruptPreview('hidden'));
+        document.addEventListener('contextmenu', (e) => e.preventDefault());
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'PrintScreen') { e.preventDefault(); interruptPreview('capture'); }
+        });
+
         function showSequence() {
             const speed = Math.max(350, gameState.baseSpeed - gameState.currentLevel * 15);
             let i = 0;
+            const token = ++previewToken;
+            previewing = true;
             
             const showNext = () => {
+                if (token !== previewToken) return;
                 if (!gameState.gameActive || gameState.isPaused) return;
                 
                 if (i >= gameState.gameSequence.length) {
                     setTimeout(() => {
+                        if (token !== previewToken) return;
+                        previewing = false;
                         if (gameState.gameActive && !gameState.isPaused) {
+                            clearInterval(gameState.timerInterval);
+                            gameState.timerStarted = false;
+                            gameState.timer = gameState.maxTimer;
+                            updateTimerDisplay(gameState.timer);
                             gameState.isPlayerTurn = true;
                             document.getElementById('game-message').innerHTML = "👆 Your turn! Repeat the sequence!";
+                            gameState.timerStarted = true;
+                            startTimer();
                         }
                     }, 300);
                     return;
@@ -1466,6 +1556,7 @@
                 if (gameState.isPaused) return;
                 
                 timeLeft -= 0.1;
+                gameState.timer = timeLeft;
                 
                 if (timeLeft <= 0) {
                     clearInterval(gameState.timerInterval);
@@ -1571,6 +1662,7 @@
                 messageEl.className = 'game-message game-over';
                 messageEl.innerHTML = `💔 Wrong! ${gameState.lives} ${gameState.lives === 1 ? 'life' : 'lives'} remaining. Watch again...`;
                 
+                gameState.isPlayerTurn = false;
                 gameState.playerSequence = [];
                 gameState.timerStarted = false;
                 gameState.timer = gameState.maxTimer;
@@ -1658,10 +1750,8 @@
                 gameState.isPaused = false;
                 pauseBtn.innerHTML = '<i class="fas fa-pause"></i> Pause';
                 
-                if (gameState.isPlayerTurn && gameState.timerStarted) {
+                if (gameState.isPlayerTurn) {
                     startTimer();
-                    messageEl.innerHTML = "👆 Your turn! Repeat the sequence!";
-                } else if (gameState.isPlayerTurn) {
                     messageEl.innerHTML = "👆 Your turn! Repeat the sequence!";
                 } else {
                     showSequence();

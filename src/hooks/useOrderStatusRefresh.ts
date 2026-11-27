@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { hasUsableReference, isFinalOrderStatus } from "@/lib/orderPolling";
+import { hasUsableReference, isFinalOrder } from "@/lib/orderPolling";
 
 type TrackableOrder = {
   id: string;
+  network?: string | null;
   provider_reference?: string | null;
   provider_order_id?: string | null;
   order_status?: string | null;
@@ -11,7 +12,7 @@ type TrackableOrder = {
   fulfillment_status?: string | null;
 };
 
-const CHECKABLE_STATUSES = new Set(["processing", "pending", "waiting"]);
+const CHECKABLE_STATUSES = new Set(["processing", "pending", "waiting", "placed"]);
 export function useOrderStatusRefresh<T extends TrackableOrder>(
   orders: T[],
   setOrders: Dispatch<SetStateAction<T[]>>,
@@ -25,7 +26,7 @@ export function useOrderStatusRefresh<T extends TrackableOrder>(
     const candidates = orders.filter((order) => {
       const reference = (order.provider_reference ?? order.provider_order_id)?.trim();
       const status = String(order.order_status ?? order.status ?? order.fulfillment_status ?? "").toLowerCase();
-      return Boolean(order.id) && hasUsableReference(reference) && !isFinalOrderStatus(order.order_status, order.status, order.fulfillment_status) && CHECKABLE_STATUSES.has(status) && !checkedOrderIds.current.has(order.id);
+      return Boolean(order.id) && hasUsableReference(reference) && !isFinalOrder(order) && CHECKABLE_STATUSES.has(status) && !checkedOrderIds.current.has(order.id);
     });
 
     if (candidates.length === 0) return;

@@ -194,7 +194,7 @@ export default function SubagentRegistrationForm({
 
     const { count: subagentCount } = await supabase
       .from("subagent_stores")
-      .select("*", { count: "exact", head: true });
+      .select("id", { count: "exact", head: true });
     const topupReference = `agt${(subagentCount || 0) + 1}`;
 
     const { error: storeError } = await supabase
@@ -212,7 +212,7 @@ export default function SubagentRegistrationForm({
         approved: true,
         topup_reference: topupReference,
       })
-      .select()
+      .select("id, user_id, agent_store_id, store_name")
       .single();
 
     if (storeError) throw storeError;

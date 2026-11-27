@@ -5,6 +5,7 @@ const BASE_URL = "https://api.dataplug.store/functions/v1";
 
 const STATUS_ROWS: Array<{ status: string; meaning: string; final: boolean }> = [
   { status: "processing", meaning: "Order placed and your wallet charged; being delivered.", final: false },
+  { status: "placed", meaning: "Order accepted and queued for delivery (MTN Special and Telecel Special).", final: false },
   { status: "waiting", meaning: "Queued at the network; delivery will follow.", final: false },
   { status: "unverified", meaning: "Network is confirming delivery.", final: false },
   { status: "delivered", meaning: "Data delivered to the number.", final: true },
@@ -97,6 +98,99 @@ Error 429 - same number and same size ordered within 65 seconds:
   "rate_limited": true,
   ...
 }`;
+
+const SPECIAL_PURCHASE_REQUEST = `# Telecel Special
+curl -X POST "${BASE_URL}/purchase" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "network": "telecel_special",
+    "size_gb_text": "1GB + 200MINS",
+    "phone": "0201234567"
+  }'
+
+# MTN Special
+curl -X POST "${BASE_URL}/purchase" \\
+  -H "Authorization: Bearer YOUR_API_KEY" \\
+  -H "Content-Type: application/json" \\
+  -d '{
+    "network": "mtn_special",
+    "size_gb_text": "890MB",
+    "phone": "0241234567"
+  }'`;
+
+const SPECIAL_PURCHASE_JS = `const res = await fetch("${BASE_URL}/purchase", {
+  method: "POST",
+  headers: {
+    Authorization: "Bearer YOUR_API_KEY",
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    network: "telecel_special",
+    size_gb_text: "1GB + 200MINS", // exactly as returned by /get-packages
+    phone: "0201234567",
+  }),
+});
+const data = await res.json();
+console.log(data.data.order_id, data.data.status);`;
+
+const SPECIAL_PURCHASE_PHP = `$ch = curl_init("${BASE_URL}/purchase");
+curl_setopt($ch, CURLOPT_POST, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, [
+  "Authorization: Bearer YOUR_API_KEY",
+  "Content-Type: application/json",
+]);
+curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+  "network" => "mtn_special",
+  "size_gb_text" => "890MB", // exactly as returned by /get-packages
+  "phone" => "0241234567",
+]));
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+$response = json_decode(curl_exec($ch), true);
+echo $response["data"]["order_id"];`;
+
+const SPECIAL_PURCHASE_RESPONSE = `{
+  "success": true,
+  "message": "Order placed. Track delivery with the order_id.",
+  "data": {
+    "order_id": "1a84e3a4-b25f-44eb-9579-61a19deccfc1",
+    "reference": "1a84e3a4-b25f-44eb-9579-61a19deccfc1",
+    "network": "telecel_special",
+    "size_gb": 1,
+    "size_gb_text": "1GB + 200MINS",
+    "phone": "0201234567",
+    "amount": 13,
+    "wallet_balance": 107,
+    "status": "processing",
+    "payment_status": "paid",
+    "is_final": false
+  }
+}`;
+
+const SPECIAL_ERRORS: Array<{ code: string; body: string; meaning: string }> = [
+  {
+    code: "404",
+    body: '{"error": "Package not found"}',
+    meaning: "Wrong network or package name, or the package is switched off",
+  },
+  {
+    code: "400",
+    body: '{"error": "This package is not available on the API right now"}',
+    meaning: "The package exists but cannot be bought on the API at the moment",
+  },
+  {
+    code: "402",
+    body: '{"error": "Insufficient wallet balance", "wallet_balance": 1.5, "required": 8.5, "deficit": "7.00"}',
+    meaning: "Top up your API wallet",
+  },
+  {
+    code: "429",
+    body: '{"rate_limited": true, ...}',
+    meaning: "The same package was just ordered for the same number. Wait about 65 seconds",
+  },
+  { code: "400", body: "-", meaning: "Invalid phone number or invalid network" },
+  { code: "401", body: "-", meaning: "Invalid API key" },
+];
 
 const ORDERS_REQUEST = `# Get your latest orders (default limit 50)
 curl -X GET "${BASE_URL}/get-orders" \\
@@ -285,16 +379,19 @@ export default function CheapDataOrderApiDocs() {
             <ul className="ml-4 space-y-1 text-sm text-muted-foreground">
               <li>
                 • <Mono>network</Mono> (required) - <Mono>mtn</Mono>, <Mono>mtn_express</Mono>, <Mono>telecel</Mono>,{" "}
-                <Mono>airteltigo</Mono>, <Mono>mtn_mashup</Mono>, <Mono>mashup</Mono>
+                <Mono>airteltigo</Mono>, <Mono>mtn_mashup</Mono>, <Mono>mashup</Mono>, <Mono>mtn_special</Mono>,{" "}
+                <Mono>telecel_special</Mono>
               </li>
               <li>
-                • <Mono>size_gb</Mono> (required) - Package size in GB
+                • <Mono>size_gb</Mono> (required) - Package size in GB. For <Mono>mtn_special</Mono> and{" "}
+                <Mono>telecel_special</Mono>, send <Mono>size_gb_text</Mono> instead (recommended)
               </li>
               <li>
                 • <Mono>phone</Mono> (required) - Recipient phone number, e.g. 0241234567
               </li>
               <li>
-                • <Mono>size_gb_text</Mono> - Required for <Mono>mashup</Mono> and <Mono>mtn_mashup</Mono>
+                • <Mono>size_gb_text</Mono> - Required for <Mono>mashup</Mono> and <Mono>mtn_mashup</Mono>. Recommended for{" "}
+                <Mono>mtn_special</Mono> and <Mono>telecel_special</Mono>
               </li>
             </ul>
           </div>
@@ -331,6 +428,61 @@ export default function CheapDataOrderApiDocs() {
               <Code>{PURCHASE_ERRORS}</Code>
             </div>
           </div>
+
+          <div id="cd-purchase-special" className="scroll-mt-32 space-y-4 rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-4">
+            <p className="text-sm font-semibold">MTN Special &amp; Telecel Special</p>
+            <p className="text-sm text-muted-foreground">
+              For <Mono>mtn_special</Mono> and <Mono>telecel_special</Mono>, send <Mono>size_gb_text</Mono> with the package name
+              EXACTLY as returned by <Mono>/get-packages</Mono> (case and spaces matter, for example <Mono>1GB + 200MINS</Mono>,{" "}
+              <Mono>200MINS</Mono> or <Mono>890MB</Mono>). <Mono>size_gb</Mono> may be sent instead, but <Mono>size_gb_text</Mono>{" "}
+              is recommended because some packages are minutes bundles. <Mono>mtn_special</Mono> accepts MTN numbers only and{" "}
+              <Mono>telecel_special</Mono> accepts Telecel numbers only.
+            </p>
+            <div>
+              <p className="mb-2 text-xs text-muted-foreground">Example Request (cURL):</p>
+              <Code>{SPECIAL_PURCHASE_REQUEST}</Code>
+            </div>
+            <div>
+              <p className="mb-2 text-xs text-muted-foreground">JavaScript:</p>
+              <Code>{SPECIAL_PURCHASE_JS}</Code>
+            </div>
+            <div>
+              <p className="mb-2 text-xs text-muted-foreground">PHP:</p>
+              <Code>{SPECIAL_PURCHASE_PHP}</Code>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-semibold">Success Response (200):</p>
+              <Code>{SPECIAL_PURCHASE_RESPONSE}</Code>
+              <p className="mt-2 text-xs text-muted-foreground">
+                Same shape as other networks: <Mono>success</Mono>, <Mono>data.order_id</Mono>, <Mono>data.status</Mono>{" "}
+                (<Mono>processing</Mono>), <Mono>data.amount</Mono>, <Mono>data.wallet_balance</Mono>,{" "}
+                <Mono>data.size_gb_text</Mono> and more. Track the order with <Mono>order_id</Mono>.
+              </p>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-semibold">Errors for these networks:</p>
+              <div className="overflow-x-auto rounded-lg border border-border">
+                <table className="w-full text-left text-sm">
+                  <thead className="bg-muted text-xs uppercase text-muted-foreground">
+                    <tr>
+                      <th className="px-3 py-2">Status</th>
+                      <th className="px-3 py-2">Response</th>
+                      <th className="px-3 py-2">Meaning</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {SPECIAL_ERRORS.map((row) => (
+                      <tr key={`${row.code}-${row.meaning}`} className="border-t border-border align-top">
+                        <td className="whitespace-nowrap px-3 py-2 font-mono text-xs text-red-400">{row.code}</td>
+                        <td className="break-words px-3 py-2 font-mono text-xs text-muted-foreground">{row.body}</td>
+                        <td className="px-3 py-2 text-muted-foreground">{row.meaning}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -354,7 +506,7 @@ export default function CheapDataOrderApiDocs() {
               <li>• <Mono>limit</Mono> (1-100) - Orders to return (default: 50)</li>
               <li>• <Mono>offset</Mono> - Orders to skip (default: 0)</li>
               <li>
-                • <Mono>status</Mono> - One of <Mono>processing</Mono>, <Mono>waiting</Mono>, <Mono>unverified</Mono>,{" "}
+                • <Mono>status</Mono> - One of <Mono>processing</Mono>, <Mono>placed</Mono>, <Mono>waiting</Mono>, <Mono>unverified</Mono>,{" "}
                 <Mono>delivered</Mono>, <Mono>failed</Mono>, <Mono>refunded</Mono>
               </li>
               <li>• <Mono>network</Mono> - Filter by network</li>
@@ -446,6 +598,12 @@ export default function CheapDataOrderApiDocs() {
             <li>
               Treat only <Mono>delivered</Mono>, <Mono>failed</Mono> and <Mono>refunded</Mono> as final (<Mono>is_final: true</Mono>
               ). Keep polling or wait for the webhook until then.
+            </li>
+            <li>
+              <Mono>mtn_special</Mono> and <Mono>telecel_special</Mono> orders move through{" "}
+              <Mono>processing</Mono> → <Mono>placed</Mono> → <Mono>processing</Mono> → <Mono>delivered</Mono>. <Mono>placed</Mono>{" "}
+              means the order was accepted and queued for delivery. If an order cannot be delivered, it is refunded to your API
+              wallet automatically and the status becomes <Mono>refunded</Mono>.
             </li>
             <li>
               <Mono>payment_status</Mono> is <Mono>paid</Mono> (wallet charged when the order was placed) or <Mono>refunded</Mono>.

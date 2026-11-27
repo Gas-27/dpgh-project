@@ -1,3 +1,5 @@
+import { isSupplierTrackedNetwork } from "@/utils/orderStatus";
+
 export const FINAL_ORDER_STATUSES = new Set([
   "delivered",
   "completed",
@@ -14,6 +16,24 @@ export const ORDER_POLL_MAX_DURATION_MS = 30 * 60 * 1000;
 
 export function isFinalOrderStatus(...statuses: Array<string | null | undefined>): boolean {
   return statuses.some((status) => FINAL_ORDER_STATUSES.has(String(status ?? "").trim().toLowerCase()));
+}
+
+type PollableOrder = {
+  network?: string | null;
+  order_status?: string | null;
+  status?: string | null;
+  fulfillment_status?: string | null;
+};
+
+/**
+ * MTN Special / Telecel Special: fulfillment_status "completed" and status "paid" only
+ * mean the order was handed to the supplier, so only order_status can end polling.
+ */
+export function isFinalOrder(order: PollableOrder): boolean {
+  if (isSupplierTrackedNetwork(order.network)) {
+    return isFinalOrderStatus(order.order_status) || isFinalOrderStatus(order.status === "refunded" || order.status === "failed" ? order.status : null);
+  }
+  return isFinalOrderStatus(order.order_status, order.status, order.fulfillment_status);
 }
 
 export function hasUsableReference(reference: string | null | undefined): reference is string {

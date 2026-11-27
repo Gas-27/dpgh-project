@@ -10,7 +10,8 @@ const WALLET_TABLE_OWNER: Record<string, AdminWalletOwnerType> = {
   sub_subagent_stores: "subsubagent",
 };
 import { APIPricingTab } from "@/components/APIPricingTab";
-import { useAuth } from "@/hooks/useAuth";
+  import { useAuth } from "@/hooks/useAuth";
+  import { withStorePrivateDetails, fetchWalletBalance, SUB_SUBAGENT_PUBLIC_COLUMNS } from "@/lib/storePrivateDetails";
 import { useOptimizedRealtime } from "@/hooks/useOptimizedRealtime";
 import { useDatabaseSearch } from "@/hooks/useDatabaseSearch";
 import { usePaginatedData } from "@/hooks/usePaginatedData";
@@ -42,6 +43,7 @@ import {
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import AdminSocialBoostPricing from "@/components/AdminSocialBoostPricing";
+import AdminStorePricesManager from "@/components/AdminStorePricesManager";
 import AdminSocialBoostProviders from "@/components/AdminSocialBoostProviders";
 import PromoCodesPanel from "@/components/PromoCodesPanel";
 import AdminSocialBoostOrders from "@/components/AdminSocialBoostOrders";
@@ -54,7 +56,8 @@ import SubscriptionPaymentsPanel from "@/components/SubscriptionPaymentsPanel";
 import AdminPublicProductsManager from "@/components/AdminPublicProductsManager";
 import AdminProductsBoostManager from "@/components/AdminProductsBoostManager";
 import AdminReportedProducts from "@/components/AdminReportedProducts";
-import { Flag, Trophy } from "lucide-react";
+import { Flag, Trophy, Info } from "lucide-react";
+import { isSpecialNetwork, getNetworkLabel, getPackageDisplayName, filterAdminPackages, isMashupNetwork, MASHUP_BUNDLE_IDS } from "@/lib/networkConfig";
 import AdminDomainPurchasesPanel from "@/components/AdminDomainPurchasesPanel";
 import AdminDomainRenewalsPanel from "@/components/AdminDomainRenewalsPanel";
 import PushNotificationManager from "@/components/PushNotificationManager";
@@ -87,9 +90,10 @@ import WeeklyOrderTargetAdmin from "@/components/WeeklyOrderTargetAdmin";
 import PriceReductionRequestsAdmin from "@/components/PriceReductionRequestsAdmin";
 import SmsAdmin from "@/components/SmsAdmin";
 import { DOMAINS } from "@/config/domains";
+import { openStoreAsAdmin, type ImpersonateKind } from "@/lib/adminImpersonate";
 import { normalizeOrderStatus } from "@/utils/orderStatus";
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger, DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import {
@@ -100,9 +104,9 @@ import {
 // Interfaces
 // ============================================================
 interface DataPackage {
-  id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean;
-}
-interface AgentStore {
+  id: string; network: string; size_gb: number; price: number; agent_price: number; api_price: number; active: boolean; inactive_note?: string | null; bundle_id?: number | string | null; size_gb_text?: string | null;
+  }
+  interface AgentStore {
     id: string; user_id: string; store_name: string; whatsapp_number: string; support_number: string;
     whatsapp_group: string | null; momo_number: string; momo_name: string; momo_network: string;
     approved: boolean; created_at: string; wallet_balance: number; topup_reference: string;
@@ -142,6 +146,13 @@ const AdminDashboard = () => {
   const { signOut, user: currentUser } = useAuth();
   const { toast } = useToast();
 
+  const loginAsStore = async (storeKind: ImpersonateKind, storeId: string) => {
+    const result = await openStoreAsAdmin(storeKind, storeId);
+    if (!result.ok) {
+      toast({ title: "Could not sign in as store", description: result.error, variant: "destructive" });
+    }
+  };
+
   // ======================== State ========================
   const [packages, setPackages] = useState<DataPackage[]>([]);
   const [agents, setAgents] = useState<AgentStore[]>([]);
@@ -170,6 +181,8 @@ const AdminDashboard = () => {
   const [saving, setSaving] = useState(false);
   const [dataLoading, setDataLoading] = useState(true);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [noteDialog, setNoteDialog] = useState<{ pkgId: string; label: string; note: string; turnOff: boolean } | null>(null);
+  const [savingNote, setSavingNote] = useState(false);
   const [newPkg, setNewPkg] = useState({ network: "mtn", size_gb: "", price: "", agent_price: "", api_price: "" });
   const [retryingOrders, setRetryingOrders] = useState<Set<string>>(new Set());
   const [retryingAllOrders, setRetryingAllOrders] = useState(false);
@@ -406,10 +419,10 @@ const AdminDashboard = () => {
     try {
       const { data: ssData } = await supabase
         .from("sub_subagent_stores")
-        .select("*, subagent_stores(id, store_name, agent_store_id)")
+        .select(`${SUB_SUBAGENT_PUBLIC_COLUMNS}, subagent_stores(id, store_name, agent_store_id)`)
         .order("created_at", { ascending: false })
         .limit(200);
-      setSubSubagents(ssData || []);
+      setSubSubagents((await withStorePrivateDetails("sub_subagent", (ssData as any[]) || [])) as any[]);
       setLoadedTabs(prev => new Set([...prev, "sub_subagents"]));
     } catch {
       setSubSubagents([]);
@@ -531,8 +544,12 @@ const AdminDashboard = () => {
 
       const [agentStoresRes, subagentStoresRes, subSubStoresRes, recipientsRes] = await Promise.all([
         agentIds.length > 0 ? (supabase as any).rpc("get_agent_stores_private", { p_ids: agentIds }) : { data: [] },
-        subagentIds.length > 0 ? supabase.from("subagent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance").in("id", subagentIds) : { data: [] },
-        subSubIds.length > 0 ? supabase.from("sub_subagent_stores").select("id, store_name, user_id, momo_name, momo_number, momo_network, wallet_balance").in("id", subSubIds) : { data: [] },
+        subagentIds.length > 0
+          ? supabase.from("subagent_stores").select("id, store_name, user_id").in("id", subagentIds).then(async (res: any) => ({ ...res, data: await withStorePrivateDetails("subagent", res.data || []) }))
+          : { data: [] },
+        subSubIds.length > 0
+          ? supabase.from("sub_subagent_stores").select("id, store_name, user_id").in("id", subSubIds).then(async (res: any) => ({ ...res, data: await withStorePrivateDetails("sub_subagent", res.data || []) }))
+          : { data: [] },
         recipientIds.length > 0 ? supabase.from("transfer_recipients").select("id, account_holder_name, mobile_money_number, mobile_money_network, account_number, bank_name").in("id", recipientIds) : { data: [] },
       ]);
 
@@ -736,8 +753,8 @@ const AdminDashboard = () => {
         const data = await fetchRecords("agent_stores", "id, user_id, store_name, whatsapp_number, support_number, whatsapp_group, momo_number, momo_name, momo_network, approved, created_at, wallet_balance, topup_reference, subagent_commission_balance", { column: "created_at", ascending: false }, 1000);
         setAgents(data ?? []);
       } else if (tabValue === "subagents") {
-        const data = await fetchRecords("subagent_stores", "id, store_name, agent_store_id, created_at, whatsapp_number, support_number, momo_number, momo_name, momo_network, wallet_balance, agent_stores(store_name, id, user_id)", { column: "created_at", ascending: false }, 1000);
-        setSubagents(data ?? []);
+        const data = await fetchRecords("subagent_stores", "id, store_name, agent_store_id, created_at, whatsapp_number, support_number, agent_stores(store_name, id, user_id)", { column: "created_at", ascending: false }, 1000);
+        setSubagents((await withStorePrivateDetails("subagent", (data as any[]) ?? [])) as any[]);
       } else if (tabValue === "users") {
         const data = await fetchRecords("profiles", "id, full_name, phone, created_at", { column: "created_at", ascending: false }, 10000);
         setUsers(data ?? []);
@@ -758,7 +775,7 @@ const AdminDashboard = () => {
     try {
       // Load packages and app settings only — withdrawals/agents/etc load lazily via handleTabChange
       const [pkgResult, appSettingsResult] = await Promise.all([
-        supabase.from("data_packages").select("id, network, size_gb, price, agent_price, api_price, active").order("size_gb").limit(100),
+        supabase.from("data_packages").select("id, network, size_gb, size_gb_text, bundle_id, price, agent_price, api_price, active, inactive_note").order("size_gb").limit(500),
         supabase
           .from("app_settings")
           .select("agent_registration_fee, chatbot_enabled, show_price_breakdown, show_api_price, show_agent_price, tab_controls")
@@ -766,7 +783,7 @@ const AdminDashboard = () => {
           .single(),
       ]);
 
-      setPackages(pkgResult.data ?? []);
+      setPackages(filterAdminPackages((pkgResult.data ?? []) as DataPackage[]));
 
       const appSettings = appSettingsResult.data;
       setTabControls((appSettings?.tab_controls as TabControls) ?? {});
@@ -795,7 +812,7 @@ const AdminDashboard = () => {
     try {
       const { data, error } = await supabase
         .from("sub_subagent_stores")
-        .select("*, subagent_stores(id, store_name, agent_store_id)")
+        .select(`${SUB_SUBAGENT_PUBLIC_COLUMNS}, subagent_stores(id, store_name, agent_store_id)`)
         .order("created_at", { ascending: false })
         .limit(200);
       
@@ -806,7 +823,7 @@ const AdminDashboard = () => {
         return;
       }
       
-      setSubSubagents(data || []);
+      setSubSubagents((await withStorePrivateDetails("sub_subagent", (data as any[]) || [])) as any[]);
       setLoadedTabs(prev => new Set([...prev, "sub_subagents"]));
     } catch (error) {
       console.error("[v0] Exception fetching sub-subagents:", error);
@@ -1307,7 +1324,9 @@ const AdminDashboard = () => {
         if (payload.eventType === 'UPDATE') {
           setPackages(prev => prev.map(pkg => pkg.id === payload.new.id ? { ...pkg, ...payload.new } : pkg).sort((a, b) => a.size_gb - b.size_gb));
         } else if (payload.eventType === 'INSERT') {
-          setPackages(prev => [...prev, payload.new as DataPackage].sort((a, b) => a.size_gb - b.size_gb));
+          const inserted = payload.new as DataPackage;
+          if (isMashupNetwork(inserted.network) && !MASHUP_BUNDLE_IDS.includes(Number(inserted.bundle_id))) return;
+          setPackages(prev => [...prev, inserted].sort((a, b) => a.size_gb - b.size_gb));
         } else if (payload.eventType === 'DELETE') {
           setPackages(prev => prev.filter(pkg => pkg.id !== payload.old.id));
         }
@@ -1534,9 +1553,28 @@ const AdminDashboard = () => {
   };
 
   const toggleActive = async (pkgId: string, active: boolean) => {
-    await supabase.from("data_packages").update({ active }).eq("id", pkgId);
-    setPackages((prev) => prev.map((p) => (p.id === pkgId ? { ...p, active } : p)));
-    toast({ title: active ? "Package activated" : "Package deactivated" });
+    const pkg = packages.find((p) => p.id === pkgId);
+    if (!active) {
+      setNoteDialog({ pkgId, label: `${pkg?.size_gb ?? ""}GB`, note: pkg?.inactive_note ?? "", turnOff: true });
+      return;
+    }
+    const { error } = await supabase.from("data_packages").update({ active: true, inactive_note: null }).eq("id", pkgId);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    setPackages((prev) => prev.map((p) => (p.id === pkgId ? { ...p, active: true, inactive_note: null } : p)));
+    toast({ title: "Package activated" });
+  };
+
+  const saveInactiveNote = async () => {
+    if (!noteDialog) return;
+    setSavingNote(true);
+    const note = noteDialog.note.trim() || null;
+    const update = noteDialog.turnOff ? { active: false, inactive_note: note } : { inactive_note: note };
+    const { error } = await supabase.from("data_packages").update(update).eq("id", noteDialog.pkgId);
+    setSavingNote(false);
+    if (error) { toast({ title: "Error", description: error.message, variant: "destructive" }); return; }
+    setPackages((prev) => prev.map((p) => (p.id === noteDialog.pkgId ? { ...p, ...update } : p)));
+    toast({ title: noteDialog.turnOff ? "Package deactivated" : "Note saved" });
+    setNoteDialog(null);
   };
 
   const deletePackage = async (pkgId: string) => {
@@ -1909,7 +1947,32 @@ const AdminDashboard = () => {
     // Refunds are executed atomically by the database. The dashboard must never
     // credit a wallet directly because the order update can invoke refund logic too.
     for (const orderId of refundableIds) {
-      const { data, error } = await supabase.rpc("admin_refund_order_wallet", { p_order_id: orderId });
+      const target = orders.find((candidate) => candidate.id === orderId) as any;
+      const isStorefrontPaystackOrder = !!target
+        && !!(target.agent_store_id || target.subagent_store_id || target.sub_subagent_store_id)
+        && !!target.paystack_reference
+        && !target.api_user;
+
+      let data: any;
+      let error: { message?: string } | null = null;
+      if (isStorefrontPaystackOrder) {
+        const { data: sessionData } = await supabase.auth.getSession();
+        const direct = await supabase.functions.invoke("admin-refund-order", {
+          headers: { Authorization: `Bearer ${sessionData.session?.access_token ?? ""}` },
+          body: { order_id: orderId },
+        });
+        data = direct.data;
+        error = direct.error;
+        if (error) {
+          const context = (direct.error as any)?.context;
+          const details = context ? await context.json().catch(() => null) : null;
+          error = { message: details?.error || details?.message || direct.error?.message };
+        }
+      } else {
+        const wallet = await supabase.rpc("admin_refund_order_wallet", { p_order_id: orderId });
+        data = wallet.data;
+        error = wallet.error;
+      }
       if (error) {
         console.error("[v0] Database refund failed:", orderId, error);
         const failureMessage = error.message || "The database refund could not be completed.";
@@ -1933,7 +1996,7 @@ const AdminDashboard = () => {
     setRefundAction("");
     toast({
       title: "Refund actions complete",
-      description: `${successCount} completed, ${errorCount} failed${skippedCount ? `, ${skippedCount} already refunded (skipped)` : ""}.${refundErrors.length ? ` ${refundErrors[0]}` : ""} The base price at purchase is credited to the user, agent, parent agent (subagent orders), parent subagent (subsubagent orders), or API wallet.`,
+      description: `${successCount} completed, ${errorCount} failed${skippedCount ? `, ${skippedCount} already refunded (skipped)` : ""}.${refundErrors.length ? ` ${refundErrors[0]}` : ""} Storefront Paystack orders are refunded directly to the customer through Paystack and the seller's profit is deducted from their wallet. Other orders credit the base price to the user, agent, or API wallet.`,
       variant: errorCount > 0 ? "destructive" : "default",
     });
     return;
@@ -2057,7 +2120,7 @@ const AdminDashboard = () => {
 
         if ((order as any).sub_subagent_store_id) {
           refundAmount = await resolveAgentBasePrice(order, order.agent_store_id ?? null);
-          const { data: subSubagent } = await supabase.from("sub_subagent_stores").select("id, subagent_store_id, wallet_balance").eq("id", (order as any).sub_subagent_store_id).maybeSingle();
+          const { data: subSubagent } = await supabase.from("sub_subagent_stores").select("id, subagent_store_id").eq("id", (order as any).sub_subagent_store_id).maybeSingle();
           if (subSubagent && await creditWallet("sub_subagent_stores", subSubagent.id, refundAmount)) {
             targetWalletUpdated = true;
             if (subSubagent.subagent_store_id) {
@@ -2309,14 +2372,10 @@ const AdminDashboard = () => {
         }
       } else if (order.subagent_store_id) {
         // Subagent refund reversal: deduct from subagent wallet
-        const { data: subagent } = await supabase
-          .from("subagent_stores")
-          .select("id, wallet_balance")
-          .eq("id", order.subagent_store_id)
-          .maybeSingle();
+        const subagentBalance = await fetchWalletBalance("subagent", order.subagent_store_id);
 
-        if (subagent) {
-          targetWalletUpdated = await reverseDebit("subagent", subagent.id, Number(subagent.wallet_balance) || 0);
+        if (subagentBalance !== null) {
+          targetWalletUpdated = await reverseDebit("subagent", order.subagent_store_id, Number(subagentBalance) || 0);
         }
       } else if (order.customer_id) {
         // Check if this customer_id belongs to an agent (e.g. bought via Packages page
@@ -2889,6 +2948,7 @@ const AdminDashboard = () => {
         <Tabs value={activeTab} onValueChange={handleTabChange} defaultValue="prices">
           <TabsList className="mb-6 flex-wrap gap-1 h-auto p-1 md:p-2 bg-background border border-border rounded-lg overflow-x-auto w-full flex">
             <TabsTrigger value="prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Prices</TabsTrigger>
+<TabsTrigger value="store-prices" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Store Prices</TabsTrigger>
             <TabsTrigger value="profit" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap flex items-center gap-1"><DollarSign className="h-3 w-3 md:h-4 md:w-4" /> Profit</TabsTrigger>
   <TabsTrigger value="social-boost" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Social Boost</TabsTrigger>
   <TabsTrigger value="promo-codes" className="text-xs md:text-sm px-2 md:px-3 py-1 md:py-2 whitespace-nowrap">Promo Codes</TabsTrigger>
@@ -2963,9 +3023,16 @@ const AdminDashboard = () => {
             <TabsContent value="withdrawal-controls" className="space-y-6"><AdminWithdrawalControls /></TabsContent>
 <TabsContent value="social-boost-orders" className="space-y-6"><AdminSocialBoostOrders /></TabsContent>
 
+  {/* STORE PRICES TAB */}
+  {canSee("prices") && (
+    <TabsContent value="store-prices" className="space-y-6">
+      <AdminStorePricesManager />
+    </TabsContent>
+  )}
+
   {/* PRICES TAB */}
   {canSee("prices") && (
-            <TabsContent value="prices" className="space-y-6">
+<TabsContent value="prices" className="space-y-6">
               <div className="rounded-lg border border-primary/20 bg-primary/5 p-4 text-sm text-muted-foreground">
                 <p className="font-semibold text-foreground">How package pricing works</p>
                 <p className="mt-1">User Price is used on the main site. Agent Price is used through an agent storefront. API Price is used for API purchases. Payment collects the money; the provider selected for the order fulfills the data after payment.</p>
@@ -2974,9 +3041,12 @@ const AdminDashboard = () => {
                 <div className="flex gap-2">
                   {[
                     { key: "mtn", label: "MTN" },
+                    { key: "mtn_special", label: "MTN Special" },
                     { key: "mtn_express", label: "MTN Express" },
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
+                    { key: "telecel_special", label: "Telecel Special" },
+                    { key: "mashup", label: "MTN MashUp" },
                                     ].map(({ key, label }) => (
                     <Button
                       key={key}
@@ -2998,15 +3068,25 @@ const AdminDashboard = () => {
               </div>
               <Card className="border-border">
                 <Table>
-                  <TableHeader><TableRow><TableHead>Size</TableHead><TableHead>User Price (GHC)</TableHead><TableHead>Agent Price (GHC)</TableHead><TableHead>API Price (GHC)</TableHead><TableHead>Active</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
+                  <TableHeader><TableRow><TableHead>Size</TableHead><TableHead>User Price (GHC)</TableHead><TableHead>Agent Price (GHC)</TableHead><TableHead>API Price (GHC)</TableHead><TableHead>Active</TableHead><TableHead>Offline note</TableHead><TableHead>Actions</TableHead></TableRow></TableHeader>
                   <TableBody>
                     {filteredPackages.map((pkg) => (
                       <TableRow key={pkg.id}>
-                        <TableCell className="font-display font-bold">{pkg.size_gb}GB</TableCell>
+                        <TableCell className="font-display font-bold">{isSpecialNetwork(pkg.network) ? getPackageDisplayName(pkg) : `${pkg.size_gb}GB`}</TableCell>
                         <TableCell><Input type="number" step="0.01" defaultValue={pkg.price} onChange={(e) => handlePriceChange(pkg.id, "price", e.target.value)} className="w-24 h-8" /></TableCell>
                         <TableCell><Input type="number" step="0.01" defaultValue={pkg.agent_price} onChange={(e) => handlePriceChange(pkg.id, "agent_price", e.target.value)} className="w-24 h-8" /></TableCell>
                         <TableCell><Input type="number" step="0.01" defaultValue={pkg.api_price} onChange={(e) => handlePriceChange(pkg.id, "api_price", e.target.value)} className="w-24 h-8" /></TableCell>
                         <TableCell><Switch checked={pkg.active} onCheckedChange={(checked) => toggleActive(pkg.id, checked)} /></TableCell>
+                        <TableCell>
+                          {pkg.active ? (
+                            <span className="text-xs text-muted-foreground">-</span>
+                          ) : (
+                            <Button variant="outline" size="sm" className="h-8 max-w-[180px] gap-1" onClick={() => setNoteDialog({ pkgId: pkg.id, label: isSpecialNetwork(pkg.network) ? getPackageDisplayName(pkg) : `${pkg.size_gb}GB`, note: pkg.inactive_note ?? "", turnOff: false })}>
+                              <Info className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate text-xs">{pkg.inactive_note ? pkg.inactive_note : "Add note"}</span>
+                            </Button>
+                          )}
+                        </TableCell>
                         <TableCell><Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => deletePackage(pkg.id)}><Trash2 className="h-4 w-4" /></Button></TableCell>
                       </TableRow>
                     ))}
@@ -3183,7 +3263,9 @@ const AdminDashboard = () => {
                     <SelectItem value="mtn_express">MTN Express</SelectItem>
                     <SelectItem value="airtel">AirtelTigo</SelectItem>
                     <SelectItem value="telecel">Telecel</SelectItem>
-                    
+                    <SelectItem value="mtn_special">MTN Special</SelectItem>
+                    <SelectItem value="telecel_special">Telecel Special</SelectItem>
+                    <SelectItem value="mashup">MTN MashUp</SelectItem>
                   </SelectContent>
                 </Select>
 
@@ -3345,7 +3427,7 @@ const AdminDashboard = () => {
                                 <TableCell style={{ width: "40px" }} className="text-center"><input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={(e) => { if (e.target.checked) { setSelectedOrderIds(new Set([...selectedOrderIds, order.id])); } else { const newSet = new Set(selectedOrderIds); newSet.delete(order.id); setSelectedOrderIds(newSet); } }} className="rounded border-border" /></TableCell>
                                 <TableCell className="text-sm text-muted-foreground whitespace-nowrap">{order.created_at ? new Date(order.created_at).toLocaleString() : "—"}</TableCell>
                                 <TableCell className="font-medium">{order.customer_number}</TableCell>
-                                <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                                <TableCell className={isSpecialNetwork(order.network) ? "text-sm" : "uppercase text-sm"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
                                 <TableCell>
                                   <Badge variant="outline" className="text-xs">
                                     {((order as any).purchase_provider || (order as any).fulfillment_provider || (Array.isArray((order as any).provider_attempts) ? (order as any).provider_attempts.at(-1)?.provider : null) || "Provider pending")}
@@ -3354,7 +3436,7 @@ const AdminDashboard = () => {
                                     <p className="mt-1 text-[10px] text-muted-foreground">{(order as any).provider_attempts.length} attempt{(order as any).provider_attempts.length === 1 ? "" : "s"}</p>
                                   )}
                                 </TableCell>
-                                <TableCell className="font-display font-bold">{order.size_gb}GB</TableCell>
+                                <TableCell className="font-display font-bold">{isSpecialNetwork(order.network) ? ((order as any).size_gb_text || `${order.size_gb}GB`) : `${order.size_gb}GB`}</TableCell>
                                 <TableCell>GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
                                 <TableCell>
                                   {order.refunded_amount ? (
@@ -3376,11 +3458,11 @@ const AdminDashboard = () => {
                                             type: "Sub-Subagent Store",
                                             storeName: subSubagentStore.store_name || "Unknown",
                                             contact: subSubagentStore.support_number || subSubagentStore.whatsapp_number || "N/A",
-                                            storeUrl: subSubagentStore.user_id ? `#impersonate:sub_subagent:${subSubagentStore.user_id}` : subSubagentStore.store_url || undefined,
+                                            storeUrl: subSubagentStore.user_id ? `#impersonate:sub_subagent:${subSubagentStore.id}` : subSubagentStore.store_url || undefined,
                                             parentSubagentName: parentSubagent?.store_name || undefined,
-                                            parentSubagentUrl: parentSubagent?.user_id ? `#impersonate:subagent:${parentSubagent.user_id}` : parentSubagent?.store_url || undefined,
+                                            parentSubagentUrl: parentSubagent?.user_id ? `#impersonate:subagent:${parentSubagent.id}` : parentSubagent?.store_url || undefined,
                                             parentAgentName: parentAgent?.store_name || undefined,
-                                            parentAgentUrl: parentAgent?.user_id ? `#impersonate:agent:${parentAgent.user_id}` : parentAgent?.store_url || undefined,
+                                            parentAgentUrl: parentAgent?.user_id ? `#impersonate:agent:${parentAgent.id}` : parentAgent?.store_url || undefined,
                                           });
                                           setSourceDialogOpen(true);
                                         } else if (subagentStore) {
@@ -3391,9 +3473,9 @@ const AdminDashboard = () => {
                                             type: "Subagent Store",
                                             storeName: subagentStore.store_name || "Unknown",
                                             contact: subagentStore.support_number || subagentStore.whatsapp_number || "N/A",
-                                            storeUrl: subagentStore.user_id ? `#impersonate:subagent:${subagentStore.user_id}` : subagentStore.store_url || undefined,
+                                            storeUrl: subagentStore.user_id ? `#impersonate:subagent:${subagentStore.id}` : subagentStore.store_url || undefined,
                                             parentAgentName: parentAgent?.store_name || undefined,
-                                            parentAgentUrl: parentAgent?.user_id ? `#impersonate:agent:${parentAgent.user_id}` : parentAgent?.store_url || undefined,
+                                            parentAgentUrl: parentAgent?.user_id ? `#impersonate:agent:${parentAgent.id}` : parentAgent?.store_url || undefined,
                                           });
                                           setSourceDialogOpen(true);
                                         } else if (agentStore) {
@@ -3401,7 +3483,7 @@ const AdminDashboard = () => {
                                             type: "Agent Store",
                                             storeName: agentStore.store_name || "Unknown",
                                             contact: agentStore.whatsapp_number || agentStore.support_number || "N/A",
-                                            storeUrl: agentStore.user_id ? `#impersonate:agent:${agentStore.user_id}` : agentStore.store_url || undefined,
+                                            storeUrl: agentStore.user_id ? `#impersonate:agent:${agentStore.id}` : agentStore.store_url || undefined,
                                           });
                                           setSourceDialogOpen(true);
                                         } else if (isAPIOrder) {
@@ -3662,10 +3744,7 @@ const AdminDashboard = () => {
                               <Button 
                                 variant="outline" 
                                 size="sm" 
-                                onClick={() => {
-                                  localStorage.setItem("admin_impersonate_agent", agent.user_id);
-                                  window.location.href = "/agent";
-                                }}
+                                onClick={() => loginAsStore("agent", agent.id)}
                                 className="bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30"
                               >
                                 <LogIn className="h-4 w-4 mr-1" /> Login
@@ -3808,18 +3887,7 @@ const AdminDashboard = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                // Navigate to subagent domain with impersonation token in URL
-                                // Pass store ID so we can query directly
-                                const tokenData = JSON.stringify({ 
-                                  storeId: subagent.id,
-                                  storeName: subagent.store_name,
-                                  userId: subagent.user_id,
-                                  timestamp: Date.now() 
-                                });
-                                const token = btoa(encodeURIComponent(tokenData));
-                                window.location.href = `https://${DOMAINS.SUBAGENT_STORE}/dashboard?admin_token=${token}`;
-                              }}
+                              onClick={() => loginAsStore("subagent", subagent.id)}
                               className="text-xs bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30"
                             >
                               <LogIn className="h-3 w-3 mr-1" />
@@ -3962,17 +4030,7 @@ const AdminDashboard = () => {
                             <Button
                               variant="outline"
                               size="sm"
-                              onClick={() => {
-                                const tokenData = JSON.stringify({ 
-                                  storeId: subSubagent.id,
-                                  storeName: subSubagent.store_name,
-                                  userId: subSubagent.user_id,
-                                  isSubSubagent: true,
-                                  timestamp: Date.now() 
-                                });
-                                const token = btoa(encodeURIComponent(tokenData));
-                                window.location.href = `https://${DOMAINS.SUBAGENT_STORE}/sub-subagent-dashboard?admin_token=${token}`;
-                              }}
+                              onClick={() => loginAsStore("sub_subagent", subSubagent.id)}
                               className="text-xs bg-blue-600/20 text-blue-400 border-blue-600/30 hover:bg-blue-600/30"
                             >
                               <LogIn className="h-3 w-3 mr-1" />
@@ -4261,10 +4319,10 @@ const AdminDashboard = () => {
                                       {/* Login as the withdrawing store owner */}
                                       {(() => {
                                         const loginUserId = isSubsubagentWithdrawal
-                                          ? w.subagent_store?.user_id
+                                          ? w.sub_subagent_store_id
                                           : isSubagentWithdrawal
-                                          ? w.subagent_store?.user_id
-                                          : w.agent_store?.user_id;
+                                          ? w.subagent_store_id
+                                          : w.agent_store_id;
                                         const loginRole = isSubsubagentWithdrawal ? "sub_subagent" : isSubagentWithdrawal ? "subagent" : "agent";
                                         const loginLabel = isSubsubagentWithdrawal ? "Sub-Subagent" : isSubagentWithdrawal ? "Subagent" : "Agent";
                                         if (!loginUserId) return null;
@@ -4272,18 +4330,7 @@ const AdminDashboard = () => {
                                           <Button
                                             variant="outline"
                                             size="sm"
-                                            onClick={() => {
-                                              if (loginRole === "agent") {
-                                                localStorage.setItem("admin_impersonate_agent", loginUserId);
-                                                window.open("/agent", "_blank");
-                                              } else if (loginRole === "subagent") {
-                                                localStorage.setItem("admin_impersonate_subagent", loginUserId);
-                                                window.open("/subagent-dashboard", "_blank");
-                                              } else {
-                                                localStorage.setItem("admin_impersonate_sub_subagent", loginUserId);
-                                                window.open("/sub-subagent-dashboard", "_blank");
-                                              }
-                                            }}
+                                            onClick={() => loginAsStore(loginRole, loginUserId)}
                                           >
                                             <LogIn className="h-4 w-4 mr-1" /> Login as {loginLabel}
                                           </Button>
@@ -5291,6 +5338,31 @@ const AdminDashboard = () => {
         </Tabs>
       </div>
 
+      <Dialog open={!!noteDialog} onOpenChange={(open) => { if (!open) setNoteDialog(null); }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{noteDialog?.turnOff ? `Turn off ${noteDialog.label} package` : `Offline note for ${noteDialog?.label ?? ""} package`}</DialogTitle>
+            <DialogDescription>
+              The package stays visible on every storefront as unavailable. Customers see this text when they tap the info icon.
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={noteDialog?.note ?? ""}
+            onChange={(e) => setNoteDialog((prev) => (prev ? { ...prev, note: e.target.value } : prev))}
+            placeholder="e.g. This bundle is paused while the network provider fixes delivery delays."
+            rows={4}
+            maxLength={500}
+            aria-label="Offline note"
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setNoteDialog(null)}>Cancel</Button>
+            <Button onClick={saveInactiveNote} disabled={savingNote}>
+              {savingNote ? "Saving..." : noteDialog?.turnOff ? "Turn off package" : "Save note"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       {/* Dialogs (unchanged) */}
       <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
         <DialogContent className="sm:max-w-md border-border bg-card">
@@ -5327,9 +5399,12 @@ const AdminDashboard = () => {
               <div className="flex gap-2 flex-wrap">
                 {[
                   { key: "mtn", label: "MTN" },
+                  { key: "mtn_special", label: "MTN Special" },
                   { key: "mtn_express", label: "MTN Express" },
                     { key: "airteltigo", label: "AirtelTigo" },
                     { key: "telecel", label: "Telecel" },
+                    { key: "telecel_special", label: "Telecel Special" },
+                    { key: "mashup", label: "MTN MashUp" },
                                     ].map(({ key, label }) => (
                     <Button
                     key={key}
@@ -5496,18 +5571,7 @@ const AdminDashboard = () => {
                         const url = sourceInfo!.storeUrl!;
                         if (url.startsWith("#impersonate:")) {
                           const parts = url.split(":");
-                          const role = parts[1];
-                          const userId = parts[2];
-                          if (role === "agent") {
-                            localStorage.setItem("admin_impersonate_agent", userId);
-                            window.open("/agent", "_blank");
-                          } else if (role === "subagent") {
-                            localStorage.setItem("admin_impersonate_subagent", userId);
-                            window.open("/subagent-dashboard", "_blank");
-                          } else if (role === "sub_subagent") {
-                            localStorage.setItem("admin_impersonate_sub_subagent", userId);
-                            window.open("/sub-subagent-dashboard", "_blank");
-                          }
+                          loginAsStore(parts[1] as ImpersonateKind, parts[2]);
                         } else {
                           window.open(url, "_blank");
                         }
@@ -5533,8 +5597,7 @@ const AdminDashboard = () => {
                         <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => {
                           const url = sourceInfo!.parentSubagentUrl!;
                           if (url.startsWith("#impersonate:subagent:")) {
-                            localStorage.setItem("admin_impersonate_subagent", url.split(":")[2]);
-                            window.open("/subagent-dashboard", "_blank");
+                            loginAsStore("subagent", url.split(":")[2]);
                           } else { window.open(url, "_blank"); }
                         }}>
                           Login
@@ -5552,8 +5615,7 @@ const AdminDashboard = () => {
                         <Button variant="ghost" size="sm" className="text-xs h-7" onClick={() => {
                           const url = sourceInfo!.parentAgentUrl!;
                           if (url.startsWith("#impersonate:agent:")) {
-                            localStorage.setItem("admin_impersonate_agent", url.split(":")[2]);
-                            window.open("/agent", "_blank");
+                            loginAsStore("agent", url.split(":")[2]);
                           } else { window.open(url, "_blank"); }
                         }}>
                           Login

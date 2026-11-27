@@ -97,11 +97,24 @@ export const phoneMatchesNetwork = (phone: string, expectedNetwork: string): boo
   }
   
   // MTN numbers work for both MTN and MTN Express
-  if (normalizedExpected === "mtn_express") {
-    return detectedNetwork === "mtn";
+  if (normalizedExpected === "mtn_express" || normalizedExpected === "mtn_special" || normalizedExpected === "mashup" || normalizedExpected === "mtn_mashup") {
+  return detectedNetwork === "mtn";
+  }
+
+  if (normalizedExpected === "telecel_special") {
+  return detectedNetwork === "telecel";
   }
   
   return detectedNetwork === normalizedExpected;
+};
+
+/**
+ * Strict MTN check used for MashUp: the number must start with 024, 025, 053, 054, 055 or 059.
+ * Unlike phoneMatchesNetwork, an unrecognised prefix is rejected.
+ */
+export const isMtnNumber = (phone: string): boolean => {
+  const normalized = normalizePhone(phone);
+  return normalized.length >= 3 && MTN_PREFIXES.includes(normalized.substring(0, 3));
 };
 
 /**

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, ExternalLink, Share2, Trophy } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import GameHubBecomeAgentButton from "@/components/GameHubBecomeAgentButton";
 import { buildGameShareUrl, maskEmail, shareText, submitGuestScore, submitScore } from "@/lib/gameHubApi";
 import { newGuestSessionId } from "@/lib/gameHubGuest";
 import { getGameHubDirectUrl, getGameUrl, isGameOverMessage, type HubGame } from "@/lib/gameHubGames";
@@ -87,6 +88,12 @@ export default function GameHubPlayer({ game, userEmail, signedIn, onClose }: Ga
             >
               Continue on GameHub
             </a>
+            {!signedIn ? (
+              <>
+                <p className="text-xs text-emerald-100">Sign up as an agent to get extra lives and play directly from your dashboard.</p>
+                <GameHubBecomeAgentButton />
+              </>
+            ) : null}
             <button type="button" onClick={() => setGameOver(false)} className="text-xs text-violet-300 underline">
               Not now
             </button>

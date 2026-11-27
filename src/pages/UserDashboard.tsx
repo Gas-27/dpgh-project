@@ -1,5 +1,6 @@
 import DashboardTutorial, { USER_TUTORIAL } from "@/components/DashboardTutorial";
-import { useEffect, useState } from "react";
+import ApiKnowledgeGate from "@/components/ApiKnowledgeGate";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -22,11 +23,15 @@ import { DeliveryProgressApiDocs } from "@/components/DeliveryProgressApiDocs";
 import { fetchProgressKey } from "@/lib/fetchProgressKey";
 import WebhookDocs from "@/components/WebhookDocs";
 import CheapDataOrderApiDocs from "@/components/CheapDataOrderApiDocs";
+import { SupportedNetworksDocs, GetPackagesDocs } from "@/components/CheapDataNetworksApiDocs";
 import { isRevokedApiKey } from "@/lib/apiKeyAccount";
 import ApiWeeklyTargetMeter from "@/components/ApiWeeklyTargetMeter";
 import PaymentVerifier from "@/components/PaymentVerifier";
   import WhatsAppFloatingButton from "@/components/WhatsAppFloatingButton";
   import WhatsAppChannelPopup from "@/components/WhatsAppChannelPopup";
+import AnnouncementTicker from "@/components/AnnouncementTicker";
+import SenderIdApprovedPopup from "@/components/SenderIdApprovedPopup";
+import BecomeAgentLoginPopup from "@/components/BecomeAgentLoginPopup";
   import FreeDataPromoButton from "@/components/FreeDataPromoButton";
 import AFAPackagesDisplay from "@/components/AFAPackagesDisplay";
 import AFARegistrationTracker from "@/components/AFARegistrationTracker";
@@ -35,6 +40,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import PackageStatusIndicator from "@/components/PackageStatusIndicator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Package, Download, TrendingUp, Key, Settings, ShoppingCart, Wallet, Copy, Eye, EyeOff, Phone, CreditCard, Zap, BarChart3, Home, LogOut, Menu, Coins, Lock, AlertCircle, AlertTriangle, Users, Bell, Image as ImageIcon, Share2, Search, Smartphone, Store, Globe, Palette, Rocket, ArrowRight, Send, Sparkles, Crown, Tag, BookOpen, MoreHorizontal, MessageCircle, Clock, RefreshCw, UserCheck, ChevronDown, ChevronUp, Video, Gamepad2, RadioTower, Receipt, CalendarDays, MessageSquare, IdCard, Code } from "lucide-react";
 import { OrderStatusBadge } from "@/components/OrderStatusBadge";
@@ -78,6 +84,7 @@ import NotificationPopup from "@/components/NotificationPopup";
 import PrivateShareMySubscriptions from "@/components/PrivateShareMySubscriptions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { SHOW_USSD } from "@/lib/ussdVisibility";
+import { getNetworkLabel, getPackageDisplayName, getOrderPackageName, isSpecialNetwork, packageMatchesNetwork } from "@/lib/networkConfig";
 
 interface DataPackage {
   id: string;
@@ -89,6 +96,7 @@ interface DataPackage {
   api_price?: number;
   active: boolean;
   is_online?: boolean;
+  inactive_note?: string | null;
 }
 
 interface Order {
@@ -179,6 +187,7 @@ const UserDashboard = () => {
   const [customTopupAmount, setCustomTopupAmount] = useState("");
 
   const [packages, setPackages] = useState<DataPackage[]>([]);
+  const packagesById = new Map(packages.map((p) => [String(p.id), p]));
   const [generatingApiKey, setGeneratingApiKey] = useState(false);
   const [showApiConsent, setShowApiConsent] = useState(false);
   const [showDeleteApiKey, setShowDeleteApiKey] = useState(false);
@@ -201,6 +210,7 @@ const UserDashboard = () => {
   const [topupHistory, setTopupHistory] = useState<any[]>([]);
   const [showNormalWalletTopup, setShowNormalWalletTopup] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
+  const hasLoadedOnce = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -301,9 +311,54 @@ const UserDashboard = () => {
   const [showUpgradeConfirmation, setShowUpgradeConfirmation] = useState(false);
   const [registrationFee, setRegistrationFee] = useState<number>(0);
   const [registrationFeeLoading, setRegistrationFeeLoading] = useState(false);
+  const [showAgentLoginPopup, setShowAgentLoginPopup] = useState(false);
+  const lastSignInAt = (user as { last_sign_in_at?: string } | null)?.last_sign_in_at ?? "";
+  useEffect(() => {
+    if (!user?.id || isImpersonating) return;
+    const storageKey = `jb_agent_login_popup_${user.id}_${lastSignInAt}`;
+    try {
+      if (sessionStorage.getItem(storageKey)) return;
+    } catch {
+      // Storage can be blocked; the popup then shows once per page load.
+    }
+    let cancelled = false;
+    supabase
+      .from("agent_stores")
+      .select("id")
+      .eq("user_id", user.id)
+      .limit(1)
+      .then(({ data }) => {
+        if (cancelled || (data && data.length > 0)) return;
+        try {
+          sessionStorage.setItem(storageKey, "1");
+        } catch {
+          // Ignore blocked storage.
+        }
+        setShowAgentLoginPopup(true);
+      });
+    return () => { cancelled = true; };
+  }, [user?.id, lastSignInAt, isImpersonating]);
 
   // Menu navigation
-  const [activeMenu, setActiveMenu] = useState("overview");
+  const [activeMenu, setActiveMenu] = useState(() => {
+    try {
+      return sessionStorage.getItem("user-dashboard-menu") || "overview";
+    } catch {
+      return "overview";
+    }
+  });
+  useEffect(() => {
+    try {
+      sessionStorage.setItem("user-dashboard-menu", activeMenu);
+    } catch {
+      // Storage can be blocked; the menu simply starts on Overview after a reload.
+    }
+  }, [activeMenu]);
+  const [apiAccessConfirmed, setApiAccessConfirmed] = useState(false);
+  const isApiMenu = activeMenu === "api-info" || activeMenu === "api-key" || activeMenu === "api-docs";
+  useEffect(() => {
+    if (!isApiMenu) setApiAccessConfirmed(false);
+  }, [isApiMenu]);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const menuItems = [
@@ -533,6 +588,7 @@ const UserDashboard = () => {
         console.error("[v0] Error loading user data:", err);
         toast({ title: "Error", description: "Failed to load your data", variant: "destructive" });
       } finally {
+        hasLoadedOnce.current = true;
         setLoading(false);
       }
     };
@@ -822,7 +878,7 @@ const UserDashboard = () => {
       setApiKey(result.data.api_key);
       setApiWallet(Number(result.data.wallet || 0));
       setShowApiKey(true);
-      const ownerId = impersonatedUserId || user?.id;
+      const ownerId = impersonatedCustomerId || user?.id;
       if (ownerId) setProgressKey(await fetchProgressKey(ownerId));
       toast({
         title: "Success",
@@ -922,7 +978,9 @@ const UserDashboard = () => {
             amount: price,
             kind: "data_purchase",
             reference: walletOrderId,
-            note: `${buyPkg.network} ${buyPkg.size_gb}GB for ${buyPhone.trim()}`,
+            note: isSpecialNetwork(buyPkg.network)
+              ? `${getNetworkLabel(buyPkg.network)} ${getPackageDisplayName(buyPkg)} for ${buyPhone.trim()}`
+              : `${buyPkg.network} ${buyPkg.size_gb}GB for ${buyPhone.trim()}`,
           });
         } catch (walletError: any) {
           toast({ title: "Error", description: walletError.message, variant: "destructive" });
@@ -984,7 +1042,7 @@ const UserDashboard = () => {
             phone: buyPhone.trim(),
             network: buyPkg.network,
             package_id: buyPkg.id,
-            package_name: `${buyPkg.size_gb}GB`,
+            package_name: isSpecialNetwork(buyPkg.network) ? getPackageDisplayName(buyPkg) : `${buyPkg.size_gb}GB`,
             size_gb: buyPkg.size_gb,
   customer_id: effectiveUserId,
   user_id: user?.id || null,
@@ -1025,7 +1083,7 @@ const UserDashboard = () => {
     }
   };
 
-  if (authLoading || loading) {
+  if (authLoading || (loading && !hasLoadedOnce.current)) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -1073,14 +1131,16 @@ const UserDashboard = () => {
           })}
         </div>
         {activeMenu === "api-info" ? (
-          <Tabs defaultValue="api-key" className="w-full">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="api-key">API Key</TabsTrigger>
-                          <TabsTrigger value="api-docs">API Docs</TabsTrigger>
-            </TabsList>
-            <TabsContent value="api-key">{renderApiKey()}</TabsContent>
-                      <TabsContent value="api-docs">{renderApiDocs()}</TabsContent>
-          </Tabs>
+          <ApiKnowledgeGate confirmed={apiAccessConfirmed} onConfirm={() => setApiAccessConfirmed(true)} onBack={() => setActiveMenu("overview")}>
+            <Tabs defaultValue="api-key" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="api-key">API Key</TabsTrigger>
+                <TabsTrigger value="api-docs">API Docs</TabsTrigger>
+              </TabsList>
+              <TabsContent value="api-key">{renderApiKey()}</TabsContent>
+              <TabsContent value="api-docs">{renderApiDocs()}</TabsContent>
+            </Tabs>
+          </ApiKnowledgeGate>
         ) : (
           <>{(() => {
             switch (activeMenu) {
@@ -1107,11 +1167,11 @@ const UserDashboard = () => {
       case "rewards":
         return renderFlyerGenerator();
 case "api-key":
-  return renderApiKey();
+  return <ApiKnowledgeGate confirmed={apiAccessConfirmed} onConfirm={() => setApiAccessConfirmed(true)} onBack={() => setActiveMenu("overview")}>{renderApiKey()}</ApiKnowledgeGate>;
   case "promo-codes":
   return <PromoCodesPanel walletBalance={normalWallet} ownerType="agent" ownerId={effectiveUserId} />;
       case "api-docs":
-        return renderApiDocs();
+        return <ApiKnowledgeGate confirmed={apiAccessConfirmed} onConfirm={() => setApiAccessConfirmed(true)} onBack={() => setActiveMenu("overview")}>{renderApiDocs()}</ApiKnowledgeGate>;
 
       case "afa-registration":
         return renderAfaRegistration();
@@ -1153,21 +1213,14 @@ case "api-key":
     <div className="space-y-6">
             {/* Announcement Video — collapsible dropdown at very top */}
       {announcement && embedUrl && (
-        <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 overflow-hidden">
-          <button
+        <div className="space-y-2">
+          <AnnouncementTicker
+            message={announcement.title}
+            expanded={announcementOpen}
             onClick={() => setAnnouncementOpen(o => !o)}
-            className="w-full flex items-center justify-between px-4 py-3 hover:bg-cyan-500/10 transition-colors"
-          >
-            <div className="flex items-center gap-2">
-              <Video className="h-4 w-4 text-cyan-400 shrink-0" />
-              <span className="text-sm font-semibold text-foreground">{announcement.title}</span>
-            </div>
-            {announcementOpen
-              ? <ChevronUp className="h-4 w-4 text-muted-foreground" />
-              : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-          </button>
+          />
           {announcementOpen && (
-            <div className="px-4 pb-4">
+            <div className="rounded-lg border border-cyan-500/30 bg-cyan-500/5 p-3">
               <div className="relative w-full" style={{ paddingTop: '42%' }}>
                 <iframe
                   src={embedUrl}
@@ -1255,7 +1308,7 @@ case "api-key":
         {agentCtaOpen && (
           <button
             type="button"
-            onClick={() => setActiveMenu("become-agent")}
+            onClick={() => void handleUpgradeToAgent()}
             className="mt-4 w-full rounded-full bg-purple-600 px-6 py-4 text-lg font-semibold text-white transition-colors hover:bg-purple-500"
           >
             Become an Agent
@@ -1440,7 +1493,10 @@ case "api-key":
                 <div className="p-3 bg-primary/20 rounded-lg">
                   <p className="text-2xl font-bold font-mono text-primary">*365*778#</p>
                 </div>
-
+                <div className="text-left">
+                  <p className="text-xs text-muted-foreground">Access Code</p>
+                  <p className="text-3xl font-bold font-mono text-foreground">1</p>
+                </div>
               </div>
             </div>
             <Button 
@@ -1516,8 +1572,8 @@ case "api-key":
                     <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
                       <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
                       <TableCell className="text-sm font-mono">{order.customer_number}</TableCell>
-                      <TableCell className="text-sm uppercase font-semibold">{order.network}</TableCell>
-                      <TableCell className="text-sm font-display font-bold text-cyan-400">{order.size_gb || 0}GB</TableCell>
+                      <TableCell className={isSpecialNetwork(order.network) ? "text-sm font-semibold" : "text-sm uppercase font-semibold"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
+                      <TableCell className="text-sm font-display font-bold text-cyan-400">{isSpecialNetwork(order.network) ? getOrderPackageName(order, packagesById) : `${order.size_gb || 0}GB`}</TableCell>
                       <TableCell className="text-sm font-semibold">
                         {order.payment_method === "free_data_claim" ? (
                           <div className="space-y-0.5 text-xs font-normal whitespace-nowrap">
@@ -1580,22 +1636,18 @@ case "api-key":
         <CardContent className="space-y-4">
           <DeliveryProgressCard selectedNetwork={networkFilter} />
 
-          <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} />
+          <NetworkTabs value={networkFilter as any} onChange={setNetworkFilter} packages={packages} />
 
           <ScheduleDataPurchase ownerType="customer" ownerId={effectiveUserId} variant="bar" />
 
           {/* Packages Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-6">
             {packages
-              .filter(pkg => {
-                const packageNetwork = String(pkg.network || "").toLowerCase().replace(/[^a-z0-9]/g, "");
-                const selectedNetwork = networkFilter.replace(/[^a-z0-9]/g, "");
-                return packageNetwork === selectedNetwork;
-              })
+              .filter((pkg) => packageMatchesNetwork(pkg.network, networkFilter))
               .map(pkg => (
                 <Card key={pkg.id} className={`border-0 bg-[#2f176d] text-white shadow-none ${pkg.active ? "" : "opacity-50"}`}>
                   <CardContent className="flex flex-col items-center gap-2 px-4 py-5 text-center">
-                    {!pkg.active && <Badge variant="secondary">Offline</Badge>}
+                    {!pkg.active && <PackageStatusIndicator status="not_available" note={pkg.inactive_note} />}
                     <p className="font-display text-4xl font-extrabold leading-none">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
                     <p className="text-sm font-bold uppercase text-yellow-300">{pkg.network}</p>
   <div className="flex items-center justify-center text-sm font-semibold text-white/75">
@@ -1722,8 +1774,8 @@ case "api-key":
                       <TableRow key={order.id} className="hover:bg-muted/50 transition-colors">
                         <TableCell className="text-sm whitespace-nowrap">{new Date(order.created_at).toLocaleString()}</TableCell>
                         <TableCell className="text-sm font-mono">{order.customer_number}</TableCell>
-                        <TableCell className="text-sm uppercase font-semibold">{order.network}</TableCell>
-                        <TableCell className="text-sm font-display font-bold text-cyan-400">{order.size_gb || 0}GB</TableCell>
+                        <TableCell className={isSpecialNetwork(order.network) ? "text-sm font-semibold" : "text-sm uppercase font-semibold"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
+                        <TableCell className="text-sm font-display font-bold text-cyan-400">{isSpecialNetwork(order.network) ? getOrderPackageName(order, packagesById) : `${order.size_gb || 0}GB`}</TableCell>
                         <TableCell className="text-sm font-semibold">
                           {order.payment_method === "free_data_claim" ? (
                             <div className="space-y-0.5 text-xs font-normal whitespace-nowrap">
@@ -2267,12 +2319,7 @@ case "api-key":
                 </CardContent>
               </Card>
             ) : (
-              packages.filter(p => {
-                if (networkFilter === "airteltigo") {
-                  return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
-                }
-                return p.network === networkFilter;
-              }).map((pkg) => {
+              packages.filter((pkg) => packageMatchesNetwork(pkg.network, networkFilter)).map((pkg) => {
                 const apiPrice = Number(pkg.api_price || pkg.agent_price || pkg.price);
                 return (
                   <Card key={pkg.id} className="border-slate-700/50 bg-slate-900/5 hover:border-slate-600/50 transition-all">
@@ -2285,12 +2332,7 @@ case "api-key":
                 );
               })
             )}
-            {networkFilter !== "afa" && packages.filter(p => {
-              if (networkFilter === "airteltigo") {
-                return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
-              }
-              return p.network === networkFilter;
-            }).length === 0 && (
+            {networkFilter !== "afa" && packages.filter((pkg) => packageMatchesNetwork(pkg.network, networkFilter)).length === 0 && (
               <div className="col-span-full text-center py-8 text-muted-foreground">
                 No packages available for {networkFilter === "airteltigo" ? "AirtelTigo" : networkFilter === "mtn" ? "MTN" : "Telecel"}.
               </div>
@@ -2371,69 +2413,11 @@ const renderApiDocs = () => (
   {/* Delivery Progress API */}
   <DeliveryProgressApiDocs />
 
-  {/* Supported Networks */}
-  <Card id="cd-networks" className="scroll-mt-32">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Globe className="h-5 w-5 text-green-400" />
-            Supported Networks
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {[
-              { code: "mtn", name: "MTN Ghana" },
-              { code: "mtn_express", name: "MTN Ghana" },
-              { code: "telecel", name: "Telecel Ghana" },
-              { code: "airteltigo", name: "AirtelTigo Ghana" },
-            ].map(network => (
-              <div key={network.code} className="p-3 bg-muted rounded-lg border border-border">
-                <p className="font-mono text-sm font-semibold text-cyan-400">{network.code}</p>
-                <p className="text-sm text-muted-foreground">{network.name}</p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+  <SupportedNetworksDocs />
 
       {/* Main Endpoints */}
       <div className="space-y-4">
-        {/* GET /get-packages */}
-        <Card id="cd-get-packages" className="scroll-mt-32">
-          <CardHeader>
-            <CardTitle className="text-lg flex items-center gap-2">
-              <span className="px-2 py-1 bg-green-500/20 text-green-400 rounded text-xs font-mono">GET</span>
-              <span>/get-packages</span>
-            </CardTitle>
-            <p className="text-sm text-muted-foreground mt-2">Retrieve all available data packages with pricing.</p>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div>
-              <p className="text-sm font-semibold mb-2">Query Parameters (Optional):</p>
-              <ul className="text-sm text-muted-foreground space-y-1 ml-4">
-                <li>• <span className="font-mono">network</span> - Filter by single network</li>
-                <li>• <span className="font-mono">networks[]</span> - Filter by multiple networks</li>
-              </ul>
-            </div>
-            <div className="bg-muted p-3 rounded-lg border border-border">
-              <p className="text-xs text-muted-foreground mb-2">Example:</p>
-              <p className="font-mono text-xs">GET https://api.dataplug.store/functions/v1/get-packages?network=mtn</p>
-            </div>
-            <div className="bg-muted p-3 rounded-lg border border-border">
-              <p className="text-xs text-muted-foreground mb-2">Successful JSON response (200):</p>
-              <pre className="font-mono text-xs overflow-x-auto whitespace-pre-wrap">{`{
-  "success": true,
-  "count": 14,
-  "data": [
-    { "network": "mtn", "size_gb": 1, "price": 3.9 },
-    { "network": "mtn", "size_gb": 2, "price": 7.8 },
-    { "network": "mtn", "size_gb": 3, "price": 11.75 }
-  ]
-}`}</pre>
-              <p className="mt-2 text-xs text-muted-foreground">Sample shortened to 3 of 14 packages. Each package has only network, size_gb (GB) and price (GHS, your API price). The response does not include validity or availability fields; only active packages are listed. Omit the network parameter to get every network. Prices are live and may change, and use size_gb exactly as returned when calling /purchase.</p>
-            </div>
-          </CardContent>
-        </Card>
+        <GetPackagesDocs />
 
         <CheapDataOrderApiDocs />
 
@@ -2562,10 +2546,10 @@ const renderApiDocs = () => (
                             </td>
                             <td className="px-3 py-2 text-xs font-mono">{order.customer_number}</td>
                             <td className="px-3 py-2 text-xs">
-                              <span className="px-2 py-0.5 rounded bg-muted text-foreground">{order.network?.toUpperCase()}</span>
+                              <span className="px-2 py-0.5 rounded bg-muted text-foreground">{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network?.toUpperCase()}</span>
                             </td>
                             <td className="px-3 py-2 text-xs font-semibold text-cyan-400">
-                              {order.size_gb_text || `${order.size_gb}GB`}
+                              {isSpecialNetwork(order.network) ? getOrderPackageName(order, packagesById) : (order.size_gb_text || `${order.size_gb}GB`)}
                             </td>
                             <td className="px-3 py-2 text-xs text-muted-foreground">
                               {order.payment_method === "api_wallet" || order.payment_method === "wallet" ? "API Wallet" : (order.payment_method || "API Wallet")}
@@ -2577,7 +2561,7 @@ const renderApiDocs = () => (
                               )}
                             </td>
 <td className="px-3 py-2 text-xs">
-  <OrderStatusBadge status={fs} />
+  <OrderStatusBadge status={fs} network={order.network} />
   </td>
   <td className="px-3 py-2 text-xs">
   {fs === "delivered" ? (isReported(order.id) ? <AlreadyReportedButton /> : <Button size="sm" variant="outline" onClick={() => setApiReportOrder(order)}>Report not received</Button>) : <span className="text-muted-foreground">—</span>}
@@ -2597,19 +2581,27 @@ const renderApiDocs = () => (
   );
 
   const renderAfaRegistration = () => (
-    <div className="space-y-6">
-      <AFARegistrationTracker />
-      <AFAPackagesDisplay
-        onRegisterClick={(packageId, packageName, price) => {
-          toast({ 
-            title: "Ready to register", 
-            description: `Selected: ${packageName} - GHC ${price.toFixed(2)}` 
-          });
-          setActiveMenu("buy-data");
-        }}
-      />
-      <AFAHistory title="AFA History" />
-    </div>
+    <Tabs defaultValue="register" className="space-y-6">
+      <TabsList className="grid w-full max-w-md grid-cols-2">
+        <TabsTrigger value="register">Registration</TabsTrigger>
+        <TabsTrigger value="history">AFA History</TabsTrigger>
+      </TabsList>
+      <TabsContent value="register" className="mt-0 space-y-6">
+        <AFARegistrationTracker />
+        <AFAPackagesDisplay
+          onRegisterClick={(packageId, packageName, price) => {
+            toast({ 
+              title: "Ready to register", 
+              description: `Selected: ${packageName} - GHC ${price.toFixed(2)}` 
+            });
+            setActiveMenu("buy-data");
+          }}
+        />
+      </TabsContent>
+      <TabsContent value="history" className="mt-0">
+        <AFAHistory title="AFA History" />
+      </TabsContent>
+    </Tabs>
   );
 
   const renderRefunds = () => {
@@ -2697,7 +2689,7 @@ const renderApiDocs = () => (
                   <TableRow key={order.id}>
                     <TableCell className="text-sm text-muted-foreground">{order.created_at ? new Date(order.created_at).toLocaleDateString() : "—"}</TableCell>
                     <TableCell className="font-medium">{order.customer_number}</TableCell>
-                    <TableCell className="uppercase text-sm">{order.network}</TableCell>
+                    <TableCell className={isSpecialNetwork(order.network) ? "text-sm" : "uppercase text-sm"}>{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</TableCell>
                     <TableCell>GHC {Number(order.amount || 0).toFixed(2)}</TableCell>
                     <TableCell>
                       <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30">
@@ -3154,7 +3146,7 @@ return (
       <Dialog open={buyDialogOpen} onOpenChange={setBuyDialogOpen}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Buy {buyPkg?.size_gb}GB Package</DialogTitle>
+            <DialogTitle>{isSpecialNetwork(buyPkg?.network) ? `Buy ${getPackageDisplayName(buyPkg)} ${getNetworkLabel(buyPkg?.network)}` : `Buy ${buyPkg?.size_gb}GB Package`}</DialogTitle>
           </DialogHeader>
 
           {buyStep === "phone" ? (
@@ -3257,8 +3249,8 @@ return (
             <div className="space-y-4">
               <div className="bg-muted p-4 rounded-lg space-y-2">
                 <p className="text-sm"><span className="text-muted-foreground">Phone:</span> {buyPhone}</p>
-                <p className="text-sm"><span className="text-muted-foreground">Network:</span> {buyPkg?.network.toUpperCase()}</p>
-                <p className="text-sm"><span className="text-muted-foreground">Package:</span> {buyPkg?.size_gb}GB</p>
+                <p className="text-sm"><span className="text-muted-foreground">Network:</span> {isSpecialNetwork(buyPkg?.network) ? getNetworkLabel(buyPkg?.network) : buyPkg?.network.toUpperCase()}</p>
+                <p className="text-sm"><span className="text-muted-foreground">Package:</span> {isSpecialNetwork(buyPkg?.network) ? getPackageDisplayName(buyPkg) : `${buyPkg?.size_gb}GB`}</p>
                 <p className="text-sm"><span className="text-muted-foreground">Amount:</span> GHC {Number(buyPkg?.price || 0).toFixed(2)}</p>
                 {buyPaymentMethod === "paystack" && (
                   <>
@@ -3348,6 +3340,15 @@ return (
 
       <WhatsAppFloatingButton />
       <WhatsAppChannelPopup />
+      <SenderIdApprovedPopup disabled={isImpersonating} />
+      <BecomeAgentLoginPopup
+        open={showAgentLoginPopup}
+        onClose={() => setShowAgentLoginPopup(false)}
+        onBecomeAgent={() => {
+          setShowAgentLoginPopup(false);
+          void handleUpgradeToAgent();
+        }}
+      />
 
       <Footer />
       {/* Agent Upgrade Confirmation Modal */}

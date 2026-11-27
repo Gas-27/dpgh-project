@@ -161,7 +161,12 @@ function hubTick(now){
  if(state!=='play'||now<startAt||hub.idle)return;
  if(!hub.running){hub.running=true;hub.baseAt=now;hub.lastAct=Math.max(hub.lastAct,startAt);hubSend({type:'gh-timed-start'})}
  else if(now-hub.lastAct>IDLE_MS&&!flying.length){hubFreeze(now);hub.idle=true;drag=null;hubSend({type:'gh-timed-pause'});return}
- if(hubLeft(now)<=0)hubFinish()}
+ if(hubLeft(now)<=0){if(hubShots<1){hubFreeze(now);hub.idle=false;showExhaustedCard()}else hubFinish()}}
+function showExhaustedCard(){
+ state='lost';drag=null;hub.running=false;show('turbo',0);
+ hubPanel('<h1>Time <span>used up</span></h1><p>Your 5 minutes for this chance are finished. Buy an extra chance to try again for 300 points.</p><button id="hubBuy">Buy extra chance</button>');
+ $('hubBuy').onclick=()=>hubSend({type:'gh-open-buy'});
+ hubSend({type:'gh-open-buy'})}
 function hubThrow(){
  if(!hub.mode)return;
  const now=performance.now();hub.lastAct=now;
@@ -260,6 +265,7 @@ $('reward').onclick=()=>{
  if(!hub.ready)return;
  if(hub.status==='cleared'){showWin();return}
  if(hub.lives<=0){showLostCard(false);return}
+ if(hub.status==='active'&&hub.play>=hub.req){showExhaustedCard();return}
  myName=esc($('name').value);online=false;hasOpp=false;hub.mode=true;hubTries=0;startGame()};
 $('leave1').onclick=leave;$('menuBtn').onclick=leave;
 $('again').onclick=()=>{if(online){state='lobby';show('over',0);show('lobby',1);peersChanged()}else startGame()};

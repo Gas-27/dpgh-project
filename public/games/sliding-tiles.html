@@ -1726,6 +1726,30 @@
         }
 
         // Handle tile click
+        let moveAudioCtx = null;
+        function playMoveSound(solved) {
+          try {
+            if (!moveAudioCtx) moveAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (moveAudioCtx.state === "suspended") moveAudioCtx.resume();
+            const notes = solved ? [523, 659, 784, 1047] : [420 + Math.random() * 60];
+            notes.forEach((freq, i) => {
+              const osc = moveAudioCtx.createOscillator();
+              const gain = moveAudioCtx.createGain();
+              const start = moveAudioCtx.currentTime + i * 0.12;
+              osc.type = solved ? "triangle" : "square";
+              osc.frequency.setValueAtTime(freq, start);
+              gain.gain.setValueAtTime(solved ? 0.18 : 0.1, start);
+              gain.gain.exponentialRampToValueAtTime(0.001, start + (solved ? 0.2 : 0.09));
+              osc.connect(gain);
+              gain.connect(moveAudioCtx.destination);
+              osc.start(start);
+              osc.stop(start + (solved ? 0.22 : 0.1));
+            });
+          } catch (err) {
+            // audio is optional
+          }
+        }
+
         function handleTileClick(e) {
           if (gameSolved) return;
 
@@ -1733,6 +1757,7 @@
           const emptyIndex = puzzleState.indexOf(0);
 
           if (isValidMove(clickedIndex, emptyIndex)) {
+            playMoveSound(false);
             [puzzleState[clickedIndex], puzzleState[emptyIndex]] = [
               puzzleState[emptyIndex],
               puzzleState[clickedIndex],

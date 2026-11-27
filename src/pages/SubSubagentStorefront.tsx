@@ -30,7 +30,10 @@ import DraggableFAB from "@/components/DraggableFAB";
 import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
   import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import NetworkSubTabs from "@/components/NetworkSubTabs";
+import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, packageMatchesNetwork, MASHUP_MTN_ONLY_MESSAGE, getMashupDefaultStorePrice, getMashupMaxStorePrice } from "@/lib/networkConfig";
   import NotificationPopup from "@/components/NotificationPopup";
+import AnnouncementTicker from "@/components/AnnouncementTicker";
 import SmsComposer from "@/components/SmsComposer";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
@@ -121,6 +124,7 @@ interface DataPackage {
   size_gb_text?: string;
   active?: boolean;
   is_online?: boolean;
+  inactive_note?: string | null;
 }
 
 interface Order {
@@ -147,13 +151,14 @@ const formatNetworkName = (network: string) => {
   if (network === "mtn_express") return "MTN Express";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
+  if (isSpecialNetwork(network)) return getNetworkLabel(network);
   return network;
 };
 
 // Note: slugify is now imported from @/utils/storeUtils
 
 const getNetworkColor = (network: string) => {
-  const colors: Record<string, string> = { mtn: "#fbbf24", mtn_express: "#f59e0b", airteltigo: "#3b82f6", telecel: "#ef4444" };
+  const colors: Record<string, string> = { mtn: "#fbbf24", mtn_express: "#f59e0b", airteltigo: "#3b82f6", telecel: "#ef4444", mtn_special: "#fbbf24", telecel_special: "#ef4444", mashup: "#f97316" };
   return colors[network] || "#22c55e";
 };
 
@@ -293,7 +298,7 @@ statusMessage = "Your number is new on our portal.";
 
   const whatsappNumberDigits = getInternationalDigits(store.whatsapp_number);
   const whatsappMessage = encodeURIComponent(
-    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${order.network?.toUpperCase()}\n- Data: ${(order as any).size_gb_text || order.size_gb + "GB"}\n- Amount: GHC ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
+    `Hello, I am reporting that my order shows as "Delivered" but I have not received the data.\n\nOrder Details:\n- Order Date: ${orderDate}\n- Network: ${isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network?.toUpperCase()}\n- Data: ${(order as any).size_gb_text || (isSpecialNetwork(order.network) ? "" : order.size_gb + "GB")}\n- Amount: GHC ${Number(order.amount).toFixed(2)}\n- Customer Number: ${order.customer_number}\n- Order Status: ${order.status} / ${order.fulfillment_status}\n- Order ID: ${order.id}\n\nPlease investigate and assist. Thank you.`
   );
   const whatsappLink = `https://wa.me/${whatsappNumberDigits}?text=${whatsappMessage}`;
 
@@ -541,7 +546,7 @@ export function SubSubagentStorefront() {
   const primaryForeground = theme.primary_foreground || defaultTheme.primary_foreground;
   useProvideGameHubStore(
     store?.subagent_store_id
-      ? { kind: "subsubagent", storeId: store.subagent_store_id, ownStoreId: store.id, storeName: store.store_name, primaryColor, primaryForeground }
+      ? { kind: "subsubagent", storeId: store.subagent_store_id, ownStoreId: store.id, storeName: store.store_name, parentStoreName: subagentStoreName, primaryColor, primaryForeground }
       : null,
   );
   const bgColor = theme.background || defaultTheme.background;
@@ -610,7 +615,7 @@ export function SubSubagentStorefront() {
         supabase.from("subagent_stores").select("whatsapp_number, support_number").eq("id", matched.subagent_store_id).single(),
       ]);
 
-      setPackages(pkgRes.data || []);
+      setPackages(filterVisiblePackages(pkgRes.data || []));
       if (parentSubagentInfoRes.data) setAgentInfo(parentSubagentInfoRes.data);
 
       // Build "Cost from Agent" map (levels 1-3)
@@ -644,6 +649,13 @@ export function SubSubagentStorefront() {
           priceMap[p.package_id] = Number(p.customer_sell_price);
           seenOwnSell.add(p.package_id);
         }
+      });
+      (pkgRes.data || []).forEach((p: any) => {
+        if (!isMashupNetwork(p.network)) return;
+        const cost = baseCostMap[p.id];
+        priceMap[p.id] = seenOwnSell.has(p.id)
+          ? Math.min(priceMap[p.id], getMashupMaxStorePrice(cost))
+          : getMashupDefaultStorePrice(cost);
       });
       
   setSubagentPrices(priceMap);
@@ -699,6 +711,13 @@ export function SubSubagentStorefront() {
           priceMap[p.package_id] = Number(p.customer_sell_price);
           seenOwnSell.add(p.package_id);
         }
+      });
+      (pkgs.data || []).forEach((p: any) => {
+        if (!isMashupNetwork(p.network)) return;
+        const cost = baseCostMap[p.id];
+        priceMap[p.id] = seenOwnSell.has(p.id)
+          ? Math.min(priceMap[p.id], getMashupMaxStorePrice(cost))
+          : getMashupDefaultStorePrice(cost);
       });
       
       setSubagentPrices(priceMap);
@@ -771,8 +790,6 @@ export function SubSubagentStorefront() {
 
   // Notifications
   const fetchNotifications = useCallback(async () => {
-    // Legacy store-specific announcements are replaced by NotificationPopup.
-    return;
     if (!store?.id) return;
     const now = new Date().toISOString();
     const { data } = await supabase
@@ -784,18 +801,20 @@ export function SubSubagentStorefront() {
       .order("created_at", { ascending: false }) as any;
     
     if (data) {
+      let saved: string[] = [];
+      try {
+        saved = JSON.parse(localStorage.getItem(`dismissed_subagent_notifications_${store.id}`) || "[]");
+      } catch {
+        saved = [];
+      }
       setNotifications(data);
-      const undismissed = data.filter((n: any) => !dismissedIds.includes(n.id));
-      if (undismissed.length > 0 && !modalOpen) setModalOpen(true);
+      setDismissedIds(saved);
+      if (data.some((n: any) => !saved.includes(n.id))) setModalOpen(true);
     }
-  }, [store?.id, dismissedIds, modalOpen]);
+  }, [store?.id]);
 
   useEffect(() => {
-    if (store?.id) {
-      fetchNotifications();
-      const saved = localStorage.getItem(`dismissed_subagent_notifications_${store.id}`);
-      if (saved) setDismissedIds(JSON.parse(saved));
-    }
+    if (store?.id) fetchNotifications();
   }, [store?.id, fetchNotifications]);
 
   const dismissNotification = (id: string) => {
@@ -865,7 +884,7 @@ const searchOrders = useCallback(async (input?: string) => {
     if (checkError) console.error("[v0] Order status check failed:", checkError);
     return checked?.order_status ? { ...order, order_status: checked.order_status, fulfillment_status: checked.order_status, status: checked.order_status } : order;
   }));
-  const enrichedOrders = refreshedOrders.map((order) => {
+  const enrichedOrders = await Promise.all(refreshedOrders.map(async (order) => {
       // COMMENTED OUT: mashup packages deactivated
       // For mtn_mashup and mashup orders, fetch size_gb_text and data_package_id from data_packages
       // This enriches the order with package details
@@ -873,8 +892,12 @@ const searchOrders = useCallback(async (input?: string) => {
         const { data: pkg } = supabase.from("data_packages").select("size_gb_text, bundle_id").eq("id", order.package_id).maybeSingle();
         return { ...order, size_gb_text: pkg?.size_gb_text, bundle_id: pkg?.bundle_id };
       }
+      if (isSpecialNetwork(order.network) && order.package_id && !order.size_gb_text) {
+        const { data: pkg } = await supabase.from("data_packages").select("size_gb_text").eq("id", order.package_id).maybeSingle();
+        return { ...order, size_gb_text: pkg?.size_gb_text };
+      }
       return order;
-    });
+    }));
     
     setOrders(enrichedOrders);
     setSearching(false);
@@ -887,17 +910,7 @@ const searchOrders = useCallback(async (input?: string) => {
   };
 
   // Helpers
-  const filteredPackages = packages.filter((p) => {
-      // COMMENTED OUT: mashup packages deactivated
-    if (networkFilter === "airteltigo") {
-      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
-    }
-    if (networkFilter === "telecel") {
-      const packageNetwork = String(p.network || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-      return packageNetwork === "telecel";
-    }
-    return p.network === networkFilter;
-  });
+  const filteredPackages = packages.filter((p) => packageMatchesNetwork(p.network, networkFilter));
   const getPrice = (pkg: DataPackage) => subagentPrices[pkg.id] ?? pkg.price;
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
@@ -947,9 +960,14 @@ const searchOrders = useCallback(async (input?: string) => {
   return (
   <div className="storefront-readable min-h-screen font-sans" style={{ background: bgColor, color: "#fff" }}>
   <NotificationPopup surface="subsubagent-storefront" />
+  {notifications.length > 0 && (
+    <div className="px-3 pt-3">
+      <AnnouncementTicker message={notifications.map((n) => n.message).join("  •  ")} />
+    </div>
+  )}
   {/* Notification Modal */}
       {modalOpen && undismissedNotifications.length > 0 && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+        <div className="fixed inset-0 z-[100] pointer-events-auto flex items-center justify-center bg-black/70 p-4">
           <div className="relative w-full max-w-md rounded-xl border border-border p-6 space-y-4" style={{ background: cardBg }}>
             <button onClick={closeAllNotifications} className="absolute top-3 right-3 text-muted-foreground hover:text-white"><X className="h-5 w-5" /></button>
             <div className="flex items-center gap-2 text-lg font-bold" style={{ color: primaryColor }}>
@@ -1103,29 +1121,33 @@ const searchOrders = useCallback(async (input?: string) => {
   <TrackOrderDropdown source="subsubagent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} />
   <SpinToWinCard target="subsubagent" />
   {(searching || searchPerformed) && <div className="mt-6 space-y-4">
-    {searching ? <div className="py-8 text-center"><div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /><p className="text-muted-foreground">Searching for your order…</p></div> : orders.length > 0 ? <div><p className="mb-3 text-sm font-medium text-foreground">Found {orders.length} order(s):</p><div className="max-h-[500px] space-y-4 overflow-y-auto pr-2">{orders.map((order) => { const displayStatus = normalizeOrderStatus(order); return <div key={order.id} className="flex flex-col rounded-lg border border-border bg-background/50 p-4 transition-colors hover:bg-background"><div className="flex flex-col justify-between gap-2 border-b border-border/50 pb-3 sm:flex-row sm:items-center"><div className="space-y-1"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="font-mono text-xs">{order.id.slice(0, 8)}…</Badge><span className="text-sm font-medium text-foreground">{order.customer_number}</span></div><div className="flex items-center gap-3 text-sm"><span className="uppercase text-muted-foreground">{order.network}</span><span className="font-bold">{(order as any).size_gb_text || `${order.size_gb}GB`}</span><span className="text-primary">GHC {Number(order.amount).toFixed(2)}</span></div><p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p></div><div className="flex items-center gap-2">{getStatusIcon(displayStatus)}<Badge className={displayStatus === "refunded" ? "border-amber-500/30 bg-amber-500/20 text-amber-400" : displayStatus === "delivered" ? "border-green-600/30 bg-green-600/20 text-green-400" : displayStatus === "pending" || displayStatus === "in-queue" || displayStatus === "waiting" ? "border-yellow-600/30 bg-yellow-600/20 text-yellow-400" : "border-blue-600/30 bg-blue-600/20 text-blue-400"}>{displayStatus === "delivered" ? "Delivered" : orderStatusLabel(order)}</Badge>{checkingOrderIds.has(order.id) && <span className="whitespace-nowrap text-[11px] text-muted-foreground">checking latest status…</span>}</div></div><div className="pt-3"><SubSubagentOrderTrackingCard order={order} store={store} toast={toast} onReportClick={(o) => { setReportOrder(o); setReportDialogOpen(true); }} /></div></div>; })}</div></div> : <div className="rounded-lg border border-border bg-background/50 py-8 text-center"><Package className="mx-auto mb-2 h-10 w-10 text-muted-foreground" /><p className="text-muted-foreground">No orders found for &quot;{searchQuery}&quot;.</p><p className="mt-1 text-xs text-muted-foreground">Check the contact number, or check your order ID.</p></div>}
+    {searching ? <div className="py-8 text-center"><div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /><p className="text-muted-foreground">Searching for your order…</p></div> : orders.length > 0 ? <div><p className="mb-3 text-sm font-medium text-foreground">Found {orders.length} order(s):</p><div className="max-h-[500px] space-y-4 overflow-y-auto pr-2">{orders.map((order) => { const displayStatus = normalizeOrderStatus(order); return <div key={order.id} className="flex flex-col rounded-lg border border-border bg-background/50 p-4 transition-colors hover:bg-background"><div className="flex flex-col justify-between gap-2 border-b border-border/50 pb-3 sm:flex-row sm:items-center"><div className="space-y-1"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="font-mono text-xs">{order.id.slice(0, 8)}…</Badge><span className="text-sm font-medium text-foreground">{order.customer_number}</span></div><div className="flex items-center gap-3 text-sm"><span className="uppercase text-muted-foreground">{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</span><span className="font-bold">{(order as any).size_gb_text || (isSpecialNetwork(order.network) ? "" : `${order.size_gb}GB`)}</span><span className="text-primary">GHC {Number(order.amount).toFixed(2)}</span></div><p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p></div><div className="flex items-center gap-2">{getStatusIcon(displayStatus)}<Badge className={displayStatus === "refunded" ? "border-amber-500/30 bg-amber-500/20 text-amber-400" : displayStatus === "delivered" ? "border-green-600/30 bg-green-600/20 text-green-400" : displayStatus === "pending" || displayStatus === "in-queue" || displayStatus === "waiting" ? "border-yellow-600/30 bg-yellow-600/20 text-yellow-400" : "border-blue-600/30 bg-blue-600/20 text-blue-400"}>{displayStatus === "delivered" ? "Delivered" : orderStatusLabel(order)}</Badge>{checkingOrderIds.has(order.id) && <span className="whitespace-nowrap text-[11px] text-muted-foreground">checking latest status…</span>}</div></div><div className="pt-3"><SubSubagentOrderTrackingCard order={order} store={store} toast={toast} onReportClick={(o) => { setReportOrder(o); setReportDialogOpen(true); }} /></div></div>; })}</div></div> : <div className="rounded-lg border border-border bg-background/50 py-8 text-center"><Package className="mx-auto mb-2 h-10 w-10 text-muted-foreground" /><p className="text-muted-foreground">No orders found for &quot;{searchQuery}&quot;.</p><p className="mt-1 text-xs text-muted-foreground">Check the contact number, or check your order ID.</p></div>}
   </div>}
-  <DeliveryProgressCard selectedNetwork={networkFilter} />
+  <DeliveryProgressCard selectedNetwork={getNetworkFamily(networkFilter)} />
   </>}
 
         {activeSection === "data" && <>
         {/* Network Tabs */}
-<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-4">
-  {["mtn", "mtn_express", "telecel", "airteltigo"].map((net) => (
+<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-3 lg:grid-cols-5">
+  {["mtn", "mtn_express", "mashup", "telecel", "airteltigo"].map((net) => {
+    const isSelected = activeSection === "data" && getNetworkFamily(networkFilter) === net;
+    return (
             <Button
               key={net}
-              variant={activeSection === "data" && networkFilter === net ? "default" : "outline"}
+              variant={isSelected ? "default" : "outline"}
               size="sm"
               onClick={() => { setNetworkFilter(net); selectSection("data"); }}
-              style={activeSection === "data" && networkFilter === net ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
+              style={isSelected ? { background: getNetworkColor(net), color: net === "mtn" || net === "mtn_express" ? "#000" : "#fff" } : {}}
               className="whitespace-nowrap flex-shrink-0 border-foreground/40 bg-background text-foreground hover:bg-muted hover:text-foreground text-xs sm:text-sm"
             >
               <Wifi className="h-4 w-4 mr-1" />
               {formatNetworkName(net)}
             </Button>
-          ))}
+    );
+  })}
 
   </div>
+  <NetworkSubTabs value={networkFilter} onChange={setNetworkFilter} packages={packages} className="pb-2" />
 
   </>}
   
@@ -1192,7 +1214,7 @@ const searchOrders = useCallback(async (input?: string) => {
                   >
                     <CardContent className="p-6 text-center space-y-4">
                       {(isInactive || isOffline) && (
-                        <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />
+                        <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} note={pkg.inactive_note} />
                       )}
                       {isMTNMashup ? (
                         <>
@@ -1210,7 +1232,7 @@ const searchOrders = useCallback(async (input?: string) => {
                         </>
                       ) : (
                         <>
-                          <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
+                          <p className="font-display text-4xl font-extrabold leading-none text-white">{getPackageDisplayName(pkg)}</p>
                           <p className="text-sm font-bold uppercase" style={{ color: getNetworkColor(pkg.network) }}>{formatNetworkName(pkg.network)}</p>
                           <div className="leading-tight"><p className="text-sm font-semibold text-white/75">Your price:</p><p className="text-2xl font-extrabold text-white">GHC {Number(price).toFixed(2)}</p></div>
                           <Button size="lg" disabled={isInactive} className="mt-1 h-9 w-full rounded-full border border-white/30 bg-white/10 font-bold text-white hover:bg-white/20" onClick={(event) => { event.stopPropagation(); if (!isInactive) { setPaymentPkg(pkg); setPaymentOpen(true); } }}>{isInactive ? "Not Available" : "Buy Now"}</Button>

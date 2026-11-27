@@ -9,9 +9,9 @@ type MarketplaceViewProduct = {
 
 type ViewRange = readonly [min: number, max: number];
 
-const NORMAL_RANGE: ViewRange = [32, 89];
-const BOOSTED_RANGE: ViewRange = [110, 140];
-const GOLDEN_RANGE: ViewRange = [150, 210];
+const NORMAL_RANGE: ViewRange = [32, 69];
+const BOOSTED_RANGE: ViewRange = [60, 89];
+const GOLDEN_RANGE: ViewRange = [89, 125];
 const STARTING_RANGE: ViewRange = [9, 31];
 
 // Beyond this many real views, the remainder is added at the range average to keep rendering cheap.

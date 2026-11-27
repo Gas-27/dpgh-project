@@ -16,10 +16,13 @@ import { PWAInstallPrompt } from "@/components/PWAInstallPrompt";
 import NotificationPrompt from "@/components/NotificationPrompt";
 import ChatBot from "@/components/ChatBot";
 import RouteSeoGuard from "@/components/RouteSeoGuard";
+import SeoPageContent from "@/components/seo/SeoPageContent";
+import SeoFooter from "@/components/seo/SeoFooter";
 import RouteErrorBoundary from "@/components/RouteErrorBoundary";
 import { ThemeProvider, ThemeToggle } from "@/components/ThemeProvider";
 import SocialBoost from "./pages/SocialBoost";
 import PaymentVerifier from "@/components/PaymentVerifier";
+import ImpersonationBanner from "@/components/ImpersonationBanner";
 import { isChunkLoadError, recoverFromStaleBundle } from "@/lib/chunkRecovery";
 import {
   readCustomDomainSlug,
@@ -67,6 +70,7 @@ const AgentRegistrationCallback = lazyWithReload(() => import("./pages/AgentRegi
 const SubagentDashboard = lazyWithReload(() => import("./pages/SubagentDashboard"));
 const SubagentLogin = lazyWithReload(() => import("./pages/SubagentLogin"));
 const SubSubagentLogin = lazyWithReload(() => import("./pages/SubSubagentLogin"));
+const Impersonate = lazyWithReload(() => import("./pages/Impersonate"));
 const SubagentStorefront = lazyWithReload(() => import("./pages/SubagentStorefront"));
 const SubSubagentStorefront = lazyWithReload(() => import("./pages/SubSubagentStorefront"));
 const SubagentRegistration = lazyWithReload(() => import("./pages/SubagentRegistration"));
@@ -94,6 +98,8 @@ const DataAgentBusiness = lazyWithReload(() => import("./pages/seo/DataAgentBusi
 const UssdDataServices = lazyWithReload(() => import("./pages/seo/UssdDataServices"));
 const BeceResultsChecker = lazyWithReload(() => import("./pages/seo/BeceResultsChecker"));
 const WassceResultsChecker = lazyWithReload(() => import("./pages/seo/WassceResultsChecker"));
+const Guides = lazyWithReload(() => import("./pages/Guides"));
+const GuidePage = lazyWithReload(() => import("./pages/GuidePage"));
 const Blog = lazyWithReload(() => import("./pages/Blog"));
 const BlogCheapestData2026 = lazyWithReload(() => import("./pages/blog/CheapestDataBundlesGhana2026"));
 const BlogHowToBuyCheapData = lazyWithReload(() => import("./pages/blog/HowToBuyCheapDataBundlesGhana"));
@@ -304,6 +310,7 @@ return (
           <PaymentVerifier />
           <AuthProvider>
             <PasswordRecoveryRedirect />
+            <ImpersonationBanner />
             <RouteErrorBoundary>
             <Suspense fallback={<RouteLoader />}>
               {isCustomDomain ? (
@@ -355,6 +362,7 @@ return (
                   <Route path="/subagent-payment-complete" element={<SubagentPaymentComplete />} />
                   <Route path="/reset-password" element={<ResetPassword />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/impersonate" element={<Impersonate />} />
                   <Route
                     path="/dashboard"
                     element={
@@ -532,6 +540,8 @@ return (
                   <Route path="/bece-results-checker" element={<BeceResultsChecker />} />
                   <Route path="/wassce-results-checker" element={<WassceResultsChecker />} />
                   {/* Blog */}
+                  <Route path="/guides" element={<Guides />} />
+                  <Route path="/guides/:slug" element={<GuidePage />} />
                   <Route path="/blog" element={<Blog />} />
                   <Route path="/blog/cheapest-data-bundles-ghana-2026" element={<BlogCheapestData2026 />} />
                   <Route path="/blog/how-to-buy-cheap-data-bundles-ghana" element={<BlogHowToBuyCheapData />} />
@@ -557,6 +567,12 @@ return (
                 </Routes>
               )}
             </Suspense>
+            {!isCustomDomain && (
+              <Suspense fallback={null}>
+                <SeoPageContent />
+                <SeoFooter />
+              </Suspense>
+            )}
             </RouteErrorBoundary>
           </AuthProvider>
         </BrowserRouter>

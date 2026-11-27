@@ -8,6 +8,7 @@ import { startVisiblePolling } from "@/lib/visiblePolling";
 import { assertNumbersNotBlocked } from "@/lib/assertNumbersNotBlocked";
 import { DOMAINS } from "@/config/domains";
 import { getStoreNameFromSubdomain, findStoreByName, fetchAllStores } from "@/utils/storeUtils";
+import { SUBAGENT_STOREFRONT_COLUMNS } from "@/lib/storePrivateDetails";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -42,9 +43,12 @@ import DraggableFAB from "@/components/DraggableFAB";
 import PromoCodeFreeDataIcon from "@/components/PromoCodeFreeDataIcon";
 import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatusIndicator";
 import DeliveryProgressCard from "@/components/DeliveryProgressCard";
+import NetworkSubTabs from "@/components/NetworkSubTabs";
+import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, packageMatchesNetwork, MASHUP_MTN_ONLY_MESSAGE, getMashupDefaultStorePrice, getMashupMaxStorePrice } from "@/lib/networkConfig";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import NotificationPopup from "@/components/NotificationPopup";
+import AnnouncementTicker from "@/components/AnnouncementTicker";
 import SmsComposer from "@/components/SmsComposer";
 import ChatBot from "@/components/ChatBot";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
@@ -157,6 +161,7 @@ interface DataPackage {
   details?: string | null;
   active?: boolean;
   is_online?: boolean;
+  inactive_note?: string | null;
 }
 
 interface Order {
@@ -186,6 +191,7 @@ const formatNetworkName = (network: string) => {
   if (network === "mtn_express") return "MTN Express";
   if (network === "airteltigo") return "AirtelTigo";
   if (network === "telecel") return "Telecel";
+  if (isSpecialNetwork(network)) return getNetworkLabel(network);
   return network;
 };
 
@@ -201,7 +207,7 @@ const copyToClipboard = async (text: string, toast: any) => {
 // Note: getStoreNameFromSubdomain and slugify are now imported from @/utils/storeUtils
 
 const getNetworkLabelColor = (network: string) => {
-  const colors: Record<string, string> = { mtn: "#fbbf24", mtn_express: "#f59e0b", airteltigo: "#60a5fa", telecel: "#f87171" };
+  const colors: Record<string, string> = { mtn: "#fbbf24", mtn_express: "#f59e0b", airteltigo: "#60a5fa", telecel: "#f87171", mtn_special: "#fbbf24", telecel_special: "#f87171", mashup: "#fb923c" };
   return colors[network] || "#ffffff";
 };
 
@@ -331,7 +337,7 @@ statusMessage = "Your number is new on our portal.";
   }
 
   const orderDate = new Date(order.created_at).toLocaleString();
-  const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${(order as any).size_gb_text || order.size_gb + "GB"}\nAmount: GHC ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
+  const contactMessage = `Order from ${orderDate}\nNetwork: ${formatNetworkName(order.network)}\nData: ${(order as any).size_gb_text || (isSpecialNetwork(order.network) ? "" : order.size_gb + "GB")}\nAmount: GHC ${Number(order.amount).toFixed(2)}\nCustomer: ${order.customer_number}\n\nPlease help resolve this issue. Contact: ${store.support_number}`;
 
   const whatsappNumberDigits = getInternationalDigits(store.whatsapp_number);
   const whatsappMessage = encodeURIComponent(
@@ -533,7 +539,7 @@ const NotificationModal = ({
 }): JSX.Element => {
   if (notifications.length === 0) return null as any;
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-[100] pointer-events-auto flex items-center justify-center bg-black/50 backdrop-blur-sm animate-in fade-in duration-200">
       <div className="relative max-w-md w-full mx-4 bg-card rounded-2xl shadow-2xl border overflow-hidden animate-in zoom-in-95 duration-200">
         <div className="relative p-6 pb-4 text-center">
           <div
@@ -686,16 +692,16 @@ const AgentStorefront = () => {
 
   // ── Default theme ──
   const defaultTheme = {
-    primary: "#a78bfa",
+    primary: "#06b6d4",
     primary_foreground: "#ffffff",
-    background: "#0f0f0f",
-    card_background: "linear-gradient(135deg, #2d1b69 0%, #1a0a3e 100%)",
+    background: "#09090b",
+    card_background: "#18181b",
     gridColumns: 1,
     gb_text_color: "#ffffff",
     price_text_color: "#ffffff",
     button_text_color: "#ffffff",
-    button_bg_color: "rgba(255,255,255,0.1)",
-    button_border_color: "rgba(255,255,255,0.2)",
+    button_bg_color: "#2a2a2e",
+    button_border_color: "#3f3f46",
   };
 
   const theme = store?.theme_config || defaultTheme;
@@ -777,7 +783,7 @@ const AgentStorefront = () => {
       // Fetch ALL agent and subagent stores via pagination (bypasses the 1000-row cap)
       const [agentStores, subagentStores] = await Promise.all([
         fetchAllStores(supabase, "agent_stores"),
-        fetchAllStores(supabase, "subagent_stores", "*, agent_stores(store_name)"),
+        fetchAllStores(supabase, "subagent_stores", `${SUBAGENT_STOREFRONT_COLUMNS}, agent_stores(store_name)`),
       ]);
 
       // Try to find match in agent stores first
@@ -808,7 +814,7 @@ const AgentStorefront = () => {
               .select("package_id, sell_price")
               .eq("agent_store_id", matched.agent_store_id),
           ]);
-          setPackages(pkgRes.data ?? []);
+          setPackages(filterVisiblePackages(pkgRes.data ?? []));
 
           // Use subagent prices if available, otherwise fall back to agent prices
           const priceMap: Record<string, number> = {};
@@ -842,7 +848,7 @@ const AgentStorefront = () => {
         supabase.from("subagent_package_prices").select("package_id, base_price, created_at").eq("agent_store_id", matched.id).is("subagent_store_id", null).order("created_at", { ascending: false }),
         supabase.from("app_settings").select("show_price_breakdown").eq("id", 1).single(),
       ]);
-      setPackages(pkgRes.data ?? []);
+      setPackages(filterVisiblePackages(pkgRes.data ?? []));
       const priceMap: Record<string, number> = {};
       (priceRes.data ?? []).forEach((p: any) => { priceMap[p.package_id] = Number(p.sell_price); });
       const agentPriceMap: Record<string, number> = {};
@@ -944,8 +950,6 @@ const AgentStorefront = () => {
 
   // ── Notifications ──
   const fetchNotifications = useCallback(async () => {
-    // Legacy store-specific announcements are replaced by NotificationPopup.
-    return;
     if (!store?.id) return;
     const now = new Date().toISOString();
     const { data, error } = await (supabase
@@ -957,11 +961,17 @@ const AgentStorefront = () => {
       .order("created_at", { ascending: false })) as any;
     if (!error && data) {
       const active = data as Notification[];
+      let saved: string[] = [];
+      try {
+        saved = JSON.parse(localStorage.getItem(`dismissed_notifications_${store.id}`) || "[]");
+      } catch {
+        saved = [];
+      }
       setNotifications(active);
-      const undismissed = active.filter((n) => !dismissedIds.includes(n.id));
-      if (undismissed.length > 0 && !modalOpen) setModalOpen(true);
+      setDismissedIds(saved);
+      if (active.some((n) => !saved.includes(n.id))) setModalOpen(true);
     }
-  }, [store?.id, dismissedIds, modalOpen]);
+  }, [store?.id]);
 
   useEffect(() => { if (store?.id) fetchNotifications(); }, [store?.id, fetchNotifications]);
 
@@ -1020,6 +1030,10 @@ const searchOrders = useCallback(async (input?: string) => {
           const { data: pkg } = await supabase.from("data_packages").select("size_gb_text, bundle_id").eq("id", order.package_id).maybeSingle();
           return { ...order, size_gb_text: pkg?.size_gb_text, bundle_id: pkg?.bundle_id };
         }
+        if (isSpecialNetwork(order.network) && order.package_id && !order.size_gb_text) {
+          const { data: pkg } = await supabase.from("data_packages").select("size_gb_text").eq("id", order.package_id).maybeSingle();
+          return { ...order, size_gb_text: pkg?.size_gb_text };
+        }
         return order;
       }));
       setOrders(enrichedOrders as Order[]);
@@ -1037,17 +1051,15 @@ const searchOrders = useCallback(async (input?: string) => {
   };
 
   // ── Render helpers ──
-  const filteredPackages = packages.filter((p) => {
-    if (networkFilter === "airteltigo") {
-      return p.network === "airteltigo" || p.network === "atbigtime" || p.network === "atbigshare";
+  const filteredPackages = packages.filter((p) => packageMatchesNetwork(p.network, networkFilter));
+  const getPrice = (pkg: DataPackage) => {
+    if (isMashupNetwork(pkg.network)) {
+      const cost = Number((pkg as any).agent_price ?? pkg.price);
+      const own = agentPrices[pkg.id];
+      return own != null ? Math.min(Number(own), getMashupMaxStorePrice(cost)) : getMashupDefaultStorePrice(cost);
     }
-    if (networkFilter === "telecel") {
-      const packageNetwork = String(p.network || "").trim().toLowerCase().replace(/[^a-z0-9]/g, "");
-      return packageNetwork === "telecel";
-    }
-    return p.network === networkFilter;
-  });
-  const getPrice = (pkg: DataPackage) => agentPrices[pkg.id] ?? agentSubagentPrices[pkg.id] ?? pkg.price;
+    return agentPrices[pkg.id] ?? agentSubagentPrices[pkg.id] ?? pkg.price;
+  };
   const selectedPaymentPrice = paymentPkg ? getPrice(paymentPkg) : 0;
 
   const displayWhatsApp = store ? formatDisplayPhone(store.whatsapp_number) : "";
@@ -1121,6 +1133,11 @@ const searchOrders = useCallback(async (input?: string) => {
     style={{ backgroundColor: backgroundColor } as React.CSSProperties}
   >
     <NotificationPopup surface="agent-storefront" />
+      {notifications.length > 0 && (
+        <div className="px-3 pt-3">
+          <AnnouncementTicker message={notifications.map((n) => n.message).join("  •  ")} />
+        </div>
+      )}
       {/* Notification modal */}
       {modalOpen && undismissedNotifications.length > 0 && (
         <NotificationModal
@@ -1319,9 +1336,9 @@ const searchOrders = useCallback(async (input?: string) => {
                                 </div>
                                 <div className="flex items-center gap-3 text-sm">
                                   <span className="uppercase text-muted-foreground">
-                                    {order.network}
+                                    {isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}
                                   </span>
-                                  <span className="font-display font-bold">{(order as any).size_gb_text || order.size_gb + "GB"}</span>
+                                  <span className="font-display font-bold">{(order as any).size_gb_text || (isSpecialNetwork(order.network) ? "" : order.size_gb + "GB")}</span>
                                   <span className="text-primary">
                                     GHC {Number(order.amount).toFixed(2)}
                                   </span>
@@ -1388,28 +1405,32 @@ const searchOrders = useCallback(async (input?: string) => {
 
           <div className="container pb-6"><TrackOrderDropdown source="agent-storefront" storeId={store?.id} primaryColor={primaryColor} hasResults={searchPerformed} searching={searching} onCancel={clearSearch} onTrack={(value) => { void searchOrders(value); }} />
   <SpinToWinCard target="agent" /></div>
-          {(searching || searchPerformed) && <div className="container mt-6 space-y-4">{searching ? <div className="py-8 text-center"><div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /><p className="text-muted-foreground">Searching for your order…</p></div> : orders.length > 0 ? <div><p className="mb-3 text-sm font-medium text-foreground">Found {orders.length} order(s):</p><div className="max-h-[500px] space-y-4 overflow-y-auto pr-2">{orders.map((order) => { const displayStatus = normalizeOrderStatus(order); return <div key={order.id} className="flex flex-col rounded-lg border border-border bg-background/50 p-4 transition-colors hover:bg-background"><div className="flex flex-col justify-between gap-2 border-b border-border/50 pb-3 sm:flex-row sm:items-center"><div className="space-y-1"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="font-mono text-xs">{order.id.slice(0, 8)}…</Badge><span className="text-sm font-medium text-foreground">{order.customer_number}</span></div><div className="flex items-center gap-3 text-sm"><span className="uppercase text-muted-foreground">{order.network}</span><span className="font-bold">{(order as any).size_gb_text || `${order.size_gb}GB`}</span><span className="text-primary">GHC {Number(order.amount).toFixed(2)}</span></div><p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p></div><div className="flex items-center gap-2">{getStatusIcon(displayStatus)}<Badge className={displayStatus === "refunded" ? "border-amber-500/30 bg-amber-500/20 text-amber-400" : displayStatus === "delivered" ? "border-green-600/30 bg-green-600/20 text-green-400" : displayStatus === "pending" || displayStatus === "in-queue" || displayStatus === "waiting" ? "border-yellow-600/30 bg-yellow-600/20 text-yellow-400" : "border-blue-600/30 bg-blue-600/20 text-blue-400"}>{displayStatus === "delivered" ? "Delivered" : orderStatusLabel(order)}</Badge>{checkingOrderIds.has(order.id) && <span className="whitespace-nowrap text-[11px] text-muted-foreground">checking latest status���</span>}</div></div><div className="pt-3"><OrderTrackingCard order={order} store={store} toast={toast} onReportClick={(o) => { setReportOrder(o); setReportDialogOpen(true); }} /></div></div>; })}</div></div> : <div className="rounded-lg border border-border bg-background/50 py-8 text-center"><Package className="mx-auto mb-2 h-10 w-10 text-muted-foreground" /><p className="text-muted-foreground">No orders found for &quot;{searchQuery}&quot;.</p><p className="mt-1 text-xs text-muted-foreground">Check the contact number, or check your order ID.</p></div>}</div>}
-          <DeliveryProgressCard selectedNetwork={networkFilter} />
+          {(searching || searchPerformed) && <div className="container mt-6 space-y-4">{searching ? <div className="py-8 text-center"><div className="mx-auto mb-3 h-8 w-8 animate-spin rounded-full border-2 border-primary border-t-transparent" /><p className="text-muted-foreground">Searching for your order…</p></div> : orders.length > 0 ? <div><p className="mb-3 text-sm font-medium text-foreground">Found {orders.length} order(s):</p><div className="max-h-[500px] space-y-4 overflow-y-auto pr-2">{orders.map((order) => { const displayStatus = normalizeOrderStatus(order); return <div key={order.id} className="flex flex-col rounded-lg border border-border bg-background/50 p-4 transition-colors hover:bg-background"><div className="flex flex-col justify-between gap-2 border-b border-border/50 pb-3 sm:flex-row sm:items-center"><div className="space-y-1"><div className="flex flex-wrap items-center gap-2"><Badge variant="outline" className="font-mono text-xs">{order.id.slice(0, 8)}…</Badge><span className="text-sm font-medium text-foreground">{order.customer_number}</span></div><div className="flex items-center gap-3 text-sm"><span className="uppercase text-muted-foreground">{isSpecialNetwork(order.network) ? getNetworkLabel(order.network) : order.network}</span><span className="font-bold">{(order as any).size_gb_text || (isSpecialNetwork(order.network) ? "" : `${order.size_gb}GB`)}</span><span className="text-primary">GHC {Number(order.amount).toFixed(2)}</span></div><p className="text-xs text-muted-foreground">{new Date(order.created_at).toLocaleString()}</p></div><div className="flex items-center gap-2">{getStatusIcon(displayStatus)}<Badge className={displayStatus === "refunded" ? "border-amber-500/30 bg-amber-500/20 text-amber-400" : displayStatus === "delivered" ? "border-green-600/30 bg-green-600/20 text-green-400" : displayStatus === "pending" || displayStatus === "in-queue" || displayStatus === "waiting" ? "border-yellow-600/30 bg-yellow-600/20 text-yellow-400" : "border-blue-600/30 bg-blue-600/20 text-blue-400"}>{displayStatus === "delivered" ? "Delivered" : orderStatusLabel(order)}</Badge>{checkingOrderIds.has(order.id) && <span className="whitespace-nowrap text-[11px] text-muted-foreground">checking latest status���</span>}</div></div><div className="pt-3"><OrderTrackingCard order={order} store={store} toast={toast} onReportClick={(o) => { setReportOrder(o); setReportDialogOpen(true); }} /></div></div>; })}</div></div> : <div className="rounded-lg border border-border bg-background/50 py-8 text-center"><Package className="mx-auto mb-2 h-10 w-10 text-muted-foreground" /><p className="text-muted-foreground">No orders found for &quot;{searchQuery}&quot;.</p><p className="mt-1 text-xs text-muted-foreground">Check the contact number, or check your order ID.</p></div>}</div>}
+          <DeliveryProgressCard selectedNetwork={getNetworkFamily(networkFilter)} />
 
           {/* ── Network filter ── */}
           <div className="container pb-6">
-<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-4">
-  {["mtn", "mtn_express", "telecel", "airteltigo"].map((net) => (
+<div className="grid w-full grid-cols-2 gap-2 pb-2 sm:grid-cols-3 lg:grid-cols-5">
+  {["mtn", "mtn_express", "mashup", "telecel", "airteltigo"].map((net) => {
+    const isSelected = getNetworkFamily(networkFilter) === net;
+    return (
                 <Button
                   key={net}
-                  variant={networkFilter === net ? "default" : "outline"}
+                  variant={isSelected ? "default" : "outline"}
                   size="sm"
                   className="h-8 min-w-0 flex-1 whitespace-nowrap border-foreground/40 bg-background px-1 text-foreground hover:bg-muted hover:text-foreground text-[10px] sm:flex-none sm:px-3 sm:text-sm"
-                  style={networkFilter === net && net === "mtn" ? { background: "#fbbf24", color: "#000" } :
-                         networkFilter === net && net === "mtn_express" ? { background: "#f59e0b", color: "#000" } :
-                         networkFilter === net && net === "telecel" ? { background: "#ef4444", color: "#fff" } :
-                         networkFilter === net && net === "airteltigo" ? { background: "#3b82f6", color: "#fff" } : {}}
+                  style={isSelected && net === "mtn" ? { background: "#fbbf24", color: "#000" } :
+                         isSelected && net === "mtn_express" ? { background: "#f59e0b", color: "#000" } :
+                         isSelected && net === "telecel" ? { background: "#ef4444", color: "#fff" } :
+                         isSelected && net === "airteltigo" ? { background: "#3b82f6", color: "#fff" } : {}}
                   onClick={() => setNetworkFilter(net)}
                 >
-                  {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
+                  {net === "mtn" ? "MTN" : net === "mtn_express" ? "MTN Express" : net === "mashup" ? "MTN MashUp" : net === "airteltigo" ? "AirtelTigo" : "Telecel"}
                 </Button>
-              ))}
+    );
+  })}
             </div>
+            <NetworkSubTabs value={networkFilter} onChange={setNetworkFilter} packages={packages} className="pt-1" />
           </div>
 
           {/* USSD Info Banner */}
@@ -1483,8 +1504,8 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                       ) : (
                         <>
                           <CardContent className="flex min-h-[220px] flex-col items-center justify-center gap-2 px-5 py-6 text-center w-full">
-                            {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} />}
-                            <p className="font-display text-4xl font-extrabold leading-none text-white">{pkg.size_gb_text || `${pkg.size_gb}GB`}</p>
+                            {(isInactive || isOffline) && <PackageStatusIndicator status={isOffline ? "offline" : "not_available"} note={pkg.inactive_note} />}
+                            <p className="font-display text-4xl font-extrabold leading-none text-white">{getPackageDisplayName(pkg)}</p>
                             <p className="text-sm font-bold uppercase" style={{ color: getNetworkLabelColor(networkFilter) }}>{formatNetworkName(networkFilter)}</p>
                             <p className="text-sm font-semibold text-white/80">User price: <strong className="text-cyan-300">GHC {Number(price).toFixed(2)}</strong></p>
                             {showAgentPrice && <p className="text-xs text-white/60">Agent price: GHC {Number(agentSubagentPrices[pkg.id] ?? pkg.agent_price ?? pkg.price).toFixed(2)}</p>}
@@ -1592,7 +1613,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                 >
                   <option value="none">None (use per-line sizes)</option>
                   {packages.filter(p => p.network.toLowerCase() === bulkNetwork).map(p => {
-                    const price = agentPrices[p.id] ?? p.price;
+                    const price = getPrice(p);
                     return <option key={p.id} value={p.size_gb.toString()}>{p.size_gb}GB - GHC {price.toFixed(2)}</option>;
                   })}
                 </select>
@@ -1612,7 +1633,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                   const totalGb = parsed.reduce((sum, r) => sum + (r.size || 0), 0);
                   const totalCost = parsed.reduce((sum, r) => {
                     const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
-                    const price = pkg ? (agentPrices[pkg.id] ?? pkg.price) : 0;
+                    const price = pkg ? getPrice(pkg) : 0;
                     return sum + price;
                   }, 0);
                   const paystackFee = Math.ceil(totalCost * 0.0198 * 100) / 100;
@@ -1655,7 +1676,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
                             try {
                               const recipients = parsed.map(r => {
                                 const pkg = packages.find(p => p.network.toLowerCase() === bulkNetwork && p.size_gb === r.size);
-                                const price = pkg ? (agentPrices[pkg.id] ?? pkg.price) : 0;
+                                const price = pkg ? getPrice(pkg) : 0;
                                 return {
                                   phone: r.phone,
                                   size_gb: r.size,
@@ -1806,7 +1827,7 @@ className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3"
       <PaymentVerifier />
       <AFARegistrationSuccess />
 
-      {/* Report Complaint Dialog — lazy-loaded to break circular dep */}
+      {/* Report Complaint Dialog �� lazy-loaded to break circular dep */}
       <Suspense fallback={null}>
         {reportOrder && (
           <ReportComplaintDialog

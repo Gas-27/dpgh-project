@@ -17,7 +17,8 @@ import { getFriendlyBlockedMessage } from "@/lib/blockedMessages";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import NetworkIndicator from "@/components/NetworkIndicator";
-import { detectNetwork, phoneMatchesNetwork } from "@/lib/phoneUtils";
+import { detectNetwork, isMtnNumber, phoneMatchesNetwork } from "@/lib/phoneUtils";
+import { getNetworkLabel, isMashupNetwork, isSpecialNetwork, MASHUP_MTN_ONLY_MESSAGE } from "@/lib/networkConfig";
 import { isNumberSubmittedForApproval } from "@/lib/numberApprovalCheck";
 import { verifyHubtelMsisdn } from "@/services/hubtelService";
 
@@ -98,7 +99,7 @@ const PaymentDialog = ({
   const bundleIdText = typeof pkg?.bundle_id === "string" ? pkg.bundle_id : String(pkg?.bundle_id ?? "");
   const bundleIdLower = bundleIdText.toLowerCase();
   const bundleCategory = pkg?.bundle_category || (bundleIdLower.includes("midnight") ? "Midnight Bundle" : bundleIdLower.includes("kokrokoo") ? "Kokrokoo Bundle" : bundleIdLower.includes("social") ? "Social Media Bundle" : bundleIdLower.includes("video") ? "Video Bundle" : bundleIdLower.includes("idd") ? "IDD Bundle" : "Data Bundle");
-  const displayPackageName = packageName || pkg?.bundle_api_name || pkg?.bundle_name || pkg?.package_name || pkg?.name || pkg?.title || (pkg ? (pkg.network === "mtn_mashup" && pkg.size_gb_text ? pkg.size_gb_text : `${pkg.size_gb}GB`) : "");
+  const displayPackageName = packageName || pkg?.bundle_api_name || pkg?.bundle_name || pkg?.package_name || pkg?.name || pkg?.title || (pkg ? ((pkg.network === "mtn_mashup" || isSpecialNetwork(pkg.network)) && pkg.size_gb_text ? pkg.size_gb_text : `${pkg.size_gb}GB`) : "");
   const packageInfo = pkg;
   const network = networkProp || pkg?.network || "";
   const actualPackageId = packageId || pkg?.id || "";
@@ -201,13 +202,12 @@ const PaymentDialog = ({
       return;
     }
 
-    // COMMENTED OUT: mashup packages deactivated
-    // Special MTN Mashup: Only MTN numbers allowed
+    // MashUp bundles only work on MTN numbers (024, 025, 053, 054, 055, 059)
     const selectedNetwork = network || packageInfo?.network || "";
-    if (false && selectedNetwork === "mtn_mashup" && detectedNetwork !== "mtn") {
+    if (isMashupNetwork(selectedNetwork) && !isMtnNumber(phone)) {
       toast({
         title: "MTN Only",
-        description: `Special MTN Mashup is only available for MTN numbers. Your number appears to be ${detectedNetwork.toUpperCase()}.`,
+        description: MASHUP_MTN_ONLY_MESSAGE,
         variant: "destructive",
       });
       return;
@@ -218,7 +218,7 @@ const PaymentDialog = ({
     if (selectedNetwork && selectedNetwork !== "mtn_mashup" && selectedNetwork !== "mashup" && selectedNetwork !== "mtn_express" && !isValidForMTNVariant && !phoneMatchesNetwork(phone, selectedNetwork)) {
       toast({
         title: "Network mismatch",
-        description: `This phone number appears to be ${detectedNetwork.toUpperCase()}, but you selected ${selectedNetwork === "mtn_express" ? "MTN Express" : selectedNetwork.toUpperCase()} package`,
+        description: `This phone number appears to be ${detectedNetwork.toUpperCase()}, but you selected ${selectedNetwork === "mtn_express" ? "MTN Express" : isSpecialNetwork(selectedNetwork) ? getNetworkLabel(selectedNetwork) : selectedNetwork.toUpperCase()} package`,
         variant: "destructive",
       });
       return;
@@ -314,46 +314,17 @@ const PaymentDialog = ({
       return;
     }
     
-    // For mashup network ONLY (not mtn_mashup), validate that we can find a datahubnet ID
+    // MashUp packages are identified by package_id and size_gb_text, so no extra lookup is needed.
     const selectedNetwork = network || packageInfo?.network || "";
-    // Only validate datahubnet IDs for "mashup" network (which uses datahubnet)
-    // MTN_MASHUP uses Dakazina provider, not datahubnet, so skip this validation for it
-    if (selectedNetwork === "mashup") {
-      // Use inline mapping exactly like wallet purchases
-      const mashupMapping: Record<string, number> = {
-        "1.7GB": 14,
-        "5.1GB": 3,
-        "2.6 GB + 1,077 mins": 16,
-        "1077mins + 2.6GB": 16,
-        "1077 mins + 2.6GB": 16,
-        "1077mins+2.6GB": 16,
-        "8.2GB": 17,
-        "11.9GB": 18,
-        "3.61GB + 1485Mins": 20,
-        "1485mins + 3.61GB": 20,
-        "1485 mins + 3.61GB": 20,
-        "1485mins+3.61GB": 20,
-        "15.3GB": 19,
-      };
-      const sizeGbText = packageInfo?.size_gb_text?.trim() || "";
-      const datahubnetId = mashupMapping[sizeGbText];
-      
-      if (!datahubnetId) {
-        console.error("[v0] Payment failed: Could not find datahubnet ID for mashup package", {
-          network: selectedNetwork,
-          packageInfo,
-          sizeGbText: packageInfo?.size_gb_text,
-          sizeGb: packageInfo?.size_gb,
-        });
-        const errorMsg = `Error: Unable to process mashup package. Package configuration missing. Please contact support.`;
-        setPaymentError(errorMsg);
-        toast({
-          title: "Package Configuration Error",
-          description: errorMsg,
-          variant: "destructive",
-        });
-        return;
-      }
+    if (isMashupNetwork(selectedNetwork) && !packageInfo?.size_gb_text?.trim()) {
+      const errorMsg = "Package configuration missing. Please close this dialog and try again.";
+      setPaymentError(errorMsg);
+      toast({
+        title: "Package Configuration Error",
+        description: errorMsg,
+        variant: "destructive",
+      });
+      return;
     }
     
     // Validate price is not 0 or undefined
@@ -418,31 +389,6 @@ const PaymentDialog = ({
 
       const callbackUrl = `${window.location.origin}${returnPath}?payment=verifying`;
 
-      // For mashup network ONLY, get datahubnet ID using inline mapping
-      // MTN_MASHUP uses Dakazina provider, not datahubnet, so don't lookup ID for it
-      let datahubnetId = undefined;
-      
-      if (network === "mashup" && packageInfo?.size_gb_text) {
-        // Use inline mapping exactly like wallet purchases do
-        const mashupMapping: Record<string, number> = {
-          "1.7GB": 14,
-          "5.1GB": 3,
-          "2.6 GB + 1,077 mins": 16,
-          "1077mins + 2.6GB": 16,
-          "1077 mins + 2.6GB": 16,
-          "1077mins+2.6GB": 16,
-          "8.2GB": 17,
-          "11.9GB": 18,
-          "3.61GB + 1485Mins": 20,
-          "1485mins + 3.61GB": 20,
-          "1485 mins + 3.61GB": 20,
-          "1485mins+3.61GB": 20,
-          "15.3GB": 19,
-        };
-        const sizeGbText = packageInfo.size_gb_text.trim();
-        datahubnetId = mashupMapping[sizeGbText];
-      }
-
       // Refresh the auth session at the moment of checkout. The auth context
       // can still be loading for a small number of users, which previously
       // caused customer_id to be sent as null even when the buyer had an account.
@@ -479,7 +425,6 @@ const PaymentDialog = ({
           subagent_store_id: subsubagentStoreId ? null : (subagentStoreId || null),
           subsubagent_store_id: subsubagentStoreId || null,
           ...(packageInfo?.size_gb_text && { size_gb_text: packageInfo.size_gb_text }),
-          ...(datahubnetId && { data_package_id: datahubnetId }),
         },
       };
 

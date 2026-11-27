@@ -195,6 +195,9 @@ export default function AFARegistrationForm({
                   Registration fee is <strong>GHC{amount.toFixed(2)}</strong> and is <strong>non-refundable</strong>. 
                   Ensure all details are correct before submitting.
                 </p>
+                <p className="text-sm font-semibold text-blue-900">
+                  Enter accurate information only. Your full name, Ghana Card number and date of birth must match your Ghana Card exactly, and the phone number must be the MTN number you want registered. Wrong or mismatched details can cause the registration to be rejected, and the fee is not refunded.
+                </p>
               </div>
             </div>
           </div>
