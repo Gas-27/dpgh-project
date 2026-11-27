@@ -6,6 +6,7 @@ import {
   DialogContent,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import AnnouncementTicker from "@/components/AnnouncementTicker";
 import {
   Bell,
   CheckCircle2,
@@ -147,12 +148,19 @@ const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
 
   if (notifications.length === 0) return null;
 
+  const tickerMessage = notifications
+    .map((notification) => `${notification.title}: ${notification.message}`)
+    .join("  •  ");
   const notif = notifications[currentIndex];
   const meta = getMeta(notif.message);
   const Icon = meta.icon;
 
   return (
-    <Dialog open={true} onOpenChange={(open) => { if (!open) dismiss(); }}>
+    <>
+      <div className="fixed inset-x-0 top-16 z-[40] px-3 pt-3">
+        <AnnouncementTicker message={tickerMessage} />
+      </div>
+      <Dialog open={true} onOpenChange={(open) => { if (!open) dismiss(); }}>
       <DialogContent className="sm:max-w-md p-0 overflow-hidden rounded-3xl border-0 shadow-2xl">
 
         {/* HEADER */}
@@ -215,7 +223,8 @@ const NotificationPopup = ({ surface = "all" }: { surface?: string }) => {
           </Button>
         </div>
       </DialogContent>
-    </Dialog>
+      </Dialog>
+    </>
   );
 };
 

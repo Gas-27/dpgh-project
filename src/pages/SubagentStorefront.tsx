@@ -36,6 +36,7 @@ import PackageStatusIndicator, { PackageStatus } from "@/components/PackageStatu
 import NetworkSubTabs from "@/components/NetworkSubTabs";
 import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetwork, isMashupNetwork, filterVisiblePackages, packageMatchesNetwork, MASHUP_MTN_ONLY_MESSAGE, getMashupDefaultStorePrice, getMashupMaxStorePrice } from "@/lib/networkConfig";
   import NotificationPopup from "@/components/NotificationPopup";
+import AnnouncementTicker from "@/components/AnnouncementTicker";
   import SmsComposer from "@/components/SmsComposer";
 import RoleServicesPanel from "@/components/RoleServicesPanel";
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
@@ -969,6 +970,11 @@ const searchOrders = useCallback(async (input?: string) => {
   return (
   <div className="storefront-readable min-h-screen font-sans" style={{ background: bgColor, color: "#fff" }}>
   <NotificationPopup surface="subagent-storefront" />
+  {notifications.length > 0 && (
+    <div className="px-3 pt-3">
+      <AnnouncementTicker message={notifications.map((n) => n.message).join("  •  ")} />
+    </div>
+  )}
   {/* Notification Modal */}
       {modalOpen && undismissedNotifications.length > 0 && (
         <div className="fixed inset-0 z-[100] pointer-events-auto flex items-center justify-center bg-black/70 p-4">

@@ -48,6 +48,7 @@ import { getNetworkFamily, getNetworkLabel, getPackageDisplayName, isSpecialNetw
 import TrackOrderDropdown from "@/components/TrackOrderDropdown";
 import { SpinToWinCard } from "@/components/SpinToWinCard";
 import NotificationPopup from "@/components/NotificationPopup";
+import AnnouncementTicker from "@/components/AnnouncementTicker";
 import SmsComposer from "@/components/SmsComposer";
 import ChatBot from "@/components/ChatBot";
 import { normalizeOrderStatus, orderStatusLabel } from "@/utils/orderStatus";
@@ -1132,6 +1133,11 @@ const searchOrders = useCallback(async (input?: string) => {
     style={{ backgroundColor: backgroundColor } as React.CSSProperties}
   >
     <NotificationPopup surface="agent-storefront" />
+      {notifications.length > 0 && (
+        <div className="px-3 pt-3">
+          <AnnouncementTicker message={notifications.map((n) => n.message).join("  •  ")} />
+        </div>
+      )}
       {/* Notification modal */}
       {modalOpen && undismissedNotifications.length > 0 && (
         <NotificationModal
